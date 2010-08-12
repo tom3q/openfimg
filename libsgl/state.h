@@ -77,14 +77,30 @@ struct FGLMatrixState {
 	}
 };
 
+struct FGLPlane {
+	FGLuint		version;
+	FGLuint		width;      // width in pixels
+	FGLuint		height;     // height in pixels
+	FGLuint		stride;     // stride in pixels
+	FGLubyte	*vaddr;     // pointer to the bits
+	unsigned long	paddr;      // physical address
+	unsigned long	size;       // block size
+	FGLint		format;     // pixel format
+};
+
 struct FGLContext {
+	/* GL state */
 	FGLvec4f vertex[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLArrayState array[4 + FGL_MAX_TEXTURE_UNITS];
 	GLboolean enableArray[4 + FGL_MAX_TEXTURE_UNITS];
 	GLint activeTexture;
 	FGLViewportState viewport;
 	FGLMatrixState matrix;
-	/* Pointer returned from fimgCreateContext */
+	/* EGL state */
+	FGLPlane colorPlane;
+	FGLPlane depthPlane;
+	FGLPlane readPlane;
+	/* HW state */
 	fimgContext *fimg;
 };
 

@@ -618,6 +618,15 @@ void fimgSetColorBufBaseAddr(unsigned int addr);
 void fimgSetFrameBufWidth(unsigned int width);
 
 /*
+ * OS support
+ */
+
+int fimgDeviceOpen(void);
+void fimgDeviceClose(void);
+void *fimgAllocMemory(unsigned long *size, unsigned long *paddr);
+void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size);
+
+/*
  * Hardware context
  */
 

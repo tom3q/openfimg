@@ -49,6 +49,12 @@
 #include <hardware/copybit.h>
 #include <hardware/gralloc.h>
 
+#include <linux/android_pmem.h>
+#include <linux/fb.h>
+
+/* HACK ALERT */
+#include "../../../../hardware/libhardware/modules/gralloc/gralloc_priv.h"
+
 #include "common.h"
 #include "types.h"
 #include "state.h"
@@ -78,14 +84,13 @@ static inline T min(T a, T b)
 
 static char const * const gVendorString     = "notSamsung";
 static char const * const gVersionString    = "1.4 S3C6410 Android 0.0.1";
-static char const * const gClientApisString  = "OpenGL_ES";
+static char const * const gClientApisString = "OpenGL_ES";
 static char const * const gExtensionsString =
 	"EGL_KHR_image_base "
 	"EGL_KHR_image_pixmap "
 	"EGL_ANDROID_image_native_buffer "
 	"EGL_ANDROID_swap_rectangle "
-	"EGL_ANDROID_get_render_buffer "
-	;
+	"EGL_ANDROID_get_render_buffer ";
 
 static pthread_mutex_t eglContextKeyMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t eglContextKey = -1;
@@ -453,42 +458,41 @@ static FGLConfigPair const defaultConfigAttributes[] = {
 
 // ----------------------------------------------------------------------------
 
-#if 0
 static FGLint getConfigFormatInfo(EGLint configID,
 	int32_t *pixelFormat, int32_t *depthFormat)
 {
 	switch(configID) {
 	case 0:
-		pixelFormat = FGL_PIXEL_FORMAT_RGB_565;
-		depthFormat = 0;
+		*pixelFormat = FGL_PIXEL_FORMAT_RGB_565;
+		*depthFormat = 0;
 		break;
 	case 1:
-		pixelFormat = FGL_PIXEL_FORMAT_RGB_565;
-		depthFormat = FGL_PIXEL_FORMAT_Z_16;
+		*pixelFormat = FGL_PIXEL_FORMAT_RGB_565;
+		*depthFormat = FGL_PIXEL_FORMAT_Z_16;
 		break;
 	case 2:
-		pixelFormat = FGL_PIXEL_FORMAT_RGBX_8888;
-		depthFormat = 0;
+		*pixelFormat = FGL_PIXEL_FORMAT_RGBX_8888;
+		*depthFormat = 0;
 		break;
 	case 3:
-		pixelFormat = FGL_PIXEL_FORMAT_RGBX_8888;
-		depthFormat = FGL_PIXEL_FORMAT_Z_16;
+		*pixelFormat = FGL_PIXEL_FORMAT_RGBX_8888;
+		*depthFormat = FGL_PIXEL_FORMAT_Z_16;
 		break;
 	case 4:
-		pixelFormat = FGL_PIXEL_FORMAT_RGBA_8888;
-		depthFormat = 0;
+		*pixelFormat = FGL_PIXEL_FORMAT_RGBA_8888;
+		*depthFormat = 0;
 		break;
 	case 5:
-		pixelFormat = FGL_PIXEL_FORMAT_RGBA_8888;
-		depthFormat = FGL_PIXEL_FORMAT_Z_16;
+		*pixelFormat = FGL_PIXEL_FORMAT_RGBA_8888;
+		*depthFormat = FGL_PIXEL_FORMAT_Z_16;
 		break;
 	case 6:
-		pixelFormat = FGL_PIXEL_FORMAT_A_8;
-		depthFormat = 0;
+		*pixelFormat = FGL_PIXEL_FORMAT_A_8;
+		*depthFormat = 0;
 		break;
 	case 7:
-		pixelFormat = FGL_PIXEL_FORMAT_A_8;
-		depthFormat = FGL_PIXEL_FORMAT_Z_16;
+		*pixelFormat = FGL_PIXEL_FORMAT_A_8;
+		*depthFormat = FGL_PIXEL_FORMAT_Z_16;
 		break;
 	default:
 		return NAME_NOT_FOUND;
@@ -496,7 +500,6 @@ static FGLint getConfigFormatInfo(EGLint configID,
 
 	return FGL_NO_ERROR;
 }
-#endif
 
 // ----------------------------------------------------------------------------
 
@@ -625,7 +628,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 	}
 
 	// now, handle the attributes which have a useful default value
-	for (size_t j=0 ; possibleMatch && j<NELEM(defaultConfigAttributes) ; j++) {
+	for (int j=0 ; possibleMatch && j<(int)NELEM(defaultConfigAttributes) ; j++) {
 		// see if this attribute was specified, if not, apply its
 		// default value
 		if (binarySearch<FGLConfigPair>(
@@ -721,39 +724,30 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 	Surfaces
 */
 
-struct FGLPlane {
-	FGLuint		version;
-	FGLuint		width;      // width in pixels
-	FGLuint		height;     // height in pixels
-	FGLuint		stride;     // stride in pixels
-	FGLubyte	*data;      // pointer to the bits
-	FGLint		format;     // pixel format
-};
-
-void *fimgAllocMemory(size_t size)
+static inline EGLint colorModeFromFormatEnum(EGLint format)
 {
-#warning Unimplemented critical function
-	return NULL;
-}
-
-void fimgFreeMemory(void *mem)
-{
-#warning Unimplemented function
+#warning Unimplemented function.
+	return 0;
 }
 
 void fglSetColorBuffer(FGLContext *gl, FGLPlane *cbuf)
 {
-#warning Unimplemented function
+	EGLint mode = colorModeFromFormatEnum(cbuf->format);
+	fimgSetFrameBufWidth(cbuf->stride);
+	fimgSetFrameBufParams(0, 0, 0, (fimgColorMode)mode);
+	fimgSetColorBufBaseAddr(cbuf->paddr);
+	gl->colorPlane = *cbuf;
 }
 
 void fglSetDepthBuffer(FGLContext *gl, FGLPlane *zbuf)
 {
-#warning Unimplemented function
+	fimgSetZBufBaseAddr(zbuf->paddr);
+	gl->depthPlane = *zbuf;
 }
 
 void fglSetReadBuffer(FGLContext *gl, FGLPlane *rbuf)
 {
-#warning Unimplemented function
+	gl->readPlane = *rbuf;
 }
 
 FGLint getBpp(int format)
@@ -803,14 +797,14 @@ FGLSurface::FGLSurface(EGLDisplay dpy,
 : magic(MAGIC), dpy(dpy), config(config), ctx(0)
 {
 	depth.version = sizeof(FGLPlane);
-	depth.data = 0;
+	depth.vaddr = 0;
 	depth.format = depthFormat;
 }
 
 FGLSurface::~FGLSurface()
 {
 	magic = 0;
-	fimgFreeMemory(depth.data);
+	fimgFreeMemory(depth.vaddr, depth.paddr, depth.size);
 }
 
 bool FGLSurface::isValid() const {
@@ -1047,10 +1041,11 @@ EGLBoolean FGLWindowSurface::connect()
 		depth.width   = width;
 		depth.height  = height;
 		depth.stride  = depth.width; // use the width here
-		depth.data    = (FGLubyte*)fimgAllocMemory(depth.stride*depth.height*4);
-		if (depth.data == 0) {
-		setError(EGL_BAD_ALLOC);
-		return EGL_FALSE;
+		depth.size    = depth.stride*depth.height*4;
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		if (depth.vaddr == 0) {
+			setError(EGL_BAD_ALLOC);
+			return EGL_FALSE;
 		}
 	}
 
@@ -1231,13 +1226,14 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 		// if the window size has changed
 		width = buffer->width;
 		height = buffer->height;
-		if (depth.data) {
-			fimgFreeMemory(depth.data);
+		if (depth.vaddr) {
+			fimgFreeMemory(depth.vaddr, depth.paddr, depth.size);
 			depth.width   = width;
 			depth.height  = height;
 			depth.stride  = buffer->stride;
-			depth.data    = (FGLubyte*)fimgAllocMemory(depth.stride*depth.height*4);
-			if (depth.data == 0) {
+			depth.size    = depth.stride*depth.height*4;
+			depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+			if (depth.vaddr == 0) {
 				setError(EGL_BAD_ALLOC);
 				return EGL_FALSE;
 			}
@@ -1289,17 +1285,65 @@ static bool supportedCopybitsDestinationFormat(int format) {
 }
 #endif
 
+/* HACK ALERT */
+#define FB_DEVICE_NAME "/dev/graphics/fb0"
+static unsigned long getFramebufferAddress(void)
+{
+	static unsigned long address = 0;
+
+	if (address == 0) {
+		int fb_fd = open(FB_DEVICE_NAME, O_RDWR, 0);
+
+		if (fb_fd == -1) {
+			LOGE("EGL: GetFramebufferAddress: cannot open fb");
+			return 0;
+		}
+
+		fb_fix_screeninfo finfo;
+		if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
+			LOGE("EGL: Failed to get framebuffer address");
+			close(fb_fd);
+			return 0;
+		}
+		close(fb_fd);
+
+		address = finfo.smem_start;
+	}
+
+	return address;
+}
+
+/* HACK ALERT */
+static unsigned long getBufferPhysicalAddress(android_native_buffer_t *buffer)
+{
+	const private_handle_t* hnd = static_cast<const private_handle_t*>(buffer->handle);
+
+	// this pointer came from framebuffer
+	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
+		return getFramebufferAddress() + hnd->offset;
+
+	// this pointer came from pmem domain
+	pmem_region region;
+	if (ioctl(hnd->fd, PMEM_GET_PHYS, &region) < 0) {
+		LOGE("EGL: PMEM_GET_PHYS failed");
+		return 0;
+	}
+
+	return region.offset + hnd->offset;
+}
+
 EGLBoolean FGLWindowSurface::bindDrawSurface(FGLContext* gl)
 {
 	FGLPlane buffer;
-	
+
 	buffer.version = sizeof(FGLPlane);
 	buffer.width   = this->buffer->width;
 	buffer.height  = this->buffer->height;
 	buffer.stride  = this->buffer->stride;
-	buffer.data    = (FGLubyte*)bits;
+	buffer.vaddr   = (FGLubyte*)bits;
+	buffer.paddr   = getBufferPhysicalAddress(this->buffer);
 	buffer.format  = this->buffer->format;
-	
+
 	fglSetColorBuffer(gl, &buffer);
 	fglSetDepthBuffer(gl, &depth);
 
@@ -1321,13 +1365,18 @@ EGLBoolean FGLWindowSurface::bindDrawSurface(FGLContext* gl)
 EGLBoolean FGLWindowSurface::bindReadSurface(FGLContext* gl)
 {
 	FGLPlane buffer;
+	
 	buffer.version = sizeof(FGLPlane);
 	buffer.width   = this->buffer->width;
 	buffer.height  = this->buffer->height;
 	buffer.stride  = this->buffer->stride;
-	buffer.data    = (FGLubyte*)bits; // FIXME: hopefully is is LOCKED!!!
+	buffer.vaddr   = (FGLubyte*)bits; // FIXME: hopefully is is LOCKED!!!
+	buffer.paddr   = 0;
+	buffer.size    = 0;
 	buffer.format  = this->buffer->format;
+	
 	fglSetReadBuffer(gl, &buffer);
+	
 	return EGL_TRUE;
 }
 
@@ -1373,7 +1422,7 @@ struct FGLPixmapSurface : public FGLSurface
 
 	virtual ~FGLPixmapSurface() { }
 
-	virtual     bool        initCheck() const { return !depth.format || depth.data!=0; }
+	virtual     bool        initCheck() const { return !depth.format || depth.vaddr!=0; }
 	virtual     EGLBoolean  bindDrawSurface(FGLContext* gl);
 	virtual     EGLBoolean  bindReadSurface(FGLContext* gl);
 	virtual     EGLint      getWidth() const    { return nativePixmap.width;  }
@@ -1392,8 +1441,9 @@ FGLPixmapSurface::FGLPixmapSurface(EGLDisplay dpy,
 		depth.width   = pixmap->width;
 		depth.height  = pixmap->height;
 		depth.stride  = depth.width; // use the width here
-		depth.data    = (FGLubyte*)fimgAllocMemory(depth.stride*depth.height*4);
-		if (depth.data == 0) {
+		depth.size    = depth.stride*depth.height*4;
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
 	}
@@ -1407,7 +1457,10 @@ EGLBoolean FGLPixmapSurface::bindDrawSurface(FGLContext* gl)
 	buffer.width   = nativePixmap.width;
 	buffer.height  = nativePixmap.height;
 	buffer.stride  = nativePixmap.stride;
-	buffer.data    = nativePixmap.data;
+	buffer.vaddr   = nativePixmap.data;
+/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
+	buffer.paddr   = 0;
+/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
 	buffer.format  = nativePixmap.format;
 
 	fglSetColorBuffer(gl, &buffer);
@@ -1424,7 +1477,9 @@ EGLBoolean FGLPixmapSurface::bindReadSurface(FGLContext* gl)
 	buffer.width   = nativePixmap.width;
 	buffer.height  = nativePixmap.height;
 	buffer.stride  = nativePixmap.stride;
-	buffer.data    = nativePixmap.data;
+	buffer.vaddr   = nativePixmap.data;
+	buffer.paddr   = 0;
+	buffer.size    = 0;
 	buffer.format  = nativePixmap.format;
 
 	fglSetReadBuffer(gl, &buffer);
@@ -1442,7 +1497,7 @@ struct FGLPbufferSurface : public FGLSurface
 
 	virtual ~FGLPbufferSurface();
 
-	virtual     bool        initCheck() const   { return pbuffer.data != 0; }
+	virtual     bool        initCheck() const   { return pbuffer.vaddr != 0; }
 	virtual     EGLBoolean  bindDrawSurface(FGLContext* gl);
 	virtual     EGLBoolean  bindReadSurface(FGLContext* gl);
 	virtual     EGLint      getWidth() const    { return pbuffer.width;  }
@@ -1464,29 +1519,31 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 		case FGL_PIXEL_FORMAT_RGBX_8888:    size *= 4; break;
 		default:
 		LOGE("incompatible pixel format for pbuffer (format=%d)", f);
-		pbuffer.data = 0;
+		pbuffer.vaddr = 0;
 		break;
 	}
 	pbuffer.version = sizeof(FGLPlane);
 	pbuffer.width   = w;
 	pbuffer.height  = h;
 	pbuffer.stride  = w;
-	pbuffer.data    = (FGLubyte*)fimgAllocMemory(size);
+	pbuffer.size    = size;
+	pbuffer.vaddr   = (FGLubyte*)fimgAllocMemory(&pbuffer.size, &pbuffer.paddr);
 	pbuffer.format  = f;
 
 	if (depthFormat) {
 		depth.width   = pbuffer.width;
 		depth.height  = pbuffer.height;
 		depth.stride  = depth.width; // use the width here
-		depth.data    = (FGLubyte*)fimgAllocMemory(depth.stride*depth.height*4);
-		if (depth.data == 0) {
+		depth.size    = depth.stride*depth.height*4;
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
 	}
 }
 
 FGLPbufferSurface::~FGLPbufferSurface() {
-	fimgFreeMemory(pbuffer.data);
+	fimgFreeMemory(pbuffer.vaddr, pbuffer.paddr, pbuffer.size);
 }
 
 EGLBoolean FGLPbufferSurface::bindDrawSurface(FGLContext* gl)
@@ -1508,15 +1565,106 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy, EGLConfig c
 				EGLNativeWindowType win,
 				const EGLint *attrib_list)
 {
-#warning Unimplemented function
-	return EGL_NO_SURFACE;
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_NO_SURFACE;
+	}
+	
+	if (win == 0) {
+		setError(EGL_BAD_MATCH);
+		return EGL_NO_SURFACE;
+	}
+
+	EGLint surfaceType;
+	if (getConfigAttrib(dpy, config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
+		return EGL_NO_SURFACE;
+
+	if (!(surfaceType & EGL_WINDOW_BIT)) {
+		setError(EGL_BAD_MATCH);
+		return EGL_NO_SURFACE;
+	}
+
+	if (static_cast<android_native_window_t*>(win)->common.magic != ANDROID_NATIVE_WINDOW_MAGIC) {
+		setError(EGL_BAD_NATIVE_WINDOW);
+		return EGL_NO_SURFACE;
+	}
+
+	EGLint configID;
+	if (getConfigAttrib(dpy, config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
+		return EGL_NO_SURFACE;
+
+	int32_t depthFormat;
+	int32_t pixelFormat;
+	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) != NO_ERROR) {
+		setError(EGL_BAD_MATCH);
+		return EGL_NO_SURFACE;
+	}
+
+	// FIXME: we don't have access to the pixelFormat here just yet.
+	// (it's possible that the surface is not fully initialized)
+	// maybe this should be done after the page-flip
+	//if (EGLint(info.format) != pixelFormat)
+	//    return setError(EGL_BAD_MATCH, EGL_NO_SURFACE);
+
+	FGLSurface* surface;
+	surface = new FGLWindowSurface(dpy, config, depthFormat,
+		static_cast<android_native_window_t*>(win));
+
+	if (!surface->initCheck()) {
+		// there was a problem in the ctor, the error
+		// flag has been set.
+		delete surface;
+		surface = 0;
+	}
+	return surface;
 }
 
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig config,
 				const EGLint *attrib_list)
 {
-#warning Unimplemented function
-	return EGL_NO_SURFACE;
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_NO_SURFACE;
+	}
+
+	EGLint surfaceType;
+	if (getConfigAttrib(dpy, config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
+		return EGL_NO_SURFACE;
+
+	if (!(surfaceType & EGL_PBUFFER_BIT)) {
+		setError(EGL_BAD_MATCH);
+		return EGL_NO_SURFACE;
+	}
+
+	EGLint configID;
+	if (getConfigAttrib(dpy, config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
+		return EGL_NO_SURFACE;
+
+	int32_t depthFormat;
+	int32_t pixelFormat;
+	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) != NO_ERROR) {
+		setError(EGL_BAD_MATCH);
+		return EGL_NO_SURFACE;
+	}
+
+	int32_t w = 0;
+	int32_t h = 0;
+	while (attrib_list[0]) {
+		if (attrib_list[0] == EGL_WIDTH)  w = attrib_list[1];
+		if (attrib_list[0] == EGL_HEIGHT) h = attrib_list[1];
+		attrib_list+=2;
+	}
+
+	FGLSurface* surface =
+		new FGLPbufferSurface(dpy, config, depthFormat, w, h, pixelFormat);
+
+	if (!surface->initCheck()) {
+		// there was a problem in the ctor, the error
+		// flag has been set.
+		delete surface;
+		surface = 0;
+	}
+	return surface;
 }
 
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy, EGLConfig config,
@@ -1524,22 +1672,121 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy, EGLConfig c
 				const EGLint *attrib_list)
 {
 #warning Unimplemented function
+	LOGE("Pixmap surfaces not implemented yet.");
 	return EGL_NO_SURFACE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surface)
 {
-#warning Unimplemented function
-	return EGL_FALSE;
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_FALSE;
+	}
+	
+	if (surface != EGL_NO_SURFACE) {
+		FGLSurface* fglSurface( static_cast<FGLSurface*>(surface) );
+		
+		if (!fglSurface->isValid()) {
+			setError(EGL_BAD_SURFACE);
+			return EGL_FALSE;
+		}
+
+		if (fglSurface->dpy != dpy) {
+			setError(EGL_BAD_DISPLAY);
+			return EGL_FALSE;
+		}
+
+		if (fglSurface->ctx) {
+			// FIXME: this surface is current check what the spec says
+			fglSurface->disconnect();
+			fglSurface->ctx = 0;
+		}
+		
+		delete fglSurface;
+	}
+	
+	return EGL_TRUE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface,
 			EGLint attribute, EGLint *value)
 {
-#warning Unimplemented function
-	return EGL_FALSE;
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_FALSE;
+	}
+	
+	FGLSurface* fglSurface = static_cast<FGLSurface*>(surface);
+	
+	if (!fglSurface->isValid()) {
+		setError(EGL_BAD_SURFACE);
+		return EGL_FALSE;
+	}
+
+	if (fglSurface->dpy != dpy) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_FALSE;
+	}
+
+	EGLBoolean ret = EGL_TRUE;
+	
+	switch (attribute) {
+		case EGL_CONFIG_ID:
+			ret = getConfigAttrib(dpy, fglSurface->config, EGL_CONFIG_ID, value);
+			break;
+		case EGL_WIDTH:
+			*value = fglSurface->getWidth();
+			break;
+		case EGL_HEIGHT:
+			*value = fglSurface->getHeight();
+			break;
+		case EGL_LARGEST_PBUFFER:
+			// not modified for a window or pixmap surface
+			break;
+		case EGL_TEXTURE_FORMAT:
+			*value = EGL_NO_TEXTURE;
+			break;
+		case EGL_TEXTURE_TARGET:
+			*value = EGL_NO_TEXTURE;
+			break;
+		case EGL_MIPMAP_TEXTURE:
+			*value = EGL_FALSE;
+			break;
+		case EGL_MIPMAP_LEVEL:
+			*value = 0;
+			break;
+		case EGL_RENDER_BUFFER:
+			// TODO: return the real RENDER_BUFFER here
+			*value = EGL_BACK_BUFFER;
+			break;
+		case EGL_HORIZONTAL_RESOLUTION:
+			// pixel/mm * EGL_DISPLAY_SCALING
+			*value = fglSurface->getHorizontalResolution();
+			break;
+		case EGL_VERTICAL_RESOLUTION:
+			// pixel/mm * EGL_DISPLAY_SCALING
+			*value = fglSurface->getVerticalResolution();
+			break;
+		case EGL_PIXEL_ASPECT_RATIO: {
+			// w/h * EGL_DISPLAY_SCALING
+			int wr = fglSurface->getHorizontalResolution();
+			int hr = fglSurface->getVerticalResolution();
+			*value = (wr * EGL_DISPLAY_SCALING) / hr;
+			} break;
+		case EGL_SWAP_BEHAVIOR:
+			*value = fglSurface->getSwapBehavior();
+			break;
+		default:
+			setError(EGL_BAD_ATTRIBUTE);
+			ret = EGL_FALSE;
+	}
+	
+	return ret;
 }
 
+/**
+	Client APIs
+*/
 
 EGLAPI EGLBoolean EGLAPIENTRY eglBindAPI(EGLenum api)
 {

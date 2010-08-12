@@ -22,16 +22,27 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <cutils/log.h>
 
 int fimgFileDesc = -1;
 volatile void *fimgBase = NULL;
 
 #define FIMG_SFR_SIZE 0x80000
 
-/* TODO: Function inlining */
+/*****************************************************************************/
+#define G3D_IOCTL_MAGIC		'S'
+#define S3C_3D_MEM_ALLOC	_IOWR(G3D_IOCTL_MAGIC, 310, struct s3c_3d_mem_alloc)
+#define S3C_3D_MEM_FREE		_IOWR(G3D_IOCTL_MAGIC, 311, struct s3c_3d_mem_alloc)
+
+struct s3c_3d_mem_alloc {
+        int             size;
+        unsigned int    vir_addr;
+        unsigned int    phy_addr;
+};
+/*****************************************************************************/
 
 /*****************************************************************************
- * FUNCTIONS:	fimgDeviceOpen
+ * FUNCTION:	fimgDeviceOpen
  * SYNOPSIS:	This function opens the 3D device and initializes global variables
  * RETURNS:	 0, on success
  *		-errno, on error
@@ -42,39 +53,82 @@ int fimgDeviceOpen(void)
 
 	fd = open("/dev/s3c-g3d", O_RDWR, 0);
 	if(fd < 0) {
-		printf("fimg3D error: Couldn't open /dev/s3c-g3d (%s).\n", strerror(errno));
+		LOGE("Couldn't open /dev/s3c-g3d (%s).", strerror(errno));
 		return -errno;
 	}
 
 	fimgBase = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
 	if(fimgBase == MAP_FAILED) {
-		printf("fimg3D error: Couldn't mmap /dev/s3c-g3d (%s).\n", strerror(errno));
+		LOGE("Couldn't mmap /dev/s3c-g3d (%s).", strerror(errno));
 		close(fd);
 		return -errno;
 	}
 
-	printf("fimg3D: Opened /dev/s3c-g3d (%d).\n", fd);
+	LOGD("fimg3D: Opened /dev/s3c-g3d (%d).", fd);
 	fimgFileDesc = fd;
 	return 0;
 }
 
 /*****************************************************************************
- * FUNCTIONS:	fimgDeviceClose
+ * FUNCTION:	fimgDeviceClose
  * SYNOPSIS:	This function closes the 3D device
  *****************************************************************************/
 void fimgDeviceClose(void)
 {
 	if(fimgFileDesc < 0) {
-		printf("fimg3D warning: Trying to close already closed device.\n");
+		LOGW("fimg3D warning: Trying to close already closed device.");
 		return;
 	}
 
-	munmap(fimgBase, FIMG_SFR_SIZE);
+	munmap((void *)fimgBase, FIMG_SFR_SIZE);
 	close(fimgFileDesc);
 
-	printf("fimg3D: Closed /dev/s3c-g3d (%d).", fimgFileDesc);
+
+	LOGD("fimg3D: Closed /dev/s3c-g3d (%d).", fimgFileDesc);
 
 	fimgFileDesc = -1;
+}
+
+/*****************************************************************************
+ * FUNCTION:	fimgAllocMemory
+ * SYNOPSIS:	This function allocates a block of 3D memory
+ * PARAMETERS:	[in]  size - requested block size
+ * 		[out] paddr - physical address
+ * RETURNS:	virtual address of allocated block
+ *****************************************************************************/
+void *fimgAllocMemory(unsigned long *size, unsigned long *paddr)
+{
+	struct s3c_3d_mem_alloc mem;
+
+	mem.size = *size;
+	
+	ioctl(fimgFileDesc, S3C_3D_MEM_ALLOC, &mem);
+
+	LOGD("Allocated %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
+
+	*paddr = mem.phy_addr;
+	*size = mem.size;
+	return (void *)mem.vir_addr;
+}
+
+/*****************************************************************************
+ * FUNCTION:	fimgFreeMemory
+ * SYNOPSIS:	This function frees allocated 3D memory block
+ * PARAMETERS:	[in] vaddr - virtual address
+ *		[in] paddr - physical address
+ *		[in] size - size
+ *****************************************************************************/
+void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
+{
+	struct s3c_3d_mem_alloc mem;
+
+	mem.vir_addr = (unsigned int)vaddr;
+	mem.phy_addr = paddr;
+	mem.size = size;
+
+	LOGD("Freed %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
+
+	ioctl(fimgFileDesc, S3C_3D_MEM_FREE, &mem);
 }
 
 /* TODO: Implement rest of kernel driver functions */
