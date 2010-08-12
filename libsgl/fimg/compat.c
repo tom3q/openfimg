@@ -6,7 +6,7 @@
 * Copyrights:	2010 by Tomasz Figa <tomasz.figa@gmail.com>
 */
 
-#include "shaders.h"
+#include "fimg.h"
 
 static inline void fimgVShaderWrite(unsigned int data, volatile unsigned int *reg)
 {
@@ -29,10 +29,11 @@ static inline void fimgVShaderWrite(unsigned int data, volatile unsigned int *re
 	Use functions from this file only when the fixed-pipeline shader is loaded.
 
 	matrix	<=>	const float mapping:
-	MODELVIEW	0-3
-	PROJECTION	4-7
-	TEXTURE(0)	8-11
-	TEXTURE(1)	12-15
+	PROJECTION	0-3
+	MODELVIEW	4-7
+	MODELVIEW_INV	8-11
+	TEXTURE(0)	12-15
+	TEXTURE(1)	16-19
 */
 
 /*****************************************************************************

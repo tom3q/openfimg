@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "host.h"
+#include "fimg.h"
 
 #define FGHI_FIFO_SIZE		32
 
@@ -56,68 +56,58 @@ unsigned int fimgGetNumEmptyFIFOSlots(void)
 	return fimgHostRead(FGHI_DWSPACE);
 }
 
-static inline void fimgDrawVertex(unsigned int numAttribs, fimgAttribute *pAttrib, void **ppvData, void **pConst, unsigned int *pStride, unsigned int i)
+static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData, unsigned int *pStride, unsigned int i)
 {
-		for(j=0; j<numAttribs; j++) {
-			switch(pAttrib[j].bits.dt) {
-				// 1bytes
-			case FGHI_ATTRIB_DT_BYTE:
-			case FGHI_ATTRIB_DT_UBYTE:
-			case FGHI_ATTRIB_DT_NBYTE:
-			case FGHI_ATTRIB_DT_NUBYTE: {
-				unsigned char bits[4] = {0, 0, 0, 0};
+	unsigned int j, n;
 
-				for(n=0; n<pAttrib[j].bits.numcomp; n++) {
-					if(ppData[j] != NULL)
-						bits[n] = (ppData[j] + pStride[j] * i)[n];
-					else
-						bits[n] = ((unsigned char *)(pConst[j]))[n];
-				}
+	for(j = 0; j < ctx->numAttribs; j++) {
+		switch(ctx->attrib[j].bits.dt) {
+			// 1bytes
+		case FGHI_ATTRIB_DT_BYTE:
+		case FGHI_ATTRIB_DT_UBYTE:
+		case FGHI_ATTRIB_DT_NBYTE:
+		case FGHI_ATTRIB_DT_NUBYTE: {
+			unsigned char bits[4] = {0, 0, 0, 0};
 
+			for(n = 0; n < ctx->attrib[j].bits.numcomp; n++)
+				bits[n] = (ppData[j] + pStride[j] * i)[n];
+
+			fimgSendToFIFO(4, bits);
+
+			break;
+		}
+		// 2bytes
+		case FGHI_ATTRIB_DT_SHORT:
+		case FGHI_ATTRIB_DT_USHORT:
+		case FGHI_ATTRIB_DT_NSHORT:
+		case FGHI_ATTRIB_DT_NUSHORT: {
+			unsigned short bits[4] = {0, 0, 0, 0};
+
+			for(n = 0; n < ctx->attrib[j].bits.numcomp; n++)
+				bits[n] = ((unsigned short *)(ppData[j] + pStride[j] * i))[n];
+
+			if(ctx->attrib[j].bits.numcomp > 2)
+				fimgSendToFIFO(8, bits);
+			else
 				fimgSendToFIFO(4, bits);
 
-				break;
-			}
-			// 2bytes
-			case FGHI_ATTRIB_DT_SHORT:
-			case FGHI_ATTRIB_DT_USHORT:
-			case FGHI_ATTRIB_DT_NSHORT:
-			case FGHI_ATTRIB_DT_NUSHORT: {
-				unsigned short bits[4] = {0, 0, 0, 0};
-
-				for(n=0; n<pAttrib[j].bits.numcomp; n++) {
-					if(ppData[j] != NULL)
-						bits[n] = ((unsigned short *)(ppData[j] + pStride[j] * i))[n];
-					else
-						bits[n] = ((unsigned short *)(pConst[j]))[n];
-				}
-
-				if(pAttrib[j].bits.numcomp > 2)
-					fimgSendToFIFO(8, bits);
-				else
-					fimgSendToFIFO(4, bits);
-
-				break;
-			}
-			// 4 bytes
-			case FGHI_ATTRIB_DT_FIXED:
-			case FGHI_ATTRIB_DT_NFIXED:
-			case FGHI_ATTRIB_DT_FLOAT:
-			case FGHI_ATTRIB_DT_INT:
-			case FGHI_ATTRIB_DT_UINT:
-			case FGHI_ATTRIB_DT_NINT:
-			case FGHI_ATTRIB_DT_NUINT: {
-				for(n=0; n<pAttrib[j].bits.numcomp; n++) {
-					if(ppData[j] != NULL)
-						fimgSendToFIFO(4, &((unsigned int *)(ppData[j] + pStride[j] * i))[n]);
-					else
-						fimgSendToFIFO(4, ((unsigned int *)(pConst[j]))[n])
-				}
-
-				break;
-			}
-			}
+			break;
 		}
+		// 4 bytes
+		case FGHI_ATTRIB_DT_FIXED:
+		case FGHI_ATTRIB_DT_NFIXED:
+		case FGHI_ATTRIB_DT_FLOAT:
+		case FGHI_ATTRIB_DT_INT:
+		case FGHI_ATTRIB_DT_UINT:
+		case FGHI_ATTRIB_DT_NINT:
+		case FGHI_ATTRIB_DT_NUINT: {
+			for(n = 0; n < ctx->attrib[j].bits.numcomp; n++)
+				fimgSendToFIFO(4, &((unsigned int *)(ppData[j] + pStride[j] * i))[n]);
+
+			break;
+		}
+		}
+	}
 }
 
 /*****************************************************************************
@@ -130,21 +120,26 @@ static inline void fimgDrawVertex(unsigned int numAttribs, fimgAttribute *pAttri
  *		[IN] pConst: array of constant data
  *		[IN] stride: stride of input data
  *****************************************************************************/
-void fimgDrawNonIndexArrays(unsigned int numAttribs, fimgAttribute *pAttrib, unsigned int numVertices, void **ppvData, void **pConst, unsigned int *pStride)
+void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
 {
-	unsigned int i, j, n;
-	unsigned char **ppData;
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
 
-	// write the property of input attributes
-	for(i=0; i<numAttribs; i++)
-		fimgSetAttribute(i, pAttrib[i]);
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgHostWrite(ctx->attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->attrib[i];
+	last.bits.lastattr = 1;
+	fimgHostWrite(last.val, FGHI_ATTRIB(i));
 
 	// write the number of vertices
 	fimgHostWrite(numVertices, FGHI_FIFO_ENTRY);
 	fimgHostWrite(0xFFFFFFFF, FGHI_FIFO_ENTRY);
 
 	for(i=0; i<numVertices; i++)
-		fimgDrawVertex(numAttribs, pAttrib, ppvData, pConst, pStride, i);
+		fimgDrawVertex(ctx, ppData, pStride, i);
 }
 
 /*****************************************************************************
@@ -157,38 +152,48 @@ void fimgDrawNonIndexArrays(unsigned int numAttribs, fimgAttribute *pAttrib, uns
  *		[IN] pConst: array of constant data
  *		[IN] stride: stride of input data
  *****************************************************************************/
-void fimgDrawArraysUByteIndex(unsigned int numAttribs, fimgAttribute *pAttrib, unsigned int numVertices, void **ppvData, void **pConst, unsigned int *pStride, const unsigned char *idx)
+void fimgDrawArraysUByteIndex(fimgContext *ctx, unsigned int numVertices, const void **ppvData, unsigned int *pStride, const unsigned char *idx)
 {
-	unsigned int i, j, n;
-	unsigned char **ppData;
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
 
-	// write the property of input attributes
-	for(i=0; i<numAttribs; i++)
-		fimgSetAttribute(i, pAttrib[i]);
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgHostWrite(ctx->attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->attrib[i];
+	last.bits.lastattr = 1;
+	fimgHostWrite(last.val, FGHI_ATTRIB(i));
 
 	// write the number of vertices
 	fimgHostWrite(numVertices, FGHI_FIFO_ENTRY);
 	fimgHostWrite(0xFFFFFFFF, FGHI_FIFO_ENTRY);
 
 	for(i=0; i<numVertices; i++)
-		fimgDrawVertex(numAttribs, pAttrib, ppvData, pConst, pStride, idx[i]);
+		fimgDrawVertex(ctx, ppData, pStride, idx[i]);
 }
 
-void fimgDrawArraysUShortIndex(unsigned int numAttribs, fimgAttribute *pAttrib, unsigned int numVertices, void **ppvData, void **pConst, unsigned int *pStride, const unsigned short *idx)
+void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const void **ppvData, unsigned int *pStride, const unsigned short *idx)
 {
-	unsigned int i, j, n;
-	unsigned char **ppData;
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
 
-	// write the property of input attributes
-	for(i=0; i<numAttribs; i++)
-		fimgSetAttribute(i, pAttrib[i]);
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgHostWrite(ctx->attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->attrib[i];
+	last.bits.lastattr = 1;
+	fimgHostWrite(last.val, FGHI_ATTRIB(i));
 
 	// write the number of vertices
 	fimgHostWrite(numVertices, FGHI_FIFO_ENTRY);
 	fimgHostWrite(0xFFFFFFFF, FGHI_FIFO_ENTRY);
 
 	for(i=0; i<numVertices; i++)
-		fimgDrawVertex(numAttribs, pAttrib, ppvData, pConst, pStride, idx[i]);
+		fimgDrawVertex(ctx, ppData, pStride, idx[i]);
 }
 
 /*****************************************************************************
@@ -203,7 +208,7 @@ void fimgSendToFIFO(unsigned int bytes, void *buffer)
 	unsigned int nEmptySpace = 0;
 	unsigned char *ptr = (unsigned char *)buffer;
 	unsigned char bits[4] = {0, 0, 0, 0};
-	int i;
+	unsigned int i;
 
 	while(bytes >= 4) {
 		while(!nEmptySpace)
@@ -275,9 +280,10 @@ void fimgSendToVtxBuffer(unsigned int data)
  * PARAMETERS:	[IN] attribIdx: the index of attribute, which is in [0-15]
  *		[IN] pAttribInfo: fimgAttribute
  *****************************************************************************/
-void fimgSetAttribute(unsigned char attribIdx, fimgAttribute AttribInfo)
+void fimgSetAttribute(fimgContext *ctx, unsigned int idx, unsigned int type, unsigned int numComp)
 {
-	fimgHostWrite(AttribInfo.val, FGHI_ATTRIB(attribIdx));
+	ctx->attrib[idx].bits.dt = type;
+	ctx->attrib[idx].bits.numcomp = numComp;
 }
 
 /*****************************************************************************

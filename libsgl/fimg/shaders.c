@@ -7,6 +7,9 @@
 *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
 */
 
+#include <stdlib.h>
+#include "fimg.h"
+
 /*
  * Vertex shader
  */
@@ -136,9 +139,6 @@ static inline unsigned int fimgPShaderRead(volatile unsigned int *reg)
 {
 	return *reg;
 }
-
-#include <stdlib.h>
-#include "shaders.h"
 
 typedef enum {
 	FGVS_ATRBDEF_POSITION  = 0x10,

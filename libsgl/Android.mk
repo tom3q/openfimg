@@ -1,10 +1,16 @@
-LOCAL_PATH:= $(call my-dir)
+THIS_PATH := $(call my-dir)
+
+# LOCAL_PATH := $(THIS_PATH)
+# include $(CLEAR_VARS) 
+
+include $(call all-named-subdir-makefiles, fimg)
 
 #
-# Build the software OpenGL ES library
+# Build the hardware OpenGL ES library
 #
 
-include $(CLEAR_VARS)
+LOCAL_PATH := $(THIS_PATH)
+include $(CLEAR_VARS) 
 
 LOCAL_PRELINK_MODULE := false
 
@@ -22,6 +28,7 @@ LOCAL_CFLAGS += -fvisibility=hidden
 LOCAL_CFLAGS += -mcpu=arm1176jzf-s -Os -mfloat-abi=softfp -mfpu=vfp
 
 LOCAL_SHARED_LIBRARIES := libcutils libhardware libutils libpixelflinger libETC1
+LOCAL_STATIC_LIBRARIES := libfimg
 LOCAL_LDLIBS := -lpthread -ldl
 
 ifeq ($(TARGET_ARCH),arm)

@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "global.h"
+#include "fimg.h"
 #include <unistd.h>
 
 #define GLOBAL_OFFSET		0x0000

@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "primitive.h"
+#include "fimg.h"
 
 #define PRIMITIVE_OFFSET		0x30000
 
@@ -52,15 +52,17 @@ static inline float fimgPrimitiveReadF(volatile unsigned int *reg)
  *		and the number of input attributes
  * PARAMETERS:	[IN] pVtx: the pointer of FGL_Vertex strucutre
  *****************************************************************************/
-void fimgSetVertexContext(unsigned int type, unsigned int count)
+void fimgSetVertexContext(fimgContext *ctx, unsigned int type, unsigned int count)
 {
-	fimgVertexContext ctx;
+	fimgVertexContext vctx;
 
-	ctx.val = 0;
-	ctx.bits.type = type; // See fimgPrimitiveType enum
-	ctx.bits.vsOut = count - 1; // Without position
+	vctx.val = 0;
+	vctx.bits.type = type; // See fimgPrimitiveType enum
+	vctx.bits.vsOut = count - 1; // Without position
 
-	fimgPrimitiveWrite(curVertexContext.val, FGPE_VERTEX_CONTEXT);
+	ctx->numAttribs = count;
+
+	fimgPrimitiveWrite(vctx.val, FGPE_VERTEX_CONTEXT);
 }
 
 /*****************************************************************************

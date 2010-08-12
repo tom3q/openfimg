@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "raster.h"
+#include "fimg.h"
 
 #define RASTER_OFFSET		0x38000
 

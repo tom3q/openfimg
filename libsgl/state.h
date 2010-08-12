@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "types.h"
-#include "fimg/host.h"
+#include "fimg/fimg.h"
 
 enum {
 	FGL_COMP_RED = 0,
@@ -59,24 +59,33 @@ enum {
 #define FGL_MATRIX_TEXTURE(i)	(FGL_MATRIX_TEXTURE + (i))
 
 struct FGLMatrixState {
-	FGLstack<FGLmatrix> stack[2 + FGL_MAX_TEXTURE_UNITS];
+	FGLstack<FGLmatrix> stack[3 + FGL_MAX_TEXTURE_UNITS];
 	GLint activeMatrix;
 	GLint activeTexture;
-};
+	static unsigned int stackSizes[3 + FGL_MAX_TEXTURE_UNITS];
+	
+	FGLMatrixState() : activeMatrix(0), activeTexture(0)
+	{
+		for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++)
+			stack[i].create(stackSizes[i]);
+	}
 
-struct FGLVertexState {
-	FGLvec4f color;
-	FGLvec3f normal;
-	FGLvec4f multiTexCoord[FGL_MAX_TEXTURE_UNITS];
+	~FGLMatrixState()
+	{
+		for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++)
+			stack[i].destroy();
+	}
 };
 
 struct FGLContext {
-	FGLVertexState vertex;
+	FGLvec4f vertex[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLArrayState array[4 + FGL_MAX_TEXTURE_UNITS];
 	GLboolean enableArray[4 + FGL_MAX_TEXTURE_UNITS];
 	GLint activeTexture;
 	FGLViewportState viewport;
 	FGLMatrixState matrix;
+	/* Pointer returned from fimgCreateContext */
+	fimgContext *fimg;
 };
 
 #endif // _LIBSGL_STATE_H_

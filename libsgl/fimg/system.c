@@ -6,7 +6,7 @@
  * Copyrights:	2010 by Tomasz Figa <tomasz.figa@gmail.com>
  */
 
-#include "common.h"
+#include "fimg.h"
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>

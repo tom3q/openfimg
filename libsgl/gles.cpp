@@ -23,6 +23,7 @@
 #include <GLES/gl.h>
 #include "state.h"
 #include "types.h"
+#include "fimg/fimg.h"
 
 FGLContext gContext;
 
@@ -105,10 +106,10 @@ GL_API void GL_APIENTRY glColor4f (GLfloat red, GLfloat green, GLfloat blue, GLf
 {
 	FGLContext *ctx = getContext();
 
-	ctx->vertex.color[FGL_COMP_RED] 	= red;
-	ctx->vertex.color[FGL_COMP_GREEN]	= green;
-	ctx->vertex.color[FGL_COMP_BLUE]	= blue;
-	ctx->vertex.color[FGL_COMP_ALPHA]	= alpha;
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_RED] 	= red;
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_GREEN]	= green;
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_BLUE]	= blue;
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_ALPHA]	= alpha;
 }
 
 GL_API void GL_APIENTRY glColor4ub (GLubyte red, GLubyte green, GLubyte blue, GLubyte alpha)
@@ -125,9 +126,9 @@ GL_API void GL_APIENTRY glNormal3f (GLfloat nx, GLfloat ny, GLfloat nz)
 {
 	FGLContext *ctx = getContext();
 
-	ctx->vertex.normal[FGL_COMP_NX] = nx;
-	ctx->vertex.normal[FGL_COMP_NY] = ny;
-	ctx->vertex.normal[FGL_COMP_NZ] = nz;
+	ctx->vertex[FGL_ARRAY_NORMAL][FGL_COMP_NX] = nx;
+	ctx->vertex[FGL_ARRAY_NORMAL][FGL_COMP_NY] = ny;
+	ctx->vertex[FGL_ARRAY_NORMAL][FGL_COMP_NZ] = nz;
 }
 
 GL_API void GL_APIENTRY glNormal3x (GLfixed nx, GLfixed ny, GLfixed nz)
@@ -146,10 +147,10 @@ GL_API void GL_APIENTRY glMultiTexCoord4f (GLenum target, GLfloat s, GLfloat t, 
 
 	FGLContext *ctx = getContext();
 
-	ctx->vertex.multiTexCoord[unit][FGL_COMP_S] = s;
-	ctx->vertex.multiTexCoord[unit][FGL_COMP_T] = t;
-	ctx->vertex.multiTexCoord[unit][FGL_COMP_R] = r;
-	ctx->vertex.multiTexCoord[unit][FGL_COMP_Q] = q;
+	ctx->vertex[FGL_ARRAY_TEXTURE(unit)][FGL_COMP_S] = s;
+	ctx->vertex[FGL_ARRAY_TEXTURE(unit)][FGL_COMP_T] = t;
+	ctx->vertex[FGL_ARRAY_TEXTURE(unit)][FGL_COMP_R] = r;
+	ctx->vertex[FGL_ARRAY_TEXTURE(unit)][FGL_COMP_Q] = q;
 }
 
 GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target, GLfixed s, GLfixed t, GLfixed r, GLfixed q)
@@ -371,55 +372,66 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type, GLsizei stri
 GL_API void GL_APIENTRY glEnableClientState (GLenum array)
 {
 	FGLContext *ctx = getContext();
+	GLint idx;
 
 	switch (array) {
 	case GL_VERTEX_ARRAY:
-		ctx->enableArray[FGL_ARRAY_VERTEX] = GL_TRUE;
+		idx = FGL_ARRAY_VERTEX;
 		break;
 	case GL_NORMAL_ARRAY:
-		ctx->enableArray[FGL_ARRAY_NORMAL] = GL_TRUE;
+		idx = FGL_ARRAY_NORMAL;
 		break;
 	case GL_COLOR_ARRAY:
-		ctx->enableArray[FGL_ARRAY_COLOR] = GL_TRUE;
+		idx = FGL_ARRAY_COLOR;
 		break;
 	case GL_POINT_SIZE_ARRAY_OES:
-		ctx->enableArray[FGL_ARRAY_POINT_SIZE] = GL_TRUE;
+		idx = FGL_ARRAY_POINT_SIZE;
 		break;
-	case GL_TEXTURE_COORD_ARRAY: {
-		GLint unit = ctx->activeTexture;
-		ctx->enableArray[FGL_ARRAY_TEXTURE(unit)] = GL_TRUE;
+	case GL_TEXTURE_COORD_ARRAY:
+		idx = FGL_ARRAY_TEXTURE(ctx->activeTexture);
 		break;
-	}
 	default:
 		setError(GL_INVALID_ENUM);
+		return;
 	}
+
+	ctx->enableArray[idx] = GL_TRUE;
+	fimgSetAttribute(ctx->fimg, idx, ctx->array[idx].type, ctx->array[idx].size);
 }
 
 GL_API void GL_APIENTRY glDisableClientState (GLenum array)
 {
 	FGLContext *ctx = getContext();
+	GLint idx, defSize;
 
 	switch (array) {
 	case GL_VERTEX_ARRAY:
-		ctx->enableArray[FGL_ARRAY_VERTEX] = GL_FALSE;
+		idx = FGL_ARRAY_VERTEX;
+		defSize = 4;
 		break;
 	case GL_NORMAL_ARRAY:
-		ctx->enableArray[FGL_ARRAY_NORMAL] = GL_FALSE;
+		idx = FGL_ARRAY_NORMAL;
+		defSize = 3;
 		break;
 	case GL_COLOR_ARRAY:
-		ctx->enableArray[FGL_ARRAY_COLOR] = GL_FALSE;
+		idx = FGL_ARRAY_COLOR;
+		defSize = 4;
 		break;
 	case GL_POINT_SIZE_ARRAY_OES:
-		ctx->enableArray[FGL_ARRAY_POINT_SIZE] = GL_FALSE;
+		idx = FGL_ARRAY_POINT_SIZE;
+		defSize = 1;
 		break;
-	case GL_TEXTURE_COORD_ARRAY: {
-		GLint unit = ctx->activeTexture;
-		ctx->enableArray[FGL_ARRAY_TEXTURE(unit)] = GL_FALSE;
+	case GL_TEXTURE_COORD_ARRAY:
+		idx = FGL_ARRAY_TEXTURE(ctx->activeTexture);
+		defSize = 4;
 		break;
-	}
 	default:
 		setError(GL_INVALID_ENUM);
+		return;
 	}
+
+	ctx->enableArray[idx] = GL_FALSE;
+	fimgSetAttribute(ctx->fimg, idx, FGHI_ATTRIB_DT_FLOAT, defSize);
 }
 
 GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture)
@@ -439,79 +451,6 @@ GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture)
 /**
 	Drawing
 */
-
-#include "fimg/host.h"
-#include "fimg/primitive.h"
-
-// FIXME: Do something about the initializer...
-static const fimgAttribute fixedAttributes[4 + FGL_MAX_TEXTURE_UNITS] = {
-	/* Vertex */
-	{
-		.bits = {
-			.dt		= FGHI_ATTRIB_DT_FLOAT,
-			.numcomp	= FHGI_NUMCOMP(4),
-			.srcw		= 3,
-			.srcz		= 2,
-			.srcy		= 1,
-			.srcx		= 0,
-		}
-	},
-	/* Normal */
-	{
-		.bits = {
-			.dt		= FGHI_ATTRIB_DT_FLOAT,
-			.numcomp	= FGHI_NUMCOMP(3),
-			.srcw		= 3,
-			.srcz		= 2,
-			.srcy		= 1,
-			.srcx		= 0,
-		}
-	},
-	/* Color */
-	{
-		.bits = {
-			.dt		= FGHI_ATTRIB_DT_FLOAT,
-			.numcomp	= FGHI_NUMCOMP(4),
-			.srcw		= 3,
-			.srcz		= 2,
-			.srcy		= 1,
-			.srcx		= 0,
-		}
-	},
-	/* Point size */
-	{
-		.bits = {
-			.dt		= FGHI_ATTRIB_DT_FLOAT,
-			.numcomp	= FGHI_NUMCOMP(1),
-			.srcw		= 3,
-			.srcz		= 2,
-			.srcy		= 1,
-			.srcx		= 0,
-		}
-	},
-	/* Texture 0 */
-	{
-		.bits = {
-			.dt		= FGHI_ATTRIB_DT_FLOAT,
-			.numcomp	= FGHI_NUMCOMP(4),
-			.srcw		= 3,
-			.srcz		= 2,
-			.srcy		= 1,
-			.srcx		= 0,
-		}
-	},
-	/* Texture 1 */
-	{
-		.bits = {
-			.dt		= FGHI_ATTRIB_DT_FLOAT,
-			.numcomp	= FGHI_NUMCOMP(4),
-			.srcw		= 3,
-			.srcz		= 2,
-			.srcy		= 1,
-			.srcx		= 0,
-		}
-	},
-};
 
 static inline GLint fglModeFromModeEnum(GLenum mode)
 {
@@ -559,28 +498,22 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		return;
 	}
 
-	fimgAttribute attributes[4 + FGL_MAX_TEXTURE_UNITS];
 	unsigned int stride[4 + FGL_MAX_TEXTURE_UNITS];
-	void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
-	void *constData[4 + FGL_MAX_TEXTURE_UNITS];
+	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
-
-	memcpy(attributes, fixedAttributes, (4 + FGL_MAX_TEXTURE_UNITS)*sizeof(fimgAttribute));
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->enableArray[i]) {
-			pointers[i] 			= ctx->array[u].pointer + first * ctx->array[i].stride;
+			pointers[i] 			= (const unsigned char *)ctx->array[i].pointer + first * ctx->array[i].stride;
 			stride[i] 			= ctx->array[i].stride;
-			attributes[i].bits.dt		= ctx->array[i].type;
-			attributes[i].bits.numcomp	= ctx->array[i].size;
 		} else {
-			pointers[i]			= NULL;
-			constData[i]			= &ctx->vertex.state[i];
+			pointers[i]			= &ctx->vertex[i];
+			stride[i]			= 0;
 		}
 	}
 
-	fimgSetVertexContext(fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
-	fimgDrawNonIndexArrays(4 + FGL_MAX_TEXTURE_UNITS, attributes, count, pointers, constData, stride);
+	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
+	fimgDrawNonIndexArrays(ctx->fimg, count, pointers, stride);
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
@@ -591,34 +524,28 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 		return;
 	}
 
-	fimgAttribute attributes[4 + FGL_MAX_TEXTURE_UNITS];
 	unsigned int stride[4 + FGL_MAX_TEXTURE_UNITS];
-	void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
-	void *constData[4 + FGL_MAX_TEXTURE_UNITS];
+	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
-
-	memcpy(attributes, fixedAttributes, (4 + FGL_MAX_TEXTURE_UNITS)*sizeof(fimgAttribute));
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->enableArray[i]) {
-			pointers[i] 			= ctx->array[u].pointer + first * ctx->array[i].stride;
+			pointers[i] 			= ctx->array[i].pointer;
 			stride[i] 			= ctx->array[i].stride;
-			attributes[i].bits.dt		= ctx->array[i].type;
-			attributes[i].bits.numcomp	= ctx->array[i].size;
 		} else {
-			pointers[i]			= NULL;
-			constData[i]			= &ctx->vertex.state[i];
+			pointers[i]			= &ctx->vertex[i];
+			stride[i]			= 0;
 		}
 	}
 
-	fimgSetVertexContext(fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
+	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
 
 	switch (type) {
 	case GL_UNSIGNED_BYTE:
-		fimgDrawArraysUByteIndex(4 + FGL_MAX_TEXTURE_UNITS, attributes, count, pointers, constData, stride, indices);
+		fimgDrawArraysUByteIndex(ctx->fimg, count, pointers, stride, (const unsigned char *)indices);
 		break;
 	case GL_UNSIGNED_SHORT:
-		fimgDrawArraysUShortIndex(4 + FGL_MAX_TEXTURE_UNITS, attributes, count, pointers, constData, stride, indices);
+		fimgDrawArraysUShortIndex(ctx->fimg, count, pointers, stride, (const unsigned short *)indices);
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -628,8 +555,6 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 /**
 	Transformations
 */
-
-#include "fimg/primitive.h"
 
 GL_API void GL_APIENTRY glDepthRangef (GLclampf zNear, GLclampf zFar)
 {
@@ -651,7 +576,7 @@ GL_API void GL_APIENTRY glDepthRangex (GLclampx zNear, GLclampx zFar)
 
 GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei height)
 {
-	if(w < 0 || h < 0) {
+	if(width < 0 || height < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
@@ -670,7 +595,13 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 	Matrices
 */
 
-#include "fimg/compat.h"
+unsigned int FGLMatrixState::stackSizes[3 + FGL_MAX_TEXTURE_UNITS] = {
+		2,
+		16,
+		16,
+		2,
+		2
+};
 
 GL_API void GL_APIENTRY glMatrixMode (GLenum mode)
 {
@@ -707,6 +638,14 @@ GL_API void GL_APIENTRY glLoadMatrixf (const GLfloat *m)
 	ctx->matrix.stack[idx].top().load(m);
 
 	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+
+	if(idx != FGL_MATRIX_MODELVIEW)
+		return;
+
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(m);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().inverse();
+
+	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
 }
 
 GL_API void GL_APIENTRY glLoadMatrixx (const GLfixed *m)
@@ -720,6 +659,14 @@ GL_API void GL_APIENTRY glLoadMatrixx (const GLfixed *m)
 	ctx->matrix.stack[idx].top().load(m);
 
 	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+
+	if(idx != FGL_MATRIX_MODELVIEW)
+		return;
+
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(m);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().inverse();
+
+	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
 }
 
 GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m)
@@ -730,9 +677,21 @@ GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m)
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
-	ctx->matrix.stack[idx].top().multiply(m);
+	FGLmatrix mat;
+	mat.load(ctx->matrix.stack[idx].top());
+	mat.multiply(m);
+
+	ctx->matrix.stack[idx].top().load(mat);
 
 	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+
+	if(idx != FGL_MATRIX_MODELVIEW)
+		return;
+
+	mat.inverse();
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
+
+	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
 }
 
 GL_API void GL_APIENTRY glMultMatrixx (const GLfixed *m)
@@ -743,9 +702,21 @@ GL_API void GL_APIENTRY glMultMatrixx (const GLfixed *m)
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
-	ctx->matrix.stack[idx].top().multiply(m);
+	FGLmatrix mat;
+	mat.load(ctx->matrix.stack[idx].top());
+	mat.multiply(m);
+
+	ctx->matrix.stack[idx].top().load(mat);
 
 	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+
+	if(idx != FGL_MATRIX_MODELVIEW)
+		return;
+
+	mat.inverse();
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
+
+	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
 }
 
 GL_API void GL_APIENTRY glLoadIdentity (void)
@@ -759,6 +730,13 @@ GL_API void GL_APIENTRY glLoadIdentity (void)
 	ctx->matrix.stack[idx].top().identity();
 
 	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+
+	if(idx != FGL_MATRIX_MODELVIEW)
+		return;
+
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().identity();
+
+	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
 }
 
 GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
@@ -769,7 +747,7 @@ GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat 
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
-	FGLMatrix mat;
+	FGLmatrix mat;
 	mat.rotate(angle, x, y, z);
 	ctx->matrix.stack[idx].top().multiply(mat);
 

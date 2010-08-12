@@ -7,7 +7,7 @@
 *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
 */
 
-#include "fragment.h"
+#include "fimg.h"
 
 #define FRAGMENT_OFFSET		0x70000
 

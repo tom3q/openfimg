@@ -93,6 +93,7 @@ struct FGLmatrix {
 	void identity(void);
 	void load(const GLfloat *m);
 	void load(const GLfixed *m);
+	inline void load(FGLmatrix const &m) { load(m.data); };
 	void multiply(const GLfloat *m);
 	void multiply(const GLfixed *m);
 	inline void multiply(FGLmatrix const &m) { multiply(m.data); };
@@ -121,20 +122,30 @@ class FGLstack {
 	unsigned int max;
 
 public:
-	FGLstack(unsigned int size) : max(size-1), pos(0) { data = new T[size]; };
-	~FGLstack() { delete[] data; };
+//	FGLstack(unsigned int size) : max(size-1), pos(0) { data = new T[size]; };
+	void create(unsigned int size)
+	{
+		max = size - 1;
+		pos = 0;
+		data = new T[size];
+	};
+//	~FGLstack() { delete[] data; };
+	void destroy(void)
+	{
+		delete[] data;
+	};
 
 	inline void push(void)
 	{
-		if(pos < max) {
+//		if(pos < max) {
 			data[pos + 1] = data[pos];
 			++pos;
-		}
+//		}
 	}
 	
 	inline void pop(void)
 	{
-		if(pos)
+//		if(pos)
 			--pos;
 	}
 	
@@ -146,6 +157,11 @@ public:
 	inline const T &top(void) const
 	{
 		return data[pos];
+	}
+
+	inline unsigned int size(void) const
+	{
+		return pos + 1;
 	}
 };
 
