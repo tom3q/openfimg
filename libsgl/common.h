@@ -1,0 +1,6 @@
+#ifndef _LIBSGL_COMMON_H_
+#define _LIBSGL_COMMON_H_
+
+#define FGL_MAX_TEXTURE_UNITS	2
+
+#endif // _LIBSGL_COMMON_H_
