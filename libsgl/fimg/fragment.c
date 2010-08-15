@@ -460,6 +460,11 @@ void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width)
 	fimgFragmentWrite(width, FGPF_FBW);
 }
 
+void fimgCreateFragmentContext(fimgContext *ctx)
+{
+	// Nothing to initialize yet
+}
+
 void fimgRestoreFragmentState(fimgContext *ctx)
 {
 	fimgFragmentWrite(ctx->fragment.scY.val, FGPF_SCISSOR_Y);

@@ -112,6 +112,12 @@ void fimgSetDepthRange(fimgContext *ctx, float n, float f)
 	fimgPrimitiveWriteF(center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }
 
+void fimgCreatePrimitiveContext(fimgContext *ctx)
+{
+	ctx->primitive.halfDistance = 0.5f;
+	ctx->primitive.center = 0.5f;
+}
+
 void fimgRestorePrimitiveState(fimgContext *ctx)
 {
 	fimgPrimitiveWrite(ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);

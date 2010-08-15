@@ -139,14 +139,13 @@ fimgContext *fimgCreateContext(void)
 	if(!ctx)
 		return NULL;
 
-	/* FIXME: Move creating context for each unit to respective files */
+	memset(ctx, 0, sizeof(fimgContext));
 
-	for(i = 0; i < FIMG_ATTRIB_NUM; i++) {
-		ctx->host.attrib[i].bits.srcw = 3;
-		ctx->host.attrib[i].bits.srcz = 2;
-		ctx->host.attrib[i].bits.srcy = 1;
-		ctx->host.attrib[i].bits.srcx = 0;
-	}
+	fimgCreateGlobalContext(ctx);
+	fimgCreateHostContext(ctx);
+	fimgCreatePrimitiveContext(ctx);
+	fimgCreateRasterizerContext(ctx);
+	fimgCreateFragmentContext(ctx);
 
 	ctx->numAttribs = 0;
 

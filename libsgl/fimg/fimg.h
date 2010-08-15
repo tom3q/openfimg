@@ -514,16 +514,6 @@ fimgContext *fimgCreateContext(void);
 void fimgDestroyContext(fimgContext *ctx);
 void fimgRestoreContext(fimgContext *ctx);
 
-/*
- * Hardware context
- */
-
-void fimgRestoreGlobalState(fimgContext *ctx);
-void fimgRestoreHostState(fimgContext *ctx);
-void fimgRestorePrimitiveState(fimgContext *ctx);
-void fimgRestoreRasterizerState(fimgContext *ctx);
-void fimgRestoreFragmentState(fimgContext *ctx);
-
 //=============================================================================
 
 #ifdef __cplusplus

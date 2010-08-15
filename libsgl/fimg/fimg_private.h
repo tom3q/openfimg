@@ -259,6 +259,7 @@ typedef struct {
 	unsigned int intTarget;
 } fimgGlobalContext;
 
+void fimgCreateGlobalContext(fimgContext *ctx);
 void fimgRestoreGlobalState(fimgContext *ctx);
 
 typedef struct {
@@ -268,6 +269,7 @@ typedef struct {
 	unsigned int indexOffset;
 } fimgHostContext;
 
+void fimgCreateHostContext(fimgContext *ctx);
 void fimgRestoreHostState(fimgContext *ctx);
 
 typedef struct {
@@ -280,6 +282,7 @@ typedef struct {
 	float center;
 } fimgPrimitiveContext;
 
+void fimgCreatePrimitiveContext(fimgContext *ctx);
 void fimgRestorePrimitiveState(fimgContext *ctx);
 
 typedef struct {
@@ -297,6 +300,7 @@ typedef struct {
 	float lineWidth;
 } fimgRasterizerContext;
 
+void fimgCreateRasterizerContext(fimgContext *ctx);
 void fimgRestoreRasterizerState(fimgContext *ctx);
 
 typedef struct {
@@ -317,6 +321,7 @@ typedef struct {
 	unsigned int bufWidth;
 } fimgFragmentContext;
 
+void fimgCreateFragmentContext(fimgContext *ctx);
 void fimgRestoreFragmentState(fimgContext *ctx);
 
 struct _fimgContext {

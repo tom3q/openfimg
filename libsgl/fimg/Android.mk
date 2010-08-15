@@ -3,7 +3,9 @@ include $(CLEAR_VARS)
 
 LOCAL_PRELINK_MODULE := false
 
-LOCAL_CFLAGS := -mcpu=arm1176jzf-s -Os
+LOCAL_CFLAGS += -march=armv6zk -Os
+LOCAL_CFLAGS += -DLOG_TAG=\"libfimg\"
+
 LOCAL_SRC_FILES := \
 	compat.c \
 	fragment.c \

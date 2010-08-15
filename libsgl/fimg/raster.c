@@ -203,6 +203,14 @@ void fimgSetLineWidth(fimgContext *ctx, float lWidth)
 	fimgRasterWriteF(lWidth, FGRA_LWIDTH);
 }
 
+void fimgCreateRasterizerContext(fimgContext *ctx)
+{
+	ctx->rasterizer.pointWidth = 1.0f;
+	ctx->rasterizer.pointWidthMin = 1.0f;
+	ctx->rasterizer.pointWidthMax = 2048.0f;
+	ctx->rasterizer.lineWidth = 1.0f;
+}
+
 void fimgRestoreRasterizerState(fimgContext *ctx)
 {
 	fimgRasterWrite(ctx->rasterizer.samplePos, FGRA_PIX_SAMP);

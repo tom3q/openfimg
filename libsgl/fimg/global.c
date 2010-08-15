@@ -210,10 +210,13 @@ fimgPipelineStatus fimgGetInterruptState(void)
 	return stat;
 }
 
+void fimgCreateGlobalContext(fimgContext *ctx)
+{
+	// Nothing to initialize yet
+}
+
 void fimgRestoreGlobalState(fimgContext *ctx)
 {
-	fimgGlobalWrite(0, FGGB_INTMASK);
-	fimgGlobalWrite(0, FGGB_PIPEMASK);
 	fimgGlobalWrite(ctx->global.intTarget, FGGB_PIPETGTSTATE);
 	fimgGlobalWrite(ctx->global.intMask, FGGB_PIPEMASK);
 	fimgGlobalWrite(ctx->global.intEn, FGGB_INTMASK);

@@ -307,6 +307,21 @@ void fimgSetVtxBufAttrib(fimgContext *ctx, unsigned char idx, unsigned short bas
 	ctx->host.bufAttrib[idx].ctrl.bits.range = range;
 }
 
+void fimgCreateHostContext(fimgContext *ctx)
+{
+	int i;
+
+	ctx->host.control.bits.autoinc = 1;
+	ctx->host.indexOffset = 1;
+
+	for(i = 0; i < FIMG_ATTRIB_NUM; i++) {
+		ctx->host.attrib[i].bits.srcw = 3;
+		ctx->host.attrib[i].bits.srcz = 2;
+		ctx->host.attrib[i].bits.srcy = 1;
+		ctx->host.attrib[i].bits.srcx = 0;
+	}
+}
+
 void fimgRestoreHostState(fimgContext *ctx)
 {
 	fimgHostWrite(ctx->host.control.val, FGHI_CONTROL);
