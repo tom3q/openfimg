@@ -6,7 +6,7 @@
 * Copyrights:	2010 by Tomasz Figa <tomasz.figa@gmail.com>
 */
 
-#include "fimg.h"
+#include "fimg_private.h"
 
 static inline void fimgVShaderWrite(unsigned int data, volatile unsigned int *reg)
 {

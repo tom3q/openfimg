@@ -7,7 +7,7 @@
 *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
 */
 
-#include "fimg.h"
+#include "fimg_private.h"
 
 #define TEXTURE_OFFSET	0x60000
 

@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "fimg.h"
+#include "fimg_private.h"
 
 #define PRIMITIVE_OFFSET		0x30000
 
@@ -54,15 +54,12 @@ static inline float fimgPrimitiveReadF(volatile unsigned int *reg)
  *****************************************************************************/
 void fimgSetVertexContext(fimgContext *ctx, unsigned int type, unsigned int count)
 {
-	fimgVertexContext vctx;
-
-	vctx.val = 0;
-	vctx.bits.type = type; // See fimgPrimitiveType enum
-	vctx.bits.vsOut = count - 1; // Without position
+	ctx->primitive.vctx.bits.type = type; // See fimgPrimitiveType enum
+	ctx->primitive.vctx.bits.vsOut = count - 1; // Without position
 
 	ctx->numAttribs = count;
 
-	fimgPrimitiveWrite(vctx.val, FGPE_VERTEX_CONTEXT);
+	fimgPrimitiveWrite(ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
 }
 
 /*****************************************************************************
@@ -74,7 +71,7 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type, unsigned int coun
  *		[IN] px, py: width and height of viewport in terms of pixel
  *		[IN] H: height of window in terms of pixel
  *****************************************************************************/
-void fimgSetViewportParams(/*int bYFlip, */float x0, float y0, float px, float py/*, float H*/)
+void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float py)
 {
 	// local variable declaration
 	float half_px = px * 0.5f;
@@ -83,26 +80,16 @@ void fimgSetViewportParams(/*int bYFlip, */float x0, float y0, float px, float p
 	// ox: x-coordinate of viewport center
 	float ox = x0 + half_px;
 	// oy: y-coordindate of viewport center
-	float oy;
+	float oy = y0 + half_py;
 
-	// ox
+	ctx->primitive.ox = ox;
+	ctx->primitive.oy = oy;
+	ctx->primitive.halfPX = half_px;
+	ctx->primitive.halfPY = half_py;
+
 	fimgPrimitiveWriteF(ox, FGPE_VIEWPORT_OX);
-
-	// oy
-//	if(bYFlip)
-//		oy = (H - y0) - half_py;
-//	else
-		oy = y0 + half_py;
-
 	fimgPrimitiveWriteF(oy, FGPE_VIEWPORT_OY);
-
-	// half of viewport width
 	fimgPrimitiveWriteF(half_px, FGPE_VIEWPORT_HALF_PX);
-
-	// half of viewport height
-//	if(bYFlip)
-//		half_py *= -1;
-
 	fimgPrimitiveWriteF(half_py, FGPE_VIEWPORT_HALF_PY);
 }
 
@@ -113,11 +100,25 @@ void fimgSetViewportParams(/*int bYFlip, */float x0, float y0, float px, float p
  * PARAMETERS:	[IN] n: near value ( n should be in [0, 1])
  *		[IN] f: far value (f should be in [0, 1])
  *****************************************************************************/
-void fimgSetDepthRange(float n, float f)
+void fimgSetDepthRange(fimgContext *ctx, float n, float f)
 {
 	float half_distance = (f - n) * 0.5f;
 	float center = (f + n) * 0.5f;
 
+	ctx->primitive.halfDistance = half_distance;
+	ctx->primitive.center = center;
+
 	fimgPrimitiveWriteF(half_distance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
 	fimgPrimitiveWriteF(center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
+}
+
+void fimgRestorePrimitiveState(fimgContext *ctx)
+{
+	fimgPrimitiveWrite(ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
+	fimgPrimitiveWriteF(ctx->primitive.ox, FGPE_VIEWPORT_OX);
+	fimgPrimitiveWriteF(ctx->primitive.oy, FGPE_VIEWPORT_OY);
+	fimgPrimitiveWriteF(ctx->primitive.halfPX, FGPE_VIEWPORT_HALF_PX);
+	fimgPrimitiveWriteF(ctx->primitive.halfPY, FGPE_VIEWPORT_HALF_PY);
+	fimgPrimitiveWriteF(ctx->primitive.halfDistance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
+	fimgPrimitiveWriteF(ctx->primitive.center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }

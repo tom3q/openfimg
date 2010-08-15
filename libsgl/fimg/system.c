@@ -6,7 +6,7 @@
  * Copyrights:	2010 by Tomasz Figa <tomasz.figa@gmail.com>
  */
 
-#include "fimg.h"
+#include "fimg_private.h"
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -129,6 +129,42 @@ void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
 	LOGD("Freed %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
 
 	ioctl(fimgFileDesc, S3C_3D_MEM_FREE, &mem);
+}
+
+fimgContext *fimgCreateContext(void)
+{
+	fimgContext *ctx = malloc(sizeof(*ctx));
+	int i;
+
+	if(!ctx)
+		return NULL;
+
+	/* FIXME: Move creating context for each unit to respective files */
+
+	for(i = 0; i < FIMG_ATTRIB_NUM; i++) {
+		ctx->host.attrib[i].bits.srcw = 3;
+		ctx->host.attrib[i].bits.srcz = 2;
+		ctx->host.attrib[i].bits.srcy = 1;
+		ctx->host.attrib[i].bits.srcx = 0;
+	}
+
+	ctx->numAttribs = 0;
+
+	return ctx;
+}
+
+void fimgDestroyContext(fimgContext *ctx)
+{
+	free(ctx);
+}
+
+void fimgRestoreContext(fimgContext *ctx)
+{
+	fimgRestoreGlobalState(ctx);
+	fimgRestoreHostState(ctx);
+	fimgRestorePrimitiveState(ctx);
+	fimgRestoreRasterizerState(ctx);
+	fimgRestoreFragmentState(ctx);
 }
 
 /* TODO: Implement rest of kernel driver functions */

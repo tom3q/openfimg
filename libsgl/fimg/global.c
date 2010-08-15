@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "fimg.h"
+#include "fimg_private.h"
 #include <unistd.h>
 
 #define GLOBAL_OFFSET		0x0000
@@ -159,8 +159,9 @@ void fimgClearInterrupt(void)
  * FUNCTIONS:	fimgEnableInterrupt
  * SYNOPSIS:	This function enables the FIMG-3DSE interrupt
  *****************************************************************************/
-void fimgEnableInterrupt(void)
+void fimgEnableInterrupt(fimgContext *ctx)
 {
+	ctx->global.intEn = 1;
 	fimgGlobalWrite(1, FGGB_INTMASK);
 }
 
@@ -168,8 +169,9 @@ void fimgEnableInterrupt(void)
  * FUNCTIONS:	fimgDisableInterrupt
  * SYNOPSIS:	This function disables the FIMG-3DSE interrupt
  *****************************************************************************/
-void fimgDisableInterrupt(void)
+void fimgDisableInterrupt(fimgContext *ctx)
 {
+	ctx->global.intEn = 0;
 	fimgGlobalWrite(0, FGGB_INTMASK);
 }
 
@@ -178,8 +180,9 @@ void fimgDisableInterrupt(void)
  * SYNOPSIS:	This function sets pipeline blocks to generate interrupt.
  * PARAMETERS:	[IN] pipeMask: Oring PIPESTATE_XXXX block of generating interrupt
  *****************************************************************************/
-void fimgSetInterruptBlock(fimgPipelineStatus pipeMask)
+void fimgSetInterruptBlock(fimgContext *ctx, fimgPipelineStatus pipeMask)
 {
+	ctx->global.intMask = pipeMask.val;
 	fimgGlobalWrite(pipeMask.val, FGGB_PIPEMASK);
 }
 
@@ -188,8 +191,9 @@ void fimgSetInterruptBlock(fimgPipelineStatus pipeMask)
  * SYNOPSIS:	This function sets an interrupt generated state of each block
  * PARAMETERS:	[IN] status: each block state for interrupt to occur
  *****************************************************************************/
-void fimgSetInterruptState(fimgPipelineStatus status)
+void fimgSetInterruptState(fimgContext *ctx, fimgPipelineStatus status)
 {
+	ctx->global.intTarget = status.val;
 	fimgGlobalWrite(status.val, FGGB_PIPETGTSTATE);
 }
 
@@ -204,4 +208,13 @@ fimgPipelineStatus fimgGetInterruptState(void)
 	fimgPipelineStatus stat;
 	stat.val = fimgGlobalRead(FGGB_PIPEINTSTATE);
 	return stat;
+}
+
+void fimgRestoreGlobalState(fimgContext *ctx)
+{
+	fimgGlobalWrite(0, FGGB_INTMASK);
+	fimgGlobalWrite(0, FGGB_PIPEMASK);
+	fimgGlobalWrite(ctx->global.intTarget, FGGB_PIPETGTSTATE);
+	fimgGlobalWrite(ctx->global.intMask, FGGB_PIPEMASK);
+	fimgGlobalWrite(ctx->global.intEn, FGGB_INTMASK);
 }

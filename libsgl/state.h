@@ -1,6 +1,10 @@
 #ifndef _LIBSGL_STATE_H_
 #define _LIBSGL_STATE_H_
 
+#include <EGL/egl.h>
+#include <GLES/gl.h>
+#include <bionic_tls.h>
+
 #include "common.h"
 #include "types.h"
 #include "fimg/fimg.h"
@@ -35,10 +39,15 @@ enum {
 #define FGL_ARRAY_TEXTURE(i)	(FGL_ARRAY_TEXTURE + (i))
 
 struct FGLArrayState {
+	GLboolean enabled;
 	const GLvoid *pointer;
 	GLint stride;
 	GLint type;
 	GLint size;
+
+	FGLArrayState() :
+	enabled(GL_FALSE), pointer(NULL), stride(0),
+	type(FGHI_ATTRIB_DT_FLOAT), size(FGHI_NUMCOMP(4)) {};
 };
 
 struct FGLViewportState {
@@ -60,14 +69,19 @@ enum {
 
 struct FGLMatrixState {
 	FGLstack<FGLmatrix> stack[3 + FGL_MAX_TEXTURE_UNITS];
+	GLboolean dirty[3 + FGL_MAX_TEXTURE_UNITS];
 	GLint activeMatrix;
 	GLint activeTexture;
+	
 	static unsigned int stackSizes[3 + FGL_MAX_TEXTURE_UNITS];
 	
 	FGLMatrixState() : activeMatrix(0), activeTexture(0)
 	{
-		for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++)
+		for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++) {
 			stack[i].create(stackSizes[i]);
+			stack[i].top().identity();
+			dirty[i] = GL_TRUE;
+		}
 	}
 
 	~FGLMatrixState()
@@ -77,7 +91,7 @@ struct FGLMatrixState {
 	}
 };
 
-struct FGLPlane {
+struct FGLSurface {
 	FGLuint		version;
 	FGLuint		width;      // width in pixels
 	FGLuint		height;     // height in pixels
@@ -88,20 +102,58 @@ struct FGLPlane {
 	FGLint		format;     // pixel format
 };
 
+#define FGL_IS_CURRENT		0x00010000
+#define FGL_NEVER_CURRENT	0x00020000
+
+struct FGLEGLState {
+	EGLint flags;
+	EGLDisplay dpy;
+	EGLConfig config;
+	EGLSurface draw;
+	EGLSurface depth;
+	EGLSurface read;
+
+	FGLEGLState() :
+	flags(0), dpy(0), config(0), draw(0), depth(0), read(0) {};
+};
+
+struct FGLShaderState {
+	const unsigned int *data;
+};
+
 struct FGLContext {
 	/* GL state */
 	FGLvec4f vertex[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLArrayState array[4 + FGL_MAX_TEXTURE_UNITS];
-	GLboolean enableArray[4 + FGL_MAX_TEXTURE_UNITS];
+//	GLboolean enableArray[4 + FGL_MAX_TEXTURE_UNITS];
 	GLint activeTexture;
-	FGLViewportState viewport;
 	FGLMatrixState matrix;
+	FGLShaderState vertexShader;
+	FGLShaderState pixelShader;
 	/* EGL state */
-	FGLPlane colorPlane;
-	FGLPlane depthPlane;
-	FGLPlane readPlane;
+	FGLEGLState egl;
 	/* HW state */
 	fimgContext *fimg;
+
+	/* Static initializers */
+	static FGLvec4f defaultVertex[4 + FGL_MAX_TEXTURE_UNITS];
+
+	FGLContext(fimgContext *fctx)
+	: activeTexture(0), fimg(fctx)
+	{
+		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
+	}
 };
+
+// We have a dedicated TLS slot in bionic
+inline void setGlThreadSpecific(FGLContext* value)
+{
+	((uint32_t *)__get_tls())[TLS_SLOT_OPENGL] = (uint32_t)value;
+}
+
+inline FGLContext* getGlThreadSpecific()
+{
+	return (FGLContext *)(((unsigned *)__get_tls())[TLS_SLOT_OPENGL]);
+}
 
 #endif // _LIBSGL_STATE_H_

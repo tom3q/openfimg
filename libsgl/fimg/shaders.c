@@ -8,7 +8,7 @@
 */
 
 #include <stdlib.h>
-#include "fimg.h"
+#include "fimg_private.h"
 
 /*
  * Vertex shader
@@ -372,6 +372,9 @@ void fimgSetVShaderAttribTable(unsigned int in, unsigned int idx,
 
 
 // Fragment Shader Register-level API
+
+int fimgPSInBufferStatusReady(void);
+int fimgPSSetExecMode(int exec);
 
 /*****************************************************************************
  * FUNCTIONS:	fimgPSSetPCRange

@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "fimg.h"
+#include "fimg_private.h"
 
 #define FGHI_FIFO_SIZE		32
 
@@ -61,7 +61,7 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 	unsigned int j, n;
 
 	for(j = 0; j < ctx->numAttribs; j++) {
-		switch(ctx->attrib[j].bits.dt) {
+		switch(ctx->host.attrib[j].bits.dt) {
 			// 1bytes
 		case FGHI_ATTRIB_DT_BYTE:
 		case FGHI_ATTRIB_DT_UBYTE:
@@ -69,7 +69,7 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_NUBYTE: {
 			unsigned char bits[4] = {0, 0, 0, 0};
 
-			for(n = 0; n < ctx->attrib[j].bits.numcomp; n++)
+			for(n = 0; n < ctx->host.attrib[j].bits.numcomp; n++)
 				bits[n] = (ppData[j] + pStride[j] * i)[n];
 
 			fimgSendToFIFO(4, bits);
@@ -83,10 +83,10 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_NUSHORT: {
 			unsigned short bits[4] = {0, 0, 0, 0};
 
-			for(n = 0; n < ctx->attrib[j].bits.numcomp; n++)
+			for(n = 0; n < ctx->host.attrib[j].bits.numcomp; n++)
 				bits[n] = ((unsigned short *)(ppData[j] + pStride[j] * i))[n];
 
-			if(ctx->attrib[j].bits.numcomp > 2)
+			if(ctx->host.attrib[j].bits.numcomp > 2)
 				fimgSendToFIFO(8, bits);
 			else
 				fimgSendToFIFO(4, bits);
@@ -101,7 +101,7 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_UINT:
 		case FGHI_ATTRIB_DT_NINT:
 		case FGHI_ATTRIB_DT_NUINT: {
-			for(n = 0; n < ctx->attrib[j].bits.numcomp; n++)
+			for(n = 0; n < ctx->host.attrib[j].bits.numcomp; n++)
 				fimgSendToFIFO(4, &((unsigned int *)(ppData[j] + pStride[j] * i))[n]);
 
 			break;
@@ -128,9 +128,9 @@ void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int numVertices, const vo
 
 	// write attribute configuration
 	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgHostWrite(ctx->attrib[i].val, FGHI_ATTRIB(i));
+		fimgHostWrite(ctx->host.attrib[i].val, FGHI_ATTRIB(i));
 	// write the last one
-	last = ctx->attrib[i];
+	last = ctx->host.attrib[i];
 	last.bits.lastattr = 1;
 	fimgHostWrite(last.val, FGHI_ATTRIB(i));
 
@@ -160,9 +160,9 @@ void fimgDrawArraysUByteIndex(fimgContext *ctx, unsigned int numVertices, const 
 
 	// write attribute configuration
 	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgHostWrite(ctx->attrib[i].val, FGHI_ATTRIB(i));
+		fimgHostWrite(ctx->host.attrib[i].val, FGHI_ATTRIB(i));
 	// write the last one
-	last = ctx->attrib[i];
+	last = ctx->host.attrib[i];
 	last.bits.lastattr = 1;
 	fimgHostWrite(last.val, FGHI_ATTRIB(i));
 
@@ -182,9 +182,9 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
 
 	// write attribute configuration
 	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgHostWrite(ctx->attrib[i].val, FGHI_ATTRIB(i));
+		fimgHostWrite(ctx->host.attrib[i].val, FGHI_ATTRIB(i));
 	// write the last one
-	last = ctx->attrib[i];
+	last = ctx->host.attrib[i];
 	last.bits.lastattr = 1;
 	fimgHostWrite(last.val, FGHI_ATTRIB(i));
 
@@ -238,9 +238,16 @@ void fimgSendToFIFO(unsigned int bytes, void *buffer)
  *		the number of output attributes of vertex shader.
  * PARAMETERS:	[IN] HI: fimgHInterface
  *****************************************************************************/
-void fimgSetHInterface(fimgHInterface HI)
+void fimgSetHInterface(fimgContext *ctx, fimgHInterface HI)
 {
+	ctx->host.control = HI;
 	fimgHostWrite(HI.val, FGHI_CONTROL);
+}
+
+void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
+{
+	ctx->host.control.bits.numoutattrib = count;
+	fimgHostWrite(ctx->host.control.val, FGHI_CONTROL);
 }
 
 /*****************************************************************************
@@ -248,8 +255,9 @@ void fimgSetHInterface(fimgHInterface HI)
  * SYNOPSIS:	This function defines index offset which is used in the auto increment mode
  * PARAMETERS:	[IN] offset: index offset value
  *****************************************************************************/
-void fimgSetIndexOffset(unsigned int offset)
+void fimgSetIndexOffset(fimgContext *ctx, unsigned int offset)
 {
+	ctx->host.indexOffset = offset;
 	fimgHostWrite(offset, FGHI_IDXOFFSET);
 }
 
@@ -282,8 +290,8 @@ void fimgSendToVtxBuffer(unsigned int data)
  *****************************************************************************/
 void fimgSetAttribute(fimgContext *ctx, unsigned int idx, unsigned int type, unsigned int numComp)
 {
-	ctx->attrib[idx].bits.dt = type;
-	ctx->attrib[idx].bits.numcomp = numComp;
+	ctx->host.attrib[idx].bits.dt = type;
+	ctx->host.attrib[idx].bits.numcomp = numComp;
 }
 
 /*****************************************************************************
@@ -292,8 +300,15 @@ void fimgSetAttribute(fimgContext *ctx, unsigned int idx, unsigned int type, uns
  * PARAMETERS:	[IN] attribIdx: the index of attribute
  *            	[IN] pAttribInfo: fimgVtxBufAttrib
  *****************************************************************************/
-void fimgSetVtxBufAttrib(unsigned char attribIdx, fimgVtxBufAttrib AttribInfo)
+void fimgSetVtxBufAttrib(fimgContext *ctx, unsigned char idx, unsigned short base, unsigned char stride, unsigned short range)
 {
-	fimgHostWrite(AttribInfo.base.val, FGHI_ATTRIB_VBBASE(attribIdx));
-	fimgHostWrite(AttribInfo.ctrl.val, FGHI_ATTRIB_VBCTRL(attribIdx));
+	ctx->host.bufAttrib[idx].base = base;
+	ctx->host.bufAttrib[idx].ctrl.bits.stride = stride;
+	ctx->host.bufAttrib[idx].ctrl.bits.range = range;
+}
+
+void fimgRestoreHostState(fimgContext *ctx)
+{
+	fimgHostWrite(ctx->host.control.val, FGHI_CONTROL);
+	fimgHostWrite(ctx->host.indexOffset, FGHI_IDXOFFSET);
 }

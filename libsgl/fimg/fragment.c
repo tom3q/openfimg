@@ -7,7 +7,7 @@
 *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
 */
 
-#include "fimg.h"
+#include "fimg_private.h"
 
 #define FRAGMENT_OFFSET		0x70000
 
@@ -30,107 +30,6 @@
 #define FRAGMENT_OFFS(reg)	(FRAGMENT_OFFSET + (reg))
 #define FRAGMENT_ADDR(reg)	((volatile unsigned int *)((char *)fimgBase + FRAGMENT_OFFS(reg)))
 
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned enable		:1;
-		unsigned		:3;
-		unsigned max		:12;
-		unsigned		:4;
-		unsigned min		:12;
-	} bits;
-} fimgScissorTestData;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:19;
-		unsigned value		:8;
-		unsigned mode		:4;
-		unsigned enable		:1;
-	} bits;
-} fimgAlphaTestData;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned dppass		:3;
-		unsigned dpfail		:3;
-		unsigned sfail		:3;
-		unsigned		:3;
-		unsigned mask		:8;
-		unsigned ref		:8;
-		unsigned mode		:3;
-		unsigned enable		:1;
-	} bits;
-} fimgStencilTestData;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:28;
-		unsigned mode		:3;
-		unsigned enable		:1;
-	} bits;
-} fimgDepthTestData;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:9;
-		unsigned ablendequation	:3;
-		unsigned cblendequation	:3;
-		unsigned adstblendfunc	:4;
-		unsigned cdstblendfunc	:4;
-		unsigned asrcblendfunc	:4;
-		unsigned csrcblendfunc	:4;
-		unsigned enable		:1;
-	} bits;
-} fimgBlendControl;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:23;
-		unsigned alpha		:4;
-		unsigned color		:4;
-		unsigned enable		:1;
-	} bits;
-} fimgLogOpControl;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:28;
-		unsigned a		:1;
-		unsigned b		:1;
-		unsigned g		:1;
-		unsigned r		:1;
-	} bits;
-} fimgColorBufMask;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned backmask	:8;
-		unsigned frontmask	:8;
-		unsigned		:15;
-		unsigned depth		:1;
-	} bits;
-} fimgDepthBufMask;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:11;
-		unsigned opaque		:1;
-		unsigned alphathreshold	:8;
-		unsigned alphaconst	:8;
-		unsigned dither		:1;
-		unsigned colormode	:3;
-	} bits;
-} fimgFramebufferControl;
-
 static inline void fimgFragmentWrite(unsigned int data, volatile unsigned int *addr)
 {
 	*addr = data;
@@ -152,20 +51,17 @@ static inline unsigned int fimgFragmentRead(volatile unsigned int *addr)
 *		[IN] yMax: the maximum y coordiantes of scissor box.
 *		[IN] yMin: the minimum y coordinates of scissor box.
 *****************************************************************************/
-void fimgSetScissorParams(unsigned int xMax, unsigned int xMin,
+void fimgSetScissorParams(fimgContext *ctx,
+			  unsigned int xMax, unsigned int xMin,
 			  unsigned int yMax, unsigned int yMin)
 {
-	fimgScissorTestData scX, scY;
+	ctx->fragment.scX.bits.max = xMax;
+	ctx->fragment.scX.bits.min = xMin;
+	fimgFragmentWrite(ctx->fragment.scX.val, FGPF_SCISSOR_X);
 
-	scX.val = fimgFragmentRead(FGPF_SCISSOR_X);
-	scX.bits.max = xMax;
-	scX.bits.min = xMin;
-	fimgFragmentWrite(scX.val, FGPF_SCISSOR_X);
-
-	scY.val = 0;
-	scY.bits.max = yMax;
-	scY.bits.min = yMin;
-	fimgFragmentWrite(scY.val, FGPF_SCISSOR_Y);
+	ctx->fragment.scY.bits.max = yMax;
+	ctx->fragment.scY.bits.min = yMin;
+	fimgFragmentWrite(ctx->fragment.scY.val, FGPF_SCISSOR_Y);
 }
 
 /*****************************************************************************
@@ -174,13 +70,10 @@ void fimgSetScissorParams(unsigned int xMax, unsigned int xMin,
 *		outside of which fragments will be discarded.
 * PARAMETERS:	[IN] enable - non-zero to enable scissor test
 *****************************************************************************/
-void fimgSetScissorEnable(int enable)
+void fimgSetScissorEnable(fimgContext *ctx, int enable)
 {
-	fimgScissorTestData scX;
-
-	scX.val = fimgFragmentRead(FGPF_SCISSOR_X);
-	scX.bits.enable = !!enable;
-	fimgFragmentWrite(scX.val, FGPF_SCISSOR_X);
+	ctx->fragment.scX.bits.enable = !!enable;
+	fimgFragmentWrite(ctx->fragment.scX.val, FGPF_SCISSOR_X);
 }
 
 /*****************************************************************************
@@ -192,14 +85,12 @@ void fimgSetScissorEnable(int enable)
 *                    are compared. This value is clamped to the range 8bit value.
 *		[IN] mode: The alpha comparison function.
 *****************************************************************************/
-void fimgSetAlphaParams(unsigned int refAlpha, fimgTestMode mode)
+void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
+			fimgTestMode mode)
 {
-	fimgAlphaTestData alpha;
-
-	alpha.val = fimgFragmentRead(FGPF_ALPHAT);
-	alpha.bits.value = refAlpha;
-	alpha.bits.mode = mode;
-	fimgFragmentWrite(alpha.val, FGPF_ALPHAT);
+	ctx->fragment.alpha.bits.value = refAlpha;
+	ctx->fragment.alpha.bits.mode = mode;
+	fimgFragmentWrite(ctx->fragment.alpha.val, FGPF_ALPHAT);
 }
 
 /*****************************************************************************
@@ -209,13 +100,10 @@ void fimgSetAlphaParams(unsigned int refAlpha, fimgTestMode mode)
 *		reference value.
 * PARAMETERS:	[IN] enable - non-zero to enable alpha test
 *****************************************************************************/
-void fimgSetAlphaEnable(int enable)
+void fimgSetAlphaEnable(fimgContext *ctx, int enable)
 {
-	fimgAlphaTestData alpha;
-
-	alpha.val = fimgFragmentRead(FGPF_ALPHAT);
-	alpha.bits.enable = !!enable;
-	fimgFragmentWrite(alpha.val, FGPF_ALPHAT);
+	ctx->fragment.alpha.bits.enable = !!enable;
+	fimgFragmentWrite(ctx->fragment.alpha.val, FGPF_ALPHAT);
 }
 
 /*****************************************************************************
@@ -227,15 +115,13 @@ void fimgSetAlphaEnable(int enable)
 *		[IN] ref - reference value
 *		[IN] mask - test mask
 *****************************************************************************/
-void fimgSetFrontStencilFunc(fimgStencilMode mode, unsigned char ref, unsigned char mask)
+void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
+			     unsigned char ref, unsigned char mask)
 {
-	fimgStencilTestData stencil;
-
-	stencil.val = fimgFragmentRead(FGPF_FRONTST);
-	stencil.bits.mode = mode;
-	stencil.bits.ref = ref;
-	stencil.bits.mask = mask;
-	fimgFragmentWrite(stencil.val, FGPF_FRONTST);
+	ctx->fragment.stFront.bits.mode = mode;
+	ctx->fragment.stFront.bits.ref = ref;
+	ctx->fragment.stFront.bits.mask = mask;
+	fimgFragmentWrite(ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
 /*****************************************************************************
@@ -247,15 +133,13 @@ void fimgSetFrontStencilFunc(fimgStencilMode mode, unsigned char ref, unsigned c
 *		[IN] dpfail - action to take if depth buffer test fails
 *		[IN] dppass - action to take if depth buffer test passes
 *****************************************************************************/
-void fimgSetFrontStencilOp(fimgTestAction sfail, fimgTestAction dpfail, fimgTestAction dppass)
+void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
+			   fimgTestAction dpfail, fimgTestAction dppass)
 {
-	fimgStencilTestData stencil;
-
-	stencil.val = fimgFragmentRead(FGPF_FRONTST);
-	stencil.bits.sfail = sfail;
-	stencil.bits.dpfail = dpfail;
-	stencil.bits.dppass = dppass;
-	fimgFragmentWrite(stencil.val, FGPF_FRONTST);
+	ctx->fragment.stFront.bits.sfail = sfail;
+	ctx->fragment.stFront.bits.dpfail = dpfail;
+	ctx->fragment.stFront.bits.dppass = dppass;
+	fimgFragmentWrite(ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
 /*****************************************************************************
@@ -267,15 +151,13 @@ void fimgSetFrontStencilOp(fimgTestAction sfail, fimgTestAction dpfail, fimgTest
 *		[IN] ref - reference value
 *		[IN] mask - test mask
 *****************************************************************************/
-void fimgSetBackStencilFunc(fimgStencilMode mode, unsigned char ref, unsigned char mask)
+void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
+			    unsigned char ref, unsigned char mask)
 {
-	fimgStencilTestData stencil;
-
-	stencil.val = fimgFragmentRead(FGPF_BACKST);
-	stencil.bits.mode = mode;
-	stencil.bits.ref = ref;
-	stencil.bits.mask = mask;
-	fimgFragmentWrite(stencil.val, FGPF_BACKST);
+	ctx->fragment.stBack.bits.mode = mode;
+	ctx->fragment.stBack.bits.ref = ref;
+	ctx->fragment.stBack.bits.mask = mask;
+	fimgFragmentWrite(ctx->fragment.stBack.val, FGPF_BACKST);
 }
 
 /*****************************************************************************
@@ -287,15 +169,13 @@ void fimgSetBackStencilFunc(fimgStencilMode mode, unsigned char ref, unsigned ch
 *		[IN] dpfail - action to take if depth buffer test fails
 *		[IN] dppass - action to take if depth buffer test passes
 *****************************************************************************/
-void fimgSetBackStencilOp(fimgTestAction sfail, fimgTestAction dpfail, fimgTestAction dppass)
+void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
+			  fimgTestAction dpfail, fimgTestAction dppass)
 {
-	fimgStencilTestData stencil;
-
-	stencil.val = fimgFragmentRead(FGPF_BACKST);
-	stencil.bits.sfail = sfail;
-	stencil.bits.dpfail = dpfail;
-	stencil.bits.dppass = dppass;
-	fimgFragmentWrite(stencil.val, FGPF_BACKST);
+	ctx->fragment.stBack.bits.sfail = sfail;
+	ctx->fragment.stBack.bits.dpfail = dpfail;
+	ctx->fragment.stBack.bits.dppass = dppass;
+	fimgFragmentWrite(ctx->fragment.stBack.val, FGPF_BACKST);
 }
 
 /*****************************************************************************
@@ -305,13 +185,10 @@ void fimgSetBackStencilOp(fimgTestAction sfail, fimgTestAction dpfail, fimgTestA
 *		and a reference value.
 * PARAMETERS:	[IN] enable - non-zero to enable stencil test
 *****************************************************************************/
-void fimgSetStencilEnable(int enable)
+void fimgSetStencilEnable(fimgContext *ctx, int enable)
 {
-	fimgStencilTestData stencil;
-
-	stencil.val = fimgFragmentRead(FGPF_FRONTST);
-	stencil.bits.enable = !!enable;
-	fimgFragmentWrite(stencil.val, FGPF_FRONTST);
+	ctx->fragment.stFront.bits.enable = !!enable;
+	fimgFragmentWrite(ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
 /*****************************************************************************
@@ -319,13 +196,10 @@ void fimgSetStencilEnable(int enable)
 * SYNOPSIS:	This function specifies the value used for depth-buffer comparisons.
 * PARAMETERS:	[IN] mode: Specifies the depth-comparison function
 *****************************************************************************/
-void fimgSetDepthParams(fimgTestMode mode)
+void fimgSetDepthParams(fimgContext *ctx, fimgTestMode mode)
 {
-	fimgDepthTestData depth;
-
-	depth.val = fimgFragmentRead(FGPF_DEPTHT);
-	depth.bits.mode = mode;
-	fimgFragmentWrite(depth.val, FGPF_DEPTHT);
+	ctx->fragment.depth.bits.mode = mode;
+	fimgFragmentWrite(ctx->fragment.depth.val, FGPF_DEPTHT);
 }
 
 /*****************************************************************************
@@ -333,13 +207,10 @@ void fimgSetDepthParams(fimgTestMode mode)
 * SYNOPSIS:	This function specifies the value used for depth-buffer comparisons.
 * PARAMETERS:	[IN] enable: if non-zero, depth test is enabled
 *****************************************************************************/
-void fimgSetDepthEnable(int enable)
+void fimgSetDepthEnable(fimgContext *ctx, int enable)
 {
-	fimgDepthTestData depth;
-
-	depth.val = fimgFragmentRead(FGPF_DEPTHT);
-	depth.bits.enable = !!enable;
-	fimgFragmentWrite(depth.val, FGPF_DEPTHT);
+	ctx->fragment.depth.bits.enable = !!enable;
+	fimgFragmentWrite(ctx->fragment.depth.val, FGPF_DEPTHT);
 }
 
 /*****************************************************************************
@@ -350,14 +221,12 @@ void fimgSetDepthEnable(int enable)
 * PARAMETERS:	[in] alpha - alpha blend equation
 *		[in] color - color blend equation
 *****************************************************************************/
-void fimgSetBlendEquation(fimgBlendEquation alpha, fimgBlendEquation color)
+void fimgSetBlendEquation(fimgContext *ctx,
+			  fimgBlendEquation alpha, fimgBlendEquation color)
 {
-	fimgBlendControl blend;
-
-	blend.val = fimgFragmentRead(FGPF_BLEND);
-	blend.bits.ablendequation = alpha;
-	blend.bits.cblendequation = color;
-	fimgFragmentWrite(blend.val, FGPF_BLEND);
+	ctx->fragment.blend.bits.ablendequation = alpha;
+	ctx->fragment.blend.bits.cblendequation = color;
+	fimgFragmentWrite(ctx->fragment.blend.val, FGPF_BLEND);
 }
 
 /*****************************************************************************
@@ -370,17 +239,15 @@ void fimgSetBlendEquation(fimgBlendEquation alpha, fimgBlendEquation color)
 *		[in] dstAlpha - destination alpha blend function
 *		[in] dstColor - destination color blend function
 *****************************************************************************/
-void fimgSetBlendFunc(fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
+void fimgSetBlendFunc(fimgContext *ctx,
+		      fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 		      fimgBlendFunction dstAlpha, fimgBlendFunction dstColor)
 {
-	fimgBlendControl blend;
-
-	blend.val = fimgFragmentRead(FGPF_BLEND);
-	blend.bits.asrcblendfunc = srcAlpha;
-	blend.bits.csrcblendfunc = srcColor;
-	blend.bits.adstblendfunc = dstAlpha;
-	blend.bits.cdstblendfunc = dstColor;
-	fimgFragmentWrite(blend.val, FGPF_BLEND);
+	ctx->fragment.blend.bits.asrcblendfunc = srcAlpha;
+	ctx->fragment.blend.bits.csrcblendfunc = srcColor;
+	ctx->fragment.blend.bits.adstblendfunc = dstAlpha;
+	ctx->fragment.blend.bits.cdstblendfunc = dstColor;
+	fimgFragmentWrite(ctx->fragment.blend.val, FGPF_BLEND);
 }
 
 /*****************************************************************************
@@ -394,7 +261,8 @@ void fimgSetBlendFunc(fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 *		[IN] dstAlpha - destination alpha blend function
 *		[IN] dstColor - destination color blend function
 *****************************************************************************/
-void fimgSetBlendFuncRGB565(fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
+void fimgSetBlendFuncRGB565(fimgContext *ctx,
+			    fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 			    fimgBlendFunction dstAlpha, fimgBlendFunction dstColor)
 {
 	switch(srcColor) {
@@ -422,7 +290,7 @@ void fimgSetBlendFuncRGB565(fimgBlendFunction srcAlpha, fimgBlendFunction srcCol
 		break;
 	}
 
-	fimgSetBlendFunc(srcAlpha, srcColor, dstAlpha, dstColor);
+	fimgSetBlendFunc(ctx, srcAlpha, srcColor, dstAlpha, dstColor);
 }
 
 /*****************************************************************************
@@ -432,13 +300,10 @@ void fimgSetBlendFuncRGB565(fimgBlendFunction srcAlpha, fimgBlendFunction srcCol
 *		already in the framebuffer (the destination values).
 * PARAMETERS:	[in] enable - non-zero to enable blending
 *****************************************************************************/
-void fimgSetBlendEnable(int enable)
+void fimgSetBlendEnable(fimgContext *ctx, int enable)
 {
-	fimgBlendControl blend;
-
-	blend.val = fimgFragmentRead(FGPF_BLEND);
-	blend.bits.enable = !!enable;
-	fimgFragmentWrite(blend.val, FGPF_BLEND);
+	ctx->fragment.blend.bits.enable = !!enable;
+	fimgFragmentWrite(ctx->fragment.blend.val, FGPF_BLEND);
 }
 
 /*****************************************************************************
@@ -447,8 +312,9 @@ void fimgSetBlendEnable(int enable)
 *          	This value can be used in blending.
 * PARAMETERS:	[IN] blendColor - RGBA-order 32bit color
 *****************************************************************************/
-void fimgSetBlendColor(unsigned int blendColor)
+void fimgSetBlendColor(fimgContext *ctx, unsigned int blendColor)
 {
+	ctx->fragment.blendColor = blendColor;
 	fimgFragmentWrite(blendColor, FGPF_CCLR);
 }
 
@@ -457,13 +323,10 @@ void fimgSetBlendColor(unsigned int blendColor)
 * SYNOPSIS:	This function controls image dithering.
 * PARAMETERS:	[IN] enale - non-zero to enable dithering
 *****************************************************************************/
-void fimgSetDitherEnable(int enable)
+void fimgSetDitherEnable(fimgContext *ctx, int enable)
 {
-	fimgFramebufferControl fbctl;
-
-	fbctl.val = fimgFragmentRead(FGPF_FBCTL);
-	fbctl.bits.dither = !!enable;
-	fimgFragmentWrite(fbctl.val, FGPF_FBCTL);
+	ctx->fragment.fbctl.bits.dither = !!enable;
+	fimgFragmentWrite(ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 
 /*****************************************************************************
@@ -474,14 +337,12 @@ void fimgSetDitherEnable(int enable)
 * PARAMETERS:	[in] alpha - logical operation on alpha data
 *		[in[ color - logical operation on color data
 *****************************************************************************/
-void fimgSetLogicalOpParams(fimgLogicalOperation alpha, fimgLogicalOperation color)
+void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
+			    fimgLogicalOperation color)
 {
-	fimgLogOpControl logop;
-
-	logop.val = fimgFragmentRead(FGPF_LOGOP);
-	logop.bits.alpha = alpha;
-	logop.bits.color = color;
-	fimgFragmentWrite(logop.val, FGPF_LOGOP);
+	ctx->fragment.logop.bits.alpha = alpha;
+	ctx->fragment.logop.bits.color = color;
+	fimgFragmentWrite(ctx->fragment.logop.val, FGPF_LOGOP);
 }
 
 /*****************************************************************************
@@ -491,13 +352,10 @@ void fimgSetLogicalOpParams(fimgLogicalOperation alpha, fimgLogicalOperation col
 *          	replaces the current framebuffer value.
 * PARAMETERS:	[IN] enable: if non-zero, logical operation is enabled
 *****************************************************************************/
-void fimgSetLogicalOpEnable(int enable)
+void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
 {
-	fimgLogOpControl logop;
-
-	logop.val = fimgFragmentRead(FGPF_LOGOP);
-	logop.bits.enable = !!enable;
-	fimgFragmentWrite(logop.val, FGPF_LOGOP);
+	ctx->fragment.logop.bits.enable = !!enable;
+	fimgFragmentWrite(ctx->fragment.logop.val, FGPF_LOGOP);
 }
 
 /*****************************************************************************
@@ -508,19 +366,15 @@ void fimgSetLogicalOpEnable(int enable)
 *		[IN] b - whether blue can or cannot be written into the frame buffer.
 *		[IN] a - whether alpha can or cannot be written into the frame buffer.
 *****************************************************************************/
-void fimgSetColorBufWriteMask(int r, int g, int b, int a)
+void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a)
 {
-	fimgColorBufMask mask;
-
-	mask.val = 0;
-	mask.bits.r = r;
-	mask.bits.g = g;
-	mask.bits.b = b;
-	mask.bits.a = a;
-	fimgFragmentWrite(mask.val, FGPF_CBMSK);
+	ctx->fragment.mask.bits.r = r;
+	ctx->fragment.mask.bits.g = g;
+	ctx->fragment.mask.bits.b = b;
+	ctx->fragment.mask.bits.a = a;
+	fimgFragmentWrite(ctx->fragment.mask.val, FGPF_CBMSK);
 }
 
-#if TARGET_FIMG_VERSION != _FIMG3DSE_VER_1_2
 /*****************************************************************************
 * FUNCTIONS:	fimgSetStencilBufWriteMask
 * SYNOPSIS:	control the front and/or back writing of individual bits
@@ -529,18 +383,14 @@ void fimgSetColorBufWriteMask(int r, int g, int b, int a)
 *		[IN] mask - A bit mask to enable and disable writing of individual
 *                    bits in the stencil buffer.
 *****************************************************************************/
-void fimgSetStencilBufWriteMask(int back, unsigned int mask)
+void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned int mask)
 {
-	fimgDepthBufMask dbmask;
-
-	dbmask.val = fimgFragmentRead(FGPF_DBMSK);
 	if(!back)
-		dbmask.bits.frontmask = (~mask) & 0xff;
+		ctx->fragment.dbmask.bits.frontmask = (~mask) & 0xff;
 	else
-		dbmask.bits.backmask = (~mask) & 0xff;
-	fimgFragmentWrite(dbmask.val, FGPF_DBMSK);
+		ctx->fragment.dbmask.bits.backmask = (~mask) & 0xff;
+	fimgFragmentWrite(ctx->fragment.dbmask.val, FGPF_DBMSK);
 }
-#endif
 
 /*****************************************************************************
 * FUNCTIONS:	fimgSetZBufWriteMask
@@ -548,13 +398,10 @@ void fimgSetStencilBufWriteMask(int back, unsigned int mask)
 * PARAMETERS:	[IN] enable - specifies whether the depth buffer is enabled
 *		     for writing.
 *****************************************************************************/
-void fimgSetZBufWriteMask(int enable)
+void fimgSetZBufWriteMask(fimgContext *ctx, int enable)
 {
-	fimgDepthBufMask dbmask;
-
-	dbmask.val = fimgFragmentRead(FGPF_DBMSK);
-	dbmask.bits.depth = !enable;
-	fimgFragmentWrite(dbmask.val, FGPF_DBMSK);
+	ctx->fragment.dbmask.bits.depth = !enable;
+	fimgFragmentWrite(ctx->fragment.dbmask.val, FGPF_DBMSK);
 }
 
 /*****************************************************************************
@@ -568,17 +415,15 @@ void fimgSetZBufWriteMask(int enable)
 *		     buffer ARGB0888 format.
 *		[IN] format - specifies the format used for the frame buffer.
 *****************************************************************************/
-void fimgSetFrameBufParams(int opaqueAlpha, unsigned int thresholdAlpha,
+void fimgSetFrameBufParams(fimgContext *ctx,
+			   int opaqueAlpha, unsigned int thresholdAlpha,
 			   unsigned int constAlpha, fimgColorMode format)
 {
-	fimgFramebufferControl fbctl;
-
-	fbctl.val = fimgFragmentRead(FGPF_FBCTL);
-	fbctl.bits.opaque = !!opaqueAlpha;
-	fbctl.bits.alphathreshold = thresholdAlpha;
-	fbctl.bits.alphaconst = constAlpha;
-	fbctl.bits.colormode = format;
-	fimgFragmentWrite(fbctl.val, FGPF_FBCTL);
+	ctx->fragment.fbctl.bits.opaque = !!opaqueAlpha;
+	ctx->fragment.fbctl.bits.alphathreshold = thresholdAlpha;
+	ctx->fragment.fbctl.bits.alphaconst = constAlpha;
+	ctx->fragment.fbctl.bits.colormode = format;
+	fimgFragmentWrite(ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 
 /*****************************************************************************
@@ -587,8 +432,9 @@ void fimgSetFrameBufParams(int opaqueAlpha, unsigned int thresholdAlpha,
 * PARAMETERS:	[IN] addr - specifies the value used for stencil/depth buffer
 *		     address.
 *****************************************************************************/
-void fimgSetZBufBaseAddr(unsigned int addr)
+void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr)
 {
+	ctx->fragment.depthAddr = addr;
 	fimgFragmentWrite(addr, FGPF_DBADDR);
 }
 
@@ -597,8 +443,9 @@ void fimgSetZBufBaseAddr(unsigned int addr)
 * SYNOPSIS:	color buffer base address
 * PARAMETERS:	[IN] addr - specifies the value used for frame buffer address.
 *****************************************************************************/
-void fimgSetColorBufBaseAddr(unsigned int addr)
+void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr)
 {
+	ctx->fragment.colorAddr = addr;
 	fimgFragmentWrite(addr, FGPF_CBADDR);
 }
 
@@ -607,7 +454,27 @@ void fimgSetColorBufBaseAddr(unsigned int addr)
 * SYNOPSIS:	frame buffer width
 * PARAMETERS:	[IN] width - specifies the value used for frame buffer width.
 *****************************************************************************/
-void fimgSetFrameBufWidth(unsigned int width)
+void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width)
 {
+	ctx->fragment.bufWidth = width;
 	fimgFragmentWrite(width, FGPF_FBW);
+}
+
+void fimgRestoreFragmentState(fimgContext *ctx)
+{
+	fimgFragmentWrite(ctx->fragment.scY.val, FGPF_SCISSOR_Y);
+	fimgFragmentWrite(ctx->fragment.scX.val, FGPF_SCISSOR_X);
+	fimgFragmentWrite(ctx->fragment.alpha.val, FGPF_ALPHAT);
+	fimgFragmentWrite(ctx->fragment.stBack.val, FGPF_BACKST);
+	fimgFragmentWrite(ctx->fragment.stFront.val, FGPF_FRONTST);
+	fimgFragmentWrite(ctx->fragment.depth.val, FGPF_DEPTHT);
+	fimgFragmentWrite(ctx->fragment.blend.val, FGPF_BLEND);
+	fimgFragmentWrite(ctx->fragment.blendColor, FGPF_CCLR);
+	fimgFragmentWrite(ctx->fragment.fbctl.val, FGPF_FBCTL);
+	fimgFragmentWrite(ctx->fragment.logop.val, FGPF_LOGOP);
+	fimgFragmentWrite(ctx->fragment.mask.val, FGPF_CBMSK);
+	fimgFragmentWrite(ctx->fragment.dbmask.val, FGPF_DBMSK);
+	fimgFragmentWrite(ctx->fragment.depthAddr, FGPF_DBADDR);
+	fimgFragmentWrite(ctx->fragment.colorAddr, FGPF_CBADDR);
+	fimgFragmentWrite(ctx->fragment.bufWidth, FGPF_FBW);
 }

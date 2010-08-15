@@ -174,44 +174,4 @@ typedef signed int FGLint;
 
 #define FGL_NO_ERROR	0
 
-enum FGLPixelFormat {
-    // these constants need to match those
-    // in graphics/PixelFormat.java, ui/PixelFormat.h, BlitHardware.h
-    FGL_PIXEL_FORMAT_UNKNOWN    =   0,
-    FGL_PIXEL_FORMAT_NONE       =   0,
-
-    FGL_PIXEL_FORMAT_RGBA_8888   =   1,  // 4x8-bit ARGB
-    FGL_PIXEL_FORMAT_RGBX_8888   =   2,  // 3x8-bit RGB stored in 32-bit chunks
-    FGL_PIXEL_FORMAT_RGB_888     =   3,  // 3x8-bit RGB
-    FGL_PIXEL_FORMAT_RGB_565     =   4,  // 16-bit RGB
-    FGL_PIXEL_FORMAT_BGRA_8888   =   5,  // 4x8-bit BGRA
-    FGL_PIXEL_FORMAT_RGBA_5551   =   6,  // 16-bit RGBA
-    FGL_PIXEL_FORMAT_RGBA_4444   =   7,  // 16-bit RGBA
-
-    FGL_PIXEL_FORMAT_A_8         =   8,  // 8-bit A
-    FGL_PIXEL_FORMAT_L_8         =   9,  // 8-bit L (R=G=B = L)
-    FGL_PIXEL_FORMAT_LA_88       = 0xA,  // 16-bit LA
-    FGL_PIXEL_FORMAT_RGB_332     = 0xB,  // 8-bit RGB (non paletted)
-
-    // reserved range. don't use.
-    FGL_PIXEL_FORMAT_RESERVED_10 = 0x10,
-    FGL_PIXEL_FORMAT_RESERVED_11 = 0x11,
-    FGL_PIXEL_FORMAT_RESERVED_12 = 0x12,
-    FGL_PIXEL_FORMAT_RESERVED_13 = 0x13,
-    FGL_PIXEL_FORMAT_RESERVED_14 = 0x14,
-    FGL_PIXEL_FORMAT_RESERVED_15 = 0x15,
-    FGL_PIXEL_FORMAT_RESERVED_16 = 0x16,
-    FGL_PIXEL_FORMAT_RESERVED_17 = 0x17,
-
-    // reserved/special formats
-    FGL_PIXEL_FORMAT_Z_16       =  0x18,
-    FGL_PIXEL_FORMAT_S_8        =  0x19,
-    FGL_PIXEL_FORMAT_SZ_24      =  0x1A,
-    FGL_PIXEL_FORMAT_SZ_8       =  0x1B,
-
-    // reserved range. don't use.
-    FGL_PIXEL_FORMAT_RESERVED_20 = 0x20,
-    FGL_PIXEL_FORMAT_RESERVED_21 = 0x21,
-};
-
 #endif // _LIBSGL_TYPES_H_

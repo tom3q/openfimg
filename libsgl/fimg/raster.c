@@ -7,7 +7,7 @@
  *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
  */
 
-#include "fimg.h"
+#include "fimg_private.h"
 
 #define RASTER_OFFSET		0x38000
 
@@ -28,34 +28,6 @@
 
 #define RASTER_OFFS(reg)	(RASTER_OFFSET + (reg))
 #define RASTER_ADDR(reg)	((volatile unsigned int *)((char *)fimgBase + RASTER_OFFS(reg)))
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:28;
-		unsigned enable		:1;
-		unsigned clockwise	:1;
-		unsigned face		:2;
-	} bits;
-} fimgCullingControl;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:4;
-		unsigned maxval		:12;
-		unsigned		:4;
-		unsigned minval		:12;
-	} bits;
-} fimgClippingControl;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:24;
-		unsigned coordreplace	:8;
-	} bits;
-} fimgCoordReplace;
 
 #define FGRA_COORDREPLACE_VAL(i)	(1 << ((i) & 7))
 
@@ -84,8 +56,9 @@ static inline unsigned int fimgRasterRead(volatile unsigned int *reg)
  * 		     Zero	- sample at center
  *		     Non-zero	- sample at left-top corner
  *****************************************************************************/
-void fimgSetPixelSamplePos(int corner)
+void fimgSetPixelSamplePos(fimgContext *ctx, int corner)
 {
+	ctx->rasterizer.samplePos = !!corner;
 	fimgRasterWrite(!!corner, FGRA_PIX_SAMP);
 }
 
@@ -95,8 +68,9 @@ void fimgSetPixelSamplePos(int corner)
  *		Note : This function affects polygon, not point and line.
  * PARAMETERS:	[IN] int enable: Non-zero to enable. default value is FG_FALSE
  *****************************************************************************/
-void fimgEnableDepthOffset(int enable)
+void fimgEnableDepthOffset(fimgContext *ctx, int enable)
 {
+	ctx->rasterizer.dOffEn = !!enable;
 	fimgRasterWrite(!!enable, FGRA_D_OFF_EN);
 }
 
@@ -109,47 +83,12 @@ void fimgEnableDepthOffset(int enable)
  * RETURNS: 	 0 - if successful.
  *		-1 - if an invalid parameter is specified.
  *****************************************************************************/
-int fimgSetDepthOffsetParam(fimgDepthOffsetParam param, unsigned int value)
+void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
 {
-	switch(param) {
-	case FGRA_DEPTH_OFFSET_FACTOR:
-		fimgRasterWrite(value, FGRA_D_OFF_FACTOR);
-		return 0;
-	case FGRA_DEPTH_OFFSET_UNITS:
-		fimgRasterWrite(value, FGRA_D_OFF_UNITS);
-		return 0;
-	case FGRA_DEPTH_OFFSET_R:
-		fimgRasterWrite(value, FGRA_D_OFF_R_IN);
-		return 0;
-	default :
-		return -1;
-	}
-}
-
-/*****************************************************************************
- * FUNCTIONS:	fimgSetDepthOffsetParamF
- * SYNOPSIS:	This function sets depth offset parameters one by one
- *		Note : This function affects polygon, not point and line.
- * PARAMETERS:	[IN] FGL_DepthOffsetParam param: depth offset parameter to be set
- *		[IN] unsigned int value: specified parameter value
- * RETURNS:	 0 - if successful.
- *		-1 - if an invalid parameter is specified.
- *****************************************************************************/
-int fimgSetDepthOffsetParamF(fimgDepthOffsetParam param, float value)
-{
-	switch(param) {
-	case FGRA_DEPTH_OFFSET_FACTOR:
-		fimgRasterWriteF(value, FGRA_D_OFF_FACTOR);
-		return 0;
-	case FGRA_DEPTH_OFFSET_UNITS:
-		fimgRasterWriteF(value, FGRA_D_OFF_UNITS);
-		return 0;
-	case FGRA_DEPTH_OFFSET_R:
-		fimgRasterWriteF(value, FGRA_D_OFF_R_IN);
-		return 0;
-	default :
-		return -1;
-	}
+	ctx->rasterizer.dOffFactor = factor;
+	ctx->rasterizer.dOffUnits = units;
+	fimgRasterWriteF(factor, FGRA_D_OFF_FACTOR);
+	fimgRasterWriteF(units, FGRA_D_OFF_UNITS);
 }
 
 /*****************************************************************************
@@ -159,16 +98,14 @@ int fimgSetDepthOffsetParamF(fimgDepthOffsetParam param, float value)
  *		[IN] FG_BOOL bCW: FG_TRUE for make a clock-wise face front
  *		[IN] fimgCullingFace face: culling face
  *****************************************************************************/
-void fimgSetFaceCullControl(int enable, int bCW, fimgCullingFace face)
+void fimgSetFaceCullControl(fimgContext *ctx, int enable, int bCW,
+			    fimgCullingFace face)
 {
-	fimgCullingControl reg;
+	ctx->rasterizer.cull.bits.enable = !!enable;
+	ctx->rasterizer.cull.bits.clockwise = !!bCW;
+	ctx->rasterizer.cull.bits.face = face;
 
-	reg.val = 0;
-	reg.bits.enable = !!enable;
-	reg.bits.clockwise = !!bCW;
-	reg.bits.face = face;
-
-	fimgRasterWrite(reg.val, FGRA_BFCULL);
+	fimgRasterWrite(ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 
 /*****************************************************************************
@@ -177,15 +114,12 @@ void fimgSetFaceCullControl(int enable, int bCW, fimgCullingFace face)
  * PARAMETERS:	[IN] unsigned int ymin: Y clipping min. coordinate.
  *		[IN] unsigned int ymax: Y clipping max. coordinate.
  *****************************************************************************/
-void fimgSetYClip(unsigned int ymin, unsigned int ymax)
+void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 {
-	fimgClippingControl reg;
+	ctx->rasterizer.yClip.bits.maxval = ymax;
+	ctx->rasterizer.yClip.bits.minval = ymin;
 
-	reg.val = 0;
-	reg.bits.maxval = ymax;
-	reg.bits.minval = ymin;
-
-	fimgRasterWrite(reg.val, FGRA_YCLIP);
+	fimgRasterWrite(ctx->rasterizer.yClip.val, FGRA_YCLIP);
 }
 
 /*****************************************************************************
@@ -204,15 +138,12 @@ void fimgSetLODControl(fimgLODControl ctl)
  * PARAMETERS:	[IN] unsigned int xmin: X clipping min. coordinate.
  *		[IN] unsigned int xmax: X clipping max. coordinate.
  *****************************************************************************/
-void fimgSetXClip(unsigned int xmin, unsigned int xmax)
+void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
 {
-	fimgClippingControl reg;
+	ctx->rasterizer.xClip.bits.maxval = xmax;
+	ctx->rasterizer.xClip.bits.minval = xmin;
 
-	reg.val = 0;
-	reg.bits.minval = xmin;
-	reg.bits.maxval = xmax;
-
-	fimgRasterWrite(reg.val, FGRA_XCLIP);
+	fimgRasterWrite(ctx->rasterizer.xClip.val, FGRA_XCLIP);
 }
 
 /*****************************************************************************
@@ -220,8 +151,9 @@ void fimgSetXClip(unsigned int xmin, unsigned int xmax)
  * SYNOPSIS:	This function sets point width register.
  * PARAMETERS:	[IN] float pWidth: Point width.
  *****************************************************************************/
-void fimgSetPointWidth(float pWidth)
+void fimgSetPointWidth(fimgContext *ctx, float pWidth)
 {
+	ctx->rasterizer.pointWidth = pWidth;
 	fimgRasterWriteF(pWidth, FGRA_PWIDTH);
 }
 
@@ -230,8 +162,9 @@ void fimgSetPointWidth(float pWidth)
  * SYNOPSIS:	This function sets minimum point width register.
  * PARAMETERS:	[IN] float pWidthMin: Minimum point width.
  *****************************************************************************/
-void fimgSetMinimumPointWidth(float pWidthMin)
+void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin)
 {
+	ctx->rasterizer.pointWidthMin = pWidthMin;
 	fimgRasterWriteF(pWidthMin, FGRA_PSIZE_MIN);
 }
 
@@ -240,8 +173,9 @@ void fimgSetMinimumPointWidth(float pWidthMin)
  * SYNOPSIS:	This function sets maximum point width register.
  * PARAMETERS:	[IN] float pWidthMax: Maximum point width.
  *****************************************************************************/
-void fimgSetMaximumPointWidth(float pWidthMax)
+void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax)
 {
+	ctx->rasterizer.pointWidthMax = pWidthMax;
 	fimgRasterWriteF(pWidthMax, FGRA_PSIZE_MAX);
 }
 
@@ -252,8 +186,9 @@ void fimgSetMaximumPointWidth(float pWidthMax)
  * PARAMETERS:	[IN] unsigned int coordReplaceNum :
  *		     Attribute number for texture coord. of point sprite.
  *****************************************************************************/
-void fimgSetCoordReplace(unsigned int coordReplaceNum)
+void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum)
 {
+	ctx->rasterizer.spriteCoordAttrib = FGRA_COORDREPLACE_VAL(coordReplaceNum);
 	fimgRasterWrite(FGRA_COORDREPLACE_VAL(coordReplaceNum), FGRA_COORDREPLACE);
 }
 
@@ -262,7 +197,24 @@ void fimgSetCoordReplace(unsigned int coordReplaceNum)
  * SYNOPSIS:	This function sets line width register.
  * PARAMETERS:	[IN] float lWidth: Line width.
  *****************************************************************************/
-void fimgSetLineWidth(float lWidth)
+void fimgSetLineWidth(fimgContext *ctx, float lWidth)
 {
+	ctx->rasterizer.lineWidth = lWidth;
 	fimgRasterWriteF(lWidth, FGRA_LWIDTH);
+}
+
+void fimgRestoreRasterizerState(fimgContext *ctx)
+{
+	fimgRasterWrite(ctx->rasterizer.samplePos, FGRA_PIX_SAMP);
+	fimgRasterWrite(ctx->rasterizer.dOffEn, FGRA_D_OFF_EN);
+	fimgRasterWriteF(ctx->rasterizer.dOffFactor, FGRA_D_OFF_FACTOR);
+	fimgRasterWriteF(ctx->rasterizer.dOffUnits, FGRA_D_OFF_UNITS);
+	fimgRasterWrite(ctx->rasterizer.cull.val, FGRA_BFCULL);
+	fimgRasterWrite(ctx->rasterizer.yClip.val, FGRA_YCLIP);
+	fimgRasterWrite(ctx->rasterizer.xClip.val, FGRA_XCLIP);
+	fimgRasterWriteF(ctx->rasterizer.pointWidth, FGRA_PWIDTH);
+	fimgRasterWriteF(ctx->rasterizer.pointWidthMin, FGRA_PSIZE_MIN);
+	fimgRasterWriteF(ctx->rasterizer.pointWidthMax, FGRA_PSIZE_MAX);
+	fimgRasterWrite(ctx->rasterizer.spriteCoordAttrib, FGRA_COORDREPLACE);
+	fimgRasterWriteF(ctx->rasterizer.lineWidth, FGRA_LWIDTH);
 }

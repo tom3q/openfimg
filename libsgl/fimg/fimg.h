@@ -1,7 +1,7 @@
 /*
  * fimg/fimg.h
  *
- * SAMSUNG S3C6410 FIMG-3DSE LOW LEVEL DEFINITIONS
+ * SAMSUNG S3C6410 FIMG-3DSE LOW LEVEL DEFINITIONS (PUBLIC PART)
  *
  * Copyrights:	2010 by Tomasz Figa <tomasz.figa@gmail.com>
  */
@@ -14,14 +14,6 @@ extern "C" {
 #endif
 
 //=============================================================================
-
-extern volatile void *fimgBase;
-
-#define _FIMG3DSE_VER_1_2       1
-#define _FIMG3DSE_VER_1_2_1     2
-#define _FIMG3DSE_VER_2_0	4
-
-#define TARGET_FIMG_VERSION     _FIMG3DSE_VER_1_2_1
 
 struct _fimgContext;
 typedef struct _fimgContext fimgContext;
@@ -71,10 +63,10 @@ void fimgSoftReset(void);
 fimgVersion fimgGetVersion(void);
 unsigned int fimgGetInterrupt(void);
 void fimgClearInterrupt(void);
-void fimgEnableInterrupt(void);
-void fimgDisableInterrupt(void);
-void fimgSetInterruptBlock(fimgPipelineStatus pipeMask);
-void fimgSetInterruptState(fimgPipelineStatus status);
+void fimgEnableInterrupt(fimgContext *ctx);
+void fimgDisableInterrupt(fimgContext *ctx);
+void fimgSetInterruptBlock(fimgContext *ctx, fimgPipelineStatus pipeMask);
+void fimgSetInterruptState(fimgContext *ctx, fimgPipelineStatus status);
 fimgPipelineStatus fimgGetInterruptState(void);
 
 /*
@@ -97,39 +89,6 @@ typedef union {
 		unsigned numoutattrib	:4;
 	} bits;
 } fimgHInterface;
-
-typedef struct {
-	union {
-		unsigned int val;
-		struct {
-			unsigned stride		:8;
-			unsigned		:8;
-			unsigned range		:16;
-		} bits;
-	} ctrl;
-	union {
-		unsigned int val;
-		struct {
-			unsigned		:16;
-			unsigned addr		:16;
-		} bits;
-	} base;
-} fimgVtxBufAttrib;
-
-typedef union {
-	struct {
-		unsigned lastattr	:1;
-		unsigned		:15;
-		unsigned dt		:4;
-		unsigned		:2;
-		unsigned numcomp	:2;
-		unsigned srcw		:2;
-		unsigned srcz		:2;
-		unsigned srcy		:2;
-		unsigned srcx		:2;
-	} bits;
-	unsigned int val;
-} fimgAttribute;
 
 #define FGHI_NUMCOMP(i)		((i) - 1)
 
@@ -169,16 +128,18 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx,
 			       const void **ppvData,
 			       unsigned int *pStride,
 			       const unsigned short *idx);
-void fimgSetHInterface(fimgHInterface HI);
-void fimgSetIndexOffset(unsigned int offset);
+void fimgSetHInterface(fimgContext *ctx, fimgHInterface HI);
+void fimgSetIndexOffset(fimgContext *ctx, unsigned int offset);
 void fimgSetVtxBufferAddr(unsigned int addr);
 void fimgSendToVtxBuffer(unsigned int data);
 void fimgSetAttribute(fimgContext *ctx,
 		      unsigned int idx,
 		      unsigned int type,
 		      unsigned int numComp);
-void fimgSetVtxBufAttrib(unsigned char attribIdx,
-			 fimgVtxBufAttrib AttribInfo);
+void fimgSetVtxBufAttrib(fimgContext *ctx,
+			 unsigned char idx, unsigned short base,
+			 unsigned char stride, unsigned short range);
+void fimgSetAttribCount(fimgContext *ctx, unsigned char count);
 
 /*
  * Primitive Engine
@@ -196,43 +157,21 @@ typedef enum {
 	FGPE_POINT_SPRITE	= (1 << 0)
 } fimgPrimitiveType;
 
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned intUse		:2;
-		unsigned		:3;
-		unsigned type		:8;
-		unsigned pointSize	:1;
-		unsigned		:4;
-		unsigned vsOut		:4;
-		unsigned flatShadeEn	:1;
-		unsigned flatShadeSel	:9;
-	} bits;
-} fimgVertexContext;
-
 /* Functions */
 void fimgSetVertexContext(fimgContext *ctx,
 			  unsigned int type,
 			  unsigned int count);
-void fimgSetViewportParams(/*int bYFlip,*/
-			   float x0,
-			   float y0,
-			   float px,
-			   float py/*,
-			   float H*/);
-void fimgSetDepthRange(float n, float f);
+void fimgSetViewportParams(fimgContext *ctx,
+			   float x0, float y0,
+			   float px, float py);
+void fimgSetDepthRange(fimgContext *ctx,
+		       float n, float f);
 
 /*
  * Raster engine
  */
 
 /* Type definitions */
-typedef enum {
-	FGRA_DEPTH_OFFSET_FACTOR,
-	FGRA_DEPTH_OFFSET_UNITS,
-	FGRA_DEPTH_OFFSET_R
-} fimgDepthOffsetParam;
-
 typedef enum {
 	FGRA_BFCULL_FACE_BACK = 0,
 	FGRA_BFCULL_FACE_FRONT,
@@ -252,87 +191,28 @@ typedef union {
 } fimgLODControl;
 
 /* Functions */
-void fimgSetPixelSamplePos(int corner);
-void fimgEnableDepthOffset(int enable);
-int fimgSetDepthOffsetParam(fimgDepthOffsetParam param,
-			    unsigned int value);
-int fimgSetDepthOffsetParamF(fimgDepthOffsetParam param,
-			     float value);
-void fimgSetFaceCullControl(int enable,
-			    int bCW,
+void fimgSetPixelSamplePos(fimgContext *ctx, int corner);
+void fimgEnableDepthOffset(fimgContext *ctx, int enable);
+void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units);
+void fimgSetFaceCullControl(fimgContext *ctx, int enable, int bCW,
 			    fimgCullingFace face);
-void fimgSetYClip(unsigned int ymin, unsigned int ymax);
+void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax);
 void fimgSetLODControl(fimgLODControl ctl);
-void fimgSetXClip(unsigned int xmin, unsigned int xmax);
-void fimgSetPointWidth(float pWidth);
-void fimgSetMinimumPointWidth(float pWidthMin);
-void fimgSetMaximumPointWidth(float pWidthMax);
-void fimgSetCoordReplace(unsigned int coordReplaceNum);
-void fimgSetLineWidth(float lWidth);
+void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax);
+void fimgSetPointWidth(fimgContext *ctx, float pWidth);
+void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin);
+void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax);
+void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum);
+void fimgSetLineWidth(fimgContext *ctx, float lWidth);
 
 /*
  * Shaders
  */
 
-#define FGSP_MAX_ATTRIBTBL_SIZE 12
-#define BUILD_SHADER_VERSION(major, minor)	(0xFFFF0000 | (((minor)&0xFF)<<8) | ((major) & 0xFF))
-#define VERTEX_SHADER_MAGIC 			(((('V')&0xFF)<<0)|((('S')&0xFF)<<8)|(((' ')&0xFF)<<16)|(((' ')&0xFF)<<24))
-#define PIXEL_SHADER_MAGIC 			(((('P')&0xFF)<<0)|((('S')&0xFF)<<8)|(((' ')&0xFF)<<16)|(((' ')&0xFF)<<24))
-#define SHADER_VERSION 				BUILD_SHADER_VERSION(3,0)
-#define FGVS_ATTRIB(i)				(3 - ((i) % 4))
-#define FGVS_ATTRIB_BANK(i)			(((i) / 4) & 3)
-
-/* Type definitions */
-typedef struct {
-	unsigned int	Magic;
-	unsigned int	Version;
-	unsigned int	HeaderSize;
-	unsigned int	InTableSize;
-	unsigned int	OutTableSize;
-	unsigned int	SamTableSize;
-	unsigned int	InstructSize;
-	unsigned int	ConstFloatSize;
-	unsigned int	ConstIntSize;
-	unsigned int	ConstBoolSize;
-	unsigned int	reserved[6];
-} fimgShaderHeader;
-
-typedef struct {
-	int		validTableInfo;
-	unsigned int	outAttribTableSize;
-	unsigned int	inAttribTableSize;
-	unsigned int	vsOutAttribTable[12];
-	unsigned int	psInAttribTable[12];
-} fimgShaderAttribTable;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:12;
-		unsigned out		:4;
-		unsigned		:12;
-		unsigned in		:4;
-	} bits;
-} fimgShaderAttribNum;
-
 /* Vertex shader functions */
 int fimgLoadVShader(const unsigned int *pShaderCode);
-void fimgVSSetIgnorePCEnd(int enable);
-void fimgVSSetPCRange(unsigned int start, unsigned int end);
-void fimgVSSetAttribNum(unsigned int inAttribNum);
-int fimgMakeShaderAttribTable(const unsigned int *pVertexShader,
-			      const unsigned int *pPixelShader,
-			      fimgShaderAttribTable *attribTable);
-int fimgRemapVShaderOutAttrib(fimgShaderAttribTable *pShaderAttribTable);
-void fimgSetVShaderAttribTable(unsigned int in, unsigned int idx, unsigned int value);
-
 /* Pixel shader functions */
 int fimgLoadPShader(const unsigned int *pShaderCode);
-void fimgPSSetPCRange(unsigned int start, unsigned int end);
-void fimgPSSetIgnorePCEnd(int enable);
-int fimgPSSetAttributeNum(unsigned int attributeNum);
-int fimgPSInBufferStatusReady(void);
-int fimgPSSetExecMode(int exec);
 
 /*
  * Texture engine
@@ -580,42 +460,47 @@ typedef enum {
 } fimgColorMode;
 
 /* Functions */
-void fimgSetScissorParams(unsigned int xMax, unsigned int xMin,
+void fimgSetScissorParams(fimgContext *ctx,
+			  unsigned int xMax, unsigned int xMin,
 			  unsigned int yMax, unsigned int yMin);
-void fimgSetScissorEnable(int enable);
-void fimgSetAlphaParams(unsigned int refAlpha, fimgTestMode mode);
-void fimgSetAlphaEnable(int enable);
-void fimgSetFrontStencilFunc(fimgStencilMode mode, unsigned char ref,
-			     unsigned char mask);
-void fimgSetFrontStencilOp(fimgTestAction sfail, fimgTestAction dpfail,
-			   fimgTestAction dppass);
-void fimgSetBackStencilFunc(fimgStencilMode mode, unsigned char ref,
-			    unsigned char mask);
-void fimgSetBackStencilOp(fimgTestAction sfail, fimgTestAction dpfail,
-			  fimgTestAction dppass);
-void fimgSetStencilEnable(int enable);
-void fimgSetDepthParams(fimgTestMode mode);
-void fimgSetDepthEnable(int enable);
-void fimgSetBlendEquation(fimgBlendEquation alpha, fimgBlendEquation color);
-void fimgSetBlendFunc(fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
+void fimgSetScissorEnable(fimgContext *ctx, int enable);
+void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
+			fimgTestMode mode);
+void fimgSetAlphaEnable(fimgContext *ctx, int enable);
+void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
+			     unsigned char ref, unsigned char mask);
+void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
+			   fimgTestAction dpfail, fimgTestAction dppass);
+void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
+			    unsigned char ref, unsigned char mask);
+void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
+			  fimgTestAction dpfail, fimgTestAction dppass);
+void fimgSetStencilEnable(fimgContext *ctx, int enable);
+void fimgSetDepthParams(fimgContext *ctx, fimgTestMode mode);
+void fimgSetDepthEnable(fimgContext *ctx, int enable);
+void fimgSetBlendEquation(fimgContext *ctx,
+			  fimgBlendEquation alpha, fimgBlendEquation color);
+void fimgSetBlendFunc(fimgContext *ctx,
+		      fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 		      fimgBlendFunction dstAlpha, fimgBlendFunction dstColor);
-void fimgSetBlendFuncRGB565(fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
+void fimgSetBlendFuncRGB565(fimgContext *ctx,
+			    fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 			    fimgBlendFunction dstAlpha, fimgBlendFunction dstColor);
-void fimgSetBlendEnable(int enable);
-void fimgSetBlendColor(unsigned int blendColor);
-void fimgSetDitherEnable(int enable);
-void fimgSetLogicalOpParams(fimgLogicalOperation alpha, fimgLogicalOperation color);
-void fimgSetLogicalOpEnable(int enable);
-void fimgSetColorBufWriteMask(int r, int g, int b, int a);
-#if TARGET_FIMG_VERSION != _FIMG3DSE_VER_1_2
-void fimgSetStencilBufWriteMask(int back, unsigned int mask);
-#endif
-void fimgSetZBufWriteMask(int enable);
-void fimgSetFrameBufParams(int opaqueAlpha, unsigned int thresholdAlpha,
+void fimgSetBlendEnable(fimgContext *ctx, int enable);
+void fimgSetBlendColor(fimgContext *ctx, unsigned int blendColor);
+void fimgSetDitherEnable(fimgContext *ctx, int enable);
+void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
+			    fimgLogicalOperation color);
+void fimgSetLogicalOpEnable(fimgContext *ctx, int enable);
+void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a);
+void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned int mask);
+void fimgSetZBufWriteMask(fimgContext *ctx, int enable);
+void fimgSetFrameBufParams(fimgContext *ctx,
+			   int opaqueAlpha, unsigned int thresholdAlpha,
 			   unsigned int constAlpha, fimgColorMode format);
-void fimgSetZBufBaseAddr(unsigned int addr);
-void fimgSetColorBufBaseAddr(unsigned int addr);
-void fimgSetFrameBufWidth(unsigned int width);
+void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
+void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
+void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width);
 
 /*
  * OS support
@@ -625,15 +510,19 @@ int fimgDeviceOpen(void);
 void fimgDeviceClose(void);
 void *fimgAllocMemory(unsigned long *size, unsigned long *paddr);
 void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size);
+fimgContext *fimgCreateContext(void);
+void fimgDestroyContext(fimgContext *ctx);
+void fimgRestoreContext(fimgContext *ctx);
 
 /*
  * Hardware context
  */
 
-/*typedef */struct _fimgContext {
-	fimgAttribute attrib[FIMG_ATTRIB_NUM];
-	unsigned int numAttribs;
-}/*fimgContext*/;
+void fimgRestoreGlobalState(fimgContext *ctx);
+void fimgRestoreHostState(fimgContext *ctx);
+void fimgRestorePrimitiveState(fimgContext *ctx);
+void fimgRestoreRasterizerState(fimgContext *ctx);
+void fimgRestoreFragmentState(fimgContext *ctx);
 
 //=============================================================================
 
