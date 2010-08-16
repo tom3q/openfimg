@@ -57,8 +57,9 @@ typedef union {
 
 /* Functions */
 fimgPipelineStatus fimgGetPipelineStatus(void);
-int fimgFlush(fimgPipelineStatus pipelineFlags);
-int fimgClearCache(unsigned int clearFlags);
+int fimgFlush(/*fimgPipelineStatus pipelineFlags*/);
+int fimgClearInvalidateCache(unsigned int vtcclear, unsigned int tcclear,
+			     unsigned int ccflush, unsigned int zcflush);
 void fimgSoftReset(void);
 fimgVersion fimgGetVersion(void);
 unsigned int fimgGetInterrupt(void);
@@ -194,8 +195,8 @@ typedef union {
 void fimgSetPixelSamplePos(fimgContext *ctx, int corner);
 void fimgEnableDepthOffset(fimgContext *ctx, int enable);
 void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units);
-void fimgSetFaceCullControl(fimgContext *ctx, int enable, int bCW,
-			    fimgCullingFace face);
+void fimgSetFaceCullEnable(fimgContext *ctx, int enable);
+void fimgSetFaceCullControl(fimgContext *ctx, int bCW,fimgCullingFace face);
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax);
 void fimgSetLODControl(fimgLODControl ctl);
 void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax);

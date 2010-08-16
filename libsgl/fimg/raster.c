@@ -98,10 +98,15 @@ void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
  *		[IN] FG_BOOL bCW: FG_TRUE for make a clock-wise face front
  *		[IN] fimgCullingFace face: culling face
  *****************************************************************************/
-void fimgSetFaceCullControl(fimgContext *ctx, int enable, int bCW,
-			    fimgCullingFace face)
+void fimgSetFaceCullEnable(fimgContext *ctx, int enable)
 {
 	ctx->rasterizer.cull.bits.enable = !!enable;
+
+	fimgRasterWrite(ctx->rasterizer.cull.val, FGRA_BFCULL);
+}
+
+void fimgSetFaceCullControl(fimgContext *ctx, int bCW, fimgCullingFace face)
+{
 	ctx->rasterizer.cull.bits.clockwise = !!bCW;
 	ctx->rasterizer.cull.bits.face = face;
 

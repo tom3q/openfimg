@@ -25,8 +25,11 @@
 #include <cutils/log.h>
 
 int fimgFileDesc = -1;
+int fimgMemFileDesc = -1;
 volatile void *fimgBase = NULL;
+unsigned int refCount = 0;
 
+#define FIMG_SFR_BASE 0x72000000
 #define FIMG_SFR_SIZE 0x80000
 
 /*****************************************************************************/
@@ -49,7 +52,7 @@ struct s3c_3d_mem_alloc {
  *****************************************************************************/
 int fimgDeviceOpen(void)
 {
-	int fd;
+	int fd, memfd;
 
 	fd = open("/dev/s3c-g3d", O_RDWR, 0);
 	if(fd < 0) {
@@ -57,15 +60,24 @@ int fimgDeviceOpen(void)
 		return -errno;
 	}
 
-	fimgBase = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
-	if(fimgBase == MAP_FAILED) {
-		LOGE("Couldn't mmap /dev/s3c-g3d (%s).", strerror(errno));
+	memfd = open("/dev/mem", O_RDWR | O_SYNC, 0);
+	if(memfd < 0) {
+		LOGE("Couldn't open /dev/mem (%s).", strerror(errno));
 		close(fd);
 		return -errno;
 	}
 
-	LOGD("fimg3D: Opened /dev/s3c-g3d (%d).", fd);
+	fimgBase = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, memfd, FIMG_SFR_BASE);
+	if(fimgBase == MAP_FAILED) {
+		LOGE("Couldn't mmap FIMG registers (%s).", strerror(errno));
+		close(fd);
+		close(memfd);
+		return -errno;
+	}
+
+	LOGD("fimg3D: Opened /dev/s3c-g3d (%d) and /dev/mem (%d).", fd, memfd);
 	fimgFileDesc = fd;
+	fimgMemFileDesc = memfd;
 	return 0;
 }
 
@@ -82,9 +94,9 @@ void fimgDeviceClose(void)
 
 	munmap((void *)fimgBase, FIMG_SFR_SIZE);
 	close(fimgFileDesc);
+	close(fimgMemFileDesc);
 
-
-	LOGD("fimg3D: Closed /dev/s3c-g3d (%d).", fimgFileDesc);
+	LOGD("fimg3D: Closed /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
 
 	fimgFileDesc = -1;
 }
@@ -149,12 +161,23 @@ fimgContext *fimgCreateContext(void)
 
 	ctx->numAttribs = 0;
 
+	if(!refCount++) {
+		if(fimgDeviceOpen()) {
+			free(ctx);
+			refCount--;
+			return NULL;
+		}
+	}
+
 	return ctx;
 }
 
 void fimgDestroyContext(fimgContext *ctx)
 {
 	free(ctx);
+
+	if(!--refCount)
+		fimgDeviceClose();
 }
 
 void fimgRestoreContext(fimgContext *ctx)

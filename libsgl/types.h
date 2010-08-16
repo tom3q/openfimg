@@ -33,6 +33,27 @@ static inline GLfloat floatFromFixed(GLfixed c)
 	return (GLfloat)c / (1 << 16);
 }
 
+static inline GLclampf clampFloat(GLclampf f)
+{
+	if(f < 0)
+		return 0;
+
+	if(f > 1)
+		return 1;
+
+	return f;
+}
+
+static inline GLubyte ubyteFromClampf(GLclampf c)
+{
+	return clampFloat(c) * ((1 << 8) - 1);
+}
+
+static inline GLubyte ubyteFromClampx(GLclampx c)
+{
+	return c >> 24;
+}
+
 static inline GLint unitFromTextureEnum(GLenum texture)
 {
 	GLint unit;
@@ -69,17 +90,6 @@ static inline GLint unitFromTextureEnum(GLenum texture)
 	}
 
 	return unit;
-}
-
-static inline GLclampf clampFloat(GLclampf f)
-{
-	if(f < 0)
-		return 0;
-
-	if(f > 1)
-		return 1;
-
-	return f;
 }
 
 #define MAT4(x, y)	(4*(x) + (y))
@@ -162,6 +172,11 @@ public:
 	inline unsigned int size(void) const
 	{
 		return pos + 1;
+	}
+
+	inline unsigned int space(void) const
+	{
+		return max - pos;
 	}
 };
 

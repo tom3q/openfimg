@@ -70,7 +70,7 @@ fimgPipelineStatus fimgGetPipelineStatus(void)
  * RETURNS:	 0, on success
  *		-1, on timeout
  *****************************************************************************/
-int fimgFlush(fimgPipelineStatus pipelineFlags)
+int fimgFlush(/*fimgPipelineStatus pipelineFlags*/)
 {
 #if 0
 	/* TODO: Finish interrupt support */
@@ -78,7 +78,7 @@ int fimgFlush(fimgPipelineStatus pipelineFlags)
 #else
 	unsigned int timeout = 1000000;
 
-	while(fimgGlobalRead(FGGB_PIPESTATE) & pipelineFlags.val) {
+	while(fimgGlobalRead(FGGB_PIPESTATE)/* & pipelineFlags.val*/) {
 		if(--timeout == 0)
 			return -1;
 		/* TODO: Check performance impact of sleeping */
@@ -96,13 +96,21 @@ int fimgFlush(fimgPipelineStatus pipelineFlags)
  * RETURNS:	 0, on success
  *		-1, on timeout
  *****************************************************************************/
-int fimgClearCache(unsigned int clearFlags)
+int fimgClearInvalidateCache(unsigned int vtcclear, unsigned int tcclear,
+			unsigned int ccflush, unsigned int zcflush)
 {
 	unsigned int timeout = 1000000;
+	fimgCacheCtl ctl;
 
-	fimgGlobalWrite(clearFlags, FGGB_CACHECTL); // start clearing the cache
+	ctl.val = 0;
+	ctl.bits.vtcclear = vtcclear;
+	ctl.bits.tcclear = tcclear;
+	ctl.bits.ccflush = ccflush;
+	ctl.bits.zcflush = zcflush;
 
-	while(fimgGlobalRead(FGGB_CACHECTL) & clearFlags) {
+	fimgGlobalWrite(ctl.val, FGGB_CACHECTL); // start clearing the cache
+
+	while(fimgGlobalRead(FGGB_CACHECTL) & ctl.val) {
 		if(--timeout == 0)
 			return -1;
 

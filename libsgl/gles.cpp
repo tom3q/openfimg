@@ -33,17 +33,17 @@ static char const * const gVendorString     = "notSamsung";
 static char const * const gRendererString   = "S3C6410 FIMG-3DSE";
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
 static char const * const gExtensionsString =
+	"GL_OES_byte_coordinates "
+	"GL_OES_fixed_point "
+	"GL_OES_single_precision "
 #if 0
-	"GL_OES_byte_coordinates "              // TODO
-	"GL_OES_fixed_point "                   // TODO
-	"GL_OES_single_precision "              // TODO
 	"GL_OES_read_format "                   // TODO
 	"GL_OES_compressed_paletted_texture "   // TODO
 	"GL_OES_draw_texture "                  // TODO
 	"GL_OES_matrix_get "                    // TODO
 	"GL_OES_query_matrix "                  // TODO
 #endif
-	"GL_OES_point_size_array "              // OK
+	"GL_OES_point_size_array "
 #if 0
 	"GL_OES_point_sprite "                  // TODO
 	"GL_OES_EGL_image "                     // TODO
@@ -488,6 +488,16 @@ static inline GLint fglModeFromModeEnum(GLenum mode)
 	return fglMode;
 }
 
+static inline void fglUpdateMatrices(FGLContext *ctx)
+{
+	for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++) {
+		if(ctx->matrix.dirty[i]) {
+			fimgLoadMatrix(i, ctx->matrix.stack[i].top().data);
+			ctx->matrix.dirty[i] = GL_FALSE;
+		}
+	}
+}
+
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 {
 	if(first < 0) {
@@ -504,6 +514,8 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	unsigned int stride[4 + FGL_MAX_TEXTURE_UNITS];
 	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
+
+	fglUpdateMatrices(ctx);
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->array[i].enabled) {
@@ -531,6 +543,8 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	unsigned int stride[4 + FGL_MAX_TEXTURE_UNITS];
 	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
+
+	fglUpdateMatrices(ctx);
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->array[i].enabled) {
@@ -633,16 +647,14 @@ GL_API void GL_APIENTRY glLoadMatrixf (const GLfloat *m)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
 	ctx->matrix.stack[idx].top().load(m);
-
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(m);
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().inverse();
-
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glLoadMatrixx (const GLfixed *m)
@@ -654,16 +666,14 @@ GL_API void GL_APIENTRY glLoadMatrixx (const GLfixed *m)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
 	ctx->matrix.stack[idx].top().load(m);
-
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(m);
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().inverse();
-
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m)
@@ -679,16 +689,15 @@ GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m)
 	mat.multiply(m);
 
 	ctx->matrix.stack[idx].top().load(mat);
-
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	mat.inverse();
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
 
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glMultMatrixx (const GLfixed *m)
@@ -704,16 +713,15 @@ GL_API void GL_APIENTRY glMultMatrixx (const GLfixed *m)
 	mat.multiply(m);
 
 	ctx->matrix.stack[idx].top().load(mat);
-
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	mat.inverse();
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
 
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glLoadIdentity (void)
@@ -725,15 +733,13 @@ GL_API void GL_APIENTRY glLoadIdentity (void)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
 	ctx->matrix.stack[idx].top().identity();
-
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().identity();
-
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
@@ -746,17 +752,17 @@ GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat 
 
 	FGLmatrix mat;
 	mat.rotate(angle, x, y, z);
-	ctx->matrix.stack[idx].top().multiply(mat);
 
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.stack[idx].top().multiply(mat);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 	
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 	
 	mat.transpose();
+
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
-	
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glRotatex (GLfixed angle, GLfixed x, GLfixed y, GLfixed z)
@@ -774,17 +780,17 @@ GL_API void GL_APIENTRY glTranslatef (GLfloat x, GLfloat y, GLfloat z)
 
 	FGLmatrix mat;
 	mat.translate(x, y, z);
-	ctx->matrix.stack[idx].top().multiply(mat);
 
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.stack[idx].top().multiply(mat);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	mat.inverseTranslate(x, y, z);
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
 
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glTranslatex (GLfixed x, GLfixed y, GLfixed z)
@@ -802,17 +808,17 @@ GL_API void GL_APIENTRY glScalef (GLfloat x, GLfloat y, GLfloat z)
 
 	FGLmatrix mat;
 	mat.scale(x, y, z);
-	ctx->matrix.stack[idx].top().multiply(mat);
 
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.stack[idx].top().multiply(mat);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	mat.inverseScale(x, y, z);
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
 
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glScalex (GLfixed x, GLfixed y, GLfixed z)
@@ -835,17 +841,17 @@ GL_API void GL_APIENTRY glFrustumf (GLfloat left, GLfloat right, GLfloat bottom,
 
 	FGLmatrix mat;
 	mat.frustum(left, right, bottom, top, zNear, zFar);
-	ctx->matrix.stack[idx].top().multiply(mat);
 
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.stack[idx].top().multiply(mat);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	mat.inverseFrustum(left, right, bottom, top, zNear, zFar);
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
 
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glFrustumx (GLfixed left, GLfixed right, GLfixed bottom, GLfixed top, GLfixed zNear, GLfixed zFar)
@@ -868,17 +874,17 @@ GL_API void GL_APIENTRY glOrthof (GLfloat left, GLfloat right, GLfloat bottom, G
 
 	FGLmatrix mat;
 	mat.ortho(left, right, bottom, top, zNear, zFar);
-	ctx->matrix.stack[idx].top().multiply(mat);
 
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.stack[idx].top().multiply(mat);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	mat.inverseOrtho(left, right, bottom, top, zNear, zFar);
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
 
-	fimgLoadMatrix(FGL_MATRIX_MODELVIEW_INVERSE, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glOrthox (GLfixed left, GLfixed right, GLfixed bottom, GLfixed top, GLfixed zNear, GLfixed zFar)
@@ -914,13 +920,13 @@ GL_API void GL_APIENTRY glPopMatrix (void)
 	}
 
 	ctx->matrix.stack[idx].pop();
-
-	fimgLoadMatrix(idx, ctx->matrix.stack[idx].top().data);
+	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].pop();
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
 GL_API void GL_APIENTRY glPushMatrix (void)
@@ -931,6 +937,11 @@ GL_API void GL_APIENTRY glPushMatrix (void)
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
+	if(!ctx->matrix.stack[idx].space()) {
+		setError(GL_STACK_OVERFLOW);
+		return;
+	}
+
 	ctx->matrix.stack[idx].push();
 
 	if(idx != FGL_MATRIX_MODELVIEW)
@@ -940,17 +951,495 @@ GL_API void GL_APIENTRY glPushMatrix (void)
 }
 
 /**
-	Special functions
+	Rasterization
 */
 
-GL_API void GL_APIENTRY glFlush (void)
+GL_API void GL_APIENTRY glCullFace (GLenum mode)
 {
 
 }
 
-GL_API void GL_APIENTRY glFinish (void)
+GL_API void GL_APIENTRY glFrontFace (GLenum mode)
 {
 
+}
+
+/**
+	Per-fragment operations
+*/
+
+GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei height)
+{
+	FGLContext *ctx = getContext();
+
+	if(width < 0 || height < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
+}
+
+static inline void fglAlphaFunc (GLenum func, GLubyte ref)
+{
+	fimgTestMode fglFunc;
+
+	switch(func) {
+	case GL_NEVER:
+		fglFunc = FGPF_TEST_MODE_NEVER;
+		break;
+	case GL_ALWAYS:
+		fglFunc = FGPF_TEST_MODE_ALWAYS;
+		break;
+	case GL_LESS:
+		fglFunc = FGPF_TEST_MODE_LESS;
+		break;
+	case GL_LEQUAL:
+		fglFunc = FGPF_TEST_MODE_LEQUAL;
+		break;
+	case GL_EQUAL:
+		fglFunc = FGPF_TEST_MODE_EQUAL;
+		break;
+	case GL_GEQUAL:
+		fglFunc = FGPF_TEST_MODE_GEQUAL;
+		break;
+	case GL_GREATER:
+		fglFunc = FGPF_TEST_MODE_GREATER;
+		break;
+	case GL_NOTEQUAL:
+		fglFunc = FGPF_TEST_MODE_NOTEQUAL;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	fimgSetAlphaParams(ctx->fimg, ref, fglFunc);
+}
+
+GL_API void GL_APIENTRY glAlphaFunc (GLenum func, GLclampf ref)
+{
+	fglAlphaFunc(func, ubyteFromClampf(ref));
+}
+
+GL_API void GL_APIENTRY glAlphaFuncx (GLenum func, GLclampx ref)
+{
+	fglAlphaFunc(func, ubyteFromClampx(ref));
+}
+
+GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
+{
+	fimgStencilMode fglFunc;
+
+	switch(func) {
+	case GL_NEVER:
+		fglFunc = FGPF_STENCIL_MODE_NEVER;
+		break;
+	case GL_ALWAYS:
+		fglFunc = FGPF_STENCIL_MODE_ALWAYS;
+		break;
+	case GL_LESS:
+		fglFunc = FGPF_STENCIL_MODE_LESS;
+		break;
+	case GL_LEQUAL:
+		fglFunc = FGPF_STENCIL_MODE_LEQUAL;
+		break;
+	case GL_EQUAL:
+		fglFunc = FGPF_STENCIL_MODE_EQUAL;
+		break;
+	case GL_GEQUAL:
+		fglFunc = FGPF_STENCIL_MODE_GEQUAL;
+		break;
+	case GL_GREATER:
+		fglFunc = FGPF_STENCIL_MODE_GREATER;
+		break;
+	case GL_NOTEQUAL:
+		fglFunc = FGPF_STENCIL_MODE_NOTEQUAL;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	fimgSetFrontStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
+	fimgSetBackStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
+}
+
+static inline GLint fglActionFromEnum(GLenum action)
+{
+	GLint fglAction;
+	
+	switch(action) {
+	case GL_KEEP:
+		fglAction = FGPF_TEST_ACTION_KEEP;
+		break;
+	case GL_ZERO:
+		fglAction = FGPF_TEST_ACTION_ZERO;
+		break;
+	case GL_REPLACE:
+		fglAction = FGPF_TEST_ACTION_REPLACE;
+		break;
+	case GL_INCR:
+		fglAction = FGPF_TEST_ACTION_INCR;
+		break;
+	case GL_DECR:
+		fglAction = FGPF_TEST_ACTION_DECR;
+		break;
+	case GL_INVERT:
+		fglAction = FGPF_TEST_ACTION_INVERT;
+		break;
+	default:
+		fglAction = -1;
+	}
+
+	return fglAction;
+}
+
+GL_API void GL_APIENTRY glStencilOp (GLenum fail, GLenum zfail, GLenum zpass)
+{
+	GLint fglFail, fglZFail, fglZPass;
+
+	if((fglFail = fglActionFromEnum(fail)) < 0) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if((fglZFail = fglActionFromEnum(zfail)) < 0) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if((fglZPass = fglActionFromEnum(zpass)) < 0) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	fimgSetFrontStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
+	fimgSetBackStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
+}
+
+GL_API void GL_APIENTRY glDepthFunc (GLenum func)
+{
+	fimgTestMode fglFunc;
+
+	switch(func) {
+	case GL_NEVER:
+		fglFunc = FGPF_TEST_MODE_NEVER;
+		break;
+	case GL_ALWAYS:
+		fglFunc = FGPF_TEST_MODE_ALWAYS;
+		break;
+	case GL_LESS:
+		fglFunc = FGPF_TEST_MODE_LESS;
+		break;
+	case GL_LEQUAL:
+		fglFunc = FGPF_TEST_MODE_LEQUAL;
+		break;
+	case GL_EQUAL:
+		fglFunc = FGPF_TEST_MODE_EQUAL;
+		break;
+	case GL_GEQUAL:
+		fglFunc = FGPF_TEST_MODE_GEQUAL;
+		break;
+	case GL_GREATER:
+		fglFunc = FGPF_TEST_MODE_GREATER;
+		break;
+	case GL_NOTEQUAL:
+		fglFunc = FGPF_TEST_MODE_NOTEQUAL;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	fimgSetDepthParams(ctx->fimg, fglFunc);
+}
+
+GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
+{
+	fimgBlendFunction fglSrc, fglDest;
+
+	switch(sfactor) {
+	case GL_ZERO:
+		fglSrc = FGPF_BLEND_FUNC_ZERO;
+		break;
+	case GL_ONE:
+		fglSrc = FGPF_BLEND_FUNC_ONE;
+		break;
+	case GL_DST_COLOR:
+		fglSrc = FGPF_BLEND_FUNC_DST_COLOR;
+		break;
+	case GL_ONE_MINUS_DST_COLOR:
+		fglSrc = FGPF_BLEND_FUNC_ONE_MINUS_DST_COLOR;
+		break;
+	case GL_SRC_ALPHA:
+		fglSrc = FGPF_BLEND_FUNC_SRC_ALPHA;
+		break;
+	case GL_ONE_MINUS_SRC_ALPHA:
+		fglSrc = FGPF_BLEND_FUNC_ONE_MINUS_SRC_ALPHA;
+		break;
+	case GL_DST_ALPHA:
+		fglSrc = FGPF_BLEND_FUNC_DST_ALPHA;
+		break;
+	case GL_ONE_MINUS_DST_ALPHA:
+		fglSrc = FGPF_BLEND_FUNC_ONE_MINUS_DST_ALPHA;
+		break;
+	case GL_SRC_ALPHA_SATURATE:
+		fglSrc = FGPF_BLEND_FUNC_SRC_ALPHA_SATURATE;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	switch(dfactor) {
+	case GL_ZERO:
+		fglDest = FGPF_BLEND_FUNC_ZERO;
+		break;
+	case GL_ONE:
+		fglDest = FGPF_BLEND_FUNC_ONE;
+		break;
+	case GL_SRC_COLOR:
+		fglDest = FGPF_BLEND_FUNC_SRC_COLOR;
+		break;
+	case GL_ONE_MINUS_SRC_COLOR:
+		fglDest = FGPF_BLEND_FUNC_ONE_MINUS_SRC_COLOR;
+		break;
+	case GL_SRC_ALPHA:
+		fglDest = FGPF_BLEND_FUNC_SRC_ALPHA;
+		break;
+	case GL_ONE_MINUS_SRC_ALPHA:
+		fglDest = FGPF_BLEND_FUNC_ONE_MINUS_SRC_ALPHA;
+		break;
+	case GL_DST_ALPHA:
+		fglDest = FGPF_BLEND_FUNC_DST_ALPHA;
+		break;
+	case GL_ONE_MINUS_DST_ALPHA:
+		fglDest = FGPF_BLEND_FUNC_ONE_MINUS_DST_ALPHA;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+}
+
+GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
+{
+	fimgLogicalOperation fglOp;
+	
+	switch(opcode) {
+	case GL_CLEAR:
+		fglOp = FGPF_LOGOP_CLEAR;
+		break;
+	case GL_AND:
+		fglOp = FGPF_LOGOP_AND;
+		break;
+	case GL_AND_REVERSE:
+		fglOp = FGPF_LOGOP_AND_REVERSE;
+		break;
+	case GL_COPY:
+		fglOp = FGPF_LOGOP_COPY;
+		break;
+	case GL_AND_INVERTED:
+		fglOp = FGPF_LOGOP_AND_INVERTED;
+		break;
+	case GL_NOOP:
+		fglOp = FGPF_LOGOP_NOOP;
+		break;
+	case GL_XOR:
+		fglOp = FGPF_LOGOP_XOR;
+		break;
+	case GL_OR:
+		fglOp = FGPF_LOGOP_OR;
+		break;
+	case GL_NOR:
+		fglOp = FGPF_LOGOP_NOR;
+		break;
+	case GL_EQUIV:
+		fglOp = FGPF_LOGOP_EQUIV;
+		break;
+	case GL_INVERT:
+		fglOp = FGPF_LOGOP_INVERT;
+		break;
+	case GL_OR_REVERSE:
+		fglOp = FGPF_LOGOP_OR_REVERSE;
+		break;
+	case GL_COPY_INVERTED:
+		fglOp = FGPF_LOGOP_COPY_INVERTED;
+		break;
+	case GL_OR_INVERTED:
+		fglOp = FGPF_LOGOP_OR_INVERTED;
+		break;
+	case GL_NAND:
+		fglOp = FGPF_LOGOP_NAND;
+		break;
+	case GL_SET:
+		fglOp = FGPF_LOGOP_SET;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	fimgSetLogicalOpParams(ctx->fimg, fglOp, fglOp);
+}
+
+/**
+	Texturing
+*/
+
+GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
+{
+
+}
+
+GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures)
+{
+
+}
+
+GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
+{
+
+}
+
+GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels)
+{
+
+}
+
+GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname, GLfloat param)
+{
+
+}
+
+GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname, const GLfloat *params)
+{
+
+}
+
+GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)
+{
+
+}
+
+GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname, GLfixed param)
+{
+
+}
+
+GL_API void GL_APIENTRY glTexParameteriv (GLenum target, GLenum pname, const GLint *params)
+{
+
+}
+
+GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname, const GLfixed *params)
+{
+
+}
+
+/**
+	Enable/disable
+*/
+
+static inline void fglSet(GLenum cap, GLboolean state)
+{
+	FGLContext *ctx = getContext();
+
+	switch(cap) {
+	case GL_CULL_FACE:
+		fimgSetFaceCullEnable(ctx->fimg, state);
+		break;
+	case GL_POLYGON_OFFSET_FILL:
+		fimgEnableDepthOffset(ctx->fimg, state);
+		break;
+	case GL_SCISSOR_TEST:
+		fimgSetScissorEnable(ctx->fimg, state);
+		break;
+	case GL_ALPHA_TEST:
+		fimgSetAlphaEnable(ctx->fimg, state);
+		break;
+	case GL_STENCIL_TEST:
+		fimgSetStencilEnable(ctx->fimg, state);
+		break;
+	case GL_DEPTH_TEST:
+		fimgSetDepthEnable(ctx->fimg, state);
+		break;
+	case GL_BLEND:
+		fimgSetBlendEnable(ctx->fimg, state);
+		break;
+	case GL_DITHER:
+		fimgSetDitherEnable(ctx->fimg, state);
+		break;
+	case GL_COLOR_LOGIC_OP:
+		fimgSetLogicalOpEnable(ctx->fimg, state);
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+}
+
+GL_API void GL_APIENTRY glEnable (GLenum cap)
+{
+	fglSet(cap, GL_TRUE);
+}
+
+GL_API void GL_APIENTRY glDisable (GLenum cap)
+{
+	fglSet(cap, GL_FALSE);
+}
+
+/**
+	Special functions
+*/
+
+GL_API void GL_APIENTRY glClear (GLbitfield mask)
+{
+
+}
+
+GL_API void GL_APIENTRY glClearColor (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
+{
+
+}
+
+GL_API void GL_APIENTRY glClearColorx (GLclampx red, GLclampx green, GLclampx blue, GLclampx alpha)
+{
+
+}
+
+GL_API void GL_APIENTRY glClearDepthf (GLclampf depth)
+{
+
+}
+
+GL_API void GL_APIENTRY glClearDepthx (GLclampx depth)
+{
+
+}
+
+GL_API void GL_APIENTRY glClearStencil (GLint s)
+{
+
+}
+
+GL_API void GL_APIENTRY glFlush (void)
+{
+	// TODO
+}
+
+GL_API void GL_APIENTRY glFinish (void)
+{
+	fimgFlush();
+	fimgClearInvalidateCache(0, 0, 1, 1);
 }
 
 void fglRestoreGLState(void)
@@ -970,7 +1459,12 @@ void fglRestoreGLState(void)
 	fimgLoadVShader(ctx->vertexShader.data);
 	fimgLoadPShader(ctx->pixelShader.data);
 
+	// TODO
+#if 0
 	/* Restore textures */
 	for(int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++)
 		fimgSetTexUnitParams(i, NULL /* TODO */);
+#endif
+
+	fimgClearInvalidateCache(1, 1, 0, 0);
 }

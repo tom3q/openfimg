@@ -59,29 +59,16 @@
 #include "common.h"
 #include "types.h"
 #include "state.h"
+#include "vshader.h"
+#include "fshader.h"
 
 #undef NELEM
 #define NELEM(x) (sizeof(x)/sizeof(*(x)))
-
-#define likely(x)       __builtin_expect((x),1)
-#define unlikely(x)     __builtin_expect((x),0)
 
 #define FGL_EGL_MAJOR		1
 #define FGL_EGL_MINOR		3
 
 using namespace android;
-
-template<typename T>
-static inline T max(T a, T b)
-{
-	return (a > b) ? a : b;
-}
-
-template<typename T>
-static inline T min(T a, T b)
-{
-	return (a < b) ? a : b;
-}
 
 static char const * const gVendorString     = "notSamsung";
 static char const * const gVersionString    = "1.4 S3C6410 Android 0.0.1";
@@ -93,11 +80,13 @@ static char const * const gExtensionsString =
 	"EGL_ANDROID_swap_rectangle "
 	"EGL_ANDROID_get_render_buffer ";
 
-static pthread_mutex_t eglContextKeyMutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_key_t eglContextKey = -1;
+pthread_mutex_t eglContextKeyMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_key_t eglContextKey = -1;
 
 struct FGLDisplay {
 	EGLBoolean initialized;
+
+	FGLDisplay() : initialized(0) {};
 };
 
 #define FGL_MAX_DISPLAYS	1
@@ -162,13 +151,6 @@ static void setError(EGLint error)
 
 EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id)
 {
-	if(unlikely(eglContextKey == -1)) {
-		pthread_mutex_lock(&eglContextKeyMutex);
-		if(eglContextKey == -1)
-			pthread_key_create(&eglErrorKey, NULL);
-		pthread_mutex_unlock(&eglContextKeyMutex);
-	}
-
 	if(display_id != EGL_DEFAULT_DISPLAY)
 		return EGL_NO_DISPLAY;
 
@@ -182,14 +164,19 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLin
 		return EGL_FALSE;
 	}
 
-	FGLDisplay *disp = getDisplay(dpy);
-	disp->initialized = EGL_TRUE;
-
 	if(major != NULL)
 		*major = FGL_EGL_MAJOR;
 
 	if(minor != NULL)
 		*minor = FGL_EGL_MINOR;
+
+	FGLDisplay *disp = getDisplay(dpy);
+
+	if(likely(disp->initialized))
+		return EGL_TRUE;
+
+	disp->initialized = EGL_TRUE;
+	setGlThreadSpecific(0);
 
 	return EGL_TRUE;
 }
@@ -1863,6 +1850,9 @@ FGLContext *fglCreateContext(void)
 		return NULL;
 	}
 
+	ctx->vertexShader.data = vshaderVshader;
+	ctx->pixelShader.data = fshaderFshader;
+
 	return ctx;
 }
 
@@ -1927,11 +1917,10 @@ static int fglMakeCurrent(FGLContext* gl)
 		} else {
 			if (current) {
 				// mark the current context as not current, and flush
-				glFlush();
+				glFinish();
 				current->egl.flags &= ~FGL_IS_CURRENT;
 			}
 			// The context is not current, make it current!
-			glFinish();
 			setGlThreadSpecific(gl);
 			fglRestoreGLState();
 			gl->egl.flags |= FGL_IS_CURRENT;
@@ -2033,7 +2022,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 			gl->egl.read = read;
 
 			if (gl->egl.flags & FGL_NEVER_CURRENT) {
-				gl->egl.flags &= FGL_NEVER_CURRENT;
+				gl->egl.flags &= ~FGL_NEVER_CURRENT;
 				GLint w = 0;
 				GLint h = 0;
 				
@@ -2041,10 +2030,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 					w = d->getWidth();
 					h = d->getHeight();
 				}
-				
-//				ogles_surfaceport(gl, 0, 0);
-//				ogles_viewport(gl, 0, 0, w, h);
-//				ogles_scissor(gl, 0, 0, w, h);
+
+				glViewport(0, 0, w, h);
+				glScissor(0, 0, w, h);
 			}
 
 			if (d) {

@@ -146,6 +146,7 @@ struct FGLContext {
 };
 
 // We have a dedicated TLS slot in bionic
+#if 0
 inline void setGlThreadSpecific(FGLContext* value)
 {
 	((uint32_t *)__get_tls())[TLS_SLOT_OPENGL] = (uint32_t)value;
@@ -155,5 +156,36 @@ inline FGLContext* getGlThreadSpecific()
 {
 	return (FGLContext *)(((unsigned *)__get_tls())[TLS_SLOT_OPENGL]);
 }
+#else
+#include <pthread.h>
+
+extern pthread_mutex_t eglContextKeyMutex;
+extern pthread_key_t eglContextKey;
+
+inline void setGlThreadSpecific(FGLContext* value)
+{
+	if(unlikely(eglContextKey == -1)) {
+		pthread_mutex_lock(&eglContextKeyMutex);
+		if(eglContextKey == -1)
+			pthread_key_create(&eglContextKey, NULL);
+		pthread_mutex_unlock(&eglContextKeyMutex);
+	}
+
+	pthread_setspecific(eglContextKey, value);
+}
+
+inline FGLContext* getGlThreadSpecific()
+{
+	FGLContext *ctx = (FGLContext *)pthread_getspecific(eglContextKey);
+
+#ifdef EGL_DEBUG
+	if(ctx == NULL) {
+		LOGD("EGL context is NULL!");
+	}
+#endif
+
+	return ctx;
+}
+#endif
 
 #endif // _LIBSGL_STATE_H_
