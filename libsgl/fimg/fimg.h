@@ -56,19 +56,20 @@ typedef union {
 } fimgVersion;
 
 /* Functions */
-fimgPipelineStatus fimgGetPipelineStatus(void);
-int fimgFlush(/*fimgPipelineStatus pipelineFlags*/);
-int fimgClearInvalidateCache(unsigned int vtcclear, unsigned int tcclear,
+fimgPipelineStatus fimgGetPipelineStatus(fimgContext *ctx);
+int fimgFlush(fimgContext *ctx/*, fimgPipelineStatus pipelineFlags*/);
+int fimgInvalidateFlushCache(fimgContext *ctx,
+			     unsigned int vtcclear, unsigned int tcclear,
 			     unsigned int ccflush, unsigned int zcflush);
-void fimgSoftReset(void);
-fimgVersion fimgGetVersion(void);
-unsigned int fimgGetInterrupt(void);
-void fimgClearInterrupt(void);
+void fimgSoftReset(fimgContext *ctx);
+fimgVersion fimgGetVersion(fimgContext *ctx);
+unsigned int fimgGetInterrupt(fimgContext *ctx);
+void fimgClearInterrupt(fimgContext *ctx);
 void fimgEnableInterrupt(fimgContext *ctx);
 void fimgDisableInterrupt(fimgContext *ctx);
 void fimgSetInterruptBlock(fimgContext *ctx, fimgPipelineStatus pipeMask);
 void fimgSetInterruptState(fimgContext *ctx, fimgPipelineStatus status);
-fimgPipelineStatus fimgGetInterruptState(void);
+fimgPipelineStatus fimgGetInterruptState(fimgContext *ctx);
 
 /*
  * Host interface
@@ -113,8 +114,8 @@ typedef enum {
 } fimgHostDataType;
 
 /* Functions */
-unsigned int fimgGetNumEmptyFIFOSlots(void);
-void fimgSendToFIFO(unsigned int bytes, void *buffer);
+unsigned int fimgGetNumEmptyFIFOSlots(fimgContext *ctx);
+void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const void *buffer);
 void fimgDrawNonIndexArrays(fimgContext *ctx,
 			    unsigned int numVertices,
 			    const void **ppvData,
@@ -131,8 +132,8 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx,
 			       const unsigned short *idx);
 void fimgSetHInterface(fimgContext *ctx, fimgHInterface HI);
 void fimgSetIndexOffset(fimgContext *ctx, unsigned int offset);
-void fimgSetVtxBufferAddr(unsigned int addr);
-void fimgSendToVtxBuffer(unsigned int data);
+void fimgSetVtxBufferAddr(fimgContext *ctx, unsigned int addr);
+void fimgSendToVtxBuffer(fimgContext *ctx, unsigned int data);
 void fimgSetAttribute(fimgContext *ctx,
 		      unsigned int idx,
 		      unsigned int type,
@@ -198,7 +199,7 @@ void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units);
 void fimgSetFaceCullEnable(fimgContext *ctx, int enable);
 void fimgSetFaceCullControl(fimgContext *ctx, int bCW,fimgCullingFace face);
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax);
-void fimgSetLODControl(fimgLODControl ctl);
+void fimgSetLODControl(fimgContext *ctx, fimgLODControl ctl);
 void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax);
 void fimgSetPointWidth(fimgContext *ctx, float pWidth);
 void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin);
@@ -211,9 +212,11 @@ void fimgSetLineWidth(fimgContext *ctx, float lWidth);
  */
 
 /* Vertex shader functions */
-int fimgLoadVShader(const unsigned int *pShaderCode);
+int fimgLoadVShader(fimgContext *ctx,
+		    const unsigned int *pShaderCode, unsigned int numAttribs);
 /* Pixel shader functions */
-int fimgLoadPShader(const unsigned int *pShaderCode);
+int fimgLoadPShader(fimgContext *ctx,
+		    const unsigned int *pShaderCode, unsigned int numAttribs);
 
 /*
  * Texture engine
@@ -330,39 +333,45 @@ typedef union {
 } fimgVtxTexControl;
 
 /* Functions */
-void fimgSetTexUnitParams(unsigned int unit, fimgTexUnitParams *params);
-void fimgSetTexStatusParams(unsigned int unit, fimgTexControl params);
-void fimgSetTexUSize(unsigned int unit, unsigned int uSize);
-void fimgSetTexVSize(unsigned int unit, unsigned int vSize);
-void fimgSetTexPSize(unsigned int unit, unsigned int pSize);
-unsigned int fimgCalculateMipmapOffset(unsigned int unit,
-				       unsigned int uSize,
-				       unsigned int vSize,
+void fimgSetTexUnitParams(fimgContext *ctx, unsigned int unit,
+			  fimgTexUnitParams *params);
+void fimgSetTexStatusParams(fimgContext *ctx, unsigned int unit,
+			    fimgTexControl params);
+void fimgSetTexUSize(fimgContext *ctx, unsigned int unit,
+		     unsigned int uSize);
+void fimgSetTexVSize(fimgContext *ctx, unsigned int unit,
+		     unsigned int vSize);
+void fimgSetTexPSize(fimgContext *ctx, unsigned int unit,
+		     unsigned int pSize);
+unsigned int fimgCalculateMipmapOffset(fimgContext *ctx, unsigned int unit,
+				       unsigned int uSize, unsigned int vSize,
 				       unsigned int maxLevel);
-unsigned int fimgCalculateMipmapOffsetYUV(unsigned int unit,
-		unsigned int uSize,
-		unsigned int vSize,
-		unsigned int maxLevel);
-unsigned int fimgCalculateMipmapOffsetS3TC(unsigned int unit,
-		unsigned int uSize,
-		unsigned int vSize,
-		unsigned int maxLevel);
-void fimgSetTexMipmapLevel(unsigned int unit, int min, int max);
-void fimgSetTexBaseAddr(unsigned int unit, unsigned int addr);
-void fimgSetTexColorKey(unsigned int unit,
+unsigned int fimgCalculateMipmapOffsetYUV(fimgContext *ctx, unsigned int unit,
+					  unsigned int uSize, unsigned int vSize,
+					  unsigned int maxLevel);
+unsigned int fimgCalculateMipmapOffsetS3TC(fimgContext *ctx, unsigned int unit,
+					   unsigned int uSize, unsigned int vSize,
+					   unsigned int maxLevel);
+void fimgSetTexMipmapLevel(fimgContext *ctx, unsigned int unit,
+			   int min, int max);
+void fimgSetTexBaseAddr(fimgContext *ctx, unsigned int unit,
+			unsigned int addr);
+void fimgSetTexColorKey(fimgContext *ctx, unsigned int unit,
 			unsigned char r, unsigned char g, unsigned char b);
-void fimgSetTexColorKeyYUV(unsigned char u, unsigned char v);
-void fimgSetTexColorKeyMask(unsigned char bitsToMask);
-void fimgSetTexPaletteAddr(unsigned char addr);
-void fimgSetTexPaletteEntry(unsigned int entry);
-void fimgSetVtxTexUnitParams(unsigned int unit, fimgVtxTexControl vts);
-void fimgSetVtxTexBaseAddr(unsigned int unit, unsigned int addr);
+void fimgSetTexColorKeyYUV(fimgContext *ctx, unsigned char u, unsigned char v);
+void fimgSetTexColorKeyMask(fimgContext *ctx, unsigned char bitsToMask);
+void fimgSetTexPaletteAddr(fimgContext *ctx, unsigned char addr);
+void fimgSetTexPaletteEntry(fimgContext *ctx, unsigned int entry);
+void fimgSetVtxTexUnitParams(fimgContext *ctx, unsigned int unit,
+			     fimgVtxTexControl vts);
+void fimgSetVtxTexBaseAddr(fimgContext *ctx, unsigned int unit,
+			   unsigned int addr);
 
 /*
  * OpenGL 1.1 compatibility
  */
 
-void fimgLoadMatrix(unsigned int matrix, float *pData);
+void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, float *pData);
 
 /*
  * Per-fragment unit
@@ -507,10 +516,10 @@ void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width);
  * OS support
  */
 
-int fimgDeviceOpen(void);
-void fimgDeviceClose(void);
-void *fimgAllocMemory(unsigned long *size, unsigned long *paddr);
-void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size);
+void *fimgAllocMemory(fimgContext *ctx,
+		      unsigned long *size, unsigned long *paddr);
+void fimgFreeMemory(fimgContext *ctx,
+		    void *vaddr, unsigned long paddr, unsigned long size);
 fimgContext *fimgCreateContext(void);
 void fimgDestroyContext(fimgContext *ctx);
 void fimgRestoreContext(fimgContext *ctx);

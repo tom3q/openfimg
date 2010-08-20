@@ -9,42 +9,22 @@
 
 #include "fimg_private.h"
 
-#define RASTER_OFFSET		0x38000
+#define FGRA_PIX_SAMP		(0x38000)
+#define FGRA_D_OFF_EN		(0x38004)
+#define FGRA_D_OFF_FACTOR	(0x38008)
+#define FGRA_D_OFF_UNITS	(0x3800c)
+#define FGRA_D_OFF_R_IN		(0x38010)
+#define FGRA_BFCULL		(0x38014)
+#define FGRA_YCLIP		(0x38018)
+#define FGRA_LODCTL		(0x3c000)
+#define FGRA_XCLIP		(0x3c004)
+#define FGRA_PWIDTH		(0x3801c)
+#define FGRA_PSIZE_MIN		(0x38020)
+#define FGRA_PSIZE_MAX		(0x38024)
+#define FGRA_COORDREPLACE	(0x38028)
+#define FGRA_LWIDTH		(0x3802c)
 
-#define FGRA_PIX_SAMP		RASTER_ADDR(0x00)
-#define FGRA_D_OFF_EN		RASTER_ADDR(0x04)
-#define FGRA_D_OFF_FACTOR	RASTER_ADDR(0x08)
-#define FGRA_D_OFF_UNITS	RASTER_ADDR(0x0c)
-#define FGRA_D_OFF_R_IN		RASTER_ADDR(0x10)
-#define FGRA_BFCULL		RASTER_ADDR(0x14)
-#define FGRA_YCLIP		RASTER_ADDR(0x18)
-#define FGRA_LODCTL		RASTER_ADDR(0x4000)
-#define FGRA_XCLIP		RASTER_ADDR(0x4004)
-#define FGRA_PWIDTH		RASTER_ADDR(0x1c)
-#define FGRA_PSIZE_MIN		RASTER_ADDR(0x20)
-#define FGRA_PSIZE_MAX		RASTER_ADDR(0x24)
-#define FGRA_COORDREPLACE	RASTER_ADDR(0x28)
-#define FGRA_LWIDTH		RASTER_ADDR(0x2c)
-
-#define RASTER_OFFS(reg)	(RASTER_OFFSET + (reg))
-#define RASTER_ADDR(reg)	((volatile unsigned int *)((char *)fimgBase + RASTER_OFFS(reg)))
-
-#define FGRA_COORDREPLACE_VAL(i)	(1 << ((i) & 7))
-
-static inline void fimgRasterWrite(unsigned int data, volatile unsigned int *reg)
-{
-	*reg = data;
-}
-
-static inline void fimgRasterWriteF(float data, volatile unsigned int *reg)
-{
-	*((volatile float *)reg) = data;
-}
-
-static inline unsigned int fimgRasterRead(volatile unsigned int *reg)
-{
-	return *reg;
-}
+#define FGRA_COORDREPLACE_VAL(i)	(1 << (i))
 
 /* TODO: Function inlining */
 
@@ -59,7 +39,7 @@ static inline unsigned int fimgRasterRead(volatile unsigned int *reg)
 void fimgSetPixelSamplePos(fimgContext *ctx, int corner)
 {
 	ctx->rasterizer.samplePos = !!corner;
-	fimgRasterWrite(!!corner, FGRA_PIX_SAMP);
+	fimgWrite(ctx, !!corner, FGRA_PIX_SAMP);
 }
 
 /*****************************************************************************
@@ -71,7 +51,7 @@ void fimgSetPixelSamplePos(fimgContext *ctx, int corner)
 void fimgEnableDepthOffset(fimgContext *ctx, int enable)
 {
 	ctx->rasterizer.dOffEn = !!enable;
-	fimgRasterWrite(!!enable, FGRA_D_OFF_EN);
+	fimgWrite(ctx, !!enable, FGRA_D_OFF_EN);
 }
 
 /*****************************************************************************
@@ -87,8 +67,8 @@ void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
 {
 	ctx->rasterizer.dOffFactor = factor;
 	ctx->rasterizer.dOffUnits = units;
-	fimgRasterWriteF(factor, FGRA_D_OFF_FACTOR);
-	fimgRasterWriteF(units, FGRA_D_OFF_UNITS);
+	fimgWriteF(ctx, factor, FGRA_D_OFF_FACTOR);
+	fimgWriteF(ctx, units, FGRA_D_OFF_UNITS);
 }
 
 /*****************************************************************************
@@ -102,7 +82,7 @@ void fimgSetFaceCullEnable(fimgContext *ctx, int enable)
 {
 	ctx->rasterizer.cull.bits.enable = !!enable;
 
-	fimgRasterWrite(ctx->rasterizer.cull.val, FGRA_BFCULL);
+	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 
 void fimgSetFaceCullControl(fimgContext *ctx, int bCW, fimgCullingFace face)
@@ -110,7 +90,7 @@ void fimgSetFaceCullControl(fimgContext *ctx, int bCW, fimgCullingFace face)
 	ctx->rasterizer.cull.bits.clockwise = !!bCW;
 	ctx->rasterizer.cull.bits.face = face;
 
-	fimgRasterWrite(ctx->rasterizer.cull.val, FGRA_BFCULL);
+	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 
 /*****************************************************************************
@@ -124,7 +104,7 @@ void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 	ctx->rasterizer.yClip.bits.maxval = ymax;
 	ctx->rasterizer.yClip.bits.minval = ymin;
 
-	fimgRasterWrite(ctx->rasterizer.yClip.val, FGRA_YCLIP);
+	fimgWrite(ctx, ctx->rasterizer.yClip.val, FGRA_YCLIP);
 }
 
 /*****************************************************************************
@@ -132,9 +112,9 @@ void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
  * SYNOPSIS:	This function sets LOD calculation control.
  * PARAMETERS:	[IN] fimgLODControl ctl: lodcon values
  *****************************************************************************/
-void fimgSetLODControl(fimgLODControl ctl)
+void fimgSetLODControl(fimgContext *ctx, fimgLODControl ctl)
 {
-	fimgRasterWrite(ctl.val, FGRA_LODCTL);
+	fimgWrite(ctx, ctl.val, FGRA_LODCTL);
 }
 
 /*****************************************************************************
@@ -148,7 +128,7 @@ void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
 	ctx->rasterizer.xClip.bits.maxval = xmax;
 	ctx->rasterizer.xClip.bits.minval = xmin;
 
-	fimgRasterWrite(ctx->rasterizer.xClip.val, FGRA_XCLIP);
+	fimgWrite(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
 }
 
 /*****************************************************************************
@@ -159,7 +139,7 @@ void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
 void fimgSetPointWidth(fimgContext *ctx, float pWidth)
 {
 	ctx->rasterizer.pointWidth = pWidth;
-	fimgRasterWriteF(pWidth, FGRA_PWIDTH);
+	fimgWriteF(ctx, pWidth, FGRA_PWIDTH);
 }
 
 /*****************************************************************************
@@ -170,7 +150,7 @@ void fimgSetPointWidth(fimgContext *ctx, float pWidth)
 void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin)
 {
 	ctx->rasterizer.pointWidthMin = pWidthMin;
-	fimgRasterWriteF(pWidthMin, FGRA_PSIZE_MIN);
+	fimgWriteF(ctx, pWidthMin, FGRA_PSIZE_MIN);
 }
 
 /*****************************************************************************
@@ -181,7 +161,7 @@ void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin)
 void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax)
 {
 	ctx->rasterizer.pointWidthMax = pWidthMax;
-	fimgRasterWriteF(pWidthMax, FGRA_PSIZE_MAX);
+	fimgWriteF(ctx, pWidthMax, FGRA_PSIZE_MAX);
 }
 
 /*****************************************************************************
@@ -194,7 +174,7 @@ void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax)
 void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum)
 {
 	ctx->rasterizer.spriteCoordAttrib = FGRA_COORDREPLACE_VAL(coordReplaceNum);
-	fimgRasterWrite(FGRA_COORDREPLACE_VAL(coordReplaceNum), FGRA_COORDREPLACE);
+	fimgWrite(ctx, FGRA_COORDREPLACE_VAL(coordReplaceNum), FGRA_COORDREPLACE);
 }
 
 /*****************************************************************************
@@ -205,7 +185,7 @@ void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum)
 void fimgSetLineWidth(fimgContext *ctx, float lWidth)
 {
 	ctx->rasterizer.lineWidth = lWidth;
-	fimgRasterWriteF(lWidth, FGRA_LWIDTH);
+	fimgWriteF(ctx, lWidth, FGRA_LWIDTH);
 }
 
 void fimgCreateRasterizerContext(fimgContext *ctx)
@@ -218,16 +198,16 @@ void fimgCreateRasterizerContext(fimgContext *ctx)
 
 void fimgRestoreRasterizerState(fimgContext *ctx)
 {
-	fimgRasterWrite(ctx->rasterizer.samplePos, FGRA_PIX_SAMP);
-	fimgRasterWrite(ctx->rasterizer.dOffEn, FGRA_D_OFF_EN);
-	fimgRasterWriteF(ctx->rasterizer.dOffFactor, FGRA_D_OFF_FACTOR);
-	fimgRasterWriteF(ctx->rasterizer.dOffUnits, FGRA_D_OFF_UNITS);
-	fimgRasterWrite(ctx->rasterizer.cull.val, FGRA_BFCULL);
-	fimgRasterWrite(ctx->rasterizer.yClip.val, FGRA_YCLIP);
-	fimgRasterWrite(ctx->rasterizer.xClip.val, FGRA_XCLIP);
-	fimgRasterWriteF(ctx->rasterizer.pointWidth, FGRA_PWIDTH);
-	fimgRasterWriteF(ctx->rasterizer.pointWidthMin, FGRA_PSIZE_MIN);
-	fimgRasterWriteF(ctx->rasterizer.pointWidthMax, FGRA_PSIZE_MAX);
-	fimgRasterWrite(ctx->rasterizer.spriteCoordAttrib, FGRA_COORDREPLACE);
-	fimgRasterWriteF(ctx->rasterizer.lineWidth, FGRA_LWIDTH);
+	fimgWrite(ctx, ctx->rasterizer.samplePos, FGRA_PIX_SAMP);
+	fimgWrite(ctx, ctx->rasterizer.dOffEn, FGRA_D_OFF_EN);
+	fimgWriteF(ctx, ctx->rasterizer.dOffFactor, FGRA_D_OFF_FACTOR);
+	fimgWriteF(ctx, ctx->rasterizer.dOffUnits, FGRA_D_OFF_UNITS);
+	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
+	fimgWrite(ctx, ctx->rasterizer.yClip.val, FGRA_YCLIP);
+	fimgWrite(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
+	fimgWriteF(ctx, ctx->rasterizer.pointWidth, FGRA_PWIDTH);
+	fimgWriteF(ctx, ctx->rasterizer.pointWidthMin, FGRA_PSIZE_MIN);
+	fimgWriteF(ctx, ctx->rasterizer.pointWidthMax, FGRA_PSIZE_MAX);
+	fimgWrite(ctx, ctx->rasterizer.spriteCoordAttrib, FGRA_COORDREPLACE);
+	fimgWriteF(ctx, ctx->rasterizer.lineWidth, FGRA_LWIDTH);
 }

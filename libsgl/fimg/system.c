@@ -10,24 +10,17 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifndef WIN32
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#else
-#define ioctl(args...)	(0)
-#define mmap(args...)	((void *)0)
-#define MAP_FAILED	0
-#define munmap(args...)
-#endif
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
 #include <cutils/log.h>
 
-int fimgFileDesc = -1;
-int fimgMemFileDesc = -1;
-volatile void *fimgBase = NULL;
-unsigned int refCount = 0;
+static int fimgFileDesc = -1;
+static int fimgMemFileDesc = -1;
+static volatile void *fimgBase = NULL;
+static unsigned int refCount = 0;
 
 #define FIMG_SFR_BASE 0x72000000
 #define FIMG_SFR_SIZE 0x80000
@@ -50,34 +43,39 @@ struct s3c_3d_mem_alloc {
  * RETURNS:	 0, on success
  *		-errno, on error
  *****************************************************************************/
-int fimgDeviceOpen(void)
+static int fimgDeviceOpen(fimgContext *ctx)
 {
-	int fd, memfd;
+	if(!refCount) {
+		fimgFileDesc = open("/dev/s3c-g3d", O_RDWR, 0);
+		if(fimgFileDesc < 0) {
+			LOGE("Couldn't open /dev/s3c-g3d (%s).", strerror(errno));
+			return -errno;
+		}
 
-	fd = open("/dev/s3c-g3d", O_RDWR, 0);
-	if(fd < 0) {
-		LOGE("Couldn't open /dev/s3c-g3d (%s).", strerror(errno));
-		return -errno;
+		fimgMemFileDesc = open("/dev/mem", O_RDWR | O_SYNC, 0);
+		if(fimgMemFileDesc < 0) {
+			LOGE("Couldn't open /dev/mem (%s).", strerror(errno));
+			close(fimgFileDesc);
+			return -errno;
+		}
+
+		fimgBase = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, fimgMemFileDesc, FIMG_SFR_BASE);
+		if(fimgBase == MAP_FAILED) {
+			LOGE("Couldn't mmap FIMG registers (%s).", strerror(errno));
+			close(fimgFileDesc);
+			close(fimgMemFileDesc);
+			return -errno;
+		}
+
+		LOGD("fimg3D: Opened /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
 	}
 
-	memfd = open("/dev/mem", O_RDWR | O_SYNC, 0);
-	if(memfd < 0) {
-		LOGE("Couldn't open /dev/mem (%s).", strerror(errno));
-		close(fd);
-		return -errno;
-	}
+	ctx->base = fimgBase;
+	ctx->fd = fimgFileDesc;
+	ctx->memfd = fimgMemFileDesc;
 
-	fimgBase = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, memfd, FIMG_SFR_BASE);
-	if(fimgBase == MAP_FAILED) {
-		LOGE("Couldn't mmap FIMG registers (%s).", strerror(errno));
-		close(fd);
-		close(memfd);
-		return -errno;
-	}
+	refCount++;
 
-	LOGD("fimg3D: Opened /dev/s3c-g3d (%d) and /dev/mem (%d).", fd, memfd);
-	fimgFileDesc = fd;
-	fimgMemFileDesc = memfd;
 	return 0;
 }
 
@@ -85,20 +83,17 @@ int fimgDeviceOpen(void)
  * FUNCTION:	fimgDeviceClose
  * SYNOPSIS:	This function closes the 3D device
  *****************************************************************************/
-void fimgDeviceClose(void)
+static void fimgDeviceClose(fimgContext *ctx)
 {
-	if(fimgFileDesc < 0) {
-		LOGW("fimg3D warning: Trying to close already closed device.");
-		return;
+	refCount--;
+
+	if(!refCount) {
+		munmap((void *)ctx->base, FIMG_SFR_SIZE);
+		close(ctx->fd);
+		close(ctx->memfd);
+
+		LOGD("fimg3D: Closed /dev/s3c-g3d (%d) and /dev/mem (%d).", ctx->fd, ctx->memfd);
 	}
-
-	munmap((void *)fimgBase, FIMG_SFR_SIZE);
-	close(fimgFileDesc);
-	close(fimgMemFileDesc);
-
-	LOGD("fimg3D: Closed /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
-
-	fimgFileDesc = -1;
 }
 
 /*****************************************************************************
@@ -108,13 +103,14 @@ void fimgDeviceClose(void)
  * 		[out] paddr - physical address
  * RETURNS:	virtual address of allocated block
  *****************************************************************************/
-void *fimgAllocMemory(unsigned long *size, unsigned long *paddr)
+void *fimgAllocMemory(fimgContext *ctx,
+		      unsigned long *size, unsigned long *paddr)
 {
 	struct s3c_3d_mem_alloc mem;
 
 	mem.size = *size;
 	
-	ioctl(fimgFileDesc, S3C_3D_MEM_ALLOC, &mem);
+	ioctl(ctx->fd, S3C_3D_MEM_ALLOC, &mem);
 
 	LOGD("Allocated %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
 
@@ -130,7 +126,8 @@ void *fimgAllocMemory(unsigned long *size, unsigned long *paddr)
  *		[in] paddr - physical address
  *		[in] size - size
  *****************************************************************************/
-void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
+void fimgFreeMemory(fimgContext *ctx,
+		    void *vaddr, unsigned long paddr, unsigned long size)
 {
 	struct s3c_3d_mem_alloc mem;
 
@@ -140,16 +137,21 @@ void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
 
 	LOGD("Freed %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
 
-	ioctl(fimgFileDesc, S3C_3D_MEM_FREE, &mem);
+	ioctl(ctx->fd, S3C_3D_MEM_FREE, &mem);
 }
 
 fimgContext *fimgCreateContext(void)
 {
-	fimgContext *ctx = malloc(sizeof(*ctx));
+	fimgContext *ctx;
 	int i;
 
-	if(!ctx)
+	if((ctx = malloc(sizeof(*ctx))) == NULL)
 		return NULL;
+
+	if(fimgDeviceOpen(ctx)) {
+		free(ctx);
+		return NULL;
+	}
 
 	memset(ctx, 0, sizeof(fimgContext));
 
@@ -161,31 +163,26 @@ fimgContext *fimgCreateContext(void)
 
 	ctx->numAttribs = 0;
 
-	if(!refCount++) {
-		if(fimgDeviceOpen()) {
-			free(ctx);
-			refCount--;
-			return NULL;
-		}
-	}
-
 	return ctx;
 }
 
 void fimgDestroyContext(fimgContext *ctx)
 {
+	fimgDeviceClose(ctx);
 	free(ctx);
-
-	if(!--refCount)
-		fimgDeviceClose();
 }
 
 void fimgRestoreContext(fimgContext *ctx)
 {
+	fprintf(stderr, "fimg: Restoring global state\n"); fflush(stderr);
 	fimgRestoreGlobalState(ctx);
+	fprintf(stderr, "fimg: Restoring host state\n"); fflush(stderr);
 	fimgRestoreHostState(ctx);
+	fprintf(stderr, "fimg: Restoring primitive state\n"); fflush(stderr);
 	fimgRestorePrimitiveState(ctx);
+	fprintf(stderr, "fimg: Restoring rasterizer state\n"); fflush(stderr);
 	fimgRestoreRasterizerState(ctx);
+	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
 	fimgRestoreFragmentState(ctx);
 }
 

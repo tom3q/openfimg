@@ -11,36 +11,13 @@
 
 #define PRIMITIVE_OFFSET		0x30000
 
-#define FGPE_VERTEX_CONTEXT		PRIMITIVE_ADDR(0x00)
-#define FGPE_VIEWPORT_OX		PRIMITIVE_ADDR(0x04)
-#define FGPE_VIEWPORT_OY		PRIMITIVE_ADDR(0x08)
-#define FGPE_VIEWPORT_HALF_PX		PRIMITIVE_ADDR(0x0c)
-#define FGPE_VIEWPORT_HALF_PY		PRIMITIVE_ADDR(0x10)
-#define FGPE_DEPTHRANGE_HALF_F_SUB_N	PRIMITIVE_ADDR(0x14)
-#define FGPE_DEPTHRANGE_HALF_F_ADD_N	PRIMITIVE_ADDR(0x18)
-
-#define PRIMITIVE_OFFS(reg)	(PRIMITIVE_OFFSET + (reg))
-#define PRIMITIVE_ADDR(reg)	((volatile unsigned int *)((char *)fimgBase + PRIMITIVE_OFFS(reg)))
-
-static inline void fimgPrimitiveWrite(unsigned int data, volatile unsigned int *reg)
-{
-	*reg = data;
-}
-
-static inline void fimgPrimitiveWriteF(float data, volatile unsigned int *reg)
-{
-	*((volatile float *)reg) = data;
-}
-
-static inline unsigned int fimgPrimitiveRead(volatile unsigned int *reg)
-{
-	return *reg;
-}
-
-static inline float fimgPrimitiveReadF(volatile unsigned int *reg)
-{
-	return *((volatile float *)reg);
-}
+#define FGPE_VERTEX_CONTEXT		(0x30000)
+#define FGPE_VIEWPORT_OX		(0x30004)
+#define FGPE_VIEWPORT_OY		(0x30008)
+#define FGPE_VIEWPORT_HALF_PX		(0x3000c)
+#define FGPE_VIEWPORT_HALF_PY		(0x30010)
+#define FGPE_DEPTHRANGE_HALF_F_SUB_N	(0x30014)
+#define FGPE_DEPTHRANGE_HALF_F_ADD_N	(0x30018)
 
 /*
  * Functions
@@ -59,7 +36,7 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type, unsigned int coun
 
 	ctx->numAttribs = count;
 
-	fimgPrimitiveWrite(ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
+	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
 }
 
 /*****************************************************************************
@@ -87,10 +64,10 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 	ctx->primitive.halfPX = half_px;
 	ctx->primitive.halfPY = half_py;
 
-	fimgPrimitiveWriteF(ox, FGPE_VIEWPORT_OX);
-	fimgPrimitiveWriteF(oy, FGPE_VIEWPORT_OY);
-	fimgPrimitiveWriteF(half_px, FGPE_VIEWPORT_HALF_PX);
-	fimgPrimitiveWriteF(half_py, FGPE_VIEWPORT_HALF_PY);
+	fimgWriteF(ctx, ox, FGPE_VIEWPORT_OX);
+	fimgWriteF(ctx, oy, FGPE_VIEWPORT_OY);
+	fimgWriteF(ctx, half_px, FGPE_VIEWPORT_HALF_PX);
+	fimgWriteF(ctx, half_py, FGPE_VIEWPORT_HALF_PY);
 }
 
 /*****************************************************************************
@@ -108,8 +85,8 @@ void fimgSetDepthRange(fimgContext *ctx, float n, float f)
 	ctx->primitive.halfDistance = half_distance;
 	ctx->primitive.center = center;
 
-	fimgPrimitiveWriteF(half_distance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
-	fimgPrimitiveWriteF(center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
+	fimgWriteF(ctx, half_distance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
+	fimgWriteF(ctx, center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }
 
 void fimgCreatePrimitiveContext(fimgContext *ctx)
@@ -120,11 +97,11 @@ void fimgCreatePrimitiveContext(fimgContext *ctx)
 
 void fimgRestorePrimitiveState(fimgContext *ctx)
 {
-	fimgPrimitiveWrite(ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
-	fimgPrimitiveWriteF(ctx->primitive.ox, FGPE_VIEWPORT_OX);
-	fimgPrimitiveWriteF(ctx->primitive.oy, FGPE_VIEWPORT_OY);
-	fimgPrimitiveWriteF(ctx->primitive.halfPX, FGPE_VIEWPORT_HALF_PX);
-	fimgPrimitiveWriteF(ctx->primitive.halfPY, FGPE_VIEWPORT_HALF_PY);
-	fimgPrimitiveWriteF(ctx->primitive.halfDistance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
-	fimgPrimitiveWriteF(ctx->primitive.center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
+	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
+	fimgWriteF(ctx, ctx->primitive.ox, FGPE_VIEWPORT_OX);
+	fimgWriteF(ctx, ctx->primitive.oy, FGPE_VIEWPORT_OY);
+	fimgWriteF(ctx, ctx->primitive.halfPX, FGPE_VIEWPORT_HALF_PX);
+	fimgWriteF(ctx, ctx->primitive.halfPY, FGPE_VIEWPORT_HALF_PY);
+	fimgWriteF(ctx, ctx->primitive.halfDistance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
+	fimgWriteF(ctx, ctx->primitive.center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }

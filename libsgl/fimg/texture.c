@@ -11,34 +11,31 @@
 
 #define TEXTURE_OFFSET	0x60000
 
-#define FGTU_TSTA(i)		TEXTURE_ADDR(0x00 + 0x50 * (i))
-#define FGTU_USIZE(i)		TEXTURE_ADDR(0x04 + 0x50 * (i))
-#define FGTU_VSIZE(i)		TEXTURE_ADDR(0x08 + 0x50 * (i))
-#define FGTU_PSIZE(i)		TEXTURE_ADDR(0x0c + 0x50 * (i))
-#define FGTU_TOFFS_L1(i)	TEXTURE_ADDR(0x10 + 0x50 * (i))
-#define FGTU_TOFFS_L2(i)	TEXTURE_ADDR(0x14 + 0x50 * (i))
-#define FGTU_TOFFS_L3(i)	TEXTURE_ADDR(0x18 + 0x50 * (i))
-#define FGTU_TOFFS_L4(i)	TEXTURE_ADDR(0x1c + 0x50 * (i))
-#define FGTU_TOFFS_L5(i)	TEXTURE_ADDR(0x20 + 0x50 * (i))
-#define FGTU_TOFFS_L6(i)	TEXTURE_ADDR(0x24 + 0x50 * (i))
-#define FGTU_TOFFS_L7(i)	TEXTURE_ADDR(0x28 + 0x50 * (i))
-#define FGTU_TOFFS_L8(i)	TEXTURE_ADDR(0x2c + 0x50 * (i))
-#define FGTU_TOFFS_L9(i)	TEXTURE_ADDR(0x30 + 0x50 * (i))
-#define FGTU_TOFFS_L10(i)	TEXTURE_ADDR(0x34 + 0x50 * (i))
-#define FGTU_TOFFS_L11(i)	TEXTURE_ADDR(0x38 + 0x50 * (i))
-#define FGTU_T_MIN_L(i)		TEXTURE_ADDR(0x3c + 0x50 * (i))
-#define FGTU_T_MAX_L(i)		TEXTURE_ADDR(0x40 + 0x50 * (i))
-#define FGTU_TBADD(i)		TEXTURE_ADDR(0x44 + 0x50 * (i))
-#define FGTU_CKEY(i)		TEXTURE_ADDR(0x280 + 4 * (i))
-#define FGTU_CKYUV		TEXTURE_ADDR(0x288)
-#define FGTU_CKMASK		TEXTURE_ADDR(0x28c)
-#define FGTU_PALETTE_ADDR	TEXTURE_ADDR(0x290)
-#define FGTU_PALETTE_IN		TEXTURE_ADDR(0x294)
-#define FGTU_VTSTA(i)		TEXTURE_ADDR(0x2c0 + 8 * (i))
-#define FGTU_VTBADDR(i)		TEXTURE_ADDR(0x2c4 + 8 * (i))
-
-#define TEXTURE_OFFS(reg)	(TEXTURE_OFFSET + (reg))
-#define TEXTURE_ADDR(reg)	((volatile unsigned int *)((char *)fimgBase + TEXTURE_OFFS(reg)))
+#define FGTU_TSTA(i)		(0x60000 + 0x50 * (i))
+#define FGTU_USIZE(i)		(0x60004 + 0x50 * (i))
+#define FGTU_VSIZE(i)		(0x60008 + 0x50 * (i))
+#define FGTU_PSIZE(i)		(0x6000c + 0x50 * (i))
+#define FGTU_TOFFS_L1(i)	(0x60010 + 0x50 * (i))
+#define FGTU_TOFFS_L2(i)	(0x60014 + 0x50 * (i))
+#define FGTU_TOFFS_L3(i)	(0x60018 + 0x50 * (i))
+#define FGTU_TOFFS_L4(i)	(0x6001c + 0x50 * (i))
+#define FGTU_TOFFS_L5(i)	(0x60020 + 0x50 * (i))
+#define FGTU_TOFFS_L6(i)	(0x60024 + 0x50 * (i))
+#define FGTU_TOFFS_L7(i)	(0x60028 + 0x50 * (i))
+#define FGTU_TOFFS_L8(i)	(0x6002c + 0x50 * (i))
+#define FGTU_TOFFS_L9(i)	(0x60030 + 0x50 * (i))
+#define FGTU_TOFFS_L10(i)	(0x60034 + 0x50 * (i))
+#define FGTU_TOFFS_L11(i)	(0x60038 + 0x50 * (i))
+#define FGTU_T_MIN_L(i)		(0x6003c + 0x50 * (i))
+#define FGTU_T_MAX_L(i)		(0x60040 + 0x50 * (i))
+#define FGTU_TBADD(i)		(0x60044 + 0x50 * (i))
+#define FGTU_CKEY(i)		(0x60280 + 4 * (i))
+#define FGTU_CKYUV		(0x60288)
+#define FGTU_CKMASK		(0x6028c)
+#define FGTU_PALETTE_ADDR	(0x60290)
+#define FGTU_PALETTE_IN		(0x60294)
+#define FGTU_VTSTA(i)		(0x602c0 + 8 * (i))
+#define FGTU_VTBADDR(i)		(0x602c4 + 8 * (i))
 
 typedef union {
 	unsigned int val;
@@ -59,16 +56,6 @@ typedef union {
 	} bits;
 } fimgTextureCKYUV;
 
-static inline void fimgTextureWrite(unsigned int data, volatile unsigned int *reg)
-{
-	*reg = data;
-}
-
-static inline unsigned int fimgTextureRead(volatile unsigned int *reg)
-{
-	return *reg;
-}
-
 /* TODO: Function inlining */
 
 /*****************************************************************************
@@ -83,48 +70,45 @@ static inline unsigned int fimgTextureRead(volatile unsigned int *reg)
 * PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
 *		[IN]	FGL_TexUnitParams params: texture parameter structure
 *****************************************************************************/
-void fimgSetTexUnitParams(unsigned int unit, fimgTexUnitParams *params)
+void fimgSetTexUnitParams(fimgContext *ctx,
+			  unsigned int unit, fimgTexUnitParams *params)
 {
-	unsigned int uUSize = params->uUSize;
-	unsigned int uVSize = params->uVSize;
-	unsigned int uPSize = params->uPSize;
-	unsigned int uIndex = 0;
-	volatile unsigned int *pTexRegBaseAddr;
 	unsigned int TexRegs[4] = {0, 0, 0, 0};
-	unsigned int *pTexRegVal = (unsigned int *)TexRegs;
-
-	pTexRegBaseAddr = FGTU_TSTA(unit);
+	unsigned int regAddr;
+	unsigned int *curReg;
 
 	if(!params->mipmapLvl && params->ctrl.bits.useMipmap)
 		params->ctrl.bits.useMipmap = FGTU_TSTA_MIPMAP_DISABLED;
 
-	//FGTU_TSTAx
-	TexRegs[uIndex++] = params->ctrl.val;
-	//FGTU_USIZEx
-	TexRegs[uIndex++] = uUSize;
-	//FGTU_VSIZEx
-	TexRegs[uIndex++] = uVSize;
-	//FGTU_PSIZEx
-	TexRegs[uIndex++] = uPSize;
+	curReg = TexRegs;
+	*(curReg++) = params->ctrl.val; //FGTU_TSTAx
+	*(curReg++) = params->uUSize;   //FGTU_USIZEx
+	*(curReg++) = params->uVSize;   //FGTU_VSIZEx
+	*(curReg++) = params->uPSize;   //FGTU_PSIZEx
 
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
+	curReg = TexRegs;
+	regAddr = FGTU_TSTA(unit);
+	fimgWrite(ctx, *(curReg++), regAddr);
+	regAddr += 4;
+	fimgWrite(ctx, *(curReg++), regAddr);
+	regAddr += 4;
+	fimgWrite(ctx, *(curReg++), regAddr);
+	regAddr += 4;
+	fimgWrite(ctx, *(curReg++), regAddr);
 
 	if(params->ctrl.bits.useMipmap) {
 		switch(params->ctrl.bits.textureFmt) {
 		case FGTU_TSTA_TEXTURE_FORMAT_S3TC:
-			params->mipmapLvl = fimgCalculateMipmapOffsetS3TC(unit, params->uUSize, params->uVSize, params->mipmapLvl);
+			params->mipmapLvl = fimgCalculateMipmapOffsetS3TC(ctx, unit, params->uUSize, params->uVSize, params->mipmapLvl);
 			break;
 		case FGTU_TSTA_TEXTURE_FORMAT_UY1VY0:
 		case FGTU_TSTA_TEXTURE_FORMAT_VY1UY0:
 		case FGTU_TSTA_TEXTURE_FORMAT_Y1UY0V:
 		case FGTU_TSTA_TEXTURE_FORMAT_Y1VY0U:
-			params->mipmapLvl = fimgCalculateMipmapOffsetYUV(unit, params->uUSize, params->uVSize, params->mipmapLvl);
+			params->mipmapLvl = fimgCalculateMipmapOffsetYUV(ctx, unit, params->uUSize, params->uVSize, params->mipmapLvl);
 			break;
 		default:
-			params->mipmapLvl = fimgCalculateMipmapOffset(unit, params->uUSize, params->uVSize, params->mipmapLvl);
+			params->mipmapLvl = fimgCalculateMipmapOffset(ctx, unit, params->uUSize, params->uVSize, params->mipmapLvl);
 		}
 	}
 }
@@ -141,9 +125,10 @@ void fimgSetTexUnitParams(unsigned int unit, fimgTexUnitParams *params)
 * PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
 *		[IN]	fimgTexControl params: texture parameter structure
 *****************************************************************************/
-void fimgSetTexStatusParams(unsigned int unit, fimgTexControl params)
+void fimgSetTexStatusParams(fimgContext *ctx,
+			    unsigned int unit, fimgTexControl params)
 {
-	fimgTextureWrite(params.val, FGTU_TSTA(unit));
+	fimgWrite(ctx, params.val, FGTU_TSTA(unit));
 }
 
 /*****************************************************************************
@@ -153,9 +138,10 @@ void fimgSetTexStatusParams(unsigned int unit, fimgTexControl params)
 * PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
 *		[IN]	unsigned int uSize: texture u size (0~2047)
 *****************************************************************************/
-void fimgSetTexUSize(unsigned int unit, unsigned int uSize)
+void fimgSetTexUSize(fimgContext *ctx,
+		     unsigned int unit, unsigned int uSize)
 {
-	fimgTextureWrite(uSize, FGTU_USIZE(unit));
+	fimgWrite(ctx, uSize, FGTU_USIZE(unit));
 }
 
 /*****************************************************************************
@@ -165,9 +151,10 @@ void fimgSetTexUSize(unsigned int unit, unsigned int uSize)
 * PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
 *		[IN]	unsigned int vSize: texture v size (0~2047)
 *****************************************************************************/
-void fimgSetTexVSize(unsigned int unit, unsigned int vSize)
+void fimgSetTexVSize(fimgContext *ctx,
+		     unsigned int unit, unsigned int vSize)
 {
-	fimgTextureWrite(vSize, FGTU_VSIZE(unit));
+	fimgWrite(ctx, vSize, FGTU_VSIZE(unit));
 }
 
 /*****************************************************************************
@@ -177,9 +164,10 @@ void fimgSetTexVSize(unsigned int unit, unsigned int vSize)
 * PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
 *		[IN]	unsigned int pSize: texture p size (0~2047)
 *****************************************************************************/
-void fimgSetTexPSize(unsigned int unit, unsigned int pSize)
+void fimgSetTexPSize(fimgContext *ctx,
+		     unsigned int unit, unsigned int pSize)
 {
-	fimgTextureWrite(pSize, FGTU_PSIZE(unit));
+	fimgWrite(ctx, pSize, FGTU_PSIZE(unit));
 }
 
 /*****************************************************************************
@@ -192,16 +180,15 @@ void fimgSetTexPSize(unsigned int unit, unsigned int pSize)
 *		[IN]	unsigned int maxLevel: max. mipmap level (0~11)
 * RETURNS:	Maximum level of texture mipmap
 *****************************************************************************/
-unsigned int fimgCalculateMipmapOffset(unsigned int unit,
-				       unsigned int uUSize,
-				       unsigned int uVSize,
+unsigned int fimgCalculateMipmapOffset(fimgContext *ctx, unsigned int unit,
+				       unsigned int uUSize, unsigned int uVSize,
 				       unsigned int maxLevel)
 {
 	unsigned int uMipMapSize;
 	unsigned int uOffset;
 	unsigned int uMipMapLevel = 0;
 	unsigned int uCheckSize;
-	volatile unsigned int *pTexRegBaseAddr = FGTU_TOFFS_L1(unit);
+	unsigned int regAddr = FGTU_TOFFS_L1(unit);
 
 	if(maxLevel > FGTU_MAX_MIPMAP_LEVEL)
 		maxLevel = FGTU_MAX_MIPMAP_LEVEL;
@@ -211,7 +198,8 @@ unsigned int fimgCalculateMipmapOffset(unsigned int unit,
 	uCheckSize = uUSize > uVSize ? uUSize : uVSize;
 	uCheckSize /= 2;
 	while(uCheckSize > 0) {
-		fimgTextureWrite(uOffset, pTexRegBaseAddr++);
+		fimgWrite(ctx, uOffset, regAddr);
+		regAddr += 4;
 
 		if(++uMipMapLevel == maxLevel)
 			break;
@@ -230,8 +218,8 @@ unsigned int fimgCalculateMipmapOffset(unsigned int unit,
 		uOffset += uMipMapSize;
 	}
 
-	fimgTextureWrite(0, FGTU_T_MIN_L(unit));
-	fimgTextureWrite(uMipMapLevel, FGTU_T_MAX_L(unit));
+	fimgWrite(ctx, 0, FGTU_T_MIN_L(unit));
+	fimgWrite(ctx, uMipMapLevel, FGTU_T_MAX_L(unit));
 
 	return uMipMapLevel;
 }
@@ -246,18 +234,15 @@ unsigned int fimgCalculateMipmapOffset(unsigned int unit,
 *		[IN]	unsigned int maxLevel: max. mipmap level (0~11)
 * RETURNS:	Maximum level of texture mipmap
 *****************************************************************************/
-unsigned int fimgCalculateMipmapOffsetYUV(unsigned int unit,
-		unsigned int uUSize,
-		unsigned int uVSize,
-		unsigned int maxLevel)
+unsigned int fimgCalculateMipmapOffsetYUV(fimgContext *ctx, unsigned int unit,
+					  unsigned int uUSize, unsigned int uVSize,
+					  unsigned int maxLevel)
 {
 	unsigned int uMipMapSize;
 	unsigned int uOffset;
 	unsigned int uMipMapLevel = 0;
 	unsigned int uCheckSize;
-	unsigned int TexRegs[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-	unsigned int *pTexRegVal = (unsigned int *)TexRegs;
-	volatile unsigned int *pTexRegBaseAddr = FGTU_TOFFS_L1(unit);
+	unsigned int regAddr = FGTU_TOFFS_L1(unit);
 
 	if(maxLevel > FGTU_MAX_MIPMAP_LEVEL)
 		maxLevel = FGTU_MAX_MIPMAP_LEVEL;
@@ -267,7 +252,8 @@ unsigned int fimgCalculateMipmapOffsetYUV(unsigned int unit,
 	uCheckSize = uUSize > uVSize ? uUSize : uVSize;
 	uCheckSize /= 2;
 	while(uCheckSize > 0) {
-		*(pTexRegVal++) = uOffset;
+		fimgWrite(ctx, uOffset, regAddr);
+		regAddr += 4;
 
 		if(++uMipMapLevel == maxLevel)
 			break;
@@ -289,22 +275,8 @@ unsigned int fimgCalculateMipmapOffsetYUV(unsigned int unit,
 		uOffset += uMipMapSize % 2;
 	}
 
-	TexRegs[12] = uMipMapLevel;
-
-	pTexRegVal = (unsigned int *)TexRegs;
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
+	fimgWrite(ctx, 0, FGTU_T_MIN_L(unit));
+	fimgWrite(ctx, uMipMapLevel, FGTU_T_MAX_L(unit));
 
 	return uMipMapLevel;
 }
@@ -319,18 +291,15 @@ unsigned int fimgCalculateMipmapOffsetYUV(unsigned int unit,
 *		[IN]	unsigned int maxLevel: max. mipmap level (0~11)
 * RETURNS:	Maximum level of texture mipmap
 *****************************************************************************/
-unsigned int fimgCalculateMipmapOffsetS3TC(unsigned int unit,
-		unsigned int uUSize,
-		unsigned int uVSize,
-		unsigned int maxLevel)
+unsigned int fimgCalculateMipmapOffsetS3TC(fimgContext *ctx, unsigned int unit,
+					   unsigned int uUSize, unsigned int uVSize,
+					   unsigned int maxLevel)
 {
 	unsigned int uMipMapSize;
 	unsigned int uOffset;
 	unsigned int uMipMapLevel = 0;
 	unsigned int uCheckSize;
-	unsigned int TexRegs[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-	unsigned int *pTexRegVal = (unsigned int *)TexRegs;
-	volatile unsigned int *pTexRegBaseAddr = FGTU_TOFFS_L1(unit);
+	unsigned int regAddr = FGTU_TOFFS_L1(unit);
 
 	if(maxLevel > FGTU_MAX_MIPMAP_LEVEL)
 		maxLevel = FGTU_MAX_MIPMAP_LEVEL;
@@ -340,7 +309,8 @@ unsigned int fimgCalculateMipmapOffsetS3TC(unsigned int unit,
 	uCheckSize = uUSize > uVSize ? uUSize : uVSize;
 	uCheckSize /= 2;
 	while(uCheckSize > 0) {
-		*(pTexRegVal++) = uOffset;
+		fimgWrite(ctx, uOffset, regAddr);
+		regAddr += 4;
 
 		if(++uMipMapLevel == maxLevel)
 			break;
@@ -362,22 +332,8 @@ unsigned int fimgCalculateMipmapOffsetS3TC(unsigned int unit,
 		uOffset += (16 - (uMipMapSize % 16)) % 16;
 	}
 
-	TexRegs[12] = uMipMapLevel;
-
-	pTexRegVal = (unsigned int *)TexRegs;
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
-	fimgTextureWrite(*(pTexRegVal++), pTexRegBaseAddr++);
+	fimgWrite(ctx, 0, FGTU_T_MIN_L(unit));
+	fimgWrite(ctx, uMipMapLevel, FGTU_T_MAX_L(unit));
 
 	return uMipMapLevel;
 }
@@ -390,12 +346,13 @@ unsigned int fimgCalculateMipmapOffsetS3TC(unsigned int unit,
 *		[IN] int min: base level or negative to keep current value (<12)
 * 		[IN] int max: max level or negative to keep current value (<12)
 *****************************************************************************/
-void fimgSetTexMipmapLevel(unsigned int unit, int min, int max)
+void fimgSetTexMipmapLevel(fimgContext *ctx,
+			   unsigned int unit, int min, int max)
 {
 	if(min >= 0)
-		fimgTextureWrite(min, FGTU_T_MIN_L(unit));
+		fimgWrite(ctx, min, FGTU_T_MIN_L(unit));
 	if(max >= 0)
-		fimgTextureWrite(max, FGTU_T_MAX_L(unit));
+		fimgWrite(ctx, max, FGTU_T_MAX_L(unit));
 }
 
 /*****************************************************************************
@@ -405,9 +362,10 @@ void fimgSetTexMipmapLevel(unsigned int unit, int min, int max)
 * PARAMETERS:	[IN] unsigned int unit: texture unit (0~7)
 * 		[IN] unsigned int addr: base address
 *****************************************************************************/
-void fimgSetTexBaseAddr(unsigned int unit, unsigned int addr)
+void fimgSetTexBaseAddr(fimgContext *ctx,
+			unsigned int unit, unsigned int addr)
 {
-	fimgTextureWrite(addr, FGTU_TBADD(unit));
+	fimgWrite(ctx, addr, FGTU_TBADD(unit));
 }
 
 /*****************************************************************************
@@ -418,7 +376,7 @@ void fimgSetTexBaseAddr(unsigned int unit, unsigned int addr)
 *		[IN] unsigned char g: green value
 *		[IN] unsigned char b: blue value
 *****************************************************************************/
-void fimgSetTexColorKey(unsigned int unit,
+void fimgSetTexColorKey(fimgContext *ctx, unsigned int unit,
 			unsigned char r, unsigned char g, unsigned char b)
 {
 	fimgTextureCKey reg;
@@ -428,7 +386,7 @@ void fimgSetTexColorKey(unsigned int unit,
 	reg.bits.g = g;
 	reg.bits.b = b;
 
-	fimgTextureWrite(reg.val, FGTU_CKEY(!!unit));
+	fimgWrite(ctx, reg.val, FGTU_CKEY(!!unit));
 }
 
 /*****************************************************************************
@@ -437,7 +395,7 @@ void fimgSetTexColorKey(unsigned int unit,
 * PARAMETERS:	[IN] unsigned char u: color key U value
 * 		[IN] unsigned char v: color key V value
 *****************************************************************************/
-void fimgSetTexColorKeyYUV(unsigned char u, unsigned char v)
+void fimgSetTexColorKeyYUV(fimgContext *ctx, unsigned char u, unsigned char v)
 {
 	fimgTextureCKYUV reg;
 
@@ -445,7 +403,7 @@ void fimgSetTexColorKeyYUV(unsigned char u, unsigned char v)
 	reg.bits.u = u;
 	reg.bits.v = v;
 
-	fimgTextureWrite(reg.val, FGTU_CKYUV);
+	fimgWrite(ctx, reg.val, FGTU_CKYUV);
 }
 
 /*****************************************************************************
@@ -453,9 +411,9 @@ void fimgSetTexColorKeyYUV(unsigned char u, unsigned char v)
 * SYNOPSIS:	This function sets 3D color key mask register
 * PARAMETERS:	[IN] unsigned char bitsToMask: 3D color key mask value (0~7)
 *****************************************************************************/
-void fimgSetTexColorKeyMask(unsigned char bitsToMask)
+void fimgSetTexColorKeyMask(fimgContext *ctx, unsigned char bitsToMask)
 {
-	fimgTextureWrite(bitsToMask, FGTU_CKMASK);
+	fimgWrite(ctx, bitsToMask, FGTU_CKMASK);
 }
 
 /*****************************************************************************
@@ -463,9 +421,9 @@ void fimgSetTexColorKeyMask(unsigned char bitsToMask)
 * SYNOPSIS:	This function sets palette address for texturing
 * PARAMETERS:	[IN] unsigned int addr: 8-bit palette address (0~255)
 *****************************************************************************/
-void fimgSetTexPaletteAddr(unsigned char addr)
+void fimgSetTexPaletteAddr(fimgContext *ctx, unsigned char addr)
 {
-	fimgTextureWrite(addr, FGTU_PALETTE_ADDR);
+	fimgWrite(ctx, addr, FGTU_PALETTE_ADDR);
 }
 
 /*****************************************************************************
@@ -473,9 +431,9 @@ void fimgSetTexPaletteAddr(unsigned char addr)
 * SYNOPSIS:	This function sets palette entry for texturing
 * PARAMETERS:	[IN] unsigned int entry: palette data in
 *****************************************************************************/
-void fimgSetTexPaletteEntry(unsigned int entry)
+void fimgSetTexPaletteEntry(fimgContext *ctx, unsigned int entry)
 {
-	fimgTextureWrite(entry, FGTU_PALETTE_IN);
+	fimgWrite(ctx, entry, FGTU_PALETTE_IN);
 }
 
 /*****************************************************************************
@@ -485,9 +443,10 @@ void fimgSetTexPaletteEntry(unsigned int entry)
 * PARAMETERS:	[IN] unsigned int unit: vertex texture unit ( 0~3 )
 *		[IN] FGL_VtxTexStatusReg vts: vertex texture status structure
 *****************************************************************************/
-void fimgSetVtxTexUnitParams(unsigned int unit, fimgVtxTexControl vts)
+void fimgSetVtxTexUnitParams(fimgContext *ctx, unsigned int unit,
+			     fimgVtxTexControl vts)
 {
-	fimgTextureWrite(vts.val, FGTU_VTSTA(unit));
+	fimgWrite(ctx, vts.val, FGTU_VTSTA(unit));
 }
 
 /*****************************************************************************
@@ -497,7 +456,8 @@ void fimgSetVtxTexUnitParams(unsigned int unit, fimgVtxTexControl vts)
 * PARAMETERS:	[IN] unsigned int unit: vertex texture unit ( 0~3 )
 * 		[IN] unsigned int addr: vertex texture base address
 *****************************************************************************/
-void fimgSetVtxTexBaseAddr(unsigned int unit, unsigned int addr)
+void fimgSetVtxTexBaseAddr(fimgContext *ctx, unsigned int unit,
+			   unsigned int addr)
 {
-	fimgTextureWrite(addr, FGTU_VTBADDR(unit));
+	fimgWrite(ctx, addr, FGTU_VTBADDR(unit));
 }

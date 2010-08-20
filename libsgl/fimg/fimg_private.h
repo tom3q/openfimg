@@ -12,7 +12,7 @@
 /* Include public part */
 #include "fimg.h"
 
-extern volatile void *fimgBase;
+// extern volatile void *fimgBase;
 
 /*
  * Host interface
@@ -95,7 +95,7 @@ typedef union {
 #define BUILD_SHADER_VERSION(major, minor)	(0xFFFF0000 | (((minor)&0xFF)<<8) | ((major) & 0xFF))
 #define VERTEX_SHADER_MAGIC 			(((('V')&0xFF)<<0)|((('S')&0xFF)<<8)|(((' ')&0xFF)<<16)|(((' ')&0xFF)<<24))
 #define PIXEL_SHADER_MAGIC 			(((('P')&0xFF)<<0)|((('S')&0xFF)<<8)|(((' ')&0xFF)<<16)|(((' ')&0xFF)<<24))
-#define SHADER_VERSION 				BUILD_SHADER_VERSION(3,0)
+#define SHADER_VERSION 				BUILD_SHADER_VERSION(8,0)
 #define FGVS_ATTRIB(i)				(3 - ((i) % 4))
 #define FGVS_ATTRIB_BANK(i)			(((i) / 4) & 3)
 
@@ -104,13 +104,18 @@ typedef struct {
 	unsigned int	Magic;
 	unsigned int	Version;
 	unsigned int	HeaderSize;
-	unsigned int	InTableSize;
-	unsigned int	OutTableSize;
-	unsigned int	SamTableSize;
+	unsigned int	fimgVersion;
+
 	unsigned int	InstructSize;
 	unsigned int	ConstFloatSize;
 	unsigned int	ConstIntSize;
 	unsigned int	ConstBoolSize;
+
+	unsigned int	InTableSize;
+	unsigned int	OutTableSize;
+	unsigned int	UniformTableSize;
+	unsigned int	SamTableSize;
+
 	unsigned int	reserved[6];
 } fimgShaderHeader;
 
@@ -325,6 +330,9 @@ void fimgCreateFragmentContext(fimgContext *ctx);
 void fimgRestoreFragmentState(fimgContext *ctx);
 
 struct _fimgContext {
+	volatile char *base;
+	int fd;
+	int memfd;
 	/* Individual contexts */
 	fimgGlobalContext global;
 	fimgHostContext host;
@@ -334,5 +342,30 @@ struct _fimgContext {
 	/* Shared context */
 	unsigned int numAttribs;
 };
+
+/* Registry accessors */
+static inline void fimgWrite(fimgContext *ctx, unsigned int data, unsigned int addr)
+{
+	volatile unsigned int *reg = (volatile unsigned int *)((volatile char *)ctx->base + addr);
+	*reg = data;
+}
+
+static inline unsigned int fimgRead(fimgContext *ctx, unsigned int addr)
+{
+	volatile unsigned int *reg = (volatile unsigned int *)((volatile char *)ctx->base + addr);
+	return *reg;
+}
+
+static inline void fimgWriteF(fimgContext *ctx, float data, unsigned int addr)
+{
+	volatile float *reg = (volatile float *)((volatile char *)ctx->base + addr);
+	*reg = data;
+}
+
+static inline float fimgReadF(fimgContext *ctx, unsigned int addr)
+{
+	volatile float *reg = (volatile float *)((volatile char *)ctx->base + addr);
+	return *reg;
+}
 
 #endif /* _FIMG_PRIVATE_H_ */

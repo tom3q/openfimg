@@ -119,9 +119,14 @@ struct FGLEGLState {
 
 struct FGLShaderState {
 	const unsigned int *data;
+	unsigned int numAttribs;
+
+	FGLShaderState() : data(0), numAttribs(1) {};
 };
 
 struct FGLContext {
+	/* HW state */
+	fimgContext *fimg;
 	/* GL state */
 	FGLvec4f vertex[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLArrayState array[4 + FGL_MAX_TEXTURE_UNITS];
@@ -132,21 +137,23 @@ struct FGLContext {
 	FGLShaderState pixelShader;
 	/* EGL state */
 	FGLEGLState egl;
-	/* HW state */
-	fimgContext *fimg;
 
 	/* Static initializers */
 	static FGLvec4f defaultVertex[4 + FGL_MAX_TEXTURE_UNITS];
 
 	FGLContext(fimgContext *fctx)
-	: activeTexture(0), fimg(fctx)
+	: fimg(fctx), activeTexture(0)
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 	}
 };
 
+// We attempt to run in parallel with software GL
+#define FGL_AGL_COEXIST
+
+#ifndef FGL_AGL_COEXIST
 // We have a dedicated TLS slot in bionic
-#if 0
+
 inline void setGlThreadSpecific(FGLContext* value)
 {
 	((uint32_t *)__get_tls())[TLS_SLOT_OPENGL] = (uint32_t)value;
@@ -156,7 +163,9 @@ inline FGLContext* getGlThreadSpecific()
 {
 	return (FGLContext *)(((unsigned *)__get_tls())[TLS_SLOT_OPENGL]);
 }
-#else
+#else // FGL_AGL_COEXIST
+// We have to coexist with software GL
+
 #include <pthread.h>
 
 extern pthread_mutex_t eglContextKeyMutex;
@@ -176,16 +185,8 @@ inline void setGlThreadSpecific(FGLContext* value)
 
 inline FGLContext* getGlThreadSpecific()
 {
-	FGLContext *ctx = (FGLContext *)pthread_getspecific(eglContextKey);
-
-#ifdef EGL_DEBUG
-	if(ctx == NULL) {
-		LOGD("EGL context is NULL!");
-	}
-#endif
-
-	return ctx;
+	return (FGLContext *)pthread_getspecific(eglContextKey);
 }
-#endif
+#endif // FGL_AGL_COEXIST
 
 #endif // _LIBSGL_STATE_H_

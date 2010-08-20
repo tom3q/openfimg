@@ -16,31 +16,19 @@
 
 #define VSHADER_OFFSET		0x10000
 
-#define FGVS_INSTMEM_START	VSHADER_ADDR(0x0000)
-#define FGVS_INSTMEM(i)		(FGVS_INSTMEM_START + 4*(i))
+#define FGVS_INSTMEM_START	(0x10000)
 
-#define FGVS_CFLOAT_START	VSHADER_ADDRF(0x4000)
-#define FGVS_CFLOAT_X(i)	(0x00 + FGVS_CFLOAT_START + 4*(i))
-#define FGVS_CFLOAT_Y(i)	(0x04 + FGVS_CFLOAT_START + 4*(i))
-#define FGVS_CFLOAT_Z(i)	(0x08 + FGVS_CFLOAT_START + 4*(i))
-#define FGVS_CFLOAT_W(i)	(0x0c + FGVS_CFLOAT_START + 4*(i))
+#define FGVS_CFLOAT_START	(0x14000)
+#define FGVS_CINT_START		(0x18000)
+#define FGVS_CBOOL_START	(0x18400)
 
-#define FGVS_CINT_START		VSHADER_ADDR(0x8000)
-#define FGVS_CINT(i)		(FGVS_CINT_START + (i))
+#define FGVS_CONFIG		(0x1c800)
+#define FGVS_STATUS		(0x1c804)
+#define FGVS_PCRANGE		(0x20000)
+#define FGVS_ATTRIB_NUM		(0x20004)
 
-#define FGVS_CBOOL_START	VSHADER_ADDR(0x8400)
-
-#define FGVS_CONFIG		VSHADER_ADDR(0xc800)
-#define FGVS_STATUS		VSHADER_ADDR(0xc804)
-#define FGVS_PCRANGE		VSHADER_ADDR(0x10000)
-#define FGVS_ATTRIB_NUM		VSHADER_ADDR(0x10004)
-
-#define FGVS_IN_ATTR_IDX(i)	VSHADER_ADDR(0x10008 + 4*(i))
-#define FGVS_OUT_ATTR_IDX(i)	VSHADER_ADDR(0x10014 + 4*(i))
-
-#define VSHADER_OFFS(reg)	(VSHADER_OFFSET + (reg))
-#define VSHADER_ADDR(reg)	((volatile unsigned int *)((char *)fimgBase + VSHADER_OFFS(reg)))
-#define VSHADER_ADDRF(reg)	((volatile float *)((char *)fimgBase + VSHADER_OFFS(reg)))
+#define FGVS_IN_ATTR_IDX(i)	(0x20008 + 4*(i))
+#define FGVS_OUT_ATTR_IDX(i)	(0x20014 + 4*(i))
 
 typedef union {
 	unsigned int val;
@@ -70,51 +58,22 @@ typedef union {
 	} attrib[4];
 } fimgVShaderAttrIdx;
 
-static inline void fimgVShaderWrite(unsigned int data, volatile unsigned int *reg)
-{
-	*reg = data;
-}
-
-static inline void fimgVShaderWriteF(float data, volatile float *reg)
-{
-	*reg = data;
-}
-
-static inline unsigned int fimgVShaderRead(volatile unsigned int *reg)
-{
-	return *reg;
-}
-
 /*
  * Pixel shader
  */
 
-#define PSHADER_OFFSET		0x40000
+#define FGPS_INSTMEM_START	(0x40000)
 
-#define FGPS_INSTMEM_START	PSHADER_ADDR(0x0000)
-#define FGPS_INSTMEM(i)		(FGPS_INSTMEM_START + 4*(i))
+#define FGPS_CFLOAT_START	(0x44000)
+#define FGPS_CINT_START		(0x48000)
+#define FGPS_CBOOL_START	(0x48400)
 
-#define FGPS_CFLOAT_START	PSHADER_ADDRF(0x4000)
-#define FGPS_CFLOAT_X(i)	(0x00 + FGPS_CFLOAT_START + 4*(i))
-#define FGPS_CFLOAT_Y(i)	(0x04 + FGPS_CFLOAT_START + 4*(i))
-#define FGPS_CFLOAT_Z(i)	(0x08 + FGPS_CFLOAT_START + 4*(i))
-#define FGPS_CFLOAT_W(i)	(0x0c + FGPS_CFLOAT_START + 4*(i))
-
-#define FGPS_CINT_START		PSHADER_ADDR(0x8000)
-#define FGPS_CINT(i)		(FGPS_CINT_START + (i))
-
-#define FGPS_CBOOL_START	PSHADER_ADDR(0x8400)
-
-#define FGPS_EXE_MODE		PSHADER_ADDR(0xc800)
-#define FGPS_PC_START		PSHADER_ADDR(0xc804)
-#define FGPS_PC_END		PSHADER_ADDR(0xc808)
-#define FGPS_PC_COPY		PSHADER_ADDR(0xc80c)
-#define FGPS_ATTRIB_NUM		PSHADER_ADDR(0xc810)
-#define FGPS_IBSTATUS		PSHADER_ADDR(0xc814)
-
-#define PSHADER_OFFS(reg)	(PSHADER_OFFSET + (reg))
-#define PSHADER_ADDR(reg)	((volatile unsigned int *)((char *)fimgBase + PSHADER_OFFS(reg)))
-#define PSHADER_ADDRF(reg)	((volatile float *)((char *)fimgBase + PSHADER_OFFS(reg)))
+#define FGPS_EXE_MODE		(0x4c800)
+#define FGPS_PC_START		(0x4c804)
+#define FGPS_PC_END		(0x4c808)
+#define FGPS_PC_COPY		(0x4c80c)
+#define FGPS_ATTRIB_NUM		(0x4c810)
+#define FGPS_IBSTATUS		(0x4c814)
 
 typedef union {
 	unsigned int val;
@@ -124,21 +83,6 @@ typedef union {
 		unsigned PCEnd		:9;
 	} bits;
 } fimgPShaderPCEnd;
-
-static inline void fimgPShaderWrite(unsigned int data, volatile unsigned int *reg)
-{
-	*reg = data;
-}
-
-static inline void fimgPShaderWriteF(float data, volatile float *reg)
-{
-	*reg = data;
-}
-
-static inline unsigned int fimgPShaderRead(volatile unsigned int *reg)
-{
-	return *reg;
-}
 
 typedef enum {
 	FGVS_ATRBDEF_POSITION  = 0x10,
@@ -175,13 +119,13 @@ static int _SearchAttribTable(unsigned int *pAttribTable,
  * PARAMETERS:	[IN] enable - specifies whether the end of PC range is ignored
  *                           or not.
  *****************************************************************************/
-void fimgVSSetIgnorePCEnd(int enable)
+void fimgVSSetIgnorePCEnd(fimgContext *ctx, int enable)
 {
 	fimgVShaderPCRange reg;
 
-	reg.val = fimgVShaderRead(FGVS_PCRANGE);
+	reg.val = fimgRead(ctx, FGVS_PCRANGE);
 	reg.bits.ignorePCEnd = !!enable;
-	fimgVShaderWrite(reg.val, FGVS_PCRANGE);
+	fimgWrite(ctx, reg.val, FGVS_PCRANGE);
 }
 
 /*****************************************************************************
@@ -191,7 +135,7 @@ void fimgVSSetIgnorePCEnd(int enable)
  * PARAMETERS:	[IN] start: the start program count of vertex shader program.
  *		[IN] end: the end program count of vertex shader program.
  *****************************************************************************/
-void fimgVSSetPCRange(unsigned int start, unsigned int end)
+void fimgVSSetPCRange(fimgContext *ctx, unsigned int start, unsigned int end)
 {
 	fimgVShaderPCRange PCRange;
 	fimgVShaderConfig Config;
@@ -199,11 +143,12 @@ void fimgVSSetPCRange(unsigned int start, unsigned int end)
 	PCRange.val = 0;
 	PCRange.bits.PCStart = start;
 	PCRange.bits.PCEnd = end;
-	fimgVShaderWrite(PCRange.val, FGVS_PCRANGE);
+	fimgWrite(ctx, PCRange.val, FGVS_PCRANGE);
 
 	Config.val = 0;
 	Config.bits.copyPC = 1;
-	fimgVShaderWrite(Config.val, FGVS_CONFIG);
+	Config.bits.clrStatus = 1;
+	fimgWrite(ctx, Config.val, FGVS_CONFIG);
 }
 
 /*****************************************************************************
@@ -213,9 +158,9 @@ void fimgVSSetPCRange(unsigned int start, unsigned int end)
  * PARAMETERS:	[in] intAttribNum: the number of attributes for the vertex
  *		shader input (0~8)
  *****************************************************************************/
-void fimgVSSetAttribNum(unsigned int inAttribNum)
+void fimgVSSetAttribNum(fimgContext *ctx, unsigned int inAttribNum)
 {
-	fimgVShaderWrite(inAttribNum, FGVS_ATTRIB_NUM);
+	fimgWrite(ctx, inAttribNum, FGVS_ATTRIB_NUM);
 }
 
 /*****************************************************************************
@@ -228,7 +173,8 @@ void fimgVSSetAttribNum(unsigned int inAttribNum)
  * RETURNS:	 0 on success,
  *		-1 on error
  *****************************************************************************/
-int fimgMakeShaderAttribTable(const unsigned int *pVertexShader,
+int fimgMakeShaderAttribTable(fimgContext *ctx,
+			      const unsigned int *pVertexShader,
 			      const unsigned int *pPixelShader,
 			      fimgShaderAttribTable *attribTable)
 {
@@ -300,7 +246,8 @@ int fimgMakeShaderAttribTable(const unsigned int *pVertexShader,
  * RETURNS:	 0, if successful
  *		-1, otherwise.
  *****************************************************************************/
-int fimgRemapVShaderOutAttrib(fimgShaderAttribTable *pShaderAttribTable)
+int fimgRemapVShaderOutAttrib(fimgContext *ctx,
+			      fimgShaderAttribTable *pShaderAttribTable)
 {
 	unsigned int i;
 	unsigned int nInAttribNum = 0;
@@ -349,7 +296,7 @@ int fimgRemapVShaderOutAttrib(fimgShaderAttribTable *pShaderAttribTable)
 	}
 
 	for(i = 0; i < 3; i++)
-		fimgVShaderWrite(OutAttribIndex[i].val, FGVS_OUT_ATTR_IDX(i));
+		fimgWrite(ctx, OutAttribIndex[i].val, FGVS_OUT_ATTR_IDX(i));
 
 	return 0;
 }
@@ -364,17 +311,18 @@ int fimgRemapVShaderOutAttrib(fimgShaderAttribTable *pShaderAttribTable)
  *				  otherwise, set input attribute table
  *		[in] value	- a value to order attributes.
  *****************************************************************************/
-void fimgSetVShaderAttribTable(unsigned int in, unsigned int idx,
+void fimgSetVShaderAttribTable(fimgContext *ctx,
+			       unsigned int in, unsigned int idx,
 			       unsigned int value)
 {
-	fimgVShaderWrite(value, (in) ? FGVS_IN_ATTR_IDX(idx) : FGVS_OUT_ATTR_IDX(idx));
+	fimgWrite(ctx, value, (in) ? FGVS_IN_ATTR_IDX(idx) : FGVS_OUT_ATTR_IDX(idx));
 }
 
 
 // Fragment Shader Register-level API
 
-int fimgPSInBufferStatusReady(void);
-int fimgPSSetExecMode(int exec);
+int fimgPSInBufferStatusReady(fimgContext *ctx);
+int fimgPSSetExecMode(fimgContext *ctx, int exec);
 
 /*****************************************************************************
  * FUNCTIONS:	fimgPSSetPCRange
@@ -385,11 +333,12 @@ int fimgPSSetExecMode(int exec);
  * RETURNS:	 0, if successful
  *		-1, on error
  *****************************************************************************/
-void fimgPSSetPCRange(unsigned int start, unsigned int end)
+inline void fimgPSSetPCRange(fimgContext *ctx,
+			     unsigned int start, unsigned int end)
 {
-	fimgPShaderWrite(start, FGPS_PC_START);
-	fimgPShaderWrite(end, FGPS_PC_END);
-	fimgPShaderWrite(1, FGPS_PC_COPY);
+	fimgWrite(ctx, start, FGPS_PC_START);
+	fimgWrite(ctx, end, FGPS_PC_END);
+	fimgWrite(ctx, 1, FGPS_PC_COPY);
 }
 
 /*****************************************************************************
@@ -401,21 +350,15 @@ void fimgPSSetPCRange(unsigned int start, unsigned int end)
  * RETURNS:	 0, if successful
  *		-1, on error
  *****************************************************************************/
-int fimgPSSetAttributeNum(unsigned int attributeNum)
+inline int fimgPSSetAttributeNum(fimgContext *ctx, unsigned int attributeNum)
 {
 	int ret;
 
-	if((ret = fimgPSSetExecMode(0)))
-		return ret;
-
-	fimgPShaderWrite(attributeNum, FGPS_ATTRIB_NUM);
+	fimgWrite(ctx, attributeNum, FGPS_ATTRIB_NUM);
 
 	do {
 		// TODO: Add some sleep
-	} while(!fimgPSInBufferStatusReady());
-
-	if((ret = fimgPSSetExecMode(1)))
-		return ret;
+	} while(!fimgPSInBufferStatusReady(ctx));
 
 	return 0;
 }
@@ -427,9 +370,9 @@ int fimgPSSetAttributeNum(unsigned int attributeNum)
  * RETURNS:	1, if buffer is ready
  *		0, otherwise
  *****************************************************************************/
-int fimgPSInBufferStatusReady(void)
+int fimgPSInBufferStatusReady(fimgContext *ctx)
 {
-	unsigned int uInBufStatus = fimgPShaderRead(FGPS_IBSTATUS);
+	unsigned int uInBufStatus = fimgRead(ctx, FGPS_IBSTATUS);
 
 	if(uInBufStatus) {
 		//printf((DBG_ERROR, "The input buffer of pixel shader is not ready);
@@ -449,17 +392,16 @@ int fimgPSInBufferStatusReady(void)
  * RETURNS:	 0, if successful
  *		-1, invalid shader code
  *****************************************************************************/
-int fimgLoadVShader(const unsigned int *pShaderCode)
+int fimgLoadVShader(fimgContext *ctx,
+		    const unsigned int *pShaderCode, unsigned int numAttribs)
 {
 	unsigned int i;
 	unsigned int size;
 	unsigned int offset = 0;
 	fimgVShaderAttrIdx AttribIdx;
 	unsigned int IdxVal = 0;
-	volatile unsigned int *pAddr;
-	volatile float *pfAddr;
-	unsigned int *pShaderData;
-	float *pfShaderData;
+	volatile void *pAddr;
+	void *pShaderData;
 
 	fimgShaderHeader *pShaderHeader = (fimgShaderHeader*)pShaderCode;
 	unsigned int *pShaderBody = (unsigned int*)(&pShaderHeader[1]);
@@ -467,12 +409,57 @@ int fimgLoadVShader(const unsigned int *pShaderCode)
 	if((pShaderHeader->Magic != VERTEX_SHADER_MAGIC) || (pShaderHeader->Version != SHADER_VERSION))
 		return -1;
 
+	if(pShaderHeader->InstructSize) {
+		// vertex shader instruction memory start addr.
+		pAddr = ctx->base + FGVS_INSTMEM_START;
+		pShaderData = pShaderBody + offset;
+		size = pShaderHeader->InstructSize;
+		offset += 4 * size;
+
+		// Program counter start/end address setting
+		fimgVSSetPCRange(ctx, 0, size - 1);
+
+		memcpy((void *)pAddr, pShaderData, 16 * size);
+	}
+
+	if(pShaderHeader->ConstFloatSize) {
+		// vertex shader float memory start addr.
+		pAddr = ctx->base + FGVS_CFLOAT_START;
+		pShaderData = pShaderBody + offset;
+		size = pShaderHeader->ConstFloatSize;
+		offset += 4 * size;
+
+		memcpy((void *)pAddr, pShaderData, 16 * size);
+	}
+
+	if(pShaderHeader->ConstIntSize) {
+		// vertex shader integer memory start addr.
+		pAddr = ctx->base + FGVS_CINT_START;
+		pShaderData = pShaderBody + offset;
+		size = pShaderHeader->ConstIntSize;
+		offset += size;
+
+		memcpy((void *)pAddr, pShaderData, 4 * size);
+	}
+
+	if(pShaderHeader->ConstBoolSize) {
+		pAddr = ctx->base + FGVS_CBOOL_START;
+		pShaderData = pShaderBody + offset;
+		size = pShaderHeader->ConstBoolSize;
+		offset += size;
+
+		memcpy((void *)pAddr, pShaderData, 4 * size);
+	}
+
+	fimgWrite(ctx, numAttribs, FGVS_ATTRIB_NUM);
+
+#if 0
 	if(pShaderHeader->InTableSize && pShaderHeader->OutTableSize) {
 		fimgShaderAttribNum num;
 		num.val = 0;
 		num.bits.in = pShaderHeader->InTableSize;
 		num.bits.out = pShaderHeader->OutTableSize;
-		fimgVShaderWrite(num.val, FGVS_ATTRIB_NUM);
+		fimgWrite(ctx, num.val, FGVS_ATTRIB_NUM);
 
 		pAddr = FGVS_IN_ATTR_IDX(0);
 		size = pShaderHeader->InTableSize;
@@ -483,7 +470,7 @@ int fimgLoadVShader(const unsigned int *pShaderCode)
 			for(i = 0; i < 4; i++)
 				AttribIdx.attrib[FGVS_ATTRIB(i)].num = IdxVal++;
 
-			fimgVShaderWrite(AttribIdx.val, pAddr++);
+			fimgWrite(ctx, AttribIdx.val, pAddr++);
 			size -= 4;
 		}
 
@@ -491,7 +478,7 @@ int fimgLoadVShader(const unsigned int *pShaderCode)
 			AttribIdx.val = 0;
 			for(i=0; i<size; i++)
 				AttribIdx.attrib[FGVS_ATTRIB(i)].num = IdxVal++;
-			fimgVShaderWrite(AttribIdx.val, pAddr++);
+			fimgWrite(ctx, AttribIdx.val, pAddr++);
 		}
 
 		pAddr = FGVS_OUT_ATTR_IDX(0);
@@ -504,7 +491,7 @@ int fimgLoadVShader(const unsigned int *pShaderCode)
 			for(i = 0; i < 4; i++)
 				AttribIdx.attrib[FGVS_ATTRIB(i)].num = IdxVal++;
 
-			fimgVShaderWrite(AttribIdx.val, pAddr++);
+			fimgWrite(ctx, AttribIdx.val, pAddr++);
 			size -= 4;
 		}
 
@@ -512,58 +499,30 @@ int fimgLoadVShader(const unsigned int *pShaderCode)
 			AttribIdx.val = 0;
 			for(i=0; i<size; i++)
 				AttribIdx.attrib[FGVS_ATTRIB(i)].num = IdxVal++;
-			fimgVShaderWrite(AttribIdx.val, pAddr++);
+			fimgWrite(ctx, AttribIdx.val, pAddr++);
 		}
+	}
+#else
+	fimgWrite(ctx, 0x03020100, FGVS_IN_ATTR_IDX(0));
+	fimgWrite(ctx, 0x07060504, FGVS_IN_ATTR_IDX(1));
+	fimgWrite(ctx, 0x0b0a0908, FGVS_IN_ATTR_IDX(2));
+
+	fimgWrite(ctx, 0x03020100, FGVS_OUT_ATTR_IDX(0));
+	fimgWrite(ctx, 0x07060504, FGVS_OUT_ATTR_IDX(1));
+	fimgWrite(ctx, 0x0b0a0908, FGVS_OUT_ATTR_IDX(2));
+#endif
+
+#if 0
+	if(pShaderHeader->UniformTableSize) {
+		// Unused
+		offset += pShaderHeader->UniformTableSize;
 	}
 
 	if(pShaderHeader->SamTableSize) {
 		// Unused
 		offset += pShaderHeader->SamTableSize;
 	}
-
-	if(pShaderHeader->InstructSize) {
-		// vertex shader instruction memory start addr.
-		pAddr = FGVS_INSTMEM_START;
-		pShaderData =(unsigned int *)(pShaderBody + offset);
-		size = pShaderHeader->InstructSize;
-		offset += size;
-
-		// Program counter start/end address setting
-		fimgVSSetPCRange(0, (size / 4) - 1);
-
-		do {
-			fimgVShaderWrite(*pShaderData++, pAddr++);
-		} while(--size);
-	}
-
-	if(pShaderHeader->ConstFloatSize) {
-		// vertex shader float memory start addr.
-		pfAddr = FGVS_CFLOAT_START;
-		pfShaderData =(float *)(pShaderBody + offset);
-		size = pShaderHeader->ConstFloatSize;
-		offset += size;
-
-		do {
-			fimgVShaderWriteF(*pfShaderData++, pfAddr++);
-		} while(--size);
-	}
-
-	if(pShaderHeader->ConstIntSize) {
-		// vertex shader integer memory start addr.
-		pAddr = (volatile unsigned int *)FGVS_CINT_START;
-		pShaderData =(unsigned int *)(pShaderBody + offset);
-		size = pShaderHeader->ConstIntSize;
-		offset += size;
-
-		do {
-			fimgVShaderWrite(*pShaderData++, pAddr++);
-		} while(--size);
-	}
-
-	if(pShaderHeader->ConstBoolSize) {
-		pShaderData =(unsigned int *)(pShaderBody + offset);
-		fimgVShaderWrite(*pShaderData, FGVS_CBOOL_START);
-	}
+#endif
 
 	return 0;
 }
@@ -581,13 +540,14 @@ int fimgLoadVShader(const unsigned int *pShaderCode)
  *          FGL_ERR_INVALID_VALUE           7
  *          FGL_ERR_INVALID_SHADER_CODE     8
  *****************************************************************************/
-int fimgLoadPShader(const unsigned int *pShaderCode)
+int fimgLoadPShader(fimgContext *ctx,
+		    const unsigned int *pShaderCode, unsigned int numAttribs)
 {
 	int ret;
 	unsigned int size;
 	unsigned int offset = 0;
-	volatile unsigned int *pAddr;
-	unsigned int *pShaderData;
+	volatile void *pAddr;
+	void *pShaderData;
 
 	fimgShaderHeader *pShaderHeader = (fimgShaderHeader*)pShaderCode;
 	unsigned int *pShaderBody = (unsigned int*)(&pShaderHeader[1]);
@@ -595,84 +555,88 @@ int fimgLoadPShader(const unsigned int *pShaderCode)
 	if((pShaderHeader->Magic != PIXEL_SHADER_MAGIC) || (pShaderHeader->Version != SHADER_VERSION))
 		return -1;
 
-	if(pShaderHeader->InTableSize) {
-		if((ret = fimgPSSetAttributeNum(pShaderHeader->InTableSize)) != 0)
-			return ret;
+	if((ret = fimgPSSetExecMode(ctx, 0)) != 0)
+		return ret;
 
-		offset += pShaderHeader->InTableSize;
-	}
-
-	if(pShaderHeader->OutTableSize != 0) {
-		// Unused
-		offset += pShaderHeader->OutTableSize;
-	}
-
-	if(pShaderHeader->SamTableSize != 0) {
-		// Unused
-		offset += pShaderHeader->SamTableSize;
-	}
-
-	if(pShaderHeader->InstructSize != 0) {
+	if(pShaderHeader->InstructSize) {
 		// pixel shader instruction memory start addr.
-		pAddr = FGPS_INSTMEM_START;
-		pShaderData =(unsigned int *)(pShaderBody + offset);
+		pAddr = ctx->base + FGPS_INSTMEM_START;
+		pShaderData = pShaderBody + offset;
 		size = pShaderHeader->InstructSize;
-		offset += size;
+		offset += 4 * size;
 
-		if((ret = fimgPSSetExecMode(0)) != 0)
-			return ret;
+		fimgPSSetPCRange(ctx, 0, size - 1);
 
-		fimgPSSetPCRange(0, (size / 4) - 1);
-
-		if((ret = fimgPSSetExecMode(1)) != 0)
-			return ret;
-
-		do {
-			fimgPShaderWrite(*pShaderData++, pAddr++);
-		} while(--size);
+		memcpy((void *)pAddr, pShaderData, 16 * size);
 	}
 
 	if(pShaderHeader->ConstFloatSize) {
 		// pixel shader float memory start addr.
-		pAddr = (volatile unsigned int *)FGPS_CFLOAT_START;
-		pShaderData =(unsigned int *)(pShaderBody + offset);
+		pAddr = ctx->base + FGPS_CFLOAT_START;
+		pShaderData = pShaderBody + offset;
 		size = pShaderHeader->ConstFloatSize;
-		offset += size;
+		offset += 4 * size;
 
-		do {
-			fimgPShaderWrite(*pShaderData++, pAddr++);
-		} while(--size);
+		memcpy((void *)pAddr, pShaderData, 16 * size);
 	}
 
 	if(pShaderHeader->ConstIntSize) {
 		// pixel shader integer memory start addr.
-		pAddr = (volatile unsigned int *)FGPS_CINT_START;
-		pShaderData =(unsigned int *)(pShaderBody + offset);
+		pAddr = ctx->base + FGPS_CINT_START;
+		pShaderData = pShaderBody + offset;
 		size = pShaderHeader->ConstIntSize;
 		offset += size;
 
-		do {
-			fimgPShaderWrite(*pShaderData++, pAddr++);
-		} while(--size);
+		memcpy((void *)pAddr, pShaderData, 4 * size);
 	}
 
 	if(pShaderHeader->ConstBoolSize) {
-		pShaderData =(unsigned int *)(pShaderBody + offset);
-		fimgPShaderWrite(*pShaderData, FGPS_CBOOL_START);
+		pAddr = ctx->base + FGPS_CBOOL_START;
+		pShaderData = pShaderBody + offset;
+		size = pShaderHeader->ConstBoolSize;
+		offset += size;
+
+		memcpy((void *)pAddr, pShaderData, 4 * size);
 	}
+	
+	fimgPSSetAttributeNum(ctx, numAttribs);
+
+#if 0
+	if(pShaderHeader->InTableSize) {
+		offset += pShaderHeader->InTableSize;
+	}
+
+	if(pShaderHeader->OutTableSize) {
+		// Unused
+		offset += pShaderHeader->OutTableSize;
+	}
+
+	if(pShaderHeader->UniformTableSize) {
+		// Unused
+		offset += pShaderHeader->UniformTableSize;
+	}
+
+	if(pShaderHeader->SamTableSize) {
+		// Unused
+		offset += pShaderHeader->SamTableSize;
+	}
+#endif
+
+	if((ret = fimgPSSetExecMode(ctx, 1)) != 0)
+		return ret;
 
 	return 0;
 }
 
-int fimgPSSetExecMode(int exec)
+int fimgPSSetExecMode(fimgContext *ctx, int exec)
 {
 	int target = !!exec;
-	int status = fimgPShaderRead(FGPS_EXE_MODE);
+	int status = fimgRead(ctx, FGPS_EXE_MODE);
 
 	if(status == target)
 		return 0;
 
-	fimgPShaderWrite(target, FGPS_EXE_MODE);
+	fimgWrite(ctx, target, FGPS_EXE_MODE);
 
 	return 0;
 }

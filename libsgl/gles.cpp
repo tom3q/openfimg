@@ -20,10 +20,19 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
+#include <pthread.h>
 #include <GLES/gl.h>
 #include "state.h"
 #include "types.h"
 #include "fimg/fimg.h"
+#include <cutils/log.h>
+
+/* Shaders */
+#include "vshader.h"
+#include "fshader.h"
+
+#define GLES_DEBUG
 
 /**
 	Client API information
@@ -64,24 +73,59 @@ static char const * const gExtensionsString =
 
 GLenum errorCode = GL_NO_ERROR;
 
+#ifndef GLES_DEBUG
 static inline FGLContext *getContext(void)
 {
 	return getGlThreadSpecific();
 }
+#else
+static inline FGLContext *_getContext(void)
+{
+	FGLContext *ctx = getGlThreadSpecific();
+
+	if(!ctx) {
+		LOGE("GL context is NULL!");
+		exit(1);
+	}
+
+	return ctx;
+}
+#define getContext() ( \
+	LOGD("%s called getContext()", __func__), \
+	_getContext())
+#endif
+
+static pthread_mutex_t glErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_key_t glErrorKey = -1;
 
 static inline void setError(GLenum error)
 {
-#warning Implementation only for testing.
-	fprintf(stderr, "GLESv1_fimg: GL error %d\n", error);
+	GLenum errorCode;
+
+	if(unlikely(glErrorKey == -1)) {
+		pthread_mutex_lock(&glErrorKeyMutex);
+		if(glErrorKey == -1)
+			pthread_key_create(&glErrorKey, NULL);
+		pthread_mutex_unlock(&glErrorKeyMutex);
+		errorCode = GL_NO_ERROR;
+	} else {
+		errorCode = (GLenum)pthread_getspecific(glErrorKey);
+	}
+
+	pthread_setspecific(glErrorKey, (void *)error);
+
+	LOGD("GL error %d", error);
 	if(errorCode == GL_NO_ERROR)
 		errorCode = error;
 }
 
 GL_API GLenum GL_APIENTRY glGetError (void)
 {
-#warning Implementation only for testing.
-	GLenum error = errorCode;
-	errorCode = GL_NO_ERROR;
+	if(unlikely(glErrorKey == -1))
+		return GL_NO_ERROR;
+
+	GLenum error = (GLenum)pthread_getspecific(glErrorKey);
+	pthread_setspecific(glErrorKey, (void *)GL_NO_ERROR);
 	return error;
 }
 
@@ -162,7 +206,7 @@ GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target, GLfixed s, GLfixed t, 
 
 static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size, GLint type, GLint stride, const GLvoid *pointer)
 {
-	ctx->array[idx].size	= FGHI_NUMCOMP(size);
+	ctx->array[idx].size	= size;
 	ctx->array[idx].type	= type;
 	ctx->array[idx].stride	= stride;
 	ctx->array[idx].pointer	= pointer;
@@ -402,31 +446,30 @@ GL_API void GL_APIENTRY glEnableClientState (GLenum array)
 	fimgSetAttribute(ctx->fimg, idx, ctx->array[idx].type, ctx->array[idx].size);
 }
 
+static const GLint fglDefaultAttribSize[4 + FGL_MAX_TEXTURE_UNITS] = {
+	4, 3, 4, 1, 4, 4
+};
+
 GL_API void GL_APIENTRY glDisableClientState (GLenum array)
 {
 	FGLContext *ctx = getContext();
-	GLint idx, defSize;
+	GLint idx;
 
 	switch (array) {
 	case GL_VERTEX_ARRAY:
 		idx = FGL_ARRAY_VERTEX;
-		defSize = 4;
 		break;
 	case GL_NORMAL_ARRAY:
 		idx = FGL_ARRAY_NORMAL;
-		defSize = 3;
 		break;
 	case GL_COLOR_ARRAY:
 		idx = FGL_ARRAY_COLOR;
-		defSize = 4;
 		break;
 	case GL_POINT_SIZE_ARRAY_OES:
 		idx = FGL_ARRAY_POINT_SIZE;
-		defSize = 1;
 		break;
 	case GL_TEXTURE_COORD_ARRAY:
 		idx = FGL_ARRAY_TEXTURE(ctx->activeTexture);
-		defSize = 4;
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -434,7 +477,7 @@ GL_API void GL_APIENTRY glDisableClientState (GLenum array)
 	}
 
 	ctx->array[idx].enabled = GL_FALSE;
-	fimgSetAttribute(ctx->fimg, idx, FGHI_ATTRIB_DT_FLOAT, defSize);
+	fimgSetAttribute(ctx->fimg, idx, FGHI_ATTRIB_DT_FLOAT, fglDefaultAttribSize[idx]);
 }
 
 GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture)
@@ -492,7 +535,7 @@ static inline void fglUpdateMatrices(FGLContext *ctx)
 {
 	for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++) {
 		if(ctx->matrix.dirty[i]) {
-			fimgLoadMatrix(i, ctx->matrix.stack[i].top().data);
+			fimgLoadMatrix(ctx->fimg, i, ctx->matrix.stack[i].top().data);
 			ctx->matrix.dirty[i] = GL_FALSE;
 		}
 	}
@@ -1383,7 +1426,8 @@ static inline void fglSet(GLenum cap, GLboolean state)
 		fimgSetLogicalOpEnable(ctx->fimg, state);
 		break;
 	default:
-		setError(GL_INVALID_ENUM);
+		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);
+		//setError(GL_INVALID_ENUM);
 	}
 }
 
@@ -1438,8 +1482,42 @@ GL_API void GL_APIENTRY glFlush (void)
 
 GL_API void GL_APIENTRY glFinish (void)
 {
-	fimgFlush();
-	fimgClearInvalidateCache(0, 0, 1, 1);
+	FGLContext *ctx = getContext();
+	fimgFlush(ctx->fimg);
+	fimgInvalidateFlushCache(ctx->fimg, 0, 0, 1, 1);
+}
+
+FGLContext *fglCreateContext(void)
+{
+	fimgContext *fimg;
+	FGLContext *ctx;
+
+	fimg = fimgCreateContext();
+	if(!fimg)
+		return NULL;
+
+	ctx = new FGLContext(fimg);
+	if(!ctx) {
+		fimgDestroyContext(fimg);
+		return NULL;
+	}
+
+	ctx->vertexShader.data = vshaderVshader;
+	ctx->vertexShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;
+
+	ctx->pixelShader.data = fshaderFshader;
+	ctx->pixelShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;
+
+	for(int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++)
+		fimgSetAttribute(ctx->fimg, i, FGHI_ATTRIB_DT_FLOAT, fglDefaultAttribSize[i]);
+
+	return ctx;
+}
+
+void fglDestroyContext(FGLContext *ctx)
+{
+	fimgDestroyContext(ctx->fimg);
+	delete ctx;
 }
 
 void fglRestoreGLState(void)
@@ -1453,11 +1531,24 @@ void fglRestoreGLState(void)
 	FGLContext *ctx = getContext();
 
 	/* Restore device specific context */
+	fprintf(stderr, "FGL: Restoring hardware context\n");
+	fflush(stderr);
 	fimgRestoreContext(ctx->fimg);
 
 	/* Restore shaders */
-	fimgLoadVShader(ctx->vertexShader.data);
-	fimgLoadPShader(ctx->pixelShader.data);
+	fprintf(stderr, "FGL: Loading vertex shader\n");
+	fflush(stderr);
+	if(fimgLoadVShader(ctx->fimg, ctx->vertexShader.data, ctx->vertexShader.numAttribs)) {
+		fprintf(stderr, "FGL: Failed to load vertex shader\n");
+		fflush(stderr);
+	}
+
+	fprintf(stderr, "FGL: Loading pixel shader\n");
+	fflush(stderr);
+	if(fimgLoadPShader(ctx->fimg, ctx->pixelShader.data, ctx->pixelShader.numAttribs)) {
+		fprintf(stderr, "FGL: Failed to load pixel shader\n");
+		fflush(stderr);
+	}
 
 	// TODO
 #if 0
@@ -1466,5 +1557,7 @@ void fglRestoreGLState(void)
 		fimgSetTexUnitParams(i, NULL /* TODO */);
 #endif
 
-	fimgClearInvalidateCache(1, 1, 0, 0);
+	fprintf(stderr, "FGL: Invalidating caches\n");
+	fflush(stderr);
+	fimgInvalidateFlushCache(ctx->fimg, 1, 1, 0, 0);
 }

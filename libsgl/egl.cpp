@@ -59,8 +59,6 @@
 #include "common.h"
 #include "types.h"
 #include "state.h"
-#include "vshader.h"
-#include "fshader.h"
 
 #undef NELEM
 #define NELEM(x) (sizeof(x)/sizeof(*(x)))
@@ -782,8 +780,9 @@ FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
 
 FGLRenderSurface::~FGLRenderSurface()
 {
+	FGLContext *c = (FGLContext *)ctx;
 	magic = 0;
-	fimgFreeMemory(depth.vaddr, depth.paddr, depth.size);
+	fimgFreeMemory(c->fimg, depth.vaddr, depth.paddr, depth.size);
 }
 
 bool FGLRenderSurface::isValid() const {
@@ -1020,11 +1019,12 @@ EGLBoolean FGLWindowSurface::connect()
 	width = buffer->width;
 	height = buffer->height;
 	if (depth.format) {
+		FGLContext *c = (FGLContext *)ctx;
 		depth.width   = width;
 		depth.height  = height;
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
-		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 			return EGL_FALSE;
@@ -1209,12 +1209,13 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 		width = buffer->width;
 		height = buffer->height;
 		if (depth.vaddr) {
-			fimgFreeMemory(depth.vaddr, depth.paddr, depth.size);
+			FGLContext *c = (FGLContext *)ctx;
+			fimgFreeMemory(c->fimg, depth.vaddr, depth.paddr, depth.size);
 			depth.width   = width;
 			depth.height  = height;
 			depth.stride  = buffer->stride;
 			depth.size    = depth.stride*depth.height*4;
-			depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+			depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
 			if (depth.vaddr == 0) {
 				setError(EGL_BAD_ALLOC);
 				return EGL_FALSE;
@@ -1420,11 +1421,12 @@ FGLPixmapSurface::FGLPixmapSurface(EGLDisplay dpy,
 	: FGLRenderSurface(dpy, config, depthFormat), nativePixmap(*pixmap)
 {
 	if (depthFormat) {
+		FGLContext *c = (FGLContext *)ctx;
 		depth.width   = pixmap->width;
 		depth.height  = pixmap->height;
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
-		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
@@ -1493,6 +1495,7 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 	int32_t w, int32_t h, int32_t f)
 : FGLRenderSurface(dpy, config, depthFormat)
 {
+	FGLContext *c = (FGLContext *)ctx;
 	size_t size = w*h;
 	switch (f) {
 		case FGPF_COLOR_MODE_565:     size *= 2; break;
@@ -1508,7 +1511,7 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 	pbuffer.height  = h;
 	pbuffer.stride  = w;
 	pbuffer.size    = size;
-	pbuffer.vaddr   = (FGLubyte*)fimgAllocMemory(&pbuffer.size, &pbuffer.paddr);
+	pbuffer.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &pbuffer.size, &pbuffer.paddr);
 	pbuffer.format  = f;
 
 	if (depthFormat) {
@@ -1516,7 +1519,7 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 		depth.height  = pbuffer.height;
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
-		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
@@ -1524,7 +1527,8 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 }
 
 FGLPbufferSurface::~FGLPbufferSurface() {
-	fimgFreeMemory(pbuffer.vaddr, pbuffer.paddr, pbuffer.size);
+	FGLContext *c = (FGLContext *)ctx;
+	fimgFreeMemory(c->fimg, pbuffer.vaddr, pbuffer.paddr, pbuffer.size);
 }
 
 EGLBoolean FGLPbufferSurface::bindDrawSurface(FGLContext* gl)
@@ -1835,32 +1839,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval)
 	return EGL_FALSE;
 }
 
-FGLContext *fglCreateContext(void)
-{
-	fimgContext *fimg;
-	FGLContext *ctx;
+extern FGLContext *fglCreateContext(void);
+extern void fglDestroyContext(FGLContext *ctx);
 
-	fimg = fimgCreateContext();
-	if(!fimg)
-		return NULL;
-
-	ctx = new FGLContext(fimg);
-	if(!ctx) {
-		fimgDestroyContext(fimg);
-		return NULL;
-	}
-
-	ctx->vertexShader.data = vshaderVshader;
-	ctx->pixelShader.data = fshaderFshader;
-
-	return ctx;
-}
-
-void fglDestroyContext(FGLContext *ctx)
-{
-	fimgDestroyContext(ctx->fimg);
-	delete ctx;
-}
 
 EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config,
 			EGLContext share_context,
