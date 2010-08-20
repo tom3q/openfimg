@@ -331,8 +331,6 @@ void fimgRestoreFragmentState(fimgContext *ctx);
 
 struct _fimgContext {
 	volatile char *base;
-	int fd;
-	int memfd;
 	/* Individual contexts */
 	fimgGlobalContext global;
 	fimgHostContext host;

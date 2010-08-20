@@ -516,10 +516,8 @@ void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width);
  * OS support
  */
 
-void *fimgAllocMemory(fimgContext *ctx,
-		      unsigned long *size, unsigned long *paddr);
-void fimgFreeMemory(fimgContext *ctx,
-		    void *vaddr, unsigned long paddr, unsigned long size);
+void *fimgAllocMemory(unsigned long *size, unsigned long *paddr);
+void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size);
 fimgContext *fimgCreateContext(void);
 void fimgDestroyContext(fimgContext *ctx);
 void fimgRestoreContext(fimgContext *ctx);

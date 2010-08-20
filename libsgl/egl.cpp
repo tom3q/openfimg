@@ -780,9 +780,8 @@ FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
 
 FGLRenderSurface::~FGLRenderSurface()
 {
-	FGLContext *c = (FGLContext *)ctx;
 	magic = 0;
-	fimgFreeMemory(c->fimg, depth.vaddr, depth.paddr, depth.size);
+	fimgFreeMemory(depth.vaddr, depth.paddr, depth.size);
 }
 
 bool FGLRenderSurface::isValid() const {
@@ -1019,12 +1018,11 @@ EGLBoolean FGLWindowSurface::connect()
 	width = buffer->width;
 	height = buffer->height;
 	if (depth.format) {
-		FGLContext *c = (FGLContext *)ctx;
 		depth.width   = width;
 		depth.height  = height;
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
-		depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 			return EGL_FALSE;
@@ -1209,13 +1207,12 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 		width = buffer->width;
 		height = buffer->height;
 		if (depth.vaddr) {
-			FGLContext *c = (FGLContext *)ctx;
-			fimgFreeMemory(c->fimg, depth.vaddr, depth.paddr, depth.size);
+			fimgFreeMemory(depth.vaddr, depth.paddr, depth.size);
 			depth.width   = width;
 			depth.height  = height;
 			depth.stride  = buffer->stride;
 			depth.size    = depth.stride*depth.height*4;
-			depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
+			depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
 			if (depth.vaddr == 0) {
 				setError(EGL_BAD_ALLOC);
 				return EGL_FALSE;
@@ -1421,12 +1418,11 @@ FGLPixmapSurface::FGLPixmapSurface(EGLDisplay dpy,
 	: FGLRenderSurface(dpy, config, depthFormat), nativePixmap(*pixmap)
 {
 	if (depthFormat) {
-		FGLContext *c = (FGLContext *)ctx;
 		depth.width   = pixmap->width;
 		depth.height  = pixmap->height;
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
-		depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
@@ -1495,7 +1491,6 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 	int32_t w, int32_t h, int32_t f)
 : FGLRenderSurface(dpy, config, depthFormat)
 {
-	FGLContext *c = (FGLContext *)ctx;
 	size_t size = w*h;
 	switch (f) {
 		case FGPF_COLOR_MODE_565:     size *= 2; break;
@@ -1511,7 +1506,7 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 	pbuffer.height  = h;
 	pbuffer.stride  = w;
 	pbuffer.size    = size;
-	pbuffer.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &pbuffer.size, &pbuffer.paddr);
+	pbuffer.vaddr   = (FGLubyte*)fimgAllocMemory(&pbuffer.size, &pbuffer.paddr);
 	pbuffer.format  = f;
 
 	if (depthFormat) {
@@ -1519,7 +1514,7 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 		depth.height  = pbuffer.height;
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
-		depth.vaddr   = (FGLubyte*)fimgAllocMemory(c->fimg, &depth.size, &depth.paddr);
+		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
@@ -1527,8 +1522,7 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 }
 
 FGLPbufferSurface::~FGLPbufferSurface() {
-	FGLContext *c = (FGLContext *)ctx;
-	fimgFreeMemory(c->fimg, pbuffer.vaddr, pbuffer.paddr, pbuffer.size);
+	fimgFreeMemory(pbuffer.vaddr, pbuffer.paddr, pbuffer.size);
 }
 
 EGLBoolean FGLPbufferSurface::bindDrawSurface(FGLContext* gl)
@@ -1867,12 +1861,12 @@ EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config,
 
 EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 {
+	FGLContext *c = (FGLContext *)ctx;
+
 	if (!isDisplayValid(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
-
-	FGLContext *c = (FGLContext*)ctx;
 
 	if (c->egl.flags & FGL_IS_CURRENT)
 		setGlThreadSpecific(0);
