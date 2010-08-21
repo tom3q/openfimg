@@ -32,7 +32,7 @@
 #include "vshader.h"
 #include "fshader.h"
 
-#define GLES_DEBUG
+//#define GLES_DEBUG
 
 /**
 	Client API information
@@ -338,7 +338,7 @@ GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type, GLsizei stride,
 	fglStride = (stride) ? stride : fglStride;
 
 	FGLContext *ctx = getContext();
-	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, 3, fglType, fglStride, pointer);
+	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, 4, fglType, fglStride, pointer);
 }
 
 GL_API void GL_APIENTRY glPointSizePointerOES (GLenum type, GLsizei stride, const GLvoid *pointer)

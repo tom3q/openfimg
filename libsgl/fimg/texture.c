@@ -40,19 +40,19 @@
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:8;
-		unsigned r		:8;
-		unsigned g		:8;
 		unsigned b		:8;
+		unsigned g		:8;
+		unsigned r		:8;
+		unsigned		:8;
 	} bits;
 } fimgTextureCKey;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:16;
-		unsigned u		:8;
 		unsigned v		:8;
+		unsigned u		:8;
+		unsigned		:16;
 	} bits;
 } fimgTextureCKYUV;
 

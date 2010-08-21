@@ -26,32 +26,32 @@ typedef struct _fimgContext fimgContext;
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:13;
-		unsigned ccache0	:1;
-		unsigned		:1;
-		unsigned pf0		:1;
-		unsigned		:3;
-		unsigned ps0		:1;
-		unsigned		:1;
-		unsigned ra		:1;
-		unsigned tse		:1;
-		unsigned pe		:1;
-		unsigned		:3;
-		unsigned vs		:1;
-		unsigned vc		:1;
-		unsigned hvf		:1;
-		unsigned hi		:1;
 		unsigned host_fifo	:1;
+		unsigned hi		:1;
+		unsigned hvf		:1;
+		unsigned vc		:1;
+		unsigned vs		:1;
+		unsigned		:3;
+		unsigned pe		:1;
+		unsigned tse		:1;
+		unsigned ra		:1;
+		unsigned		:1;
+		unsigned ps0		:1;
+		unsigned		:3;
+		unsigned pf0		:1;
+		unsigned		:1;
+		unsigned ccache0	:1;
+		unsigned		:13;
 	} bits;
 } fimgPipelineStatus;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned major		:8;
-		unsigned minor		:8;
-		unsigned revision	:8;
 		unsigned		:8;
+		unsigned revision	:8;
+		unsigned minor		:8;
+		unsigned major		:8;
 	} bits;
 } fimgVersion;
 
@@ -81,14 +81,14 @@ fimgPipelineStatus fimgGetInterruptState(fimgContext *ctx);
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned envb		:1;
-		unsigned		:5;
-		unsigned idxtype	:2;
-		unsigned		:7;
-		unsigned autoinc	:1;
-		unsigned		:11;
-		unsigned envc		:1;
 		unsigned numoutattrib	:4;
+		unsigned envc		:1;
+		unsigned		:11;
+		unsigned autoinc	:1;
+		unsigned		:7;
+		unsigned idxtype	:2;
+		unsigned		:5;
+		unsigned envb		:1;
 	} bits;
 } fimgHInterface;
 
@@ -183,12 +183,12 @@ typedef enum {
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:8;
 		struct {
-			unsigned ddy	:1;
-			unsigned ddx	:1;
 			unsigned lod	:1;
+			unsigned ddx	:1;
+			unsigned ddy	:1;
 		} coef[8];
+		unsigned		:8;
 	} bits;
 } fimgLODControl;
 
@@ -293,23 +293,23 @@ enum {
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:3;
-		unsigned type		:2;
-		unsigned		:4;
-		unsigned clrKeySel	:1;
-		unsigned clrKeyEn	:1;
-		unsigned texExp		:1;
-		unsigned alphaFmt	:1;
-		unsigned paletteFmt	:2;
-		unsigned textureFmt	:5;
-		unsigned uAddrMode	:2;
-		unsigned vAddrMode	:2;
-		unsigned pAddrMode	:2;
-		unsigned		:1;
-		unsigned texCoordSys	:1;
-		unsigned magFilter	:1;
-		unsigned minFilter	:1;
 		unsigned useMipmap	:2;
+		unsigned minFilter	:1;
+		unsigned magFilter	:1;
+		unsigned texCoordSys	:1;
+		unsigned		:1;
+		unsigned pAddrMode	:2;
+		unsigned vAddrMode	:2;
+		unsigned uAddrMode	:2;
+		unsigned textureFmt	:5;
+		unsigned paletteFmt	:2;
+		unsigned alphaFmt	:1;
+		unsigned texExp		:1;
+		unsigned clrKeyEn	:1;
+		unsigned clrKeySel	:1;
+		unsigned		:4;
+		unsigned type		:2;
+		unsigned		:3;
 	} bits;
 } fimgTexControl;
 
@@ -324,11 +324,11 @@ typedef struct {
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:20;
-		unsigned umod		:2;
-		unsigned vmod		:2;
-		unsigned usize		:4;
 		unsigned vsize		:4;
+		unsigned usize		:4;
+		unsigned vmod		:2;
+		unsigned umod		:2;
+		unsigned		:20;
 	} bits;
 } fimgVtxTexControl;
 
@@ -521,6 +521,8 @@ void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size);
 fimgContext *fimgCreateContext(void);
 void fimgDestroyContext(fimgContext *ctx);
 void fimgRestoreContext(fimgContext *ctx);
+int fimgEnterCriticalSection(void);
+int fimgExitCriticalSection(void);
 
 //=============================================================================
 

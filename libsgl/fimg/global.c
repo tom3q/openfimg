@@ -23,14 +23,14 @@
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:19;
-		unsigned vtcclear	:1;
-		unsigned		:2;
-		unsigned tcclear	:2;
+		unsigned zcflush	:2;
 		unsigned		:2;
 		unsigned ccflush	:2;
 		unsigned		:2;
-		unsigned zcflush	:2;
+		unsigned tcclear	:2;
+		unsigned		:2;
+		unsigned vtcclear	:1;
+		unsigned		:19;
 	} bits;
 } fimgCacheCtl;
 
@@ -213,6 +213,7 @@ void fimgRestoreGlobalState(fimgContext *ctx)
 {
 	fimgWrite(ctx, 0, FGGB_INTMASK);
 	fimgWrite(ctx, 0, FGGB_PIPEMASK);
+	fimgWrite(ctx, 0, FGGB_INTPENDING);
 	fimgWrite(ctx, ctx->global.intTarget, FGGB_PIPETGTSTATE);
 	fimgWrite(ctx, ctx->global.intMask, FGGB_PIPEMASK);
 	fimgWrite(ctx, ctx->global.intEn, FGGB_INTMASK);

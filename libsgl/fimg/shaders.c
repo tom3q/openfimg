@@ -33,28 +33,28 @@
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:30;
-		unsigned clrStatus	:1;
 		unsigned copyPC		:1;
+		unsigned clrStatus	:1;
+		unsigned		:30;
 	} bits;
 } fimgVShaderConfig;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned ignorePCEnd	:1;
-		unsigned		:6;
-		unsigned PCEnd		:9;
-		unsigned		:7;
 		unsigned PCStart	:9;
+		unsigned		:7;
+		unsigned PCEnd		:9;
+		unsigned		:6;
+		unsigned ignorePCEnd	:1;
 	} bits;
 } fimgVShaderPCRange;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:4;
 		unsigned num		:4;
+		unsigned		:4;
 	} attrib[4];
 } fimgVShaderAttrIdx;
 
@@ -78,9 +78,9 @@ typedef union {
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:22;
-		unsigned ignorePCEnd	:1;
 		unsigned PCEnd		:9;
+		unsigned ignorePCEnd	:1;
+		unsigned		:22;
 	} bits;
 } fimgPShaderPCEnd;
 

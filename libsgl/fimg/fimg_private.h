@@ -22,9 +22,9 @@ typedef struct {
 	union {
 		unsigned int val;
 		struct {
-			unsigned stride		:8;
-			unsigned		:8;
 			unsigned range		:16;
+			unsigned		:8;
+			unsigned stride		:8;
 		} bits;
 	} ctrl;
 	unsigned int base;
@@ -32,15 +32,15 @@ typedef struct {
 
 typedef union {
 	struct {
-		unsigned lastattr	:1;
-		unsigned		:15;
-		unsigned dt		:4;
-		unsigned		:2;
-		unsigned numcomp	:2;
-		unsigned srcw		:2;
-		unsigned srcz		:2;
-		unsigned srcy		:2;
 		unsigned srcx		:2;
+		unsigned srcy		:2;
+		unsigned srcz		:2;
+		unsigned srcw		:2;
+		unsigned numcomp	:2;
+		unsigned		:2;
+		unsigned dt		:4;
+		unsigned		:15;
+		unsigned lastattr	:1;
 	} bits;
 	unsigned int val;
 } fimgAttribute;
@@ -52,14 +52,13 @@ typedef union {
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned intUse		:2;
-		unsigned		:3;
-		unsigned type		:8;
-		unsigned pointSize	:1;
-		unsigned		:4;
-		unsigned vsOut		:4;
-		unsigned flatShadeEn	:1;
 		unsigned flatShadeSel	:9;
+		unsigned flatShadeEn	:1;
+		unsigned vsOut		:4;
+		unsigned		:4;
+		unsigned pointSize	:1;
+		unsigned type		:8;
+		unsigned		:5;
 	} bits;
 } fimgVertexContext;
 
@@ -70,20 +69,20 @@ typedef union {
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:28;
-		unsigned enable		:1;
-		unsigned clockwise	:1;
 		unsigned face		:2;
+		unsigned clockwise	:1;
+		unsigned enable		:1;
+		unsigned		:28;
 	} bits;
 } fimgCullingControl;
 
 typedef union {
 	unsigned int val;
 	struct {
+		unsigned minval		:12;
 		unsigned		:4;
 		unsigned maxval		:12;
 		unsigned		:4;
-		unsigned minval		:12;
 	} bits;
 } fimgClippingControl;
 
@@ -127,15 +126,15 @@ typedef struct {
 	unsigned int	psInAttribTable[12];
 } fimgShaderAttribTable;
 
+/*
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:12;
-		unsigned out		:4;
-		unsigned		:12;
 		unsigned in		:4;
+		unsigned		:28;
 	} bits;
 } fimgShaderAttribNum;
+*/
 
 /*
  * Texture engine
@@ -152,101 +151,101 @@ typedef union {
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned enable		:1;
-		unsigned		:3;
-		unsigned max		:12;
-		unsigned		:4;
 		unsigned min		:12;
+		unsigned		:4;
+		unsigned max		:12;
+		unsigned		:3;
+		unsigned enable		:1;
 	} bits;
 } fimgScissorTestData;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:19;
-		unsigned value		:8;
-		unsigned mode		:4;
 		unsigned enable		:1;
+		unsigned mode		:4;
+		unsigned value		:8;
+		unsigned		:19;
 	} bits;
 } fimgAlphaTestData;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned dppass		:3;
-		unsigned dpfail		:3;
-		unsigned sfail		:3;
-		unsigned		:3;
-		unsigned mask		:8;
-		unsigned ref		:8;
-		unsigned mode		:3;
 		unsigned enable		:1;
+		unsigned mode		:3;
+		unsigned ref		:8;
+		unsigned mask		:8;
+		unsigned		:3;
+		unsigned sfail		:3;
+		unsigned dpfail		:3;
+		unsigned dppass		:3;
 	} bits;
 } fimgStencilTestData;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:28;
-		unsigned mode		:3;
 		unsigned enable		:1;
+		unsigned mode		:3;
+		unsigned		:28;
 	} bits;
 } fimgDepthTestData;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:9;
-		unsigned ablendequation	:3;
-		unsigned cblendequation	:3;
-		unsigned adstblendfunc	:4;
-		unsigned cdstblendfunc	:4;
-		unsigned asrcblendfunc	:4;
-		unsigned csrcblendfunc	:4;
 		unsigned enable		:1;
+		unsigned csrcblendfunc	:4;
+		unsigned asrcblendfunc	:4;
+		unsigned cdstblendfunc	:4;
+		unsigned adstblendfunc	:4;
+		unsigned cblendequation	:3;
+		unsigned ablendequation	:3;
+		unsigned		:9;
 	} bits;
 } fimgBlendControl;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:23;
-		unsigned alpha		:4;
-		unsigned color		:4;
 		unsigned enable		:1;
+		unsigned color		:4;
+		unsigned alpha		:4;
+		unsigned		:23;
 	} bits;
 } fimgLogOpControl;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:28;
 		unsigned a		:1;
 		unsigned b		:1;
 		unsigned g		:1;
 		unsigned r		:1;
+		unsigned		:28;
 	} bits;
 } fimgColorBufMask;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned backmask	:8;
-		unsigned frontmask	:8;
-		unsigned		:15;
 		unsigned depth		:1;
+		unsigned		:15;
+		unsigned frontmask	:8;
+		unsigned backmask	:8;
 	} bits;
 } fimgDepthBufMask;
 
 typedef union {
 	unsigned int val;
 	struct {
-		unsigned		:11;
-		unsigned opaque		:1;
-		unsigned alphathreshold	:8;
-		unsigned alphaconst	:8;
-		unsigned dither		:1;
 		unsigned colormode	:3;
+		unsigned dither		:1;
+		unsigned alphaconst	:8;
+		unsigned alphathreshold	:8;
+		unsigned opaque		:1;
+		unsigned		:11;
 	} bits;
 } fimgFramebufferControl;
 

@@ -25,18 +25,6 @@ static unsigned int refCount = 0;
 #define FIMG_SFR_BASE 0x72000000
 #define FIMG_SFR_SIZE 0x80000
 
-/*****************************************************************************/
-#define G3D_IOCTL_MAGIC		'S'
-#define S3C_3D_MEM_ALLOC	_IOWR(G3D_IOCTL_MAGIC, 310, struct s3c_3d_mem_alloc)
-#define S3C_3D_MEM_FREE		_IOWR(G3D_IOCTL_MAGIC, 311, struct s3c_3d_mem_alloc)
-
-struct s3c_3d_mem_alloc {
-        int             size;
-        unsigned int    vir_addr;
-        unsigned int    phy_addr;
-};
-/*****************************************************************************/
-
 /*****************************************************************************
  * FUNCTION:	fimgDeviceOpen
  * SYNOPSIS:	This function opens the 3D device and initializes global variables
@@ -66,6 +54,8 @@ static int fimgDeviceOpen(void)
 		return -errno;
 	}
 
+	fimgEnterCriticalSection();
+
 	LOGD("fimg3D: Opened /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
 
 	return 0;
@@ -77,12 +67,27 @@ static int fimgDeviceOpen(void)
  *****************************************************************************/
 static void fimgDeviceClose(void)
 {
+	fimgExitCriticalSection();
+
 	munmap((void *)fimgBase, FIMG_SFR_SIZE);
 	close(fimgFileDesc);
 	close(fimgMemFileDesc);
 
 	LOGD("fimg3D: Closed /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
 }
+
+/**
+	Memory management
+*/
+
+#define S3C_3D_MEM_ALLOC	_IOWR('S', 310, struct s3c_3d_mem_alloc)
+#define S3C_3D_MEM_FREE		_IOWR('S', 311, struct s3c_3d_mem_alloc)
+
+struct s3c_3d_mem_alloc {
+        int             size;
+        unsigned int    vir_addr;
+        unsigned int    phy_addr;
+};
 
 /*****************************************************************************
  * FUNCTION:	fimgAllocMemory
@@ -125,6 +130,10 @@ void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
 
 	ioctl(fimgFileDesc, S3C_3D_MEM_FREE, &mem);
 }
+
+/**
+	Context management
+*/
 
 fimgContext *fimgCreateContext(void)
 {
@@ -177,6 +186,54 @@ void fimgRestoreContext(fimgContext *ctx)
 	fimgRestoreRasterizerState(ctx);
 	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
 	fimgRestoreFragmentState(ctx);
+}
+
+/**
+	Power management
+*/
+
+struct s3c_3d_pm_status
+{
+	unsigned int criticalSection;
+	int powerStatus;
+	int reserved;
+//	int memStatus;
+};
+
+#define LOCK_CRITICAL_SECTION		1
+#define UNLOCK_CRITICAL_SECTION		0
+#define S3C_3D_CRITICAL_SECTION		_IOWR('S', 322, struct s3c_3d_pm_status)
+
+int fimgEnterCriticalSection(void)
+{
+	struct s3c_3d_pm_status status_desc;
+
+	status_desc.criticalSection = LOCK_CRITICAL_SECTION;
+	status_desc.powerStatus = 0;
+	status_desc.reserved = 0;
+
+	if(ioctl(fimgFileDesc, S3C_3D_CRITICAL_SECTION, &status_desc)) {
+		LOGE("Could not enter 3D critical section");
+		return -1;
+	}
+
+	return 0;
+}
+
+int fimgExitCriticalSection(void)
+{
+	struct s3c_3d_pm_status status_desc;
+
+	status_desc.criticalSection = UNLOCK_CRITICAL_SECTION;
+	status_desc.powerStatus = 0;
+	status_desc.reserved = 0;
+
+	if(ioctl(fimgFileDesc, S3C_3D_CRITICAL_SECTION, &status_desc)) {
+		LOGE("Could not exit 3D critical section");
+		return -1;
+	}
+
+	return 0;
 }
 
 /* TODO: Implement rest of kernel driver functions */

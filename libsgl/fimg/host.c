@@ -55,9 +55,6 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_NUBYTE: {
 			unsigned char bits[4] = {0, 0, 0, 0};
 
-			fprintf(stderr, "fimg: Sending attribute %d (bytes)\n", j);
-			fflush(stderr);
-
 			for(n = 0; n <= ctx->host.attrib[j].bits.numcomp; n++)
 				bits[n] = (ppData[j] + i*pStride[j])[n];
 
@@ -70,9 +67,6 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_NSHORT:
 		case FGHI_ATTRIB_DT_NUSHORT: {
 			unsigned short bits[4] = {0, 0, 0, 0};
-
-			fprintf(stderr, "fimg: Sending attribute %d (half-words)\n", j);
-			fflush(stderr);
 
 			for(n = 0; n <= ctx->host.attrib[j].bits.numcomp; n++)
 				bits[n] = ((unsigned short *)(ppData[j] + i*pStride[j]))[n];
@@ -88,9 +82,6 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_UINT:
 		case FGHI_ATTRIB_DT_NINT:
 		case FGHI_ATTRIB_DT_NUINT:
-			fprintf(stderr, "fimg: Sending attribute %d (words)\n", j);
-			fflush(stderr);
-			
 			fimgSendToFIFO(ctx, 4 * (ctx->host.attrib[j].bits.numcomp + 1), ppData[j] + i*pStride[j]);
 			break;
 		}
@@ -127,11 +118,8 @@ void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int numVertices, const vo
 	words[1] = 0xffffffff;
 	fimgSendToFIFO(ctx, 8, words);
 
-	for(i=0; i<numVertices; i++) {
-		fprintf(stderr, "fimg: Sending vertex %d\n", i);
-		fflush(stderr);
+	for(i=0; i<numVertices; i++)
 		fimgDrawVertex(ctx, ppData, pStride, i);
-	}
 }
 
 /*****************************************************************************
