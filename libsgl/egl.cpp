@@ -59,6 +59,7 @@
 #include "common.h"
 #include "types.h"
 #include "state.h"
+#include "fimg/fimg.h"
 
 #undef NELEM
 #define NELEM(x) (sizeof(x)/sizeof(*(x)))
@@ -169,9 +170,13 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLin
 		*minor = FGL_EGL_MINOR;
 
 	FGLDisplay *disp = getDisplay(dpy);
-
 	if(likely(disp->initialized))
 		return EGL_TRUE;
+
+	if(fimgDeviceOpen()) {
+		setError(EGL_NOT_INITIALIZED);
+		return EGL_FALSE;
+	}
 
 	disp->initialized = EGL_TRUE;
 	setGlThreadSpecific(0);
@@ -187,6 +192,11 @@ EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy)
 	}
 
 	FGLDisplay *disp = getDisplay(dpy);
+
+	if(unlikely(!disp->initialized))
+		return EGL_TRUE;
+
+	fimgDeviceClose();
 	disp->initialized = EGL_FALSE;
 
 	return EGL_TRUE;
@@ -483,6 +493,19 @@ static FGLint getConfigFormatInfo(EGLint configID,
 	return FGL_NO_ERROR;
 }
 
+static FGLint bppFromFormat(EGLint format)
+{
+	switch(format) {
+	case FGPF_COLOR_MODE_565:
+		return 2;
+	case FGPF_COLOR_MODE_0888:
+	case FGPF_COLOR_MODE_8888:
+		return 4;
+	default:
+		return 0;
+	}
+}
+
 // ----------------------------------------------------------------------------
 
 template<typename T>
@@ -711,26 +734,28 @@ void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf)
 	fimgSetFrameBufWidth(gl->fimg, cbuf->stride);
 	fimgSetFrameBufParams(gl->fimg, 0, 0, 0, (fimgColorMode)cbuf->format);
 	fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
+	gl->surface.draw = *cbuf;
 }
 
 void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf)
 {
-	fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
+	if(zbuf->format) {
+		fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
+		fimgSetZBufWriteMask(gl->fimg, 1);
+		fimgSetStencilBufWriteMask(gl->fimg, 0, 0xFF);
+		fimgSetStencilBufWriteMask(gl->fimg, 1, 0x00);
+	} else {
+		fimgSetZBufWriteMask(gl->fimg, 0);
+		fimgSetStencilBufWriteMask(gl->fimg, 0, 0x00);
+		fimgSetStencilBufWriteMask(gl->fimg, 1, 0x00);
+	}
+	gl->surface.depth = *zbuf;
 }
 
 void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
 {
 //	gl->readPlane = *rbuf;
-}
-
-static inline FGLint getBpp(int format)
-{
-	switch(format) {
-		case PIXEL_FORMAT_RGBA_8888:	return 4;
-		case PIXEL_FORMAT_RGBX_8888:	return 4;
-		case PIXEL_FORMAT_RGB_565:	return 2;
-		default:			return 0;
-	}
+	gl->surface.read = *rbuf;
 }
 
 struct FGLRenderSurface
@@ -773,7 +798,6 @@ FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
 	int32_t depthFormat)
 : magic(MAGIC), dpy(dpy), config(config), ctx(0)
 {
-	depth.version = sizeof(FGLSurface);
 	depth.vaddr = 0;
 	depth.format = depthFormat;
 }
@@ -987,9 +1011,10 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	nativeWindow->common.incRef(&nativeWindow->common);
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_WIDTH, &width);
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_HEIGHT, &height);
-	}
+}
 
-	FGLWindowSurface::~FGLWindowSurface() {
+FGLWindowSurface::~FGLWindowSurface()
+{
 	if (buffer) {
 		buffer->common.decRef(&buffer->common);
 	}
@@ -1023,6 +1048,7 @@ EGLBoolean FGLWindowSurface::connect()
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
 		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		depth.bpp     = 4;
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 			return EGL_FALSE;
@@ -1088,6 +1114,16 @@ FGLint FGLWindowSurface::unlock(android_native_buffer_t* buf)
 		err = module->unlock(module, buf->handle);
 	}
 	return err;
+}
+
+static inline FGLint getBpp(int format)
+{
+	switch(format) {
+		case PIXEL_FORMAT_RGBA_8888:	return 4;
+		case PIXEL_FORMAT_RGBX_8888:	return 4;
+		case PIXEL_FORMAT_RGB_565:	return 2;
+		default:			return 0;
+	}
 }
 
 void FGLWindowSurface::copyBlt(
@@ -1213,6 +1249,7 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 			depth.stride  = buffer->stride;
 			depth.size    = depth.stride*depth.height*4;
 			depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+			depth.bpp     = 4;
 			if (depth.vaddr == 0) {
 				setError(EGL_BAD_ALLOC);
 				return EGL_FALSE;
@@ -1316,13 +1353,13 @@ EGLBoolean FGLWindowSurface::bindDrawSurface(FGLContext* gl)
 {
 	FGLSurface buffer;
 
-	buffer.version = sizeof(FGLSurface);
 	buffer.width   = this->buffer->width;
 	buffer.height  = this->buffer->height;
 	buffer.stride  = this->buffer->stride;
 	buffer.vaddr   = (FGLubyte*)bits;
 	buffer.paddr   = getBufferPhysicalAddress(this->buffer);
 	buffer.format  = this->format;
+	buffer.bpp     = bppFromFormat(this->format);
 
 	fglSetColorBuffer(gl, &buffer);
 	fglSetDepthBuffer(gl, &depth);
@@ -1346,7 +1383,6 @@ EGLBoolean FGLWindowSurface::bindReadSurface(FGLContext* gl)
 {
 	FGLSurface buffer;
 	
-	buffer.version = sizeof(FGLSurface);
 	buffer.width   = this->buffer->width;
 	buffer.height  = this->buffer->height;
 	buffer.stride  = this->buffer->stride;
@@ -1423,6 +1459,7 @@ FGLPixmapSurface::FGLPixmapSurface(EGLDisplay dpy,
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
 		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		depth.bpp     = 4;
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
@@ -1433,7 +1470,6 @@ EGLBoolean FGLPixmapSurface::bindDrawSurface(FGLContext* gl)
 {
 	FGLSurface buffer;
 
-	buffer.version = sizeof(FGLSurface);
 	buffer.width   = nativePixmap.width;
 	buffer.height  = nativePixmap.height;
 	buffer.stride  = nativePixmap.stride;
@@ -1453,7 +1489,6 @@ EGLBoolean FGLPixmapSurface::bindReadSurface(FGLContext* gl)
 {
 	FGLSurface buffer;
 
-	buffer.version = sizeof(FGLSurface);
 	buffer.width   = nativePixmap.width;
 	buffer.height  = nativePixmap.height;
 	buffer.stride  = nativePixmap.stride;
@@ -1491,21 +1526,11 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 	int32_t w, int32_t h, int32_t f)
 : FGLRenderSurface(dpy, config, depthFormat)
 {
-	size_t size = w*h;
-	switch (f) {
-		case FGPF_COLOR_MODE_565:     size *= 2; break;
-		case FGPF_COLOR_MODE_8888:    size *= 4; break;
-		case FGPF_COLOR_MODE_0888:    size *= 4; break;
-		default:
-		LOGE("incompatible pixel format for pbuffer (format=%d)", f);
-		pbuffer.vaddr = 0;
-		break;
-	}
-	pbuffer.version = sizeof(FGLSurface);
+	pbuffer.bpp     = bppFromFormat(f);
 	pbuffer.width   = w;
 	pbuffer.height  = h;
 	pbuffer.stride  = w;
-	pbuffer.size    = size;
+	pbuffer.size    = w * h * pbuffer.bpp;
 	pbuffer.vaddr   = (FGLubyte*)fimgAllocMemory(&pbuffer.size, &pbuffer.paddr);
 	pbuffer.format  = f;
 
@@ -1515,6 +1540,7 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 		depth.stride  = depth.width; // use the width here
 		depth.size    = depth.stride*depth.height*4;
 		depth.vaddr   = (FGLubyte*)fimgAllocMemory(&depth.size, &depth.paddr);
+		depth.bpp     = 4;
 		if (depth.vaddr == 0) {
 			setError(EGL_BAD_ALLOC);
 		}
@@ -1629,10 +1655,12 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 
 	int32_t w = 0;
 	int32_t h = 0;
-	while (attrib_list[0]) {
-		if (attrib_list[0] == EGL_WIDTH)  w = attrib_list[1];
-		if (attrib_list[0] == EGL_HEIGHT) h = attrib_list[1];
-		attrib_list+=2;
+	if(attrib_list) {
+		while (attrib_list[0]) {
+			if (attrib_list[0] == EGL_WIDTH)  w = attrib_list[1];
+			if (attrib_list[0] == EGL_HEIGHT) h = attrib_list[1];
+			attrib_list+=2;
+		}
 	}
 
 	FGLRenderSurface* surface =
@@ -2006,6 +2034,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 					h = d->getHeight();
 				}
 
+				fimgSetXClip(gl->fimg, 0, w);
+				fimgSetYClip(gl->fimg, 0, h);
 				glViewport(0, 0, w, h);
 				glScissor(0, 0, w, h);
 			}

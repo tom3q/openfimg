@@ -83,8 +83,8 @@ void FGLmatrix::rotate(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 	identity();
 
 	x1 = x * invModule;
-	y1 = x * invModule;
-	z1 = x * invModule;
+	y1 = y * invModule;
+	z1 = z * invModule;
 
 	xs = x1 * s;
 	ys = y1 * s;
@@ -98,9 +98,9 @@ void FGLmatrix::rotate(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 	yz = y1 * z1;
 	xz = x1 * z1;
 
-	(*this)[0][0] = x2 * ci + c;  (*this)[0][1] = xy * ci - zs; (*this)[0][2] = xz * ci + ys;
-	(*this)[1][0] = xy * ci + zs; (*this)[1][1] = y2 * ci + c;  (*this)[1][2] = yz * ci - xs;
-	(*this)[2][0] = xz * ci - ys; (*this)[2][1] = yz * ci + xs; (*this)[2][2] = z2 * ci + c;
+	(*this)[0][0] = x2 * ci + c;  (*this)[1][0] = xy * ci - zs; (*this)[2][0] = xz * ci + ys;
+	(*this)[0][1] = xy * ci + zs; (*this)[1][1] = y2 * ci + c;  (*this)[2][1] = yz * ci - xs;
+	(*this)[0][2] = xz * ci - ys; (*this)[1][2] = yz * ci + xs; (*this)[2][2] = z2 * ci + c;
 }
 
 void FGLmatrix::translate(GLfloat x, GLfloat y, GLfloat z)
@@ -146,11 +146,11 @@ void FGLmatrix::ortho(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLf
 
 	(*this)[1][1] = 2.0f / (t - b);
 
-	(*this)[2][2] = -2.0f / (f - n);
+	(*this)[2][2] = 2.0f / (n - f);
 
-	(*this)[3][0] = -1.0f * (r + l) / (r - l);
-	(*this)[3][1] = -1.0f * (t + b) / (t - b);
-	(*this)[3][2] = -1.0f * (f + n) / (f - n);
+	(*this)[3][0] = (r + l) / (l - r);
+	(*this)[3][1] = (t + b) / (b - t);
+	(*this)[3][2] = (f + n) / (n - f);
 }
 
 void FGLmatrix::inverseTranslate(GLfloat x, GLfloat y, GLfloat z)

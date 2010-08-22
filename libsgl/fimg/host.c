@@ -98,7 +98,7 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
  *		[IN] pConst: array of constant data
  *		[IN] stride: stride of input data
  *****************************************************************************/
-void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
 {
 	unsigned int i;
 	const unsigned char **ppData = (const unsigned char **)ppvData;
@@ -118,9 +118,260 @@ void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int numVertices, const vo
 	words[1] = 0xffffffff;
 	fimgSendToFIFO(ctx, 8, words);
 
+	for(i=first; i<first+numVertices; i++)
+		fimgDrawVertex(ctx, ppData, pStride, i);
+}
+
+#ifdef FIMG_INTERPOLATION_WORKAROUND
+void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = 1;
+	words[1] = 0xffffffff;
+	fimgSendToFIFO(ctx, 8, words);
+
+	for(i=first; i<first+numVertices; i++) {
+		fimgSendToFIFO(ctx, 8, words);
+		fimgDrawVertex(ctx, ppData, pStride, i);
+	}
+}
+
+void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = 2;
+	words[1] = 0xffffffff;
+
+	for(i=first; i<first+numVertices-1; i+=2) {
+		fimgSendToFIFO(ctx, 8, words);
+		fimgDrawVertex(ctx, ppData, pStride, i);
+		fimgDrawVertex(ctx, ppData, pStride, i+1);
+	}
+}
+
+void fimgDrawNonIndexArraysLineStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = 2;
+	words[1] = 0xffffffff;
+
+	for(i=first; i<first+numVertices-1; i++) {
+		fimgSendToFIFO(ctx, 8, words);
+		fimgDrawVertex(ctx, ppData, pStride, i);
+		fimgDrawVertex(ctx, ppData, pStride, i+1);
+	}
+}
+
+void fimgDrawNonIndexArraysLineLoops(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = 2;
+	words[1] = 0xffffffff;
+
+	for(i=first; i<first+numVertices-1; i++) {
+		fimgSendToFIFO(ctx, 8, words);
+		fimgDrawVertex(ctx, ppData, pStride, i);
+		fimgDrawVertex(ctx, ppData, pStride, i+1);
+	}
+
+	fimgSendToFIFO(ctx, 8, words);
+	fimgDrawVertex(ctx, ppData, pStride, first+numVertices-1);
+	fimgDrawVertex(ctx, ppData, pStride, first);
+}
+
+void fimgDrawNonIndexArraysTriangles(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = 3;
+	words[1] = 0xffffffff;
+
+	for(i=first; i<first+numVertices-2; i+=3) {
+		fimgSendToFIFO(ctx, 8, words);
+		fimgDrawVertex(ctx, ppData, pStride, i);
+		fimgDrawVertex(ctx, ppData, pStride, i+1);
+		fimgDrawVertex(ctx, ppData, pStride, i+2);
+	}
+}
+
+void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = 3;
+	words[1] = 0xffffffff;
+
+	for(i=first+1; i<first+numVertices-1; i++) {
+		fimgFlush(ctx);
+		fimgSendToFIFO(ctx, 8, words);
+		fimgDrawVertex(ctx, ppData, pStride, first);
+		fimgDrawVertex(ctx, ppData, pStride, i);
+		fimgDrawVertex(ctx, ppData, pStride, i+1);
+	}
+}
+
+void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+	const unsigned lookup[2][3] = { {0,1,2},{1,0,2} };
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = 3;
+	words[1] = 0xffffffff;
+	fimgSendToFIFO(ctx, 8, words);
+
+	for(i=first; i<first+numVertices-2; i++) {
+		fimgSendToFIFO(ctx, 8, words);
+		fimgDrawVertex(ctx, ppData, pStride, i + lookup[i & 1][0]);
+		fimgDrawVertex(ctx, ppData, pStride, i + lookup[i & 1][1]);
+		fimgDrawVertex(ctx, ppData, pStride, i + lookup[i & 1][2]);
+	}
+}
+#else
+#ifdef FIMG_CLIPPER_WORKAROUND
+void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = numVertices + 2;
+	words[1] = 0xffffffff;
+	fimgSendToFIFO(ctx, 8, words);
+
+	/* WORKAROUND */
+	fimgDrawVertex(ctx, ppData, pStride, 0);
+	fimgDrawVertex(ctx, ppData, pStride, 0);
+
 	for(i=0; i<numVertices; i++)
 		fimgDrawVertex(ctx, ppData, pStride, i);
 }
+
+void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+{
+	unsigned int i;
+	const unsigned char **ppData = (const unsigned char **)ppvData;
+	fimgAttribute last;
+	unsigned int words[2];
+
+	// write attribute configuration
+	for(i = 0; i < ctx->numAttribs - 1; i++)
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	// write the last one
+	last = ctx->host.attrib[ctx->numAttribs - 1];
+	last.bits.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
+
+	// write the number of vertices
+	words[0] = numVertices + 1;
+	words[1] = 0xffffffff;
+	fimgSendToFIFO(ctx, 8, words);
+
+	for(i=0; i<numVertices; i++)
+		fimgDrawVertex(ctx, ppData, pStride, i);
+
+	/* WORKAROUND */
+	fimgDrawVertex(ctx, ppData, pStride, numVertices - 1);
+}
+#endif
+#endif
 
 /*****************************************************************************
  * FUNCTIONS:	fimgDrawNonIndexArrays
@@ -222,7 +473,11 @@ void fimgSetHInterface(fimgContext *ctx, fimgHInterface HI)
 
 void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
 {
+#ifdef FIMG_INTERPOLATION_WORKAROUND
+	ctx->host.control.bits.numoutattrib = 9;
+#else
 	ctx->host.control.bits.numoutattrib = count;
+#endif
 	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
 }
 

@@ -135,17 +135,17 @@ GL_API GLenum GL_APIENTRY glGetError (void)
 
 FGLvec4f FGLContext::defaultVertex[4 + FGL_MAX_TEXTURE_UNITS] = {
 	/* Vertex - unused */
-	{ 0, 0, 0, 0 },
+	{ 0.0f, 0.0f, 0.0f, 0.0f },
 	/* Normal */
-	{ 0, 0, 1 },
+	{ 0.0f, 0.0f, 1.0f },
 	/* Color */
-	{ 1, 1, 1, 1 },
+	{ 1.0f, 1.0f, 1.0f, 1.0f },
 	/* Point size */
-	{ 1 },
+	{ 1.0f },
 	/* Texture 0 */
-	{ 0, 0, 0, 1 },
+	{ 0.0f, 0.0f, 0.0f, 1.0f },
 	/* Texture 1 */
-	{ 0, 0, 0, 1 },
+	{ 0.0f, 0.0f, 0.0f, 1.0f },
 };
 
 GL_API void GL_APIENTRY glColor4f (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)
@@ -233,19 +233,19 @@ GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type, GLsizei stride
 	switch(type) {
 	case GL_BYTE:
 		fglType = FGHI_ATTRIB_DT_BYTE;
-		fglStride = 1;
+		fglStride = size;
 		break;
 	case GL_SHORT:
 		fglType = FGHI_ATTRIB_DT_SHORT;
-		fglStride = 2;
+		fglStride = 2*size;
 		break;
 	case GL_FIXED:
 		fglType = FGHI_ATTRIB_DT_FIXED;
-		fglStride = 4;
+		fglStride = 4*size;
 		break;
 	case GL_FLOAT:
 		fglType = FGHI_ATTRIB_DT_FLOAT;
-		fglStride = 4;
+		fglStride = 4*size;
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -270,19 +270,19 @@ GL_API void GL_APIENTRY glNormalPointer (GLenum type, GLsizei stride, const GLvo
 	switch(type) {
 	case GL_BYTE:
 		fglType = FGHI_ATTRIB_DT_BYTE;
-		fglStride = 1;
+		fglStride = 3;
 		break;
 	case GL_SHORT:
 		fglType = FGHI_ATTRIB_DT_SHORT;
-		fglStride = 2;
+		fglStride = 6;
 		break;
 	case GL_FIXED:
 		fglType = FGHI_ATTRIB_DT_FIXED;
-		fglStride = 4;
+		fglStride = 12;
 		break;
 	case GL_FLOAT:
 		fglType = FGHI_ATTRIB_DT_FLOAT;
-		fglStride = 4;
+		fglStride = 12;
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -315,15 +315,15 @@ GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type, GLsizei stride,
 	switch(type) {
 	case GL_UNSIGNED_BYTE:
 		fglType = FGHI_ATTRIB_DT_UBYTE;
-		fglStride = 1;
+		fglStride = 1*size;
 		break;
 	case GL_FIXED:
 		fglType = FGHI_ATTRIB_DT_FIXED;
-		fglStride = 4;
+		fglStride = 4*size;
 		break;
 	case GL_FLOAT:
 		fglType = FGHI_ATTRIB_DT_FLOAT;
-		fglStride = 4;
+		fglStride = 4*size;
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -338,7 +338,7 @@ GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type, GLsizei stride,
 	fglStride = (stride) ? stride : fglStride;
 
 	FGLContext *ctx = getContext();
-	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, 4, fglType, fglStride, pointer);
+	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, size, fglType, fglStride, pointer);
 }
 
 GL_API void GL_APIENTRY glPointSizePointerOES (GLenum type, GLsizei stride, const GLvoid *pointer)
@@ -386,19 +386,19 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type, GLsizei stri
 	switch(type) {
 	case GL_BYTE:
 		fglType = FGHI_ATTRIB_DT_BYTE;
-		fglStride = 1;
+		fglStride = 1*size;
 		break;
 	case GL_SHORT:
 		fglType = FGHI_ATTRIB_DT_SHORT;
-		fglStride = 2;
+		fglStride = 2*size;
 		break;
 	case GL_FIXED:
 		fglType = FGHI_ATTRIB_DT_FIXED;
-		fglStride = 4;
+		fglStride = 4*size;
 		break;
 	case GL_FLOAT:
 		fglType = FGHI_ATTRIB_DT_FLOAT;
-		fglStride = 4;
+		fglStride = 4*size;
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -558,11 +558,9 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
 
-	fglUpdateMatrices(ctx);
-
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->array[i].enabled) {
-			pointers[i] 			= (const unsigned char *)ctx->array[i].pointer + first * ctx->array[i].stride;
+			pointers[i] 			= (const unsigned char *)ctx->array[i].pointer/* + first * ctx->array[i].stride*/;
 			stride[i] 			= ctx->array[i].stride;
 		} else {
 			pointers[i]			= &ctx->vertex[i];
@@ -570,9 +568,60 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		}
 	}
 
+	fglUpdateMatrices(ctx);
+
+	fimgFlush(ctx->fimg);
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
+#if FIMG_INTERPOLATION_WORKAROUND != 2
 	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
-	fimgDrawNonIndexArrays(ctx->fimg, count, pointers, stride);
+#endif
+
+	switch(mode) {
+#if FIMG_INTERPOLATION_WORKAROUND == 2
+	case GL_POINTS:
+		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawNonIndexArraysPoints(ctx->fimg, first, count, pointers, stride);
+		break;
+	case GL_LINES:
+		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawNonIndexArraysLines(ctx->fimg, first, count, pointers, stride);
+		break;
+	case GL_LINE_LOOP:
+		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawNonIndexArraysLineLoops(ctx->fimg, first, count, pointers, stride);
+		break;
+	case GL_LINE_STRIP:
+		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawNonIndexArraysLineStrips(ctx->fimg, first, count, pointers, stride);
+		break;
+	case GL_TRIANGLES:
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawNonIndexArraysTriangles(ctx->fimg, first, count, pointers, stride);
+		break;
+	case GL_TRIANGLE_FAN:
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawNonIndexArraysTriangleFans(ctx->fimg, first, count, pointers, stride);
+		break;
+	case GL_TRIANGLE_STRIP:
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawNonIndexArraysTriangleStrips(ctx->fimg, first, count, pointers, stride);
+		break;
+#else /* FIMG_INTERPOLATION_WORKAROUND == 2 */
+#ifdef FIMG_CLIPPER_WORKAROUND
+	case GL_TRIANGLE_FAN:
+		fimgDrawNonIndexArraysTriangleFans(ctx->fimg, first, count, pointers, stride);
+		break;
+	case GL_TRIANGLE_STRIP:
+		fimgDrawNonIndexArraysTriangleStrips(ctx->fimg, first, count, pointers, stride);
+		break;
+#endif /* FIMG_CLIPPER_WORKAROUND */
+#endif /* FIMG_INTERPOLATION_WORKAROUND == 2 */
+	default:
+#if FIMG_INTERPOLATION_WORKAROUND == 2
+		fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
+#endif
+		fimgDrawNonIndexArrays(ctx->fimg, first, count, pointers, stride);
+	}
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
@@ -1442,12 +1491,30 @@ GL_API void GL_APIENTRY glDisable (GLenum cap)
 }
 
 /**
-	Special functions
+	Reading pixels
+*/
+
+GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels)
+{
+	FGLContext *ctx = getContext();
+
+	if(!format && !type) {
+		if(!x && !y && width == ctx->surface.draw.width && height == ctx->surface.draw.height) {
+			memcpy(pixels, ctx->surface.draw.vaddr, width * height * ctx->surface.draw.bpp);
+		}
+	}
+}
+
+/**
+	Clearing buffers
 */
 
 GL_API void GL_APIENTRY glClear (GLbitfield mask)
 {
+	FGLContext *ctx = getContext();
 
+	if(ctx->surface.draw.vaddr)
+		memset(ctx->surface.draw.vaddr, 0, ctx->surface.draw.width * ctx->surface.draw.height * ctx->surface.draw.bpp);
 }
 
 GL_API void GL_APIENTRY glClearColor (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
@@ -1475,6 +1542,10 @@ GL_API void GL_APIENTRY glClearStencil (GLint s)
 
 }
 
+/**
+	Flush/Finish
+*/
+
 GL_API void GL_APIENTRY glFlush (void)
 {
 	// TODO
@@ -1486,6 +1557,10 @@ GL_API void GL_APIENTRY glFinish (void)
 	fimgFlush(ctx->fimg);
 	fimgInvalidateFlushCache(ctx->fimg, 0, 0, 1, 1);
 }
+
+/**
+	Context management
+*/
 
 FGLContext *fglCreateContext(void)
 {
@@ -1506,7 +1581,11 @@ FGLContext *fglCreateContext(void)
 	ctx->vertexShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;
 
 	ctx->pixelShader.data = fshaderFshader;
+#ifdef FIMG_INTERPOLATION_WORKAROUND	
+	ctx->pixelShader.numAttribs = 8;
+#else
 	ctx->pixelShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;
+#endif
 
 	for(int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++)
 		fimgSetAttribute(ctx->fimg, i, FGHI_ATTRIB_DT_FLOAT, fglDefaultAttribSize[i]);

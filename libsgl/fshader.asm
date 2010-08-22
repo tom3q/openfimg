@@ -25,8 +25,8 @@ fimg_version	0x01020000
 
 # Shader code
 label start
-# Use color from input 0 for generated fragment
-mov_sat oColor, v0
+# Use color from input 1 for generated fragment
+mov_sat oColor, v1
 # Return
 ret
 # End of shader code

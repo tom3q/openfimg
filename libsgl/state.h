@@ -11,8 +11,8 @@
 
 enum {
 	FGL_COMP_RED = 0,
-	FGL_COMP_BLUE,
 	FGL_COMP_GREEN,
+	FGL_COMP_BLUE,
 	FGL_COMP_ALPHA
 };
 
@@ -38,6 +38,8 @@ enum {
 };
 #define FGL_ARRAY_TEXTURE(i)	(FGL_ARRAY_TEXTURE + (i))
 
+#include <cutils/log.h>
+
 struct FGLArrayState {
 	GLboolean enabled;
 	const GLvoid *pointer;
@@ -46,8 +48,8 @@ struct FGLArrayState {
 	GLint size;
 
 	FGLArrayState() :
-	enabled(GL_FALSE), pointer(NULL), stride(0),
-	type(FGHI_ATTRIB_DT_FLOAT), size(FGHI_NUMCOMP(4)) {};
+		enabled(GL_FALSE), pointer(NULL), stride(0),
+		type(FGHI_ATTRIB_DT_FLOAT), size(FGHI_NUMCOMP(4)) {};
 };
 
 struct FGLViewportState {
@@ -92,7 +94,6 @@ struct FGLMatrixState {
 };
 
 struct FGLSurface {
-	FGLuint		version;
 	FGLuint		width;      // width in pixels
 	FGLuint		height;     // height in pixels
 	FGLuint		stride;     // stride in pixels
@@ -100,6 +101,7 @@ struct FGLSurface {
 	unsigned long	paddr;      // physical address
 	unsigned long	size;       // block size
 	FGLint		format;     // pixel format
+	FGLint		bpp;        // bytes per pixel
 };
 
 #define FGL_IS_CURRENT		0x00010000
@@ -124,6 +126,12 @@ struct FGLShaderState {
 	FGLShaderState() : data(0), numAttribs(1) {};
 };
 
+struct FGLSurfaceState {
+	FGLSurface draw;
+	FGLSurface read;
+	FGLSurface depth;
+};
+
 struct FGLContext {
 	/* HW state */
 	fimgContext *fimg;
@@ -137,12 +145,13 @@ struct FGLContext {
 	FGLShaderState pixelShader;
 	/* EGL state */
 	FGLEGLState egl;
+	FGLSurfaceState surface;
 
 	/* Static initializers */
 	static FGLvec4f defaultVertex[4 + FGL_MAX_TEXTURE_UNITS];
 
 	FGLContext(fimgContext *fctx)
-	: fimg(fctx), activeTexture(0)
+	: fimg(fctx), activeTexture(0), matrix(), vertexShader(), pixelShader(), egl(), surface()
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 	}

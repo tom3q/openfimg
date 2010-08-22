@@ -75,7 +75,12 @@ fimgPipelineStatus fimgGetInterruptState(fimgContext *ctx);
  * Host interface
  */
 
-#define FIMG_ATTRIB_NUM		10
+/* Workaround for rasterizer bug. Use 2 for alternative drawing if 1 fails. */
+#define FIMG_INTERPOLATION_WORKAROUND	1
+/* Workaroudn for clipper bug. */
+//#define FIMG_CLIPPER_WORKAROUND	1
+
+#define FIMG_ATTRIB_NUM			10
 
 /* Type definitions */
 typedef union {
@@ -116,7 +121,19 @@ typedef enum {
 /* Functions */
 unsigned int fimgGetNumEmptyFIFOSlots(fimgContext *ctx);
 void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const void *buffer);
+#if defined(FIMG_INTERPOLATION_WORKAROUND)
+void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
+void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
+void fimgDrawNonIndexArraysLineStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
+void fimgDrawNonIndexArraysLineLoops(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
+void fimgDrawNonIndexArraysTriangles(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
+#endif
+#if defined(FIMG_INTERPOLATION_WORKAROUND) || defined(FIMG_CLIPPER_WORKAROUND)
+void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
+void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
+#endif
 void fimgDrawNonIndexArrays(fimgContext *ctx,
+			    unsigned int first,
 			    unsigned int numVertices,
 			    const void **ppvData,
 			    unsigned int *pStride);
@@ -503,7 +520,7 @@ void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
 			    fimgLogicalOperation color);
 void fimgSetLogicalOpEnable(fimgContext *ctx, int enable);
 void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a);
-void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned int mask);
+void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask);
 void fimgSetZBufWriteMask(fimgContext *ctx, int enable);
 void fimgSetFrameBufParams(fimgContext *ctx,
 			   int opaqueAlpha, unsigned int thresholdAlpha,
@@ -523,6 +540,9 @@ void fimgDestroyContext(fimgContext *ctx);
 void fimgRestoreContext(fimgContext *ctx);
 int fimgEnterCriticalSection(void);
 int fimgExitCriticalSection(void);
+int fimgDeviceOpen(void);
+void fimgDeviceClose(void);
+
 
 //=============================================================================
 

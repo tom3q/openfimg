@@ -65,8 +65,16 @@ dp4 o0.x, c0, r0
 dp4 o0.y, c1, r0
 dp4 o0.z, c2, r0
 dp4 o0.w, c3, r0
-# Pass vertex color
+# Pass vertex normal
 mov o1, v1
+# Pass vertex color
+mov o2, v2
+# Pass vertex point size
+mov o3, v3
+# Pass vertex texcoord 0
+mov o4, v4
+# Pass vertex texcoord 1
+mov o5, v5
 # Return
 ret
 # End of shader code

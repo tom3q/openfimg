@@ -32,7 +32,11 @@
 void fimgSetVertexContext(fimgContext *ctx, unsigned int type, unsigned int count)
 {
 	ctx->primitive.vctx.bits.type = type; // See fimgPrimitiveType enum
+#ifdef FIMG_INTERPOLATION_WORKAROUND
+	ctx->primitive.vctx.bits.vsOut = 8; // WORKAROUND
+#else
 	ctx->primitive.vctx.bits.vsOut = count - 1; // Without position
+#endif
 
 	ctx->numAttribs = count;
 

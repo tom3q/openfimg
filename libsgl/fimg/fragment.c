@@ -368,12 +368,12 @@ void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a)
 *		[IN] mask - A bit mask to enable and disable writing of individual
 *                    bits in the stencil buffer.
 *****************************************************************************/
-void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned int mask)
+void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask)
 {
 	if(!back)
-		ctx->fragment.dbmask.bits.frontmask = (~mask) & 0xff;
+		ctx->fragment.dbmask.bits.frontmask = ~mask;
 	else
-		ctx->fragment.dbmask.bits.backmask = (~mask) & 0xff;
+		ctx->fragment.dbmask.bits.backmask = ~mask;
 	fimgWrite(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
 }
 

@@ -20,7 +20,7 @@
 static int fimgFileDesc = -1;
 static int fimgMemFileDesc = -1;
 static volatile void *fimgBase = NULL;
-static unsigned int refCount = 0;
+//static unsigned int refCount = 0;
 
 #define FIMG_SFR_BASE 0x72000000
 #define FIMG_SFR_SIZE 0x80000
@@ -31,7 +31,7 @@ static unsigned int refCount = 0;
  * RETURNS:	 0, on success
  *		-errno, on error
  *****************************************************************************/
-static int fimgDeviceOpen(void)
+int fimgDeviceOpen(void)
 {
 	fimgFileDesc = open("/dev/s3c-g3d", O_RDWR, 0);
 	if(fimgFileDesc < 0) {
@@ -54,7 +54,7 @@ static int fimgDeviceOpen(void)
 		return -errno;
 	}
 
-	fimgEnterCriticalSection();
+//	fimgEnterCriticalSection();
 
 	LOGD("fimg3D: Opened /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
 
@@ -65,9 +65,9 @@ static int fimgDeviceOpen(void)
  * FUNCTION:	fimgDeviceClose
  * SYNOPSIS:	This function closes the 3D device
  *****************************************************************************/
-static void fimgDeviceClose(void)
+void fimgDeviceClose(void)
 {
-	fimgExitCriticalSection();
+//	fimgExitCriticalSection();
 
 	munmap((void *)fimgBase, FIMG_SFR_SIZE);
 	close(fimgFileDesc);
@@ -104,7 +104,10 @@ void *fimgAllocMemory(unsigned long *size, unsigned long *paddr)
 	
 	ioctl(fimgFileDesc, S3C_3D_MEM_ALLOC, &mem);
 
-	LOGD("Allocated %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
+	if(mem.vir_addr)
+		LOGD("Allocated %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
+	else
+		LOGE("Memory allocation of %d bytes failed", mem.size);
 
 	*paddr = mem.phy_addr;
 	*size = mem.size;
@@ -121,6 +124,9 @@ void *fimgAllocMemory(unsigned long *size, unsigned long *paddr)
 void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
 {
 	struct s3c_3d_mem_alloc mem;
+
+	if(!vaddr)
+		return;
 
 	mem.vir_addr = (unsigned int)vaddr;
 	mem.phy_addr = paddr;
@@ -145,13 +151,7 @@ fimgContext *fimgCreateContext(void)
 
 	memset(ctx, 0, sizeof(fimgContext));
 
-	if(!refCount && fimgDeviceOpen()) {
-		free(ctx);
-		return NULL;
-	}
-
 	ctx->base = fimgBase;
-	refCount++;
 
 	fimgCreateGlobalContext(ctx);
 	fimgCreateHostContext(ctx);
@@ -166,11 +166,6 @@ fimgContext *fimgCreateContext(void)
 
 void fimgDestroyContext(fimgContext *ctx)
 {
-	refCount--;
-
-	if(!refCount)
-		fimgDeviceClose();
-
 	free(ctx);
 }
 

@@ -40,9 +40,12 @@ void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, float *pfData)
 	unsigned int pReg = FGVS_CFLOAT_START + 64*matrix;
 	unsigned int *pData = (unsigned int *)pfData;
 
-	for(i = 0; i < 16; i++) {
-		fimgWrite(ctx, *pData, pReg);
-		pReg += 4;
+	for(i = 0; i < 4; i++) {
+		fimgWrite(ctx, pData[0],  pReg +  0);
+		fimgWrite(ctx, pData[4],  pReg +  4);
+		fimgWrite(ctx, pData[8],  pReg +  8);
+		fimgWrite(ctx, pData[12], pReg + 12);
+		pReg += 16;
 		pData++;
 	}
 }
