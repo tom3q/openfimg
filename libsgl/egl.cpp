@@ -1003,9 +1003,11 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule);
 	module = reinterpret_cast<gralloc_module_t const*>(pModule);
 
+#if 0
 	if (hw_get_module(COPYBIT_HARDWARE_MODULE_ID, &pModule) == 0) {
 		copybit_open(pModule, &blitengine);
 	}
+#endif
 
 	// keep a reference on the window
 	nativeWindow->common.incRef(&nativeWindow->common);
@@ -1022,9 +1024,12 @@ FGLWindowSurface::~FGLWindowSurface()
 		previousBuffer->common.decRef(&previousBuffer->common);
 	}
 	nativeWindow->common.decRef(&nativeWindow->common);
+
+#if 0
 	if (blitengine) {
 		copybit_close(blitengine);
 	}
+#endif
 }
 
 EGLBoolean FGLWindowSurface::connect()
@@ -1061,8 +1066,8 @@ EGLBoolean FGLWindowSurface::connect()
 	// Lock the buffer
 	nativeWindow->lockBuffer(nativeWindow, buffer);
 	// pin the buffer down
-	if (lock(buffer, GRALLOC_USAGE_SW_READ_OFTEN |
-		GRALLOC_USAGE_SW_WRITE_OFTEN, &bits) != FGL_NO_ERROR) {
+	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY |
+		GRALLOC_USAGE_SW_WRITE_NEVER | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
 		LOGE("connect() failed to lock buffer %p (%ux%u)",
 			buffer, buffer->width, buffer->height);
 		setError(EGL_BAD_ACCESS);
@@ -1135,6 +1140,7 @@ void FGLWindowSurface::copyBlt(
 	// NOTE: dst and src must be the same format
 
 	FGLint err = FGL_NO_ERROR;
+#if 0
 	copybit_device_t* const copybit = blitengine;
 	if (copybit)  {
 		copybit_image_t simg;
@@ -1153,41 +1159,46 @@ void FGLWindowSurface::copyBlt(
 		copybit->set_parameter(copybit, COPYBIT_PLANE_ALPHA, 255);
 		copybit->set_parameter(copybit, COPYBIT_DITHER, COPYBIT_DISABLE);
 		region_iterator it(clip);
+
 		err = copybit->blit(copybit, &dimg, &simg, &it);
-		if (err != FGL_NO_ERROR) {
-		LOGE("copybit failed (%s)", strerror(err));
-		}
+		if (err != FGL_NO_ERROR)
+			LOGE("copybit failed (%s)", strerror(err));
+		else
+			return;
 	}
+#endif
 
-	if (!copybit || err) {
-		Region::const_iterator cur = clip.begin();
-		Region::const_iterator end = clip.end();
+	Region::const_iterator cur = clip.begin();
+	Region::const_iterator end = clip.end();
 
-		const size_t bpp = getBpp(src->format);
-		const size_t dbpr = dst->stride * bpp;
-		const size_t sbpr = src->stride * bpp;
+	const size_t bpp = getBpp(src->format);
+	const size_t dbpr = dst->stride * bpp;
+	const size_t sbpr = src->stride * bpp;
 
-		uint8_t const * const src_bits = (uint8_t const *)src_vaddr;
-		uint8_t       * const dst_bits = (uint8_t       *)dst_vaddr;
+	uint8_t const * const src_bits = (uint8_t const *)src_vaddr;
+	uint8_t       * const dst_bits = (uint8_t       *)dst_vaddr;
 
-		while (cur != end) {
+	while (cur != end) {
 		const Rect& r(*cur++);
 		ssize_t w = r.right - r.left;
 		ssize_t h = r.bottom - r.top;
+		
 		if (w <= 0 || h<=0) continue;
+		
 		size_t size = w * bpp;
 		uint8_t const * s = src_bits + (r.left + src->stride * r.top) * bpp;
 		uint8_t       * d = dst_bits + (r.left + dst->stride * r.top) * bpp;
+		
 		if (dbpr==sbpr && size==sbpr) {
 			size *= h;
 			h = 1;
 		}
+		
 		do {
 			memcpy(d, s, size);
 			d += dbpr;
 			s += sbpr;
 		} while (--h > 0);
-		}
 	}
 }
 
@@ -1208,11 +1219,11 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 		const Region copyBack(Region::subtract(oldDirtyRegion, dirtyRegion));
 		if (!copyBack.isEmpty()) {
 			void* prevBits;
-			if (lock(previousBuffer,
-				GRALLOC_USAGE_SW_READ_OFTEN, &prevBits) == FGL_NO_ERROR) {
-			// copy from previousBuffer to buffer
-			copyBlt(buffer, bits, previousBuffer, prevBits, copyBack);
-			unlock(previousBuffer);
+			if (lock(previousBuffer, GRALLOC_USAGE_SW_READ_OFTEN,
+			&prevBits) == FGL_NO_ERROR) {
+				// copy from previousBuffer to buffer
+				copyBlt(buffer, bits, previousBuffer, prevBits, copyBack);
+				unlock(previousBuffer);
 			}
 		}
 		}
@@ -1261,8 +1272,8 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	buffer->common.incRef(&buffer->common);
 
 	// finally pin the buffer down
-	if (lock(buffer, GRALLOC_USAGE_SW_READ_OFTEN |
-		GRALLOC_USAGE_SW_WRITE_OFTEN, &bits) != FGL_NO_ERROR) {
+	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY |
+		GRALLOC_USAGE_SW_WRITE_NEVER | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
 		LOGE("eglSwapBuffers() failed to lock buffer %p (%ux%u)",
 			buffer, buffer->width, buffer->height);
 		setError(EGL_BAD_ACCESS);

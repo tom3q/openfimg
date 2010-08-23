@@ -32,7 +32,7 @@
 #include "vshader.h"
 #include "fshader.h"
 
-//#define GLES_DEBUG
+#define GLES_DEBUG
 
 /**
 	Client API information
@@ -1500,7 +1500,10 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei h
 
 	if(!format && !type) {
 		if(!x && !y && width == ctx->surface.draw.width && height == ctx->surface.draw.height) {
-			memcpy(pixels, ctx->surface.draw.vaddr, width * height * ctx->surface.draw.bpp);
+			if(ctx->surface.draw.vaddr) {
+				fimgClearBufferCache(ctx->surface.draw.vaddr, width * height * ctx->surface.draw.bpp);
+				memcpy(pixels, ctx->surface.draw.vaddr, width * height * ctx->surface.draw.bpp);
+			}
 		}
 	}
 }
@@ -1513,8 +1516,10 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask)
 {
 	FGLContext *ctx = getContext();
 
-	if(ctx->surface.draw.vaddr)
+	if(ctx->surface.draw.vaddr) {
 		memset(ctx->surface.draw.vaddr, 0, ctx->surface.draw.width * ctx->surface.draw.height * ctx->surface.draw.bpp);
+		fimgFlushBufferCache(ctx->surface.draw.vaddr, ctx->surface.draw.width * ctx->surface.draw.height * ctx->surface.draw.bpp);
+	}
 }
 
 GL_API void GL_APIENTRY glClearColor (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)

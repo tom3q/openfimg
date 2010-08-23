@@ -542,7 +542,9 @@ int fimgEnterCriticalSection(void);
 int fimgExitCriticalSection(void);
 int fimgDeviceOpen(void);
 void fimgDeviceClose(void);
-
+void fimgFlushBufferCache(void *vaddr, unsigned long size);
+void fimgClearBufferCache(void *vaddr, unsigned long size);
+void fimgClearFlushBufferCache(void *vaddr, unsigned long size);
 
 //=============================================================================
 

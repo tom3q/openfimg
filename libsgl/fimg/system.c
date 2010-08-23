@@ -137,6 +137,54 @@ void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
 	ioctl(fimgFileDesc, S3C_3D_MEM_FREE, &mem);
 }
 
+#define S3C_3D_CACHE_INVALID		_IOWR('S', 316, struct s3c_3d_mem_alloc)
+#define S3C_3D_CACHE_CLEAN		_IOWR('S', 317, struct s3c_3d_mem_alloc)
+#define S3C_3D_CACHE_CLEAN_INVALID	_IOWR('S', 318, struct s3c_3d_mem_alloc)
+void fimgFlushBufferCache(void *vaddr, unsigned long size)
+{
+	struct s3c_3d_mem_alloc mem;
+
+	if(!vaddr)
+		return;
+
+	mem.vir_addr = (unsigned int)vaddr;
+	mem.size = size;
+
+	LOGD("Flushed %d bytes of memory @ 0x%08x.)", mem.size, mem.vir_addr);
+
+	ioctl(fimgFileDesc, S3C_3D_CACHE_INVALID, &mem);
+}
+
+void fimgClearBufferCache(void *vaddr, unsigned long size)
+{
+	struct s3c_3d_mem_alloc mem;
+
+	if(!vaddr)
+		return;
+
+	mem.vir_addr = (unsigned int)vaddr;
+	mem.size = size;
+
+	LOGD("Invalidated %d bytes of memory @ 0x%08x.)", mem.size, mem.vir_addr);
+
+	ioctl(fimgFileDesc, S3C_3D_CACHE_CLEAN, &mem);
+}
+
+void fimgClearFlushBufferCache(void *vaddr, unsigned long size)
+{
+	struct s3c_3d_mem_alloc mem;
+
+	if(!vaddr)
+		return;
+
+	mem.vir_addr = (unsigned int)vaddr;
+	mem.size = size;
+
+	LOGD("Flushed and invalidated %d bytes of memory @ 0x%08x.)", mem.size, mem.vir_addr);
+
+	ioctl(fimgFileDesc, S3C_3D_CACHE_CLEAN_INVALID, &mem);
+}
+
 /**
 	Context management
 */
