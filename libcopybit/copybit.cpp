@@ -157,6 +157,8 @@ static int set_image(s3c_g2d_image *img, const struct copybit_image_t *rhs)
 	img->offs	= hnd->offset;
 	img->fd		= hnd->fd;
 	img->fmt	= format;
+
+	return 0;
 }
 
 static void set_rects(struct copybit_context_t *dev,
@@ -166,77 +168,52 @@ static void set_rects(struct copybit_context_t *dev,
 		const struct copybit_rect_t *scissor)
 {
 	struct copybit_rect_t clip;
+	uint32_t H, W, h, w;
+	
 	intersect(&clip, scissor, dst);
+
+	LOGD("SRC (%d,%d) (%d,%d), DST (%d,%d), (%d,%d), "
+			"CLIP (%d,%d) (%d,%d)", src->l, src->t, src->r,
+			src->b, dst->l, dst->t, dst->r, dst->b,
+			scissor->l, scissor->t, scissor->r, scissor->b);
 
 	e->dst.l = clip.l;
 	e->dst.t = clip.t;
 	e->dst.r = clip.r - 1;
 	e->dst.b = clip.b - 1;
 
-#if 1
-	switch(dev->transform)
-	{
-	/*rotate source image 90 degres*/
-	case COPYBIT_TRANSFORM_ROT_90:
-		e->src.l =  clip.t - dst->t + src->t;
-		e->src.t =  dst->r - clip.r + src->l;
-		e->src.r = -dst->t + src->t + clip.b - 1;
-		e->src.b =  dst->r + src->l - clip.l - 1;
-//		W = dst->b - dst->t;
-//		H = dst->r - dst->l;
-		break;
-
-	/*rotate source image 180 degres*/
-	case COPYBIT_TRANSFORM_ROT_180:
-		e->src.x = (dst->r - clip.r) + src->l;
-		e->src.y = (dst->b - clip.b) + src->t;
-		e->src.w = (clip.r - clip.l) - 1;
-		e->src.h = (clip.b - clip.t) - 1;
-//		W = dst->r - dst->l;
-//		H = dst->b - dst->t;
-		break;
-
-	/*rotate source image 270 degres*/
-	case COPYBIT_TRANSFORM_ROT_270:
-		e->src.x =  dst->b - clip.b + src->t;
-		e->src.y =  clip.l - dst->l + src->l;
-		e->src.w =  dst->b + src->t - clip.t - 1;
-		e->src.h = -dst->l + src->l + clip.r - 1;
-//		W = dst->b - dst->t;
-//		H = dst->r - dst->l;
-		break;
-
-	/*have no rotation*/
-	default:
-		e->src.x = (clip.l - dst->l) + src->l;
-		e->src.y = (clip.t - dst->t) + src->t;
-		e->src.w = (clip.r - clip.l) ;
-		e->src.h = (clip.b - clip.t) ;
-//		W = dst->r - dst->l;
-//		H = dst->b - dst->t;
-		break;
-	}
-#else
 	if (dev->transform & COPYBIT_TRANSFORM_ROT_90) {
-		LOGD("SRC (%d,%d) (%d,%d), DST (%d,%d), (%d,%d), "
-				"CLIP (%d,%d) (%d,%d)", src->l, src->t, src->r,
-				src->b, dst->l, dst->t, dst->r, dst->b,
-				scissor->l, scissor->t, scissor->r, scissor->b);
 		e->src.l = clip.t - dst->t + src->t;
 		e->src.t = dst->r - clip.r + src->l;
 		e->src.r = src->t - dst->t + clip.b - 1;
 		e->src.b = dst->r + src->l - clip.l - 1;
-//		W = dst->b - dst->t;
-//		H = dst->r - dst->l;
+		W = dst->b - dst->t;
+		H = dst->r - dst->l;
 	} else {
 		e->src.l = clip.l - dst->l + src->l;
 		e->src.t = clip.t - dst->t + src->t;
 		e->src.r = clip.r - dst->r + src->r - 1;
 		e->src.b = clip.b - dst->b + src->b - 1;
-//		W = dst->r - dst->l;
-//		H = dst->b - dst->t;
+		W = dst->r - dst->l;
+		H = dst->b - dst->t;
 	}
-#endif
+
+	w = e->src.r - e->src.l + 1;
+	h = e->src.b - e->src.t + 1;
+	MULDIV(&e->src.l, &w, src->r - src->l, W);
+	MULDIV(&e->src.t, &h, src->b - src->t, H);
+	e->src.r = e->src.l + w - 1;
+	e->src.b = e->src.t + h - 1;
+
+	if (dev->transform & COPYBIT_TRANSFORM_FLIP_V)
+		e->src.t = e->src.h - (e->src.t + h);
+
+	if (dev->transform & COPYBIT_TRANSFORM_FLIP_H)
+		e->src.l = e->src.w  - (e->src.l + w);
+
+	LOGD("BLIT (%d,%d) (%d,%d) => (%d,%d) (%d,%d)",
+	     e->src.l, e->src.t, e->src.r, e->src.b,
+	     e->dst.l, e->dst.t, e->dst.r, e->dst.b);
 }
 
 /** copy the bits */
@@ -390,8 +367,11 @@ static int stretch_copybit(
 	if (dst->w > MAX_DIMENSION || dst->h > MAX_DIMENSION)
 		return -EINVAL;
 
-	set_image(&req.dst, dst);
-	set_image(&req.src, src);
+	if(set_image(&req.dst, dst))
+		return -EINVAL;
+	
+	if(set_image(&req.src, src))
+		return -EINVAL;
 
 	struct copybit_rect_t clip;
 	while (region->next(region, &clip)) {
@@ -399,8 +379,7 @@ static int stretch_copybit(
 
 		status = ioctl(ctx->s3c_g2d_fd, S3C_G2D_BITBLT, &req);
 		if (status < 0) {
-			LOGE(status < 0, "copyBits failed (%s)",
-						strerror(errno));
+			LOGE("copyBits failed (%s)", strerror(errno));
 			return -errno;
 		}
 	}
