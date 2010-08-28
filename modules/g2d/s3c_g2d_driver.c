@@ -161,25 +161,87 @@ static void g2d_soft_reset(struct g2d_drvdata *data)
 		ERR("soft reset timeout.\n");
 }
 
+static inline uint32_t g2d_pack_xy(uint32_t x, uint32_t y)
+{
+	return (y << 16) | x;
+}
+
 static int g2d_do_blit(struct g2d_context *ctx)
 {
 	struct g2d_drvdata *data = ctx->data;
 	struct s3c_g2d_req *req = ctx->req;
 	uint32_t srcw, srch, dstw, dsth;
 	uint32_t xincr, yincr;
-	uint32_t xref, yref;
+	//uint32_t xref, yref;
 	uint32_t stretch;
 	uint32_t blend;
+	uint32_t vdx1, vdy1, vdx2, vdy2, vsw, vsh;
 
 	srcw = req->src.r - req->src.l + 1;
 	srch = req->src.b - req->src.t + 1;
 	dstw = req->dst.r - req->dst.l + 1;
 	dsth = req->dst.b - req->dst.t + 1;
 
-	stretch = (srcw != dstw) || (srch != dsth);
+	switch (ctx->rot) {
+	case G2D_ROT_90:
+		// origin : (dst_x2, dst_y1)
+		vdx1 = req->dst.r;
+		vdy1 = req->dst.t;
+		vdx2 = req->dst.r + dsth - 1;
+		vdy2 = req->dst.t + dstw - 1;
+		vsw = srch;
+		vsh = srcw;
+		break;
+	case G2D_ROT_180:
+		// origin : (dst_x2, dst_y2)
+		vdx1 = req->dst.r;
+		vdy1 = req->dst.b;
+		vdx2 = req->dst.r + dstw - 1;
+		vdy2 = req->dst.b + dsth - 1;
+		vsw = srcw;
+		vsh = srch;
+		break;
+	case G2D_ROT_270:
+		// origin : (dst_x1, dst_y2)
+		vdx1 = req->dst.l;
+		vdy1 = req->dst.b;
+		vdx2 = req->dst.l + dsth - 1;
+		vdy2 = req->dst.b + dstw - 1;
+		vsw = srch;
+		vsh = srcw;
+		break;
+	case G2D_ROT_FLIP_X:
+		// origin : (dst_x1, dst_y2)
+		vdx1 = req->dst.l;
+		vdy1 = req->dst.b;
+		vdx2 = req->dst.l + dstw - 1;
+		vdy2 = req->dst.b + dsth - 1;
+		vsw = srcw;
+		vsh = srch;
+		break;
+	case G2D_ROT_FLIP_Y:
+		// origin : (dst_x2, dst_y1)
+		vdx1 = req->dst.r;
+		vdy1 = req->dst.t;
+		vdx2 = req->dst.r + dstw - 1;
+		vdy2 = req->dst.t + dsth - 1;
+		vsw = srcw;
+		vsh = srch;
+		break;
+	default:
+		vdx1 = req->dst.l;
+		vdy1 = req->dst.t;
+		vdx2 = req->dst.r;
+		vdy2 = req->dst.b;
+		vsw = srcw;
+		vsh = srch;
+		break;
+	}
+
+	stretch = (vsw != dstw) || (vsh != dsth);
 
 	/* NOTE: Theoretically this could by skipped */
-	if (g2d_check_fifo(data, 32)) {
+	if (g2d_check_fifo(data, 21)) {
 		ERR("timeout while waiting for FIFO\n");
 		return -EBUSY;
 	}
@@ -187,7 +249,7 @@ static int g2d_do_blit(struct g2d_context *ctx)
 	if(stretch) {
 		/* Compute X scaling factor */
 		/* (division takes time, so do it now for pipelining */
-		xincr = (srcw << 11) / dstw;
+		xincr = (vsw << 11) / dstw;
 	}
 
 	/* Configure source image */
@@ -195,10 +257,10 @@ static int g2d_do_blit(struct g2d_context *ctx)
 					req->src.w, req->src.h, req->src.fmt);
 
 	g2d_write(data, req->src.base + req->src.offs, G2D_SRC_BASE_ADDR);
-	g2d_write(data, req->src.w, G2D_SRC_HORI_REG);
-	g2d_write(data, req->src.h, G2D_SRC_VERT_REG);
-	/* NOTE: Is this neccessary? */
-	//g2d_write(data, (req->src.h << 16) | req->src.w, G2D_SRC_RES_REG);
+	//g2d_write(data, req->src.w, G2D_SRC_HORI_REG);
+	//g2d_write(data, req->src.h, G2D_SRC_VERT_REG);
+	/* NOTE: Which one is faster? */
+	g2d_write(data, g2d_pack_xy(req->src.w, req->src.h), G2D_SRC_RES_REG);
 	g2d_write(data, req->src.fmt, G2D_SRC_FORMAT_REG);
 	g2d_write(data, req->src.fmt == G2D_RGBA32, G2D_END_RDSIZE_REG);
 
@@ -207,24 +269,27 @@ static int g2d_do_blit(struct g2d_context *ctx)
 					req->dst.w, req->dst.h, req->dst.fmt);
 
 	g2d_write(data, req->dst.base + req->dst.offs, G2D_DST_BASE_ADDR);
-	g2d_write(data, req->dst.w, G2D_DST_HORI_REG);
-	g2d_write(data, req->dst.h, G2D_DST_VERT_REG);
-	/* NOTE: Is this neccessary? */
-	//g2d_write(data, (req->dst.h << 16) | req->dst.w, G2D_DST_RES_REG);
+	//g2d_write(data, req->dst.w, G2D_DST_HORI_REG);
+	//g2d_write(data, req->dst.h, G2D_DST_VERT_REG);
+	/* NOTE: Which one is faster? */
+	g2d_write(data, g2d_pack_xy(req->dst.w, req->dst.h), G2D_DST_RES_REG);
 	g2d_write(data, req->dst.fmt, G2D_DST_FORMAT_REG);
 
 	/* Configure clipping window to destination size */
 	DBG("CLIP (%d,%d) (%d,%d)\n", 0, 0, req->dst.w - 1, req->dst.h - 1);
 
-	g2d_write(data, 0, G2D_CW_LT_X_REG);
-	g2d_write(data, 0, G2D_CW_LT_Y_REG);
-	g2d_write(data, req->dst.w - 1, G2D_CW_RB_X_REG);
-	g2d_write(data, req->dst.h - 1, G2D_CW_RB_Y_REG);
+	//g2d_write(data, 0, G2D_CW_LT_X_REG);
+	//g2d_write(data, 0, G2D_CW_LT_Y_REG);
+	g2d_write(data, g2d_pack_xy(0, 0), G2D_CW_LT_REG);
+	//g2d_write(data, req->dst.w - 1, G2D_CW_RB_X_REG);
+	//g2d_write(data, req->dst.h - 1, G2D_CW_RB_Y_REG);
+	g2d_write(data, g2d_pack_xy(req->dst.w - 1, req->dst.h - 1),
+							G2D_CW_RB_REG);
 
 	if(stretch) {
 		/* Compute Y scaling factor */
 		/* (division takes time, so do it now for pipelining */
-		yincr = (srch << 11) / dsth;
+		yincr = (vsh << 11) / dsth;
 	}
 
 	/* Configure ROP and alpha blending */
@@ -247,53 +312,33 @@ static int g2d_do_blit(struct g2d_context *ctx)
 
 	/* Configure rotation */
 	g2d_write(data, ctx->rot, G2D_ROTATE_REG);
-	switch (ctx->rot) {
-	case G2D_ROT_90:
-		xref = req->src.b / 2;
-		yref = req->src.b / 2;
-		break;
-	case G2D_ROT_180:
-		xref = req->src.r / 2;
-		yref = req->src.b / 2;
-		break;
-	case G2D_ROT_270:
-		xref = -req->src.r / 2;
-		yref =  req->src.r / 2;
-		break;
-	case G2D_ROT_FLIP_X:
-		xref = 0;
-		yref = (req->src.t + req->src.b) / 2;
-		break;
-	case G2D_ROT_FLIP_Y:
-		xref = (req->src.l + req->src.r) / 2;
-		yref = 0;
-		break;
-	default:
-		xref = 0;
-		yref = 0;
-		break;
-	}
-
-	g2d_write(data, xref, G2D_ROT_OC_X_REG);
-	g2d_write(data, yref, G2D_ROT_OC_Y_REG);
+	//g2d_write(data, xref, G2D_ROT_OC_X_REG);
+	//g2d_write(data, yref, G2D_ROT_OC_Y_REG);
+	g2d_write(data, g2d_pack_xy(vdx1, vdy1), G2D_ROT_OC_REG);
 
 	DBG("BLEND %08x ROTATE %08x REF=(%d, %d)\n",
-			blend, ctx->rot, xref, yref);
+			blend, ctx->rot, vdx1, vdy1);
 
 	/* Configure coordinates */
 	DBG("BLIT (%d,%d) (%d,%d) => (%d,%d) (%d,%d)\n",
 		req->src.l, req->src.t, req->src.r, req->src.b,
-		req->dst.l, req->dst.t, req->dst.r, req->dst.b);
+		vdx1, vdy1, vdx2, vdy2);
 
-	g2d_write(data, req->src.l, G2D_COORD0_X_REG);
-	g2d_write(data, req->src.t, G2D_COORD0_Y_REG);
-	g2d_write(data, req->src.r, G2D_COORD1_X_REG);
-	g2d_write(data, req->src.b, G2D_COORD1_Y_REG);
+	//g2d_write(data, req->src.l, G2D_COORD0_X_REG);
+	//g2d_write(data, req->src.t, G2D_COORD0_Y_REG);
+	g2d_write(data, g2d_pack_xy(req->src.l, req->src.t), G2D_COORD0_REG);
+	//g2d_write(data, req->src.r, G2D_COORD1_X_REG);
+	//g2d_write(data, req->src.b, G2D_COORD1_Y_REG);
+	g2d_write(data, g2d_pack_xy(req->src.r, req->src.b), G2D_COORD1_REG);
 
-	g2d_write(data, req->dst.l, G2D_COORD2_X_REG);
-	g2d_write(data, req->dst.t, G2D_COORD2_Y_REG);
-	g2d_write(data, req->dst.r, G2D_COORD3_X_REG);
-	g2d_write(data, req->dst.b, G2D_COORD3_Y_REG);
+	//g2d_write(data, req->dst.l, G2D_COORD2_X_REG);
+	//g2d_write(data, req->dst.t, G2D_COORD2_Y_REG);
+	//g2d_write(data, g2d_pack_xy(req->dst.l, req->dst.t), G2D_COORD2_REG);
+	g2d_write(data, g2d_pack_xy(vdx1, vdy1), G2D_COORD2_REG);
+	//g2d_write(data, req->dst.r, G2D_COORD3_X_REG);
+	//g2d_write(data, req->dst.b, G2D_COORD3_Y_REG);
+	//g2d_write(data, g2d_pack_xy(req->dst.r, req->dst.b), G2D_COORD3_REG);
+	g2d_write(data, g2d_pack_xy(vdx2, vdy2), G2D_COORD3_REG);
 
 	/* Configure scaling factors */
 	DBG("SCALE X_INCR = %08x, Y_INCR = %08x\n", xincr, yincr);
