@@ -195,8 +195,6 @@ static void set_rects(struct copybit_context_t *dev,
 	if (dev->transform & COPYBIT_TRANSFORM_ROT_90) {
 		e->src.l = clip.t - dst->t + src->t;
 		e->src.t = dst->r - clip.r + src->l;
-		//e->src.r = src->t - dst->t + clip.b - 1;
-		//e->src.b = dst->r + src->l - clip.l - 1;
 		w = clip.b - clip.t;
 		h = clip.r - clip.l;
 		W = dst->b - dst->t;
@@ -204,8 +202,6 @@ static void set_rects(struct copybit_context_t *dev,
 	} else {
 		e->src.l = clip.l - dst->l + src->l;
 		e->src.t = clip.t - dst->t + src->t;
-		//e->src.r = clip.r - dst->r + src->r - 1;
-		//e->src.b = clip.b - dst->b + src->b - 1;
 		w = clip.r - clip.l;
 		h = clip.b - clip.t;
 		W = dst->r - dst->l;
@@ -226,18 +222,6 @@ static void set_rects(struct copybit_context_t *dev,
 	DEBUG("BLIT (%d,%d) (%d,%d) => (%d,%d) (%d,%d)",
 		e->src.l, e->src.t, e->src.r, e->src.b,
 		e->dst.l, e->dst.t, e->dst.r, e->dst.b);
-}
-
-/** copy the bits */
-static inline int s3c_g2d_copybit(struct copybit_context_t *dev,
-						void const *req)
-{
-	int err = ioctl(dev->s3c_g2d_fd, S3C_G2D_BITBLT,
-			(struct s3c_g2d_req const*)req);
-
-	LOGE_IF(err<0, "copyBits failed (%s)", strerror(errno));
-
-	return -err;
 }
 
 /*****************************************************************************/
