@@ -357,6 +357,9 @@ int mapFrameBufferLocked(struct private_module_t* module)
 	}
 	module->framebuffer->base = intptr_t(vaddr);
 	memset(vaddr, 0, fbSize);
+
+	ioctl(g2d_fd, S3C_G2D_SET_BLENDING, G2D_PIXEL_ALPHA);
+
 	DEBUG_LEAVE();
 	return 0;
 }
