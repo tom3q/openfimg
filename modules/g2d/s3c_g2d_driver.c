@@ -49,7 +49,7 @@
 #include "s3c_g2d.h"
 
 #ifdef CONFIG_S3C64XX_DOMAIN_GATING
-//#define USE_G2D_DOMAIN_GATING
+#define USE_G2D_DOMAIN_GATING
 #endif
 
 /* Driver information */
@@ -62,6 +62,7 @@
 #define G2D_TIMEOUT		100
 #define G2D_RESET_TIMEOUT	1000
 #define G2D_MINOR		220
+#define G2D_IDLE_TIME_SECS	10
 
 /* Driver data (shared) */
 struct g2d_drvdata {
@@ -78,6 +79,7 @@ struct g2d_drvdata {
 
 #ifdef USE_G2D_DOMAIN_GATING
 	struct hrtimer		timer;	// idle timer
+	int			state;	// power state
 #endif
 };
 
@@ -455,32 +457,39 @@ static void g2d_workfunc(struct work_struct *work)
 
 static int g2d_clk_enable(struct g2d_drvdata *data)
 {
-	INFO("Requesting power up.\n");
-	
-	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_ACTIVE_MODE, S3C64XX_2D);
+	if(!data->state) {
+		INFO("Requesting power up.\n");
+		s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_ACTIVE_MODE, S3C64XX_2D);
 
-	if (s3c_wait_blk_pwr_ready(S3C64XX_BLK_P)) {
-		return -1;
+		if (s3c_wait_blk_pwr_ready(S3C64XX_BLK_P)) {
+			return -1;
+		}
+
+		clk_enable(data->clock);
+		g2d_soft_reset(data);
+		data->state = 1;
 	}
 
-	clk_enable(data->clock);
-
-	return s3c_g2d_init_regs();
+	return 0;
 }
 
 static int g2d_clk_disable(struct g2d_drvdata *data)
 {
-	INFO("Requesting power down.\n");
-
-	clk_disable(data->clock);
-	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_LP_MODE, S3C64XX_2D);
+	if(data->state) {
+		INFO("Requesting power down.\n");
+		clk_disable(data->clock);
+		s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_LP_MODE, S3C64XX_2D);
+		data->state = 0;
+	}
 
 	return 0;
 }
 
 static enum hrtimer_restart g2d_idle_func(struct hrtimer *t)
 {
-	g2d_clk_disable();
+	struct g2d_drvdata *data = container_of(t, struct g2d_drvdata, timer);
+
+	g2d_clk_disable(data);
 	
 	return HRTIMER_NORESTART;
 }
@@ -738,6 +747,7 @@ static int s3c_g2d_probe(struct platform_device *pdev)
 #ifdef USE_G2D_DOMAIN_GATING
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->timer.function = g2d_idle_func;
+	data->state = 0;
 #else
 #ifdef CONFIG_S3C64XX_DOMAIN_GATING
 	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_ACTIVE_MODE, S3C64XX_2D);
