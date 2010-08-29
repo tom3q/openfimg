@@ -24,5 +24,5 @@ LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_SRC_FILES := copybit.cpp
 LOCAL_MODULE := copybit.s3c6410
 LOCAL_C_INCLUDES += hardware/s3c6410/libgralloc
-LOCAL_CFLAGS += -DCOPYBIT_S3C6410=1
+LOCAL_CFLAGS += -DCOPYBIT_S3C6410=1 -march=armv6zk -mtune=arm1176jzf-s -O2
 include $(BUILD_SHARED_LIBRARY)
