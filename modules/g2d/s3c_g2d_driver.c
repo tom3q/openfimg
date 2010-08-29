@@ -264,7 +264,7 @@ static int g2d_do_blit(struct g2d_context *ctx)
 	/* NOTE: Which one is faster? */
 	g2d_write(data, g2d_pack_xy(req->src.w, req->src.h), G2D_SRC_RES_REG);
 	g2d_write(data, req->src.fmt, G2D_SRC_FORMAT_REG);
-	g2d_write(data, req->src.fmt == G2D_RGBA32, G2D_END_RDSIZE_REG);
+	g2d_write(data, (req->src.fmt >= G2D_RGBA32), G2D_END_RDSIZE_REG);
 
 	/* Configure destination image */
 	DBG("DST %08x + %08x, %dx%d, fmt = %d\n", req->dst.base, req->dst.offs,
@@ -851,6 +851,6 @@ void  s3c_g2d_exit(void)
 module_init(s3c_g2d_init);
 module_exit(s3c_g2d_exit);
 
-MODULE_AUTHOR("");
+MODULE_AUTHOR("Tomasz Figa <tomasz.figa@gmail.com>");
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");

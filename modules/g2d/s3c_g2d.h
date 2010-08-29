@@ -1,6 +1,6 @@
 /* g2d/s3c_g2d.h
  *
- * Copyright (c) 2008 Samsung Electronics
+ * Copyright (c) 2010 Tomasz Figa <tomasz.figa@gmail.com>
  *
  * Samsung S3C G2D driver
  *
@@ -24,7 +24,7 @@
 
 #include <linux/ioctl.h>
 
-#define G2D_IOCTL_MAGIC 'G'
+#define G2D_IOCTL_MAGIC			'G'
 
 /* Start operation */
 #define S3C_G2D_BITBLT			_IOW(G2D_IOCTL_MAGIC, 0, struct s3c_g2d_req)
