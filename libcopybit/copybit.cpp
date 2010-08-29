@@ -162,7 +162,7 @@ static int set_image(s3c_g2d_image *img, const struct copybit_image_t *rhs)
 	else
 		img->base = 0;
 
-	img->w		= rhs->w;
+	img->w		= (rhs->w + 7) & ~7;
 	img->h		= rhs->h;
 	img->offs	= hnd->offset;
 	img->fd		= hnd->fd;
