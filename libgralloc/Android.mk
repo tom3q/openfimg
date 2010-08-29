@@ -29,5 +29,5 @@ LOCAL_SRC_FILES := 	\
 	mapper.cpp
 	
 LOCAL_MODULE := gralloc.s3c6410
-LOCAL_CFLAGS:= -DLOG_TAG=\"gralloc\"
+LOCAL_CFLAGS += -DLOG_TAG=\"gralloc\" -march=armv6zk -mtune=arm1176jzf-s -O2
 include $(BUILD_SHARED_LIBRARY)
