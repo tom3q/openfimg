@@ -381,10 +381,9 @@ static int gralloc_alloc(alloc_device_t* dev,
 	if (!pHandle || !pStride)
 		return -EINVAL;
 
-	size_t size, alignedw, alignedh;
+	size_t size, alignedw;
 
-	alignedw = (w + 31) & ~31;
-	alignedh = (h + 31) & ~31;
+	alignedw = (w + 7) & ~7;
 	int bpp = 0;
 	switch (format) {
 	case HAL_PIXEL_FORMAT_RGBA_8888:
@@ -403,7 +402,7 @@ static int gralloc_alloc(alloc_device_t* dev,
 	default:
 		return -EINVAL;
 	}
-	size = alignedw * alignedh * bpp;
+	size = alignedw * h * bpp;
 
 	if ((ssize_t)size <= 0)
 		return -EINVAL;

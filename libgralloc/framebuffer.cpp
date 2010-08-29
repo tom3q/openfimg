@@ -474,6 +474,8 @@ s3c_g2d_copy_buffer(int s3c_g2d_fd, buffer_handle_t handle, unsigned long buffer
 		return;
 	}
 
+	width = (width + 7) & ~7;
+
 	req.src.w = width;
 	req.src.h = height;
 	req.src.offs = 0;
