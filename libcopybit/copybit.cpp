@@ -351,6 +351,9 @@ static int stretch_copybit(
 	struct s3c_g2d_req req;
 	memset(&req, 0, sizeof(req));
 
+	DEBUG("SRC %dx%d fmt %d, DST %dx%d fmt %d",
+		src->w, src->h, src->format, dst->w, dst->h, dst->format);
+
 	if (src_rect->l < 0 || src_rect->r > src->w ||
 			src_rect->t < 0 || src_rect->b > src->h) {
 		// this is always invalid
