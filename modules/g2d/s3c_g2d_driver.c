@@ -127,7 +127,7 @@ static inline uint32_t g2d_read(struct g2d_drvdata *d, uint32_t r)
 	Hardware operations
 */
 
-static uint32_t g2d_check_fifo(struct g2d_drvdata *data, uint32_t needed)
+static inline uint32_t g2d_check_fifo(struct g2d_drvdata *data, uint32_t needed)
 {
 	int i;
 	u32 used;
@@ -450,46 +450,64 @@ static void g2d_workfunc(struct work_struct *work)
 	wake_up_interruptible(&data->waitq);
 }
 
-#ifdef USE_G2D_DOMAIN_GATING
 /**
 	Power management
 */
 
-static int g2d_clk_enable(struct g2d_drvdata *data)
+static inline int g2d_do_power_up(struct g2d_drvdata *data)
 {
-	if(!data->state) {
-		INFO("Requesting power up.\n");
-		s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_ACTIVE_MODE, S3C64XX_2D);
+#ifdef CONFIG_S3C64XX_DOMAIN_GATING
+	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_ACTIVE_MODE, S3C64XX_2D);
 
-		if (s3c_wait_blk_pwr_ready(S3C64XX_BLK_P)) {
-			return -1;
-		}
-
-		clk_enable(data->clock);
-		g2d_soft_reset(data);
-		data->state = 1;
-	}
+	if (s3c_wait_blk_pwr_ready(S3C64XX_BLK_P))
+		return -1;
+#endif
+	clk_enable(data->clock);
+	g2d_soft_reset(data);
 
 	return 0;
 }
 
-static int g2d_clk_disable(struct g2d_drvdata *data)
+static inline void g2d_do_power_down(struct g2d_drvdata *data)
 {
-	if(data->state) {
-		INFO("Requesting power down.\n");
-		clk_disable(data->clock);
-		s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_LP_MODE, S3C64XX_2D);
-		data->state = 0;
-	}
+	clk_disable(data->clock);
+#ifdef CONFIG_S3C64XX_DOMAIN_GATING
+	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_LP_MODE, S3C64XX_2D);
+#endif
+}
 
-	return 0;
+#ifdef USE_G2D_DOMAIN_GATING
+static inline int g2d_power_up(struct g2d_drvdata *data)
+{
+	int ret;
+	
+	if(data->state)
+		return 0;
+
+	INFO("Requesting power up.\n");
+
+	if((ret = g2d_do_power_up(data)) == 0)
+		data->state = 1;
+
+	return ret;
+}
+
+static inline void g2d_power_down(struct g2d_drvdata *data)
+{
+	if(!data->state)
+		return;
+	
+	INFO("Requesting power down.\n");
+	g2d_do_power_down(data);
+
+	data->state = 0;
 }
 
 static enum hrtimer_restart g2d_idle_func(struct hrtimer *t)
 {
 	struct g2d_drvdata *data = container_of(t, struct g2d_drvdata, timer);
 
-	g2d_clk_disable(data);
+	g2d_power_down(data);
 	
 	return HRTIMER_NORESTART;
 }
@@ -577,9 +595,9 @@ static int s3c_g2d_ioctl(struct inode *inode, struct file *file,
 
 #ifdef USE_G2D_DOMAIN_GATING
 	hrtimer_cancel(&data->timer);
-	ret = g2d_clk_enable(data);
+	ret = g2d_power_up(data);
 	if (ret != 0) {
-		ERR("Timeout while waiting for g2d domain power on\n");
+		ERR("G2D power up failed\n");
 		ret = -EFAULT;
 		goto err_cmd;
 	}
@@ -698,45 +716,52 @@ static int s3c_g2d_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	/* find the IRQ */
-	data->irq = platform_get_irq(pdev, 0);
-	if (data->irq <= 0) {
-		ERR("failed to get irq resouce (%d).\n", data->irq);
-		return data->irq;
-	}
-
-	/* request the IRQ */
-	ret = request_irq(data->irq, g2d_handle_irq, IRQF_DISABLED, pdev->name, data);
-	if (ret) {
-		ERR("request_irq failed (%d).\n", ret);
-		return ret;
+	/* get the clock */
+	data->clock = clk_get(&pdev->dev, "hclk_g2d");
+	if (data->clock == NULL) {
+		ERR("failed to find g2d clock source\n");
+		ret = -ENOENT;
+		goto err_clock;
 	}
 
 	/* get the memory region */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
-		ERR("failed to get memory region resouce.\n");
-		return -ENOENT;
+		ERR("failed to get memory region resource.\n");
+		ret = -ENOENT;
+		goto err_mem;
 	}
 
 	/* reserve the memory */
-	data->mem = request_mem_region(res->start, res->end-res->start+1, pdev->name);
+	data->mem = request_mem_region(res->start, resource_size(res),
+								pdev->name);
 	if (data->mem == NULL) {
 		ERR("failed to reserve memory region\n");
-		return -ENOENT;
+		ret = -ENOENT;
+		goto err_mem;
 	}
 
 	/* map the memory */
-	data->base = ioremap(data->mem->start, data->mem->end - res->start + 1);
+	data->base = ioremap(data->mem->start, resource_size(data->mem));
 	if (data->base == NULL) {
 		ERR("ioremap failed\n");
-		return -ENOENT;
+		ret = -ENOENT;
+		goto err_ioremap;
 	}
 
-	data->clock = clk_get(&pdev->dev, "hclk_g2d");
-	if (IS_ERR(data->clock)) {
-		ERR("failed to find g2d clock source\n");
-		return -ENOENT;
+	/* get the IRQ */
+	data->irq = platform_get_irq(pdev, 0);
+	if (data->irq <= 0) {
+		ERR("failed to get irq resource (%d).\n", data->irq);
+		ret = data->irq;
+		goto err_irq;
+	}
+
+	/* request the IRQ */
+	ret = request_irq(data->irq, g2d_handle_irq, 0, pdev->name, data);
+	if (ret) {
+		ERR("request_irq failed (%d).\n", ret);
+		goto err_irq;
 	}
 
 	mutex_init(&data->mutex);
@@ -749,45 +774,58 @@ static int s3c_g2d_probe(struct platform_device *pdev)
 	data->timer.function = g2d_idle_func;
 	data->state = 0;
 #else
-#ifdef CONFIG_S3C64XX_DOMAIN_GATING
-	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_ACTIVE_MODE, S3C64XX_2D);
-	if (s3c_wait_blk_pwr_ready(S3C64XX_BLK_P)) {
-		ERR("timeout waiting for G2D power up\n");
-		return -EFAULT;
+	if (g2d_do_power_up(data)) {
+		ERR("G2D power up failed\n");
+		ret = -EFAULT;
+		goto err_pm;
 	}
 #endif
-	clk_enable(data->clock);
-	g2d_soft_reset(data);
-#endif
 
-	dev_set_drvdata(&pdev->dev, data);
+	platform_set_drvdata(pdev, data);
 	drvdata = data;
 
 	ret = misc_register(&s3c_g2d_dev);
 	if (ret) {
-		printk (KERN_ERR "%s: cannot register miscdev on minor=%d (%d)\n", DRIVER_NAME,
-			G2D_MINOR, ret);
-		return ret;
+		ERR("cannot register miscdev (%d)\n", ret);
+		goto err_misc_register;
 	}
 
 	INFO("Driver loaded succesfully\n");
 
 	return 0;
+
+err_misc_register:
+#ifndef USE_G2D_DOMAIN_GATING
+	g2d_do_power_down(data);
+err_pm:
+#endif
+	free_irq(data->irq, pdev);
+err_irq:
+	iounmap(data->base);
+err_ioremap:
+	release_resource(data->mem);
+err_mem:
+err_clock:
+	kfree(data);
+
+	return ret;
 }
 
 static int s3c_g2d_remove(struct platform_device *pdev)
 {
-	struct g2d_drvdata *data = dev_get_drvdata(&pdev->dev);
+	struct g2d_drvdata *data = platform_get_drvdata(pdev);
 
 #ifdef USE_G2D_DOMAIN_GATING
 	if(!hrtimer_cancel(&data->timer))
-		g2d_clk_disable(data);
+		g2d_power_down(data);
+#else
+	g2d_do_power_down(data);
 #endif
 
+	misc_deregister(&s3c_g2d_dev);
 	free_irq(data->irq, data);
 	iounmap(data->base);
 	release_resource(data->mem);
-	misc_deregister(&s3c_g2d_dev);
 	kfree(data);
 
 	INFO("Driver unloaded succesfully.\n");
@@ -797,18 +835,26 @@ static int s3c_g2d_remove(struct platform_device *pdev)
 
 static int s3c_g2d_suspend(struct platform_device *pdev, pm_message_t state)
 {
-#ifdef USE_G2D_DOMAIN_GATING
 	struct g2d_drvdata *data = dev_get_drvdata(&pdev->dev);
-
+#ifdef USE_G2D_DOMAIN_GATING
 	if(!hrtimer_cancel(&data->timer))
-		g2d_clk_disable(data);
+		g2d_power_down(data);
+#else
+	g2d_do_power_down(data);
 #endif
-
 	return 0;
 }
 
 static int s3c_g2d_resume(struct platform_device *pdev)
 {
+#ifndef USE_G2D_DOMAIN_GATING
+	struct g2d_drvdata *data = dev_get_drvdata(&pdev->dev);
+
+	if(g2d_do_power_up(data) < 0) {
+		ERR("G2D power up failed\n");
+		return -EFAULT;
+	}
+#endif
 	return 0;
 }
 
