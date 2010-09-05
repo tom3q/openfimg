@@ -310,7 +310,6 @@ static int s3c_g3d_open(struct inode *inode, struct file *file)
 
 	ctx->data = drvdata;
 	file->private_data = ctx;
-
 	DBG("device opened\n");
 
 	return 0;
@@ -318,9 +317,23 @@ static int s3c_g3d_open(struct inode *inode, struct file *file)
 
 static int s3c_g3d_release(struct inode *inode, struct file *file)
 {
-	DBG("device released\n");
+	struct g3d_context *ctx = file->private_data;
+	struct g3d_drvdata *data = ctx->data;
+	unsigned long flags;
+	int unlock = 0;
 
-	kfree(file->private_data);
+	/* Do this atomically */
+	local_irq_save(flags);
+	if(mutex_is_locked(&data->mutex) && data->owner == ctx)
+		unlock = 1;
+	local_irq_restore(flags);
+
+	/* Unlock if we have the lock */
+	if(unlock)
+		mutex_unlock(&data->mutex);
+
+	kfree(ctx);
+	DBG("device released\n");
 
 	return 0;
 }
