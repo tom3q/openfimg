@@ -21,18 +21,19 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <errno.h>
 #include <pthread.h>
+#include <cutils/log.h>
 #include <GLES/gl.h>
 #include "state.h"
 #include "types.h"
 #include "fimg/fimg.h"
-#include <cutils/log.h>
 
 /* Shaders */
 #include "vshader.h"
 #include "fshader.h"
 
-#define GLES_DEBUG
+//#define GLES_DEBUG
 
 /**
 	Client API information
@@ -73,27 +74,84 @@ static char const * const gExtensionsString =
 
 GLenum errorCode = GL_NO_ERROR;
 
-#ifndef GLES_DEBUG
-static inline FGLContext *getContext(void)
-{
-	return getGlThreadSpecific();
-}
-#else
+#ifdef GLES_DEBUG
+#define getContext() ( \
+	LOGD("%s called getContext()", __func__), \
+	_getContext())
 static inline FGLContext *_getContext(void)
+#else
+static inline FGLContext *getContext(void)
+#endif
 {
 	FGLContext *ctx = getGlThreadSpecific();
 
 	if(!ctx) {
 		LOGE("GL context is NULL!");
-		exit(1);
+		exit(EINVAL);
 	}
 
 	return ctx;
 }
-#define getContext() ( \
-	LOGD("%s called getContext()", __func__), \
-	_getContext())
+
+static void restoreHardwareState(FGLContext *ctx)
+{
+	/*
+		TODO:
+		- implement shared context support (textures, shaders)
+	*/
+
+	/* Restore device specific context */
+	fprintf(stderr, "FGL: Restoring hardware context\n");
+	fflush(stderr);
+	fimgRestoreContext(ctx->fimg);
+
+	/* Restore shaders */
+	fprintf(stderr, "FGL: Loading vertex shader\n");
+	fflush(stderr);
+	if(fimgLoadVShader(ctx->fimg, ctx->vertexShader.data, ctx->vertexShader.numAttribs)) {
+		fprintf(stderr, "FGL: Failed to load vertex shader\n");
+		fflush(stderr);
+	}
+
+	fprintf(stderr, "FGL: Loading pixel shader\n");
+	fflush(stderr);
+	if(fimgLoadPShader(ctx->fimg, ctx->pixelShader.data, ctx->pixelShader.numAttribs)) {
+		fprintf(stderr, "FGL: Failed to load pixel shader\n");
+		fflush(stderr);
+	}
+
+	// TODO
+#if 0
+	/* Restore textures */
+	for(int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++)
+		fimgSetTexUnitParams(i, NULL /* TODO */);
 #endif
+
+	fprintf(stderr, "FGL: Invalidating caches\n");
+	fflush(stderr);
+	fimgInvalidateFlushCache(ctx->fimg, 1, 1, 0, 0);
+}
+
+static inline void getHardware(FGLContext *ctx)
+{
+	int ret;
+
+	if(unlikely((ret = fimgAcquireHardwareLock(ctx->fimg)) != 0)) {
+		if(likely(ret > 0)) {
+			restoreHardwareState(ctx);
+		} else {
+			LOGE("Could not acquire hardware lock");
+			exit(EBUSY);
+		}	
+	}
+
+	fimgFlush(ctx->fimg);
+}
+
+static inline void putHardware(FGLContext *ctx)
+{
+	fimgReleaseHardwareLock(ctx->fimg);
+}
 
 static pthread_mutex_t glErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t glErrorKey = -1;
@@ -531,7 +589,7 @@ static inline GLint fglModeFromModeEnum(GLenum mode)
 	return fglMode;
 }
 
-static inline void fglUpdateMatrices(FGLContext *ctx)
+static inline void updateMatrices(FGLContext *ctx)
 {
 	for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++) {
 		if(ctx->matrix.dirty[i]) {
@@ -568,14 +626,13 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		}
 	}
 
-	fglUpdateMatrices(ctx);
+	getHardware(ctx);
 
-	fimgFlush(ctx->fimg);
+	updateMatrices(ctx);
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
 #if FIMG_INTERPOLATION_WORKAROUND != 2
 	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
 #endif
-
 	switch(mode) {
 #if FIMG_INTERPOLATION_WORKAROUND == 2
 	case GL_POINTS:
@@ -622,6 +679,8 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 #endif
 		fimgDrawNonIndexArrays(ctx->fimg, first, count, pointers, stride);
 	}
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
@@ -636,7 +695,9 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
 
-	fglUpdateMatrices(ctx);
+	getHardware(ctx);
+
+	updateMatrices(ctx);
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->array[i].enabled) {
@@ -661,6 +722,8 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	default:
 		setError(GL_INVALID_ENUM);
 	}
+
+	putHardware(ctx);
 }
 
 /**
@@ -674,7 +737,11 @@ GL_API void GL_APIENTRY glDepthRangef (GLclampf zNear, GLclampf zFar)
 	zNear	= clampFloat(zNear);
 	zFar	= clampFloat(zFar);
 
+	getHardware(ctx);
+
 	fimgSetDepthRange(ctx->fimg, zNear, zFar);
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glDepthRangex (GLclampx zNear, GLclampx zFar)
@@ -691,7 +758,11 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 
 	FGLContext *ctx = getContext();
 
+	getHardware(ctx);
+
 	fimgSetViewportParams(ctx->fimg, x, y, width, height);
+
+	putHardware(ctx);
 }
 
 /**
@@ -1069,7 +1140,11 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 		return;
 	}
 
+	getHardware(ctx);
+
 	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
+
+	putHardware(ctx);
 }
 
 static inline void fglAlphaFunc (GLenum func, GLubyte ref)
@@ -1107,7 +1182,12 @@ static inline void fglAlphaFunc (GLenum func, GLubyte ref)
 	}
 
 	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
 	fimgSetAlphaParams(ctx->fimg, ref, fglFunc);
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glAlphaFunc (GLenum func, GLclampf ref)
@@ -1155,8 +1235,13 @@ GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
 	}
 
 	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
 	fimgSetFrontStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
 	fimgSetBackStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
+
+	putHardware(ctx);
 }
 
 static inline GLint fglActionFromEnum(GLenum action)
@@ -1209,8 +1294,13 @@ GL_API void GL_APIENTRY glStencilOp (GLenum fail, GLenum zfail, GLenum zpass)
 	}
 
 	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
 	fimgSetFrontStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
 	fimgSetBackStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glDepthFunc (GLenum func)
@@ -1248,7 +1338,12 @@ GL_API void GL_APIENTRY glDepthFunc (GLenum func)
 	}
 
 	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
 	fimgSetDepthParams(ctx->fimg, fglFunc);
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
@@ -1319,13 +1414,18 @@ GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
 	}
 
 	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
 	fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 {
 	fimgLogicalOperation fglOp;
-	
+
 	switch(opcode) {
 	case GL_CLEAR:
 		fglOp = FGPF_LOGOP_CLEAR;
@@ -1381,7 +1481,24 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 	}
 
 	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
 	fimgSetLogicalOpParams(ctx->fimg, fglOp, fglOp);
+
+	putHardware(ctx);
+}
+
+void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
+{
+	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
+	fimgSetXClip(ctx->fimg, left, right);
+	fimgSetYClip(ctx->fimg, top, bottom);
+
+	putHardware(ctx);
 }
 
 /**
@@ -1446,6 +1563,8 @@ static inline void fglSet(GLenum cap, GLboolean state)
 {
 	FGLContext *ctx = getContext();
 
+	getHardware(ctx);
+
 	switch(cap) {
 	case GL_CULL_FACE:
 		fimgSetFaceCullEnable(ctx->fimg, state);
@@ -1478,6 +1597,8 @@ static inline void fglSet(GLenum cap, GLboolean state)
 		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);
 		//setError(GL_INVALID_ENUM);
 	}
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glEnable (GLenum cap)
@@ -1497,12 +1618,13 @@ GL_API void GL_APIENTRY glDisable (GLenum cap)
 GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels)
 {
 	FGLContext *ctx = getContext();
+	FGLSurface *draw = &ctx->surface.draw;
 
 	if(!format && !type) {
-		if(!x && !y && width == ctx->surface.draw.width && height == ctx->surface.draw.height) {
-			if(ctx->surface.draw.vaddr) {
-				fimgClearBufferCache(ctx->surface.draw.vaddr, width * height * ctx->surface.draw.bpp);
-				memcpy(pixels, ctx->surface.draw.vaddr, width * height * ctx->surface.draw.bpp);
+		if(!x && !y && width == draw->width && height == draw->height) {
+			if(draw->vaddr) {
+				cacheflush(intptr_t(draw->vaddr), draw->size, 0);
+				memcpy(pixels, draw->vaddr, draw->size);
 			}
 		}
 	}
@@ -1512,13 +1634,15 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei h
 	Clearing buffers
 */
 
+/* HACK ALERT: Implement a proper clear function using G2D hardware */
 GL_API void GL_APIENTRY glClear (GLbitfield mask)
 {
 	FGLContext *ctx = getContext();
+	FGLSurface *draw = &ctx->surface.draw;
 
-	if(ctx->surface.draw.vaddr) {
-		memset(ctx->surface.draw.vaddr, 0, ctx->surface.draw.width * ctx->surface.draw.height * ctx->surface.draw.bpp);
-		fimgFlushBufferCache(ctx->surface.draw.vaddr, ctx->surface.draw.width * ctx->surface.draw.height * ctx->surface.draw.bpp);
+	if(draw->vaddr) {
+		memset(draw->vaddr, 0, draw->size);
+		cacheflush(intptr_t(draw->vaddr), draw->size, 0);
 	}
 }
 
@@ -1559,8 +1683,12 @@ GL_API void GL_APIENTRY glFlush (void)
 GL_API void GL_APIENTRY glFinish (void)
 {
 	FGLContext *ctx = getContext();
-	fimgFlush(ctx->fimg);
+
+	getHardware(ctx);
+
 	fimgInvalidateFlushCache(ctx->fimg, 0, 0, 1, 1);
+
+	putHardware(ctx);
 }
 
 /**
@@ -1602,46 +1730,4 @@ void fglDestroyContext(FGLContext *ctx)
 {
 	fimgDestroyContext(ctx->fimg);
 	delete ctx;
-}
-
-void fglRestoreGLState(void)
-{
-	/*
-		TODO:
-		- check if restoring state is really required
-		- implement shared context support (textures, shaders)
-	*/
-	
-	FGLContext *ctx = getContext();
-
-	/* Restore device specific context */
-	fprintf(stderr, "FGL: Restoring hardware context\n");
-	fflush(stderr);
-	fimgRestoreContext(ctx->fimg);
-
-	/* Restore shaders */
-	fprintf(stderr, "FGL: Loading vertex shader\n");
-	fflush(stderr);
-	if(fimgLoadVShader(ctx->fimg, ctx->vertexShader.data, ctx->vertexShader.numAttribs)) {
-		fprintf(stderr, "FGL: Failed to load vertex shader\n");
-		fflush(stderr);
-	}
-
-	fprintf(stderr, "FGL: Loading pixel shader\n");
-	fflush(stderr);
-	if(fimgLoadPShader(ctx->fimg, ctx->pixelShader.data, ctx->pixelShader.numAttribs)) {
-		fprintf(stderr, "FGL: Failed to load pixel shader\n");
-		fflush(stderr);
-	}
-
-	// TODO
-#if 0
-	/* Restore textures */
-	for(int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++)
-		fimgSetTexUnitParams(i, NULL /* TODO */);
-#endif
-
-	fprintf(stderr, "FGL: Invalidating caches\n");
-	fflush(stderr);
-	fimgInvalidateFlushCache(ctx->fimg, 1, 1, 0, 0);
 }

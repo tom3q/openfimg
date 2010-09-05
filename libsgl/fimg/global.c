@@ -57,21 +57,8 @@ fimgPipelineStatus fimgGetPipelineStatus(fimgContext *ctx)
  *****************************************************************************/
 int fimgFlush(fimgContext *ctx/*, fimgPipelineStatus pipelineFlags*/)
 {
-#if 0
-	/* TODO: Finish interrupt support */
-	return fimgWaitForFlushInterrupt(pipelineFlags);
-#else
-	unsigned int timeout = 1000000;
-
-	while(fimgRead(ctx, FGGB_PIPESTATE)/* & pipelineFlags.val*/) {
-		if(--timeout == 0)
-			return -1;
-		/* TODO: Check performance impact of sleeping */
-		usleep(1);
-	}
-
-	return 0;
-#endif
+	/* Flush whole pipeline (TODO: Allow selective flushing) */
+	return fimgWaitForFlush(ctx, 0xffffffff);
 }
 
 /*****************************************************************************

@@ -94,18 +94,21 @@ struct FGLMatrixState {
 };
 
 struct FGLSurface {
-	FGLuint		width;      // width in pixels
-	FGLuint		height;     // height in pixels
-	FGLuint		stride;     // stride in pixels
-	FGLubyte	*vaddr;     // pointer to the bits
-	unsigned long	paddr;      // physical address
-	unsigned long	size;       // block size
-	FGLint		format;     // pixel format
-	FGLint		bpp;        // bytes per pixel
+	int		fd;	// buffer descriptor
+	FGLint		width;	// width in pixels
+	FGLint		height;	// height in pixels
+	FGLuint		stride;	// stride in pixels
+	FGLuint		size;
+	void		*vaddr;	// pointer to the bits
+	unsigned long	paddr;	// physical address
+	FGLint		format;	// pixel format
+
+	FGLSurface() : vaddr(0) {};
 };
 
 #define FGL_IS_CURRENT		0x00010000
 #define FGL_NEVER_CURRENT	0x00020000
+#define FGL_NEEDS_RESTORE	0x00100000
 
 struct FGLEGLState {
 	EGLint flags;
@@ -177,18 +180,10 @@ inline FGLContext* getGlThreadSpecific()
 
 #include <pthread.h>
 
-extern pthread_mutex_t eglContextKeyMutex;
 extern pthread_key_t eglContextKey;
 
 inline void setGlThreadSpecific(FGLContext* value)
 {
-	if(unlikely(eglContextKey == -1)) {
-		pthread_mutex_lock(&eglContextKeyMutex);
-		if(eglContextKey == -1)
-			pthread_key_create(&eglContextKey, NULL);
-		pthread_mutex_unlock(&eglContextKeyMutex);
-	}
-
 	pthread_setspecific(eglContextKey, value);
 }
 

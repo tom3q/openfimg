@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 //=============================================================================
 
 struct _fimgContext;
@@ -533,18 +535,14 @@ void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width);
  * OS support
  */
 
-void *fimgAllocMemory(unsigned long *size, unsigned long *paddr);
-void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size);
 fimgContext *fimgCreateContext(void);
 void fimgDestroyContext(fimgContext *ctx);
 void fimgRestoreContext(fimgContext *ctx);
-int fimgEnterCriticalSection(void);
-int fimgExitCriticalSection(void);
-int fimgDeviceOpen(void);
-void fimgDeviceClose(void);
-void fimgFlushBufferCache(void *vaddr, unsigned long size);
-void fimgClearBufferCache(void *vaddr, unsigned long size);
-void fimgClearFlushBufferCache(void *vaddr, unsigned long size);
+int fimgAcquireHardwareLock(fimgContext *ctx);
+int fimgReleaseHardwareLock(fimgContext *ctx);
+int fimgDeviceOpen(fimgContext *ctx);
+void fimgDeviceClose(fimgContext *ctx);
+int fimgWaitForFlush(fimgContext *ctx, uint32_t target);
 
 //=============================================================================
 

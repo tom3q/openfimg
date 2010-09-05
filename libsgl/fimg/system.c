@@ -6,57 +6,48 @@
  * Copyrights:	2010 by Tomasz Figa <tomasz.figa@gmail.com>
  */
 
-#include "fimg_private.h"
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <fcntl.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include <string.h>
+
 #include <cutils/log.h>
 
-static int fimgFileDesc = -1;
-static int fimgMemFileDesc = -1;
-static volatile void *fimgBase = NULL;
-//static unsigned int refCount = 0;
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-#define FIMG_SFR_BASE 0x72000000
+#include <linux/android_pmem.h>
+
+#include "fimg_private.h"
+#include "s3c_g3d.h"
+
 #define FIMG_SFR_SIZE 0x80000
 
 /*****************************************************************************
  * FUNCTION:	fimgDeviceOpen
- * SYNOPSIS:	This function opens the 3D device and initializes global variables
+ * SYNOPSIS:	This function opens and maps the G3D device.
  * RETURNS:	 0, on success
  *		-errno, on error
  *****************************************************************************/
-int fimgDeviceOpen(void)
+int fimgDeviceOpen(fimgContext *ctx)
 {
-	fimgFileDesc = open("/dev/s3c-g3d", O_RDWR, 0);
-	if(fimgFileDesc < 0) {
+	ctx->fd = open("/dev/s3c-g3d", O_RDWR, 0);
+	if(ctx->fd < 0) {
 		LOGE("Couldn't open /dev/s3c-g3d (%s).", strerror(errno));
 		return -errno;
 	}
 
-	fimgMemFileDesc = open("/dev/mem", O_RDWR | O_SYNC, 0);
-	if(fimgMemFileDesc < 0) {
-		LOGE("Couldn't open /dev/mem (%s).", strerror(errno));
-		close(fimgFileDesc);
-		return -errno;
-	}
-
-	fimgBase = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ, MAP_SHARED, fimgMemFileDesc, FIMG_SFR_BASE);
-	if(fimgBase == MAP_FAILED) {
+	ctx->base = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ,
+					MAP_SHARED, ctx->fd, 0);
+	if(ctx->base == MAP_FAILED) {
 		LOGE("Couldn't mmap FIMG registers (%s).", strerror(errno));
-		close(fimgFileDesc);
-		close(fimgMemFileDesc);
+		close(ctx->fd);
 		return -errno;
 	}
 
-//	fimgEnterCriticalSection();
-
-	LOGD("fimg3D: Opened /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
+	LOGD("Opened /dev/s3c-g3d (%d).", ctx->fd);
 
 	return 0;
 }
@@ -65,130 +56,23 @@ int fimgDeviceOpen(void)
  * FUNCTION:	fimgDeviceClose
  * SYNOPSIS:	This function closes the 3D device
  *****************************************************************************/
-void fimgDeviceClose(void)
+void fimgDeviceClose(fimgContext *ctx)
 {
-//	fimgExitCriticalSection();
+	munmap((void *)ctx->base, FIMG_SFR_SIZE);
+	close(ctx->fd);
 
-	munmap((void *)fimgBase, FIMG_SFR_SIZE);
-	close(fimgFileDesc);
-	close(fimgMemFileDesc);
-
-	LOGD("fimg3D: Closed /dev/s3c-g3d (%d) and /dev/mem (%d).", fimgFileDesc, fimgMemFileDesc);
-}
-
-/**
-	Memory management
-*/
-
-#define S3C_3D_MEM_ALLOC	_IOWR('S', 310, struct s3c_3d_mem_alloc)
-#define S3C_3D_MEM_FREE		_IOWR('S', 311, struct s3c_3d_mem_alloc)
-
-struct s3c_3d_mem_alloc {
-        int             size;
-        unsigned int    vir_addr;
-        unsigned int    phy_addr;
-};
-
-/*****************************************************************************
- * FUNCTION:	fimgAllocMemory
- * SYNOPSIS:	This function allocates a block of 3D memory
- * PARAMETERS:	[in]  size - requested block size
- * 		[out] paddr - physical address
- * RETURNS:	virtual address of allocated block
- *****************************************************************************/
-void *fimgAllocMemory(unsigned long *size, unsigned long *paddr)
-{
-	struct s3c_3d_mem_alloc mem;
-
-	mem.size = *size;
-	
-	ioctl(fimgFileDesc, S3C_3D_MEM_ALLOC, &mem);
-
-	if(mem.vir_addr)
-		LOGD("Allocated %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
-	else
-		LOGE("Memory allocation of %d bytes failed", mem.size);
-
-	*paddr = mem.phy_addr;
-	*size = mem.size;
-	return (void *)mem.vir_addr;
-}
-
-/*****************************************************************************
- * FUNCTION:	fimgFreeMemory
- * SYNOPSIS:	This function frees allocated 3D memory block
- * PARAMETERS:	[in] vaddr - virtual address
- *		[in] paddr - physical address
- *		[in] size - size
- *****************************************************************************/
-void fimgFreeMemory(void *vaddr, unsigned long paddr, unsigned long size)
-{
-	struct s3c_3d_mem_alloc mem;
-
-	if(!vaddr)
-		return;
-
-	mem.vir_addr = (unsigned int)vaddr;
-	mem.phy_addr = paddr;
-	mem.size = size;
-
-	LOGD("Freed %d bytes of memory. (0x%08x @ 0x%08x)", mem.size, mem.vir_addr, mem.phy_addr);
-
-	ioctl(fimgFileDesc, S3C_3D_MEM_FREE, &mem);
-}
-
-#define S3C_3D_CACHE_INVALID		_IOWR('S', 316, struct s3c_3d_mem_alloc)
-#define S3C_3D_CACHE_CLEAN		_IOWR('S', 317, struct s3c_3d_mem_alloc)
-#define S3C_3D_CACHE_CLEAN_INVALID	_IOWR('S', 318, struct s3c_3d_mem_alloc)
-void fimgFlushBufferCache(void *vaddr, unsigned long size)
-{
-	struct s3c_3d_mem_alloc mem;
-
-	if(!vaddr)
-		return;
-
-	mem.vir_addr = (unsigned int)vaddr;
-	mem.size = size;
-
-	LOGD("Flushed %d bytes of memory @ 0x%08x.)", mem.size, mem.vir_addr);
-
-	ioctl(fimgFileDesc, S3C_3D_CACHE_INVALID, &mem);
-}
-
-void fimgClearBufferCache(void *vaddr, unsigned long size)
-{
-	struct s3c_3d_mem_alloc mem;
-
-	if(!vaddr)
-		return;
-
-	mem.vir_addr = (unsigned int)vaddr;
-	mem.size = size;
-
-	LOGD("Invalidated %d bytes of memory @ 0x%08x.)", mem.size, mem.vir_addr);
-
-	ioctl(fimgFileDesc, S3C_3D_CACHE_CLEAN, &mem);
-}
-
-void fimgClearFlushBufferCache(void *vaddr, unsigned long size)
-{
-	struct s3c_3d_mem_alloc mem;
-
-	if(!vaddr)
-		return;
-
-	mem.vir_addr = (unsigned int)vaddr;
-	mem.size = size;
-
-	LOGD("Flushed and invalidated %d bytes of memory @ 0x%08x.)", mem.size, mem.vir_addr);
-
-	ioctl(fimgFileDesc, S3C_3D_CACHE_CLEAN_INVALID, &mem);
+	LOGD("fimg3D: Closed /dev/s3c-g3d (%d).", ctx->fd);
 }
 
 /**
 	Context management
 */
 
+/*****************************************************************************
+ * FUNCTION:	fimgCreateContext
+ * SYNOPSIS:	This function creates a device context
+ * RETURNS:	created context or NULL on error
+ *****************************************************************************/
 fimgContext *fimgCreateContext(void)
 {
 	fimgContext *ctx;
@@ -199,7 +83,10 @@ fimgContext *fimgCreateContext(void)
 
 	memset(ctx, 0, sizeof(fimgContext));
 
-	ctx->base = fimgBase;
+	if(fimgDeviceOpen(ctx)) {
+		free(ctx);
+		return NULL;
+	}
 
 	fimgCreateGlobalContext(ctx);
 	fimgCreateHostContext(ctx);
@@ -212,22 +99,31 @@ fimgContext *fimgCreateContext(void)
 	return ctx;
 }
 
+/*****************************************************************************
+ * FUNCTION:	fimgDestroyContext
+ * SYNOPSIS:	This function destroys a device context
+ *****************************************************************************/
 void fimgDestroyContext(fimgContext *ctx)
 {
+	fimgDeviceClose(ctx);
 	free(ctx);
 }
 
+/*****************************************************************************
+ * FUNCTION:	fimgRestoreContext
+ * SYNOPSIS:	This function restores a device context to hardware registers
+ *****************************************************************************/
 void fimgRestoreContext(fimgContext *ctx)
 {
-	fprintf(stderr, "fimg: Restoring global state\n"); fflush(stderr);
+//	fprintf(stderr, "fimg: Restoring global state\n"); fflush(stderr);
 	fimgRestoreGlobalState(ctx);
-	fprintf(stderr, "fimg: Restoring host state\n"); fflush(stderr);
+//	fprintf(stderr, "fimg: Restoring host state\n"); fflush(stderr);
 	fimgRestoreHostState(ctx);
-	fprintf(stderr, "fimg: Restoring primitive state\n"); fflush(stderr);
+//	fprintf(stderr, "fimg: Restoring primitive state\n"); fflush(stderr);
 	fimgRestorePrimitiveState(ctx);
-	fprintf(stderr, "fimg: Restoring rasterizer state\n"); fflush(stderr);
+//	fprintf(stderr, "fimg: Restoring rasterizer state\n"); fflush(stderr);
 	fimgRestoreRasterizerState(ctx);
-	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
+//	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
 	fimgRestoreFragmentState(ctx);
 }
 
@@ -235,48 +131,55 @@ void fimgRestoreContext(fimgContext *ctx)
 	Power management
 */
 
-struct s3c_3d_pm_status
+/*****************************************************************************
+ * FUNCTION:	fimgAcquireHardwareLock
+ * SYNOPSIS:	This function claims the hardware for exclusive use
+ * RETURNS:	0 on success,
+ *		positive value if the context needs to be restored,
+ *		negative value on error
+ *****************************************************************************/
+int fimgAcquireHardwareLock(fimgContext *ctx)
 {
-	unsigned int criticalSection;
-	int powerStatus;
-	int reserved;
-//	int memStatus;
-};
+	int ret;
+	
+	if((ret = ioctl(ctx->fd, S3C_G3D_LOCK, 0)) < 0) {
+		LOGE("Could not acquire the hardware lock");
+		return -1;
+	}
 
-#define LOCK_CRITICAL_SECTION		1
-#define UNLOCK_CRITICAL_SECTION		0
-#define S3C_3D_CRITICAL_SECTION		_IOWR('S', 322, struct s3c_3d_pm_status)
+	return ret;
+}
 
-int fimgEnterCriticalSection(void)
+/*****************************************************************************
+ * FUNCTION:	fimgReleaseHardwareLock
+ * SYNOPSIS:	This function ends exclusive use of the hardware
+ * RETURNS:	0 on success,
+ *		negative value on error
+ *****************************************************************************/
+int fimgReleaseHardwareLock(fimgContext *ctx)
 {
-	struct s3c_3d_pm_status status_desc;
-
-	status_desc.criticalSection = LOCK_CRITICAL_SECTION;
-	status_desc.powerStatus = 0;
-	status_desc.reserved = 0;
-
-	if(ioctl(fimgFileDesc, S3C_3D_CRITICAL_SECTION, &status_desc)) {
-		LOGE("Could not enter 3D critical section");
+	if(ioctl(ctx->fd, S3C_G3D_UNLOCK, 0)) {
+		LOGE("Could not release the hardware lock");
 		return -1;
 	}
 
 	return 0;
 }
 
-int fimgExitCriticalSection(void)
+/*****************************************************************************
+ * FUNCTION:	fimgWaitForFlush
+ * SYNOPSIS:	This function waits for the hardware to flush the pipeline
+ * RETURNS:	0 on success,
+ *		negative value on error
+ * ARGUMENTS:	target - requested pipeline stages to be flushed
+ *****************************************************************************/
+int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
 {
-	struct s3c_3d_pm_status status_desc;
-
-	status_desc.criticalSection = UNLOCK_CRITICAL_SECTION;
-	status_desc.powerStatus = 0;
-	status_desc.reserved = 0;
-
-	if(ioctl(fimgFileDesc, S3C_3D_CRITICAL_SECTION, &status_desc)) {
-		LOGE("Could not exit 3D critical section");
+	if(ioctl(ctx->fd, S3C_G3D_FLUSH, target)) {
+		LOGE("Could not flush the hardware pipeline");
 		return -1;
 	}
 
 	return 0;
 }
 
-/* TODO: Implement rest of kernel driver functions */
