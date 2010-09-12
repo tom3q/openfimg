@@ -2,6 +2,7 @@
 #define _LIBSGL_COMMON_H_
 
 #define FGL_MAX_TEXTURE_UNITS	2
+#define FGL_MAX_TEXTURE_OBJECTS 1024
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)

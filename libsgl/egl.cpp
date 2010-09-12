@@ -1290,7 +1290,7 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	if (!dirtyRegion.isEmpty()) {
 		dirtyRegion.andSelf(Rect(buffer->width, buffer->height));
 		if (previousBuffer) {
-		const Region copyBack(Region::subtract(oldDirtyRegion, dirtyRegion));
+		Region copyBack(Region::subtract(oldDirtyRegion, dirtyRegion));
 		if (!copyBack.isEmpty()) {
 			void* prevBits;
 			if (lock(previousBuffer, GRALLOC_USAGE_SW_READ_OFTEN,

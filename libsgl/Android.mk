@@ -17,6 +17,8 @@ LOCAL_PRELINK_MODULE := false
 # Set to 1 to use gralloc and copybits
 LIBAGL_USE_GRALLOC_COPYBITS := 1
 
+LOCAL_ARM_MODE := arm
+
 LOCAL_SRC_FILES:= \
 	egl.cpp                     \
 	gles.cpp		            \

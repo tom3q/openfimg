@@ -57,6 +57,10 @@ fimgPipelineStatus fimgGetPipelineStatus(fimgContext *ctx)
  *****************************************************************************/
 int fimgFlush(fimgContext *ctx/*, fimgPipelineStatus pipelineFlags*/)
 {
+	/* Return if already flushed */
+	if(fimgRead(ctx, FGGB_PIPESTATE) == 0)
+		return 0;
+
 	/* Flush whole pipeline (TODO: Allow selective flushing) */
 	return fimgWaitForFlush(ctx, 0xffffffff);
 }

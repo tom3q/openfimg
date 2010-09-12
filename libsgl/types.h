@@ -132,31 +132,40 @@ class FGLstack {
 	unsigned int max;
 
 public:
-//	FGLstack(unsigned int size) : max(size-1), pos(0) { data = new T[size]; };
-	void create(unsigned int size)
+	int create(unsigned int size)
 	{
 		max = size - 1;
 		pos = 0;
+
 		data = new T[size];
-	};
-//	~FGLstack() { delete[] data; };
+		if(data == NULL)
+			return -1;
+
+		return 0;
+	}
+
 	void destroy(void)
 	{
 		delete[] data;
-	};
+	}
 
-	inline void push(void)
+	inline int push(void)
 	{
-//		if(pos < max) {
-			data[pos + 1] = data[pos];
-			++pos;
-//		}
+		if(pos >= max)
+			return -1;
+
+		data[pos + 1] = data[pos];
+		++pos;
+		return 0;
 	}
 	
-	inline void pop(void)
+	inline int pop(void)
 	{
-//		if(pos)
-			--pos;
+		if(!pos)
+			return -1;
+
+		--pos;
+		return 0;
 	}
 	
 	inline T &top(void)
@@ -168,15 +177,71 @@ public:
 	{
 		return data[pos];
 	}
+};
 
-	inline unsigned int size(void) const
+template<typename T, int size>
+class FGLPoolAllocator {
+	/* Array of pointers addressed by used names */
+	T		guard;
+	T		**pool;
+	/* Stack of unused names */
+	int		*unused;
+	unsigned	write;
+public:
+	/* Better than constructor/destructor since we can call the destructor
+	   only if the constructor succeeded */
+	int create(void)
 	{
-		return pos + 1;
+		if(size <= 0)
+			return -1;
+
+		pool = new T*[size];
+		unused = new unsigned[size];
+		write = size;
+
+		for(unsigned i = 0; i < size; i++) {
+			pool[i] = &guard;
+			unused[i] = i + 1;
+		}
+
+		return 0;
 	}
 
-	inline unsigned int space(void) const
+	void destroy(void)
 	{
-		return max - pos;
+		delete[] unused;
+		delete[] pool;
+	}
+
+	inline int get(void)
+	{
+		if(write == 0)
+			/* Out of names */
+			return -1;
+
+		write--;
+		return unused[write];
+	}
+
+	inline void put(unsigned name)
+	{
+		pool[name] = &guard;
+		write++;
+	}
+
+	inline const T* &operator[](unsigned name) const
+	{
+		return pool[name - 1];
+	}
+
+	inline T* &operator[](unsigned name)
+	{
+		return pool[name - 1];
+	}
+
+	inline bool isValid(unsigned name)
+	{
+		return (name <= size) && (pool[name - 1] != &guard);
 	}
 };
 

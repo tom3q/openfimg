@@ -1077,12 +1077,11 @@ GL_API void GL_APIENTRY glPopMatrix (void)
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
-	if(ctx->matrix.stack[idx].size() == 1) {
+	if(ctx->matrix.stack[idx].pop()) {
 		setError(GL_STACK_UNDERFLOW);
 		return;
 	}
 
-	ctx->matrix.stack[idx].pop();
 	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
@@ -1100,12 +1099,10 @@ GL_API void GL_APIENTRY glPushMatrix (void)
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
 
-	if(!ctx->matrix.stack[idx].space()) {
+	if(ctx->matrix.stack[idx].push()) {
 		setError(GL_STACK_OVERFLOW);
 		return;
 	}
-
-	ctx->matrix.stack[idx].push();
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
@@ -1505,54 +1502,182 @@ void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
 	Texturing
 */
 
+FGLPoolAllocator<FGLTextureObject, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
+
 GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
 {
+	int name;
 
+	if(n <= 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	while(n--) {
+		name = fglTextureObjects.get();
+		if(name < 0) {
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+		fglTextureObjects[name] = NULL;
+		*textures = name;
+		textures++;
+	}
 }
 
 GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures)
 {
+	unsigned name;
 
+	if(n <= 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	while(n--) {
+		name = *textures;
+		textures++;
+
+		if(!fglTextureObjects.isValid(name))
+			continue;
+		
+		delete fglTextureObjects[name];
+		fglTextureObjects.put(name);
+	}
 }
 
 GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 {
+	if(target != GL_TEXTURE_2D) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
 
+	if(texture == 0) {
+		FGLContext *ctx = getContext();
+		ctx->texture[ctx->activeTexture].binding.unbind();
+		return;
+	}
+
+	if(!fglTextureObjects.isValid(texture)) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	FGLTextureObject *obj = fglTextureObjects[texture];
+	if(obj == NULL) {
+		obj = new FGLTextureObject;
+		fglTextureObjects[texture] = obj;
+	}
+	obj->bind(&ctx->texture[ctx->activeTexture].binding);
 }
 
-GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels)
+GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
+	GLint internalformat, GLsizei width, GLsizei height, GLint border,
+	GLenum format, GLenum type, const GLvoid *pixels)
 {
+	if(target != GL_TEXTURE_2D) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
 
+	if(level < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	if(border != 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	GLsizei tmp;
+
+	/* Check if width is a power of two */
+	for(tmp = 1; 2*tmp <= width; tmp = 2*tmp);
+	if(tmp != width) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	/* Check if height is a power of two */
+	for(tmp = 1; 2*tmp <= height; tmp = 2*tmp);
+	if(tmp != height) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	FGLTextureObject *obj =
+		ctx->texture[ctx->activeTexture].getTextureObject();
+
+	if(!obj->surface.isValid()) {
+		if(level > 0) {
+			setError(GL_INVALID_OPERATION);
+			return;
+		}
+
+		
+	}
 }
 
 GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname, GLfloat param)
 {
-
+	setError(GL_INVALID_ENUM);
 }
 
 GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname, const GLfloat *params)
 {
-
+	setError(GL_INVALID_ENUM);
 }
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)
 {
+	if(target != GL_TEXTURE_2D) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
 
-}
+	FGLContext *ctx = getContext();
+	FGLTextureObject *obj =
+		ctx->texture[ctx->activeTexture].getTextureObject();
 
-GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname, GLfixed param)
-{
-
+	switch (pname) {
+	case GL_TEXTURE_WRAP_S:
+		obj->sWrap = param;
+		break;
+	case GL_TEXTURE_WRAP_T:
+		obj->tWrap = param;
+		break;
+	case GL_TEXTURE_MIN_FILTER:
+		obj->minFilter = param;
+		break;
+	case GL_TEXTURE_MAG_FILTER:
+		obj->magFilter = param;
+		break;
+	case GL_GENERATE_MIPMAP:
+		obj->genMipmap = param;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
 }
 
 GL_API void GL_APIENTRY glTexParameteriv (GLenum target, GLenum pname, const GLint *params)
 {
+	setError(GL_INVALID_ENUM);
+}
 
+GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname, GLfixed param)
+{
+	setError(GL_INVALID_ENUM);
 }
 
 GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname, const GLfixed *params)
 {
-
+	setError(GL_INVALID_ENUM);
 }
 
 /**

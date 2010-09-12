@@ -103,7 +103,13 @@ struct FGLSurface {
 	unsigned long	paddr;	// physical address
 	FGLint		format;	// pixel format
 
-	FGLSurface() : vaddr(0) {};
+	FGLSurface() :
+		vaddr(NULL) {};
+
+	inline bool isValid(void)
+	{
+		return vaddr != NULL;
+	}
 };
 
 #define FGL_IS_CURRENT		0x00010000
@@ -119,14 +125,15 @@ struct FGLEGLState {
 	EGLSurface read;
 
 	FGLEGLState() :
-	flags(0), dpy(0), config(0), draw(0), depth(0), read(0) {};
+		flags(0), dpy(0), config(0), draw(0), depth(0), read(0) {};
 };
 
 struct FGLShaderState {
 	const unsigned int *data;
 	unsigned int numAttribs;
 
-	FGLShaderState() : data(0), numAttribs(1) {};
+	FGLShaderState() :
+		data(0), numAttribs(1) {};
 };
 
 struct FGLSurfaceState {
@@ -135,17 +142,130 @@ struct FGLSurfaceState {
 	FGLSurface depth;
 };
 
+struct FGLTextureObject;
+
+struct FGLTextureBinding {
+	FGLTextureObject *object;
+	FGLTextureBinding *next;
+	FGLTextureBinding *prev;
+
+	FGLTextureBinding() :
+		object(NULL) {};
+
+	inline bool isBound(void)
+	{
+		return object != NULL;
+	}
+
+	inline void unbind(void);
+};
+
+typedef void fimgTexture;
+
+struct FGLTextureObject {
+	FGLSurface	surface;
+	GLboolean	compressed;
+	GLint		levels;
+	GLint		maxLevel;
+	GLenum		format;
+	GLenum		type;
+	GLenum		minFilter;
+	GLenum		magFilter;
+	GLenum		sWrap;
+	GLenum		tWrap;
+	GLboolean	genMipmap;
+	fimgTexture	*fimg;
+
+	/* Linked list of bound texture units */
+	FGLTextureBinding *bindings;
+
+	FGLTextureObject() :
+		surface(), compressed(0), levels(0), maxLevel(0), format(GL_RGB),
+		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
+		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
+		genMipmap(0), fimg(NULL), bindings(NULL) {};
+
+	~FGLTextureObject()
+	{
+		unbindAll();
+	}
+
+	inline void bind(FGLTextureBinding *b)
+	{
+		if(b->isBound())
+			b->unbind();
+
+		if(bindings)
+			bindings->prev = b;
+
+		b->next = bindings;
+		bindings = b;
+	}
+
+	inline void unbind(FGLTextureBinding *b)
+	{
+		if(!b->isBound())
+			return;
+
+		if(b->prev)
+			b->prev->next = b->next;
+		else
+			bindings = b->next;
+
+		if(b->next)
+			b->next->prev = b->prev;
+
+		b->object = NULL;
+	}
+
+	inline void unbindAll(void)
+	{
+		FGLTextureBinding *b = bindings;
+
+		while(b) {
+			b->object = NULL;
+			b = b->next;
+		}
+
+		bindings = NULL;
+	}
+};
+
+inline void FGLTextureBinding::unbind(void)
+{
+	if(!isBound())
+		return;
+
+	object->unbind(this);
+}
+
+struct FGLTextureState {
+	FGLTextureObject defTexture;
+	FGLTextureBinding binding;
+
+	FGLTextureState() :
+		defTexture(), binding() {};
+
+	inline FGLTextureObject *getTextureObject(void)
+	{
+		if(binding.isBound())
+			return binding.object;
+		else
+			return &defTexture;
+	}
+};
+
 struct FGLContext {
 	/* HW state */
 	fimgContext *fimg;
 	/* GL state */
 	FGLvec4f vertex[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLArrayState array[4 + FGL_MAX_TEXTURE_UNITS];
-//	GLboolean enableArray[4 + FGL_MAX_TEXTURE_UNITS];
 	GLint activeTexture;
 	FGLMatrixState matrix;
 	FGLShaderState vertexShader;
 	FGLShaderState pixelShader;
+	FGLTextureState texture[FGL_MAX_TEXTURE_UNITS];
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;
@@ -153,8 +273,9 @@ struct FGLContext {
 	/* Static initializers */
 	static FGLvec4f defaultVertex[4 + FGL_MAX_TEXTURE_UNITS];
 
-	FGLContext(fimgContext *fctx)
-	: fimg(fctx), activeTexture(0), matrix(), vertexShader(), pixelShader(), egl(), surface()
+	FGLContext(fimgContext *fctx) :
+		fimg(fctx), activeTexture(0), matrix(), vertexShader(),
+		pixelShader(), egl(), surface()
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 	}
