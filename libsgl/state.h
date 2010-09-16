@@ -160,10 +160,10 @@ struct FGLTextureBinding {
 	inline void unbind(void);
 };
 
-typedef void fimgTexture;
-
 struct FGLTextureObject {
+	/* Memory surface */
 	FGLSurface	surface;
+	/* GL state */
 	GLboolean	compressed;
 	GLint		levels;
 	GLint		maxLevel;
@@ -174,7 +174,11 @@ struct FGLTextureObject {
 	GLenum		sWrap;
 	GLenum		tWrap;
 	GLboolean	genMipmap;
+	/* HW state */
 	fimgTexture	*fimg;
+	uint32_t	fglFormat;
+	uint32_t	bpp;
+	bool		convert;
 
 	/* Linked list of bound texture units */
 	FGLTextureBinding *bindings;
@@ -183,11 +187,15 @@ struct FGLTextureObject {
 		surface(), compressed(0), levels(0), maxLevel(0), format(GL_RGB),
 		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
 		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
-		genMipmap(0), fimg(NULL), bindings(NULL) {};
+		genMipmap(0), fimg(NULL), bindings(NULL)
+	{
+		fimg = fimgCreateTexture();
+	}
 
 	~FGLTextureObject()
 	{
 		unbindAll();
+		fimgDestroyTexture(fimg);
 	}
 
 	inline void bind(FGLTextureBinding *b)
@@ -266,6 +274,7 @@ struct FGLContext {
 	FGLShaderState vertexShader;
 	FGLShaderState pixelShader;
 	FGLTextureState texture[FGL_MAX_TEXTURE_UNITS];
+	FGLuint unpackAlignment;
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;

@@ -53,12 +53,13 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_UBYTE:
 		case FGHI_ATTRIB_DT_NBYTE:
 		case FGHI_ATTRIB_DT_NUBYTE: {
-			unsigned char bits[4] = {0, 0, 0, 0};
+			unsigned int word = 0;
+			unsigned char *bits = (unsigned char *)&word;
 
 			for(n = 0; n <= ctx->host.attrib[j].bits.numcomp; n++)
 				bits[n] = (ppData[j] + i*pStride[j])[n];
 
-			fimgSendToFIFO(ctx, 4, ppData[j] + i*pStride[j]);
+			fimgSendToFIFO(ctx, 4, &word);
 
 			break; }
 		// 2bytes
@@ -66,12 +67,13 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_USHORT:
 		case FGHI_ATTRIB_DT_NSHORT:
 		case FGHI_ATTRIB_DT_NUSHORT: {
-			unsigned short bits[4] = {0, 0, 0, 0};
+			unsigned int word[2] = {0, 0};
+			unsigned short *bits = (unsigned short *)word;
 
 			for(n = 0; n <= ctx->host.attrib[j].bits.numcomp; n++)
 				bits[n] = ((unsigned short *)(ppData[j] + i*pStride[j]))[n];
 
-			fimgSendToFIFO(ctx, ((ctx->host.attrib[j].bits.numcomp + 2) / 2) * 4, bits);
+			fimgSendToFIFO(ctx, ((ctx->host.attrib[j].bits.numcomp + 2) / 2) * 4, word);
 
 			break; }
 		// 4 bytes
@@ -82,7 +84,7 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_UINT:
 		case FGHI_ATTRIB_DT_NINT:
 		case FGHI_ATTRIB_DT_NUINT:
-			fimgSendToFIFO(ctx, 4 * (ctx->host.attrib[j].bits.numcomp + 1), ppData[j] + i*pStride[j]);
+			fimgSendToFIFO(ctx, 4 * (ctx->host.attrib[j].bits.numcomp + 1), (const unsigned int *)(ppData[j] + i*pStride[j]));
 			break;
 		}
 	}
@@ -437,22 +439,31 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
  * PARAMETERS:	[IN] buffer: pointer of input data
  *            	[IN] bytes: the total bytes count of input data
  *****************************************************************************/
-/* TODO: Use vertex buffer and interrupts */
-inline void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const void *buffer)
+/* TODO: Use vertex buffer */
+inline void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const unsigned int *ptr)
 {
 	unsigned int nEmptySpace = 0;
-	const unsigned int *ptr = (const unsigned int *)buffer;
 
 	// We're sending only full words
 	count /= 4;
 
 	// Transfer words to the FIFO
 	while(count--) {
+#if 0
+		/* The CPU is ours! Don't let it go!!!!! */
 		while(!nEmptySpace)
 			nEmptySpace = fimgRead(ctx, FGHI_DWSPACE);
-
+#else
+		/* Be more system friendly and share the CPU. */
+		if(!nEmptySpace) {
+			nEmptySpace = fimgRead(ctx, FGHI_DWSPACE);
+			if(!nEmptySpace) {
+				fimgWaitForFlush(ctx, 1);
+				nEmptySpace = fimgRead(ctx, FGHI_DWSPACE);
+			}
+		}
+#endif
 		fimgWrite(ctx, *(ptr++), FGHI_FIFO_ENTRY);
-
 		nEmptySpace--;
 	}
 }

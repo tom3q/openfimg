@@ -1569,42 +1569,213 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 	FGLTextureObject *obj = fglTextureObjects[texture];
 	if(obj == NULL) {
 		obj = new FGLTextureObject;
+		if (obj == NULL) {
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
 		fglTextureObjects[texture] = obj;
 	}
 	obj->bind(&ctx->texture[ctx->activeTexture].binding);
+}
+
+int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *conv)
+{
+	*conv = 0;
+	switch (type) {
+	case GL_UNSIGNED_BYTE:
+		switch (format) {
+		case GL_RGB: // Needs conversion
+			*conv = 1;
+		case GL_RGBA:
+			*bpp = 4;
+			return FGTU_TSTA_TEXTURE_FORMAT_8888;
+		case GL_ALPHA:
+			*bpp = 1;
+			return FGTU_TSTA_TEXTURE_FORMAT_8;
+		case GL_LUMINANCE: // Needs conversion
+			*conv = 1;
+		case GL_LUMINANCE_ALPHA:
+			*bpp = 2;
+			return FGTU_TSTA_TEXTURE_FORMAT_88;
+		default:
+			return -1;
+		}
+	case GL_UNSIGNED_SHORT_5_6_5:
+		if (format != GL_RGB)
+			return -1;
+		*bpp = 2;
+		return FGTU_TSTA_TEXTURE_FORMAT_565;
+	case GL_UNSIGNED_SHORT_4_4_4_4:
+		if (format != GL_RGBA)
+			return -1;
+		*bpp = 2;
+		return FGTU_TSTA_TEXTURE_FORMAT_4444;
+	case GL_UNSIGNED_SHORT_5_5_5_1:
+		if (format != GL_RGBA)
+			return -1;
+		*bpp = 2;
+		return FGTU_TSTA_TEXTURE_FORMAT_1555;
+	default:
+		return -1;
+	}
+}
+
+void fglGenerateMipmaps(FGLTextureObject *obj)
+{
+
+}
+
+inline size_t fglCalculateMipmaps(FGLTextureObject *obj, unsigned int width,
+					unsigned int height, unsigned int bpp)
+{
+	size_t offset, size;
+	unsigned int lvl, check;
+
+	size = width * height * bpp;
+	offset = 0;
+	check = max(width, height);
+	lvl = 0;
+
+	do {
+		fimgSetTexMipmapOffset(obj->fimg, lvl, offset);
+		offset += size;
+
+		check /= 2;
+		if(check == 0)
+			break;
+
+		++lvl;
+
+		if (width >= 2) {
+			size /= 2;
+			width /= 2;
+		}
+
+		if (height >= 2) {
+			size /= 2;
+			height /= 2;
+		}
+	} while (lvl < FGL_MAX_MIPMAP_LEVEL);
+
+	obj->maxLevel = lvl;
+	return offset;
+}
+
+void fglLoadTextureDirect(FGLTextureObject *obj, unsigned level,
+						const GLvoid *pixels)
+{
+	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned mipmapW = obj->surface.width >> level;
+	unsigned mipmapH = obj->surface.height >> level;
+	size_t size = mipmapW*mipmapH*obj->bpp;
+
+	memcpy((uint8_t *)obj->surface.vaddr + offset, pixels, size);
+}
+
+void fglLoadTexture(FGLTextureObject *obj, unsigned level,
+		    const GLvoid *pixels, unsigned alignment)
+{
+	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned width = obj->surface.width >> level;
+	unsigned height = obj->surface.height >> level;
+	size_t line = width*obj->bpp;
+	size_t stride = (line + alignment - 1) & ~(alignment - 1);
+	const uint8_t *src8 = (const uint8_t *)pixels;
+	uint8_t *dst8 = (uint8_t *)obj->surface.vaddr + offset;
+
+	for(unsigned i = 0; i < height; i++) {
+		memcpy(dst8, src8, line);
+		src8 += stride;
+		dst8 += line;
+	}
+}
+
+static inline uint32_t fglPackRGBA8888(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	return (a << 24) | (b << 16) | (g << 8) | r;
+}
+
+static inline uint16_t fglPackLA88(uint8_t l, uint8_t a)
+{
+	return (a << 8) | l;
+}
+
+void fglConvertTexture(FGLTextureObject *obj, unsigned level,
+			const GLvoid *pixels, unsigned alignment)
+{
+	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned width = obj->surface.width >> level;
+	unsigned height = obj->surface.height >> level;
+
+	switch (obj->format) {
+	case GL_RGB: {
+		size_t line = 3*width;
+		size_t stride = (line + alignment - 1) & ~(alignment - 1);
+		size_t padding = stride - line;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint8_t r, g, b;
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr + offset);
+		for (unsigned y = 0; y < height; y++) {
+			for (unsigned x = 0; x < width; x++) {
+				r = *(src8++);
+				g = *(src8++);
+				b = *(src8++);
+				*(dst32++) = fglPackRGBA8888(r, g, b, 255);
+			}
+			src8 += padding;
+		}
+		break;
+	}
+	case GL_LUMINANCE: {
+		size_t stride = (width + alignment - 1) & ~(alignment - 1);
+		size_t padding = stride - width;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface.vaddr + offset);
+		for (unsigned y = 0; y < height; y++) {
+			for (unsigned x = 0; x < width; x++)
+				*(dst16++) = fglPackLA88(*(src8++), 255);
+			src8 += padding;
+		}
+		break;
+	}
+	default:
+		LOGW("Unsupported texture conversion %d", obj->format);
+		return;
+	}
 }
 
 GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	GLint internalformat, GLsizei width, GLsizei height, GLint border,
 	GLenum format, GLenum type, const GLvoid *pixels)
 {
-	if(target != GL_TEXTURE_2D) {
+	// Check conditions required by specification
+	if (target != GL_TEXTURE_2D) {
 		setError(GL_INVALID_ENUM);
 		return;
 	}
 
-	if(level < 0) {
+	if (level < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
 
-	if(border != 0) {
+	if (border != 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
 
+	// Check if width is a power of two
 	GLsizei tmp;
 
-	/* Check if width is a power of two */
-	for(tmp = 1; 2*tmp <= width; tmp = 2*tmp);
-	if(tmp != width) {
+	for (tmp = 1; 2*tmp <= width; tmp = 2*tmp);
+	if (tmp != width) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
 
-	/* Check if height is a power of two */
-	for(tmp = 1; 2*tmp <= height; tmp = 2*tmp);
-	if(tmp != height) {
+	// Check if height is a power of two
+	for (tmp = 1; 2*tmp <= height; tmp = 2*tmp);
+	if (tmp != height) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
@@ -1613,14 +1784,103 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	FGLTextureObject *obj =
 		ctx->texture[ctx->activeTexture].getTextureObject();
 
-	if(!obj->surface.isValid()) {
-		if(level > 0) {
+	// Specifying mipmaps
+	if (level > 0) {
+		if (!obj->surface.isValid()) {
+			// Mipmaps can be specified only if the texture exists
 			setError(GL_INVALID_OPERATION);
 			return;
 		}
 
-		
+		// Check dimensions
+		if ((obj->surface.width >> level) != width) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+
+		if ((obj->surface.height >> level) != height) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+
+		// Check format
+		if (obj->format != format || obj->type != type) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+
+		// Copy the image (with conversion if needed)
+		if (pixels != NULL) {
+			if (obj->convert) {
+				fglConvertTexture(obj, level, pixels,
+							ctx->unpackAlignment);
+			} else {
+				if (ctx->unpackAlignment <= obj->bpp)
+					fglLoadTextureDirect(obj, level, pixels);
+				else
+					fglLoadTexture(obj, level, pixels,
+						       ctx->unpackAlignment);
+			}
+		}
+
+		obj->levels |= 1 << level;
+
+		return;
 	}
+
+	// level == 0
+
+	// Get format information
+	unsigned bpp;
+	bool convert;
+	int fglFormat = fglGetFormatInfo(format, type, &bpp, &convert);
+	if (fglFormat < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	// Level 0 with different size or bpp means dropping whole texture
+	if (width != obj->surface.width || height != obj->surface.height || bpp != obj->bpp)
+		fglDestroyPmemSurface(&obj->surface);
+
+	// (Re)allocate the texture
+	if (!obj->surface.isValid()) {
+		obj->format = format;
+		obj->type = type;
+		obj->fglFormat = fglFormat;
+		obj->bpp = bpp;
+		obj->convert = convert;
+
+		// Calculate mipmaps
+		obj->surface.size = fglCalculateMipmaps(obj, width, height, bpp);
+
+		// Setup the surface
+		obj->surface.width = width;
+		obj->surface.height = height;
+		if(fglCreatePmemSurface(&obj->surface)) {
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+
+		obj->levels = 1;
+	}
+
+	// Copy the image (with conversion if needed)
+	if (pixels != NULL) {
+		if (obj->convert) {
+			fglConvertTexture(obj, level, pixels,
+						ctx->unpackAlignment);
+		} else {
+			if (ctx->unpackAlignment <= bpp)
+				fglLoadTextureDirect(obj, level, pixels);
+			else
+				fglLoadTexture(obj, level, pixels,
+						ctx->unpackAlignment);
+		}
+	}
+
+	if (obj->genMipmap)
+		fglGenerateMipmaps(obj);
 }
 
 GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname, GLfloat param)
@@ -1647,15 +1907,73 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 	switch (pname) {
 	case GL_TEXTURE_WRAP_S:
 		obj->sWrap = param;
+		switch(param) {
+		case GL_REPEAT:
+			fimgSetTexUAddrMode(obj->fimg, FGTU_TSTA_ADDR_MODE_REPEAT);
+			break;
+		case GL_CLAMP_TO_EDGE:
+			fimgSetTexUAddrMode(obj->fimg, FGTU_TSTA_ADDR_MODE_CLAMP);
+			break;
+		default:
+			setError(GL_INVALID_VALUE);
+		}
 		break;
 	case GL_TEXTURE_WRAP_T:
 		obj->tWrap = param;
+		switch(param) {
+		case GL_REPEAT:
+			fimgSetTexVAddrMode(obj->fimg, FGTU_TSTA_ADDR_MODE_REPEAT);
+			break;
+		case GL_CLAMP_TO_EDGE:
+			fimgSetTexVAddrMode(obj->fimg, FGTU_TSTA_ADDR_MODE_CLAMP);
+			break;
+		default:
+			setError(GL_INVALID_VALUE);
+		}
 		break;
 	case GL_TEXTURE_MIN_FILTER:
 		obj->minFilter = param;
+		switch(param) {
+		case GL_NEAREST:
+			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
+			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_DISABLED);
+			break;
+		case GL_NEAREST_MIPMAP_NEAREST:
+			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
+			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_NEAREST);
+			break;
+		case GL_NEAREST_MIPMAP_LINEAR:
+			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
+			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_LINEAR);
+			break;
+		case GL_LINEAR:
+			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
+			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_DISABLED);
+			break;
+		case GL_LINEAR_MIPMAP_NEAREST:
+			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
+			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_NEAREST);
+			break;
+		case GL_LINEAR_MIPMAP_LINEAR:
+			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
+			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_LINEAR);
+			break;
+		default:
+			setError(GL_INVALID_VALUE);
+		}
 		break;
 	case GL_TEXTURE_MAG_FILTER:
 		obj->magFilter = param;
+		switch(param) {
+		case GL_NEAREST:
+			fimgSetTexMagFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
+			break;
+		case GL_LINEAR:
+			fimgSetTexMagFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
+			break;
+		default:
+			setError(GL_INVALID_VALUE);
+		}
 		break;
 	case GL_GENERATE_MIPMAP:
 		obj->genMipmap = param;

@@ -122,7 +122,7 @@ typedef enum {
 
 /* Functions */
 unsigned int fimgGetNumEmptyFIFOSlots(fimgContext *ctx);
-void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const void *buffer);
+void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const unsigned int *buffer);
 #if defined(FIMG_INTERPOLATION_WORKAROUND)
 void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
 void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
@@ -298,6 +298,11 @@ enum {
 };
 
 enum {
+	FGTU_TSTA_FILTER_NEAREST = 0,
+	FGTU_TSTA_FILTER_LINEAR
+};
+
+enum {
 	FGTU_TSTA_MIPMAP_DISABLED = 0,
 	FGTU_TSTA_MIPMAP_NEAREST,
 	FGTU_TSTA_MIPMAP_LINEAR
@@ -309,49 +314,31 @@ enum {
 	FGTU_VTSTA_MOD_CLAMP
 };
 
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned useMipmap	:2;
-		unsigned minFilter	:1;
-		unsigned magFilter	:1;
-		unsigned texCoordSys	:1;
-		unsigned		:1;
-		unsigned pAddrMode	:2;
-		unsigned vAddrMode	:2;
-		unsigned uAddrMode	:2;
-		unsigned textureFmt	:5;
-		unsigned paletteFmt	:2;
-		unsigned alphaFmt	:1;
-		unsigned texExp		:1;
-		unsigned clrKeyEn	:1;
-		unsigned clrKeySel	:1;
-		unsigned		:4;
-		unsigned type		:2;
-		unsigned		:3;
-	} bits;
-} fimgTexControl;
-
-typedef struct {
-	fimgTexControl	ctrl;
-	unsigned int	mipmapLvl;
-	unsigned int 	uUSize;
-	unsigned int 	uVSize;
-	unsigned int 	uPSize;
-} fimgTexUnitParams;
-
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned vsize		:4;
-		unsigned usize		:4;
-		unsigned vmod		:2;
-		unsigned umod		:2;
-		unsigned		:20;
-	} bits;
-} fimgVtxTexControl;
+struct _fimgTexture;
+typedef struct _fimgTexture fimgTexture;
 
 /* Functions */
+fimgTexture *fimgCreateTexture(void);
+void fimgDestroyTexture(fimgTexture *texture);
+void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
+						unsigned int offset);
+unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level);
+void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit);
+void fimgSetTexMipmapLevel(fimgTexture *texture, int level);
+void fimgSetTexBaseAddr(fimgTexture *texture, unsigned int addr);
+void fimgSetTex2DSize(fimgTexture *texture,
+	unsigned int uSize, unsigned int vSize);
+void fimgSetTex3DSize(fimgTexture *texture, unsigned int vSize,
+				unsigned int uSize, unsigned int pSize);
+void fimgSetTexUAddrMode(fimgTexture *texture, unsigned mode);
+void fimgSetTexVAddrMode(fimgTexture *texture, unsigned mode);
+void fimgSetTexPAddrMode(fimgTexture *texture, unsigned mode);
+void fimgSetTexMinFilter(fimgTexture *texture, unsigned mode);
+void fimgSetTexMagFilter(fimgTexture *texture, unsigned mode);
+void fimgSetTexMipmap(fimgTexture *texture, unsigned mode);
+
+#if 0
+/* To be removed */
 void fimgSetTexUnitParams(fimgContext *ctx, unsigned int unit,
 			  fimgTexUnitParams *params);
 void fimgSetTexStatusParams(fimgContext *ctx, unsigned int unit,
@@ -384,7 +371,8 @@ void fimgSetTexPaletteEntry(fimgContext *ctx, unsigned int entry);
 void fimgSetVtxTexUnitParams(fimgContext *ctx, unsigned int unit,
 			     fimgVtxTexControl vts);
 void fimgSetVtxTexBaseAddr(fimgContext *ctx, unsigned int unit,
-			   unsigned int addr);
+						unsigned int addr);
+#endif
 
 /*
  * OpenGL 1.1 compatibility

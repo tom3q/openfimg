@@ -250,8 +250,53 @@ typedef union {
 } fimgFramebufferControl;
 
 /*
- * OS support
+ * Texturing
  */
+
+typedef union {
+	unsigned int val;
+	struct {
+		unsigned useMipmap	:2;
+		unsigned minFilter	:1;
+		unsigned magFilter	:1;
+		unsigned texCoordSys	:1;
+		unsigned		:1;
+		unsigned pAddrMode	:2;
+		unsigned vAddrMode	:2;
+		unsigned uAddrMode	:2;
+		unsigned textureFmt	:5;
+		unsigned paletteFmt	:2;
+		unsigned alphaFmt	:1;
+		unsigned texExp		:1;
+		unsigned clrKeyEn	:1;
+		unsigned clrKeySel	:1;
+		unsigned		:4;
+		unsigned type		:2;
+		unsigned		:3;
+	};
+} fimgTexControl;
+
+typedef union {
+	unsigned int val;
+	struct {
+		unsigned vsize		:4;
+		unsigned usize		:4;
+		unsigned vmod		:2;
+		unsigned umod		:2;
+		unsigned		:20;
+	} bits;
+} fimgVtxTexControl;
+
+struct _fimgTexture {
+	fimgTexControl control;
+	unsigned int uSize;
+	unsigned int vSize;
+	unsigned int pSize;
+	unsigned int offset[FGTU_MAX_MIPMAP_LEVEL];
+	unsigned int minLevel;
+	unsigned int maxLevel;
+	unsigned int baseAddr;
+};
 
 /*
  * Hardware context

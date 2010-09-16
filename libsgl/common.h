@@ -3,6 +3,7 @@
 
 #define FGL_MAX_TEXTURE_UNITS	2
 #define FGL_MAX_TEXTURE_OBJECTS 1024
+#define FGL_MAX_MIPMAP_LEVEL 11
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
@@ -20,5 +21,10 @@ static inline T min(T a, T b)
 }
 
 void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
+
+struct FGLSurface;
+
+int fglCreatePmemSurface(FGLSurface *s);
+void fglDestroyPmemSurface(FGLSurface *s);
 
 #endif // _LIBSGL_COMMON_H_

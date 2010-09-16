@@ -747,7 +747,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 	Surfaces
 */
 
-static int fglCreatePmemSurface(FGLSurface *s)
+int fglCreatePmemSurface(FGLSurface *s)
 {
 	int err, fd;
 	void *vaddr;
@@ -797,8 +797,11 @@ err_open:
 	return err;
 }
 
-static void fglDestroyPmemSurface(FGLSurface *s)
+void fglDestroyPmemSurface(FGLSurface *s)
 {
+	if(!s->isValid())
+		return;
+
 	munmap(s->vaddr, s->size);
 	close(s->fd);
 	LOGD("Destroyed PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
@@ -1700,7 +1703,12 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy, EGLConfig c
 
 	FGLRenderSurface* surface;
 	surface = new FGLWindowSurface(dpy, config, depthFormat,
-		static_cast<android_native_window_t*>(win), pixelFormat);
+			static_cast<android_native_window_t*>(win), pixelFormat);
+
+	if (surface == NULL) {
+		setError(EGL_BAD_ALLOC);
+		return EGL_NO_SURFACE;
+	}
 
 	if (!surface->initCheck()) {
 		// there was a problem in the ctor, the error
@@ -1749,8 +1757,13 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 		}
 	}
 
-	FGLRenderSurface* surface =
-		new FGLPbufferSurface(dpy, config, depthFormat, w, h, pixelFormat);
+	FGLRenderSurface* surface;
+	surface = new FGLPbufferSurface(dpy, config, depthFormat, w, h,
+								pixelFormat);
+	if (surface == NULL) {
+		setError(EGL_BAD_ALLOC);
+		return EGL_NO_SURFACE;
+	}
 
 	if (!surface->initCheck()) {
 		// there was a problem in the ctor, the error

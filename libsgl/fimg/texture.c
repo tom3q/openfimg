@@ -7,6 +7,8 @@
 *		2010 by Tomasz Figa <tomasz.figa@gmail.com> (new code)
 */
 
+#include <stdlib.h>
+#include <string.h>
 #include "fimg_private.h"
 
 #define TEXTURE_OFFSET	0x60000
@@ -56,8 +58,135 @@ typedef union {
 	} bits;
 } fimgTextureCKYUV;
 
-/* TODO: Function inlining */
+/* TODO: Consider inlining some of the functions */
 
+fimgTexture *fimgCreateTexture(void)
+{
+	fimgTexture *texture;
+
+	texture = malloc(sizeof(*texture));
+	if(texture == NULL)
+		return texture;
+
+	memset(texture, 0, sizeof(*texture));
+
+	texture->control.useMipmap = FGTU_TSTA_MIPMAP_LINEAR;
+	texture->control.magFilter = FGTU_TSTA_FILTER_LINEAR;
+	texture->control.alphaFmt = FGTU_TSTA_AFORMAT_RGBA;
+	texture->control.type = FGTU_TSTA_TYPE_2D;
+
+	return texture;
+}
+
+void fimgDestroyTexture(fimgTexture *texture)
+{
+	free(texture);
+}
+
+void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
+						unsigned int offset)
+{
+	if(level < 1 || level > FGTU_MAX_MIPMAP_LEVEL)
+		return;
+
+	texture->offset[level - 1] = offset;
+}
+
+unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level)
+{
+	if(level < 1 || level > FGTU_MAX_MIPMAP_LEVEL)
+		return 0;
+
+	return texture->offset[level - 1];
+}
+
+void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
+{
+	/* This should get optimized into burst copy by the compiler */
+	memcpy((void *)(ctx->base + FGTU_TSTA(unit)), texture, sizeof(*texture));
+}
+
+/*****************************************************************************
+* FUNCTIONS:	fimgSetTexMipmapLevel
+* SYNOPSIS:	This function sets texture mipmap level.
+* PARAMETERS:	[IN] unsigned int level: max level (<12)
+*****************************************************************************/
+void fimgSetTexMipmapLevel(fimgTexture *texture, int level)
+{
+	texture->maxLevel = level;
+}
+
+/*****************************************************************************
+* FUNCTIONS:	fimgSetTexBaseAddr
+* SYNOPSIS:	This function sets texture base address
+* 		for selected texture unit.
+* PARAMETERS:	[IN] unsigned int addr: base address
+*****************************************************************************/
+void fimgSetTexBaseAddr(fimgTexture *texture, unsigned int addr)
+{
+	texture->baseAddr = addr;
+}
+
+/*****************************************************************************
+* FUNCTIONS:	fimgSetTexUSize
+* SYNOPSIS:	This function sets a texture u size
+* 		for selected texture unit.
+* PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
+*		[IN]	unsigned int uSize: texture u size (0~2047)
+*****************************************************************************/
+void fimgSetTex2DSize(fimgTexture *texture,
+	unsigned int uSize, unsigned int vSize)
+{
+	texture->uSize = uSize;
+	texture->vSize = vSize;
+}
+
+/*****************************************************************************
+* FUNCTIONS:	fimgSetTexVSize
+* SYNOPSIS:	This function sets a texture v size
+* 		for selected texture unit.
+* PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
+*		[IN]	unsigned int vSize: texture v size (0~2047)
+*****************************************************************************/
+void fimgSetTex3DSize(fimgTexture *texture, unsigned int vSize,
+				unsigned int uSize, unsigned int pSize)
+{
+	texture->uSize = uSize;
+	texture->vSize = vSize;
+	texture->pSize = pSize;
+}
+
+void fimgSetTexUAddrMode(fimgTexture *texture, unsigned mode)
+{
+	texture->control.uAddrMode = mode;
+}
+
+void fimgSetTexVAddrMode(fimgTexture *texture, unsigned mode)
+{
+	texture->control.vAddrMode = mode;
+}
+
+void fimgSetTexPAddrMode(fimgTexture *texture, unsigned mode)
+{
+	texture->control.pAddrMode = mode;
+}
+
+void fimgSetTexMinFilter(fimgTexture *texture, unsigned mode)
+{
+	texture->control.minFilter = mode;
+}
+
+void fimgSetTexMagFilter(fimgTexture *texture, unsigned mode)
+{
+	texture->control.magFilter = mode;
+}
+
+void fimgSetTexMipmap(fimgTexture *texture, unsigned mode)
+{
+	texture->control.useMipmap = mode;
+}
+
+#if 0
 /*****************************************************************************
 * FUNCTIONS:	fimgSetTexUnitParams
 * SYNOPSIS:	This function sets various texture parameters
@@ -129,45 +258,6 @@ void fimgSetTexStatusParams(fimgContext *ctx,
 			    unsigned int unit, fimgTexControl params)
 {
 	fimgWrite(ctx, params.val, FGTU_TSTA(unit));
-}
-
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexUSize
-* SYNOPSIS:	This function sets a texture u size
-* 		for selected texture unit.
-* PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
-*		[IN]	unsigned int uSize: texture u size (0~2047)
-*****************************************************************************/
-void fimgSetTexUSize(fimgContext *ctx,
-		     unsigned int unit, unsigned int uSize)
-{
-	fimgWrite(ctx, uSize, FGTU_USIZE(unit));
-}
-
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexVSize
-* SYNOPSIS:	This function sets a texture v size
-* 		for selected texture unit.
-* PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
-*		[IN]	unsigned int vSize: texture v size (0~2047)
-*****************************************************************************/
-void fimgSetTexVSize(fimgContext *ctx,
-		     unsigned int unit, unsigned int vSize)
-{
-	fimgWrite(ctx, vSize, FGTU_VSIZE(unit));
-}
-
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexPSize
-* SYNOPSIS:	This function sets a texture p size
-* 		for selected texture unit.
-* PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
-*		[IN]	unsigned int pSize: texture p size (0~2047)
-*****************************************************************************/
-void fimgSetTexPSize(fimgContext *ctx,
-		     unsigned int unit, unsigned int pSize)
-{
-	fimgWrite(ctx, pSize, FGTU_PSIZE(unit));
 }
 
 /*****************************************************************************
@@ -339,36 +429,6 @@ unsigned int fimgCalculateMipmapOffsetS3TC(fimgContext *ctx, unsigned int unit,
 }
 
 /*****************************************************************************
-* FUNCTIONS:	fimgSetTexMipmapLevel
-* SYNOPSIS:	This function sets texture base level and/or max. level
-*		of mipmap for selected texture unit.
-* PARAMETERS:	[IN] unsigned int unit: texture unit (0~7)
-*		[IN] int min: base level or negative to keep current value (<12)
-* 		[IN] int max: max level or negative to keep current value (<12)
-*****************************************************************************/
-void fimgSetTexMipmapLevel(fimgContext *ctx,
-			   unsigned int unit, int min, int max)
-{
-	if(min >= 0)
-		fimgWrite(ctx, min, FGTU_T_MIN_L(unit));
-	if(max >= 0)
-		fimgWrite(ctx, max, FGTU_T_MAX_L(unit));
-}
-
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexBaseAddr
-* SYNOPSIS:	This function sets texture base address
-* 		for selected texture unit.
-* PARAMETERS:	[IN] unsigned int unit: texture unit (0~7)
-* 		[IN] unsigned int addr: base address
-*****************************************************************************/
-void fimgSetTexBaseAddr(fimgContext *ctx,
-			unsigned int unit, unsigned int addr)
-{
-	fimgWrite(ctx, addr, FGTU_TBADD(unit));
-}
-
-/*****************************************************************************
 * FUNCTIONS:	fimgSetTexColorKey
 * SYNOPSIS:	This function sets 3D color key 1 or 2 register
 * PARAMETERS:	[IN] unsigned int unit: 3D color key register (0~1)
@@ -461,3 +521,6 @@ void fimgSetVtxTexBaseAddr(fimgContext *ctx, unsigned int unit,
 {
 	fimgWrite(ctx, addr, FGTU_VTBADDR(unit));
 }
+
+#endif
+
