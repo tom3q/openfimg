@@ -237,8 +237,7 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file,
 	{
 		int restore;
 		mutex_lock(&data->mutex);
-		restore = (data->owner == ctx);
-		data->owner = ctx;
+		restore = (data->owner != ctx);
 		DBG("Hardware lock acquired by %p\n", ctx);
 #ifdef USE_G3D_DOMAIN_GATING
 		hrtimer_cancel(&data->timer);
@@ -250,6 +249,7 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file,
 			break;
 		}
 #endif /* USE_G3D_DOMAIN_GATING */
+		data->owner = ctx;
 		ret |= restore;
 		break;
 	}
@@ -258,7 +258,6 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file,
 		hrtimer_start(&data->timer, ktime_set(G3D_IDLE_TIME_SECS, 0),
 							HRTIMER_MODE_REL);
 #endif /* USE_G3D_DOMAIN_GATING */
-		data->owner = NULL;
 		mutex_unlock(&data->mutex);
 		DBG("Hardware lock released by %p\n", ctx);
 		break;
@@ -330,7 +329,7 @@ static int s3c_g3d_release(struct inode *inode, struct file *file)
 
 	/* Unlock if we have the lock */
 	if(unlock)
-		mutex_unlock(&data->mutex);
+		s3c_g3d_ioctl(inode, file, S3C_G3D_UNLOCK, 0);
 
 	kfree(ctx);
 	DBG("device released\n");
@@ -452,13 +451,16 @@ int s3c_g3d_probe(struct platform_device *pdev)
 #ifdef USE_G3D_DOMAIN_GATING
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->timer.function = g3d_idle_func;
-	data->state = 0;
-#else
+	data->state = 1;
+#endif
 	if(g3d_do_power_up(data) < 0) {
 		ERR("G3D power up failed\n");
 		ret = -EFAULT;
 		goto err_pm;
 	}
+#ifdef USE_G3D_DOMAIN_GATING
+	hrtimer_start(&data->timer, ktime_set(G3D_IDLE_TIME_SECS, 0),
+							HRTIMER_MODE_REL);
 #endif
 
 	platform_set_drvdata(pdev, data);
@@ -478,8 +480,11 @@ int s3c_g3d_probe(struct platform_device *pdev)
 err_misc_register:
 #ifndef USE_G3D_DOMAIN_GATING
 	g3d_do_power_down(data);
-err_pm:
+#else
+	if(!hrtimer_cancel(&data->timer))
+		g3d_power_down(data);
 #endif
+err_pm:
 	free_irq(data->irq, pdev);
 err_irq:
 	iounmap(data->base);
