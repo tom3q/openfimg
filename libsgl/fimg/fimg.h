@@ -320,6 +320,8 @@ typedef struct _fimgTexture fimgTexture;
 /* Functions */
 fimgTexture *fimgCreateTexture(void);
 void fimgDestroyTexture(fimgTexture *texture);
+void fimgInitTexture(fimgTexture *texture, unsigned int format,
+			unsigned int maxLevel, unsigned long addr);
 void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
 						unsigned int offset);
 unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level);
@@ -378,7 +380,16 @@ void fimgSetVtxTexBaseAddr(fimgContext *ctx, unsigned int unit,
  * OpenGL 1.1 compatibility
  */
 
+enum {
+	FGVS_MATRIX_TRANSFORM = 0,
+	FGVS_MATRIX_NORMALS,
+	FGVS_MATRIX_TEXTURE
+};
+#define FGVS_MATRIX_TEXTURE(i)	(FGVS_MATRIX_TEXTURE + (i))
+
 void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, float *pData);
+void fimgEnableTexture(fimgContext *ctx, unsigned int unit);
+void fimgDisableTexture(fimgContext *ctx, unsigned int unit);
 
 /*
  * Per-fragment unit

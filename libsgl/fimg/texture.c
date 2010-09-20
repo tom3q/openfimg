@@ -83,6 +83,14 @@ void fimgDestroyTexture(fimgTexture *texture)
 	free(texture);
 }
 
+void fimgInitTexture(fimgTexture *texture, unsigned int format,
+			unsigned int maxLevel, unsigned long addr)
+{
+	texture->control.textureFmt = format;
+	texture->maxLevel = maxLevel;
+	texture->baseAddr = addr;
+}
+
 void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
 						unsigned int offset)
 {

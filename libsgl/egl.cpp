@@ -747,6 +747,17 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 	Surfaces
 */
 
+void fglFlushPmemSurface(FGLSurface *s)
+{
+	struct pmem_region region;
+
+	region.offset = 0;
+	region.len = s->size;
+
+	if (ioctl(s->fd, PMEM_CACHE_FLUSH, &region) != 0)
+		LOGW("Could not flush PMEM surface %d", s->fd);
+}
+
 int fglCreatePmemSurface(FGLSurface *s)
 {
 	int err, fd;

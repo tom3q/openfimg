@@ -88,10 +88,12 @@ int fimgInvalidateFlushCache(fimgContext *ctx,
 	fimgWrite(ctx, ctl.val, FGGB_CACHECTL); // start clearing the cache
 
 	while(fimgRead(ctx, FGGB_CACHECTL) & ctl.val) {
+#if 0
 		if(--timeout == 0)
 			return -1;
 
 		usleep(1);
+#endif
 	}
 
 	return 0;
@@ -202,10 +204,10 @@ void fimgCreateGlobalContext(fimgContext *ctx)
 
 void fimgRestoreGlobalState(fimgContext *ctx)
 {
-	fimgWrite(ctx, 0, FGGB_INTMASK);
-	fimgWrite(ctx, 0, FGGB_PIPEMASK);
-	fimgWrite(ctx, 0, FGGB_INTPENDING);
-	fimgWrite(ctx, ctx->global.intTarget, FGGB_PIPETGTSTATE);
-	fimgWrite(ctx, ctx->global.intMask, FGGB_PIPEMASK);
-	fimgWrite(ctx, ctx->global.intEn, FGGB_INTMASK);
+	//fimgWrite(ctx, 0, FGGB_INTMASK);
+	//fimgWrite(ctx, 0, FGGB_PIPEMASK);
+	//fimgWrite(ctx, 0, FGGB_INTPENDING);
+	//fimgWrite(ctx, ctx->global.intTarget, FGGB_PIPETGTSTATE);
+	//fimgWrite(ctx, ctx->global.intMask, FGGB_PIPEMASK);
+	//fimgWrite(ctx, ctx->global.intEn, FGGB_INTMASK);
 }

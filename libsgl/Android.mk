@@ -22,7 +22,7 @@ LOCAL_ARM_MODE := arm
 LOCAL_SRC_FILES:= \
 	egl.cpp                     \
 	gles.cpp		            \
-	matrix.cpp
+	fglmatrix.cpp
 
 LOCAL_CFLAGS += -DLOG_TAG=\"libsgl\"
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES

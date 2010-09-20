@@ -25,8 +25,28 @@ fimg_version	0x01020000
 
 # Shader code
 label start
-# Use color from input 1 for generated fragment
-mov_sat oColor, v1
-# Return
-ret
+	# Get fragment color
+	mov r0, v1
+
+	# Skip if texture0 is disabled
+	bf notexture0, b0
+
+	# Get texel value from texture0
+	texld r1, v3, s0
+	mul r0, r0, r1
+
+label notexture0
+	# Skip if texture1 is disabled
+	bf notexture1, b1
+
+	# Get texel value from texture1
+	texld r1, v4, s1
+	mul r0, r0, r1
+
+label notexture1
+	# Store the pixel
+	mov_sat oColor, r0
+
+	# Return
+	ret
 # End of shader code

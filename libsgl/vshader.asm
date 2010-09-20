@@ -23,58 +23,29 @@ vs_3_0
 # FIMG version >= 1.2
 fimg_version	0x01020000
 
-# Projection matrix
-def c0, 0.0, 0.0, 0.0, 0.0
-def c1, 0.0, 0.0, 0.0, 0.0
-def c2, 0.0, 0.0, 0.0, 0.0
-def c3, 0.0, 0.0, 0.0, 0.0
-
-# Model-view matrix
-def c4, 0.0, 0.0, 0.0, 0.0
-def c5, 0.0, 0.0, 0.0, 0.0
-def c6, 0.0, 0.0, 0.0, 0.0
-def c7, 0.0, 0.0, 0.0, 0.0
-
-# Inverted model-view matrix
-def c8, 0.0, 0.0, 0.0, 0.0
-def c9, 0.0, 0.0, 0.0, 0.0
-def c10, 0.0, 0.0, 0.0, 0.0
-def c11, 0.0, 0.0, 0.0, 0.0
-
-# Texture 0 matrix
-def c12, 0.0, 0.0, 0.0, 0.0
-def c13, 0.0, 0.0, 0.0, 0.0
-def c14, 0.0, 0.0, 0.0, 0.0
-def c15, 0.0, 0.0, 0.0, 0.0
-
-# Texture 1 matrix
-def c16, 0.0, 0.0, 0.0, 0.0
-def c17, 0.0, 0.0, 0.0, 0.0
-def c18, 0.0, 0.0, 0.0, 0.0
-def c19, 0.0, 0.0, 0.0, 0.0
-
 # Shader code
 label start
-# Transform position by model-view matrix
-dp4 r0.x, c4, v0
-dp4 r0.y, c5, v0
-dp4 r0.z, c6, v0
-dp4 r0.w, c7, v0
-# Transform position by projection matrix
-dp4 o0.x, c0, r0
-dp4 o0.y, c1, r0
-dp4 o0.z, c2, r0
-dp4 o0.w, c3, r0
-# Pass vertex normal
-mov o1, v1
-# Pass vertex color
-mov o2, v2
-# Pass vertex point size
-mov o3, v3
-# Pass vertex texcoord 0
-mov o4, v4
-# Pass vertex texcoord 1
-mov o5, v5
-# Return
-ret
+	# Transform position by transformation matrix
+	mul r0.xyzw, c0.xyzw, v0.xxxx
+	mad r0.xyzw, c1.xyzw, v0.yyyy, r0.xyzw
+	mad r0.xyzw, c2.xyzw, v0.zzzz, r0.xyzw
+	mad o0.xyzw, c3.xyzw, v0.wwww, r0.xyzw
+
+	# Pass vertex normal
+	mov o1, v1
+
+	# Pass vertex color
+	mov o2, v2
+
+	# Pass vertex point size
+	mov o3, v3
+
+	# Pass vertex texcoord 0
+	mov o4, v4
+
+	# Pass vertex texcoord 1
+	mov o5, v5
+
+	# Return
+	ret
 # End of shader code

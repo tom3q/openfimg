@@ -27,6 +27,7 @@
 #include <GLES/gl.h>
 #include "state.h"
 #include "types.h"
+#include "fglpoolallocator.h"
 #include "fimg/fimg.h"
 
 /* Shaders */
@@ -34,6 +35,7 @@
 #include "fshader.h"
 
 //#define GLES_DEBUG
+#define GLES_ERR_DEBUG
 
 /**
 	Client API information
@@ -69,10 +71,8 @@ static char const * const gExtensionsString =
 // ----------------------------------------------------------------------------
 
 /**
-	Error handling
+	Context management
 */
-
-GLenum errorCode = GL_NO_ERROR;
 
 #ifdef GLES_DEBUG
 #define getContext() ( \
@@ -93,7 +93,7 @@ static inline FGLContext *getContext(void)
 	return ctx;
 }
 
-static void restoreHardwareState(FGLContext *ctx)
+static void fglRestoreHardwareState(FGLContext *ctx)
 {
 	/*
 		TODO:
@@ -120,12 +120,8 @@ static void restoreHardwareState(FGLContext *ctx)
 		fflush(stderr);
 	}
 
-	// TODO
-#if 0
-	/* Restore textures */
-	for(int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++)
-		fimgSetTexUnitParams(i, NULL /* TODO */);
-#endif
+	for (int i = FGL_MATRIX_PROJECTION; i < FGL_MATRIX_TEXTURE(FGL_MAX_TEXTURE_UNITS); i++)
+		ctx->matrix.dirty[i] = GL_TRUE;
 
 	fprintf(stderr, "FGL: Invalidating caches\n");
 	fflush(stderr);
@@ -138,7 +134,7 @@ static inline void getHardware(FGLContext *ctx)
 
 	if(unlikely((ret = fimgAcquireHardwareLock(ctx->fimg)) != 0)) {
 		if(likely(ret > 0)) {
-			restoreHardwareState(ctx);
+			fglRestoreHardwareState(ctx);
 		} else {
 			LOGE("Could not acquire hardware lock");
 			exit(EBUSY);
@@ -153,10 +149,21 @@ static inline void putHardware(FGLContext *ctx)
 	fimgReleaseHardwareLock(ctx->fimg);
 }
 
+/**
+	Error handling
+*/
+
 static pthread_mutex_t glErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t glErrorKey = -1;
 
+#ifdef GLES_ERR_DEBUG
+#define setError(a) ( \
+	LOGD("GLES error %s in %s", #a, __func__), \
+	_setError(a))
+static inline void _setError(GLenum error)
+#else
 static inline void setError(GLenum error)
+#endif
 {
 	GLenum errorCode;
 
@@ -172,7 +179,6 @@ static inline void setError(GLenum error)
 
 	pthread_setspecific(glErrorKey, (void *)error);
 
-	LOGD("GL error %d", error);
 	if(errorCode == GL_NO_ERROR)
 		errorCode = error;
 }
@@ -190,6 +196,44 @@ GL_API GLenum GL_APIENTRY glGetError (void)
 /**
 	Vertex state
 */
+
+static inline GLint unitFromTextureEnum(GLenum texture)
+{
+	GLint unit;
+
+	switch(texture) {
+	case GL_TEXTURE0:
+		unit = 0;
+		break;
+	case GL_TEXTURE1:
+		unit = 1;
+		break;
+#if 0
+	case TEXTURE2:
+		unit = 2;
+		break;
+	case TEXTURE3:
+		unit = 3;
+		break;
+	case TEXTURE4:
+		unit = 4;
+		break;
+	case TEXTURE5:
+		unit = 5;
+		break;
+	case TEXTURE6:
+		unit = 6;
+		break;
+	case TEXTURE7:
+		unit = 7;
+		break;
+#endif
+	default:
+		return -1;
+	}
+
+	return unit;
+}
 
 FGLvec4f FGLContext::defaultVertex[4 + FGL_MAX_TEXTURE_UNITS] = {
 	/* Vertex - unused */
@@ -549,7 +593,7 @@ GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture)
 
 	FGLContext *ctx = getContext();
 
-	ctx->activeTexture = unit;
+	ctx->clientActiveTexture = unit;
 }
 
 /**
@@ -589,12 +633,40 @@ static inline GLint fglModeFromModeEnum(GLenum mode)
 	return fglMode;
 }
 
-static inline void updateMatrices(FGLContext *ctx)
+static inline void fglSetupMatrices(FGLContext *ctx)
 {
-	for(int i = 0; i < 3 + FGL_MAX_TEXTURE_UNITS; i++) {
-		if(ctx->matrix.dirty[i]) {
-			fimgLoadMatrix(ctx->fimg, i, ctx->matrix.stack[i].top().data);
-			ctx->matrix.dirty[i] = GL_FALSE;
+	if (ctx->matrix.dirty[FGL_MATRIX_MODELVIEW] || ctx->matrix.dirty[FGL_MATRIX_PROJECTION])
+	{
+		FGLmatrix matrix = ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
+		matrix.multiply(ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top());
+		fimgLoadMatrix(ctx->fimg, FGVS_MATRIX_TRANSFORM, matrix.data);
+		fimgLoadMatrix(ctx->fimg, FGVS_MATRIX_NORMALS, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW] = GL_FALSE;
+		ctx->matrix.dirty[FGL_MATRIX_PROJECTION] = GL_FALSE;
+		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_FALSE;
+	}
+
+	int i = FGL_MAX_TEXTURE_UNITS;
+	while(i--) {
+		if(!ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)])
+			continue;
+
+		fimgLoadMatrix(ctx->fimg, FGVS_MATRIX_TEXTURE(i), ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top().data);
+		ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)] = GL_FALSE;
+	}
+}
+
+static inline void fglSetupTextures(FGLContext *ctx)
+{
+	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
+		bool enabled = ctx->texture[i].enabled;
+		FGLTexture *obj = ctx->texture[i].getTexture();
+
+		if(enabled && obj->surface.isValid() && obj->isComplete()) {
+			fimgSetupTexture(ctx->fimg, obj->fimg, i);
+			fimgEnableTexture(ctx->fimg, i);
+		} else {
+			fimgDisableTexture(ctx->fimg, i);
 		}
 	}
 }
@@ -628,7 +700,8 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 
 	getHardware(ctx);
 
-	updateMatrices(ctx);
+	fglSetupMatrices(ctx);
+	fglSetupTextures(ctx);
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
 #if FIMG_INTERPOLATION_WORKAROUND != 2
 	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
@@ -697,7 +770,8 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 
 	getHardware(ctx);
 
-	updateMatrices(ctx);
+	fglSetupMatrices(ctx);
+	fglSetupTextures(ctx);
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->array[i].enabled) {
@@ -807,7 +881,7 @@ GL_API void GL_APIENTRY glLoadMatrixf (const GLfloat *m)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	ctx->matrix.stack[idx].top().load(m);
 	ctx->matrix.dirty[idx] = GL_TRUE;
@@ -826,7 +900,7 @@ GL_API void GL_APIENTRY glLoadMatrixx (const GLfixed *m)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	ctx->matrix.stack[idx].top().load(m);
 	ctx->matrix.dirty[idx] = GL_TRUE;
@@ -845,7 +919,7 @@ GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	FGLmatrix mat;
 	mat.load(ctx->matrix.stack[idx].top());
@@ -869,7 +943,7 @@ GL_API void GL_APIENTRY glMultMatrixx (const GLfixed *m)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	FGLmatrix mat;
 	mat.load(ctx->matrix.stack[idx].top());
@@ -893,7 +967,7 @@ GL_API void GL_APIENTRY glLoadIdentity (void)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	ctx->matrix.stack[idx].top().identity();
 	ctx->matrix.dirty[idx] = GL_TRUE;
@@ -911,7 +985,7 @@ GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat 
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	FGLmatrix mat;
 	mat.rotate(angle, x, y, z);
@@ -939,7 +1013,7 @@ GL_API void GL_APIENTRY glTranslatef (GLfloat x, GLfloat y, GLfloat z)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	FGLmatrix mat;
 	mat.translate(x, y, z);
@@ -967,7 +1041,7 @@ GL_API void GL_APIENTRY glScalef (GLfloat x, GLfloat y, GLfloat z)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	FGLmatrix mat;
 	mat.scale(x, y, z);
@@ -1000,7 +1074,7 @@ GL_API void GL_APIENTRY glFrustumf (GLfloat left, GLfloat right, GLfloat bottom,
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	FGLmatrix mat;
 	mat.frustum(left, right, bottom, top, zNear, zFar);
@@ -1033,7 +1107,7 @@ GL_API void GL_APIENTRY glOrthof (GLfloat left, GLfloat right, GLfloat bottom, G
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	FGLmatrix mat;
 	mat.ortho(left, right, bottom, top, zNear, zFar);
@@ -1066,7 +1140,7 @@ GL_API void GL_APIENTRY glActiveTexture (GLenum texture)
 
 	FGLContext *ctx = getContext();
 
-	ctx->matrix.activeTexture = unit;
+	ctx->activeTexture = unit;
 }
 
 GL_API void GL_APIENTRY glPopMatrix (void)
@@ -1075,7 +1149,7 @@ GL_API void GL_APIENTRY glPopMatrix (void)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	if(ctx->matrix.stack[idx].pop()) {
 		setError(GL_STACK_UNDERFLOW);
@@ -1097,7 +1171,7 @@ GL_API void GL_APIENTRY glPushMatrix (void)
 	GLint idx = ctx->matrix.activeMatrix;
 
 	if(idx == FGL_MATRIX_TEXTURE)
-		idx = FGL_MATRIX_TEXTURE(ctx->matrix.activeTexture);
+		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
 	if(ctx->matrix.stack[idx].push()) {
 		setError(GL_STACK_OVERFLOW);
@@ -1520,6 +1594,7 @@ GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
 			return;
 		}
 		fglTextureObjects[name] = NULL;
+		LOGD("Allocated texture %d", name);
 		*textures = name;
 		textures++;
 	}
@@ -1538,10 +1613,13 @@ GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures)
 		name = *textures;
 		textures++;
 
-		if(!fglTextureObjects.isValid(name))
+		if(!fglTextureObjects.isValid(name)) {
+			LOGD("Tried to free invalid texture %d", name);
 			continue;
-		
-		delete fglTextureObjects[name];
+		}
+
+		LOGD("Freeing texture %d", name);
+		delete (fglTextureObjects[name]);
 		fglTextureObjects.put(name);
 	}
 }
@@ -1555,7 +1633,8 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 
 	if(texture == 0) {
 		FGLContext *ctx = getContext();
-		ctx->texture[ctx->activeTexture].binding.unbind();
+		if(ctx->texture[ctx->activeTexture].binding.isBound())
+			ctx->texture[ctx->activeTexture].binding.unbind();
 		return;
 	}
 
@@ -1575,6 +1654,10 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		}
 		fglTextureObjects[texture] = obj;
 	}
+	
+	if(ctx->texture[ctx->activeTexture].binding.isBound())
+		ctx->texture[ctx->activeTexture].binding.unbind();
+
 	obj->bind(&ctx->texture[ctx->activeTexture].binding);
 }
 
@@ -1620,12 +1703,12 @@ int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *conv)
 	}
 }
 
-void fglGenerateMipmaps(FGLTextureObject *obj)
+void fglGenerateMipmaps(FGLTexture *obj)
 {
 
 }
 
-inline size_t fglCalculateMipmaps(FGLTextureObject *obj, unsigned int width,
+inline size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 					unsigned int height, unsigned int bpp)
 {
 	size_t offset, size;
@@ -1661,18 +1744,18 @@ inline size_t fglCalculateMipmaps(FGLTextureObject *obj, unsigned int width,
 	return offset;
 }
 
-void fglLoadTextureDirect(FGLTextureObject *obj, unsigned level,
+void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
-	unsigned mipmapW = obj->surface.width >> level;
-	unsigned mipmapH = obj->surface.height >> level;
-	size_t size = mipmapW*mipmapH*obj->bpp;
+	unsigned width = obj->surface.width >> level;
+	unsigned height = obj->surface.height >> level;
+	size_t size = width*height*obj->bpp;
 
 	memcpy((uint8_t *)obj->surface.vaddr + offset, pixels, size);
 }
 
-void fglLoadTexture(FGLTextureObject *obj, unsigned level,
+void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
@@ -1692,7 +1775,8 @@ void fglLoadTexture(FGLTextureObject *obj, unsigned level,
 
 static inline uint32_t fglPackRGBA8888(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
-	return (a << 24) | (b << 16) | (g << 8) | r;
+	//return (a << 24) | (b << 16) | (g << 8) | r;
+	return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
 static inline uint16_t fglPackLA88(uint8_t l, uint8_t a)
@@ -1700,7 +1784,7 @@ static inline uint16_t fglPackLA88(uint8_t l, uint8_t a)
 	return (a << 8) | l;
 }
 
-void fglConvertTexture(FGLTextureObject *obj, unsigned level,
+void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
@@ -1781,8 +1865,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 
 	FGLContext *ctx = getContext();
-	FGLTextureObject *obj =
-		ctx->texture[ctx->activeTexture].getTextureObject();
+	FGLTexture *obj =
+		ctx->texture[ctx->activeTexture].getTexture();
 
 	// Specifying mipmaps
 	if (level > 0) {
@@ -1825,6 +1909,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 		obj->levels |= 1 << level;
 
+		fglFlushPmemSurface(&obj->surface);
+
 		return;
 	}
 
@@ -1862,6 +1948,10 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 			return;
 		}
 
+		fimgInitTexture(obj->fimg, obj->fglFormat, obj->maxLevel,
+							obj->surface.paddr);
+		fimgSetTex2DSize(obj->fimg, width, height);
+
 		obj->levels = 1;
 	}
 
@@ -1881,16 +1971,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 	if (obj->genMipmap)
 		fglGenerateMipmaps(obj);
-}
 
-GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname, GLfloat param)
-{
-	setError(GL_INVALID_ENUM);
-}
-
-GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname, const GLfloat *params)
-{
-	setError(GL_INVALID_ENUM);
+	fglFlushPmemSurface(&obj->surface);
 }
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)
@@ -1901,8 +1983,8 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 	}
 
 	FGLContext *ctx = getContext();
-	FGLTextureObject *obj =
-		ctx->texture[ctx->activeTexture].getTextureObject();
+	FGLTexture *obj =
+		ctx->texture[ctx->activeTexture].getTexture();
 
 	switch (pname) {
 	case GL_TEXTURE_WRAP_S:
@@ -1937,26 +2019,32 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 		case GL_NEAREST:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_DISABLED);
+			obj->useMipmap = GL_FALSE;
 			break;
 		case GL_NEAREST_MIPMAP_NEAREST:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_NEAREST);
+			obj->useMipmap = GL_TRUE;
 			break;
 		case GL_NEAREST_MIPMAP_LINEAR:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_LINEAR);
+			obj->useMipmap = GL_TRUE;
 			break;
 		case GL_LINEAR:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_DISABLED);
+			obj->useMipmap = GL_FALSE;
 			break;
 		case GL_LINEAR_MIPMAP_NEAREST:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_NEAREST);
+			obj->useMipmap = GL_TRUE;
 			break;
 		case GL_LINEAR_MIPMAP_LINEAR:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_LINEAR);
+			obj->useMipmap = GL_TRUE;
 			break;
 		default:
 			setError(GL_INVALID_VALUE);
@@ -1985,30 +2073,46 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 
 GL_API void GL_APIENTRY glTexParameteriv (GLenum target, GLenum pname, const GLint *params)
 {
-	setError(GL_INVALID_ENUM);
+	glTexParameteri(target, pname, *params);
+}
+
+GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname, GLfloat param)
+{
+	glTexParameteri(target, pname, intFromFloat(param));
+}
+
+GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname, const GLfloat *params)
+{
+	glTexParameteri(target, pname, intFromFloat(*params));
 }
 
 GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname, GLfixed param)
 {
-	setError(GL_INVALID_ENUM);
+	glTexParameteri(target, pname, intFromFixed(param));
 }
 
 GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname, const GLfixed *params)
 {
-	setError(GL_INVALID_ENUM);
+	glTexParameteri(target, pname, intFromFixed(*params));
 }
 
 /**
 	Enable/disable
 */
 
-static inline void fglSet(GLenum cap, GLboolean state)
+static inline void fglSet(GLenum cap, bool state)
 {
 	FGLContext *ctx = getContext();
 
+	switch (cap) {
+	case GL_TEXTURE_2D:
+		ctx->texture[ctx->activeTexture].enabled = state;
+		return;
+	}
+
 	getHardware(ctx);
 
-	switch(cap) {
+	switch (cap) {
 	case GL_CULL_FACE:
 		fimgSetFaceCullEnable(ctx->fimg, state);
 		break;
@@ -2046,12 +2150,12 @@ static inline void fglSet(GLenum cap, GLboolean state)
 
 GL_API void GL_APIENTRY glEnable (GLenum cap)
 {
-	fglSet(cap, GL_TRUE);
+	fglSet(cap, true);
 }
 
 GL_API void GL_APIENTRY glDisable (GLenum cap)
 {
-	fglSet(cap, GL_FALSE);
+	fglSet(cap, false);
 }
 
 /**
@@ -2066,7 +2170,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei h
 	if(!format && !type) {
 		if(!x && !y && width == draw->width && height == draw->height) {
 			if(draw->vaddr) {
-				cacheflush(intptr_t(draw->vaddr), draw->size, 0);
+				fglFlushPmemSurface(draw);
 				memcpy(pixels, draw->vaddr, draw->size);
 			}
 		}
@@ -2085,7 +2189,7 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask)
 
 	if(draw->vaddr) {
 		memset(draw->vaddr, 0, draw->size);
-		cacheflush(intptr_t(draw->vaddr), draw->size, 0);
+		fglFlushPmemSurface(draw);
 	}
 }
 

@@ -22,7 +22,7 @@
 #include <GLES/gl.h>
 #include <cstring>
 #include <cmath>
-#include "types.h"
+#include "fglmatrix.h"
 
 /**
  *	4x4 matrix (for geometry transformation)

@@ -8,11 +8,13 @@
 
 #include "fimg_private.h"
 
-#define VSHADER_OFFSET		0x10000
-
 #define FGVS_CFLOAT_START	0x14000
 #define FGVS_CINT_START		0x18000
 #define FGVS_CBOOL_START	0x18400
+
+#define FGPS_CFLOAT_START	0x44000
+#define FGPS_CINT_START		0x48000
+#define FGPS_CBOOL_START	0x48400
 
 /**
 	Compatibility module for OpenGL ES 1.1 operation.
@@ -20,11 +22,10 @@
 	Use functions from this file only when the fixed-pipeline shader is loaded.
 
 	matrix	<=>	const float mapping:
-	PROJECTION	0-3
-	MODELVIEW	4-7
-	MODELVIEW_INV	8-11
-	TEXTURE(0)	12-15
-	TEXTURE(1)	16-19
+	TRANSFORMATION	0-3
+	MODELVIEW_INV	4-7
+	TEXTURE(0)	8-11
+	TEXTURE(1)	12-5
 */
 
 /*****************************************************************************
@@ -41,11 +42,29 @@ void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, float *pfData)
 	unsigned int *pData = (unsigned int *)pfData;
 
 	for(i = 0; i < 4; i++) {
-		fimgWrite(ctx, pData[0],  pReg +  0);
-		fimgWrite(ctx, pData[4],  pReg +  4);
-		fimgWrite(ctx, pData[8],  pReg +  8);
-		fimgWrite(ctx, pData[12], pReg + 12);
-		pReg += 16;
-		pData++;
+		fimgWrite(ctx, *(pData++), pReg);
+		pReg += 4;
+		fimgWrite(ctx, *(pData++), pReg);
+		pReg += 4;
+		fimgWrite(ctx, *(pData++), pReg);
+		pReg += 4;
+		fimgWrite(ctx, *(pData++), pReg);
+		pReg += 4;
 	}
+}
+
+void fimgEnableTexture(fimgContext *ctx, unsigned int unit)
+{
+	unsigned int val;
+	val = fimgRead(ctx, FGPS_CBOOL_START);
+	val |= (1 << unit);
+	fimgWrite(ctx, val, FGPS_CBOOL_START);
+}
+
+void fimgDisableTexture(fimgContext *ctx, unsigned int unit)
+{
+	unsigned int val;
+	val = fimgRead(ctx, FGPS_CBOOL_START);
+	val &= ~(1 << unit);
+	fimgWrite(ctx, val, FGPS_CBOOL_START);
 }
