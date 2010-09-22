@@ -71,11 +71,12 @@ struct FGLArrayState {
 	GLboolean enabled;
 	const GLvoid *pointer;
 	GLint stride;
+	GLint width;
 	GLint type;
 	GLint size;
 
 	FGLArrayState() :
-		enabled(GL_FALSE), pointer(NULL), stride(0),
+		enabled(GL_FALSE), pointer(NULL), stride(0), width(4),
 		type(FGHI_ATTRIB_DT_FLOAT), size(FGHI_NUMCOMP(4)) {};
 };
 

@@ -61,6 +61,10 @@
 #include "state.h"
 #include "fimg/fimg.h"
 
+#define FUNC_UNIMPLEMENTED \
+	LOGW("Application called unimplemented function:"); \
+	LOGW("%s", __func__)
+
 #undef NELEM
 #define NELEM(x) (sizeof(x)/sizeof(*(x)))
 
@@ -140,7 +144,16 @@ EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 	return error;
 }
 
+#define EGL_ERR_DEBUG
+
+#ifdef EGL_ERR_DEBUG
+#define setError(a) ( \
+	LOGD("EGL error %s in %s", #a, __func__), \
+	_setError(a))
+static void _setError(EGLint error)
+#else
 static void setError(EGLint error)
+#endif
 {
 	if(unlikely(eglErrorKey == -1)) {
 		pthread_mutex_lock(&eglErrorKeyMutex);
@@ -796,7 +809,7 @@ int fglCreatePmemSurface(FGLSurface *s)
 	s->vaddr = vaddr;
 	s->paddr = region.offset;
 	LOGD("Created PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
-						fd, vaddr, region.offset);
+				fd, vaddr, (unsigned int)region.offset);
 
 	return 0;
 
@@ -816,7 +829,7 @@ void fglDestroyPmemSurface(FGLSurface *s)
 	munmap(s->vaddr, s->size);
 	close(s->fd);
 	LOGD("Destroyed PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
-						s->fd, s->vaddr, s->paddr);
+				s->fd, s->vaddr, (unsigned int)s->paddr);
 	s->vaddr = 0;
 }
 
@@ -1789,8 +1802,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy, EGLConfig c
 				EGLNativePixmapType pixmap,
 				const EGLint *attrib_list)
 {
-#warning eglCreatePixmapSurface unimplemented
-	LOGE("Pixmap surfaces not implemented yet.");
+	FUNC_UNIMPLEMENTED;
 	return EGL_NO_SURFACE;
 }
 
@@ -1931,7 +1943,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglWaitClient(void)
 // TODO: Implement following functions
 EGLAPI EGLBoolean EGLAPIENTRY eglReleaseThread(void)
 {
-#warning eglReleaseThread unimplemented
+	FUNC_UNIMPLEMENTED;
 	return EGL_TRUE;
 }
 
@@ -1939,7 +1951,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferFromClientBuffer(
 	EGLDisplay dpy, EGLenum buftype, EGLClientBuffer buffer,
 	EGLConfig config, const EGLint *attrib_list)
 {
-#warning eglCreatePbufferFromClientBuffer unimplemented
+	FUNC_UNIMPLEMENTED;
 	return EGL_NO_SURFACE;
 }
 
@@ -1947,27 +1959,27 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferFromClientBuffer(
 EGLAPI EGLBoolean EGLAPIENTRY eglSurfaceAttrib(EGLDisplay dpy, EGLSurface surface,
 			EGLint attribute, EGLint value)
 {
-#warning eglSurfaceAttrib unimplemented
+	FUNC_UNIMPLEMENTED;
 	return EGL_FALSE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglBindTexImage(EGLDisplay dpy, EGLSurface surface, EGLint buffer)
 {
-#warning eglBindTexImage unimplemented
+	FUNC_UNIMPLEMENTED;
 	setError(EGL_BAD_SURFACE);
 	return EGL_FALSE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglReleaseTexImage(EGLDisplay dpy, EGLSurface surface, EGLint buffer)
 {
-#warning eglReleaseTexImage unimplemented
+	FUNC_UNIMPLEMENTED;
 	setError(EGL_BAD_SURFACE);
 	return EGL_FALSE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval)
 {
-#warning eglSwapInterval unimplemented
+	FUNC_UNIMPLEMENTED;
 	return EGL_FALSE;
 }
 
@@ -2247,13 +2259,13 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 
 EGLAPI EGLBoolean EGLAPIENTRY eglWaitGL(void)
 {
-#warning eglWaitGL unimplemented
+	FUNC_UNIMPLEMENTED;
 	return EGL_TRUE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglWaitNative(EGLint engine)
 {
-#warning eglWaitNative unimplemented
+	FUNC_UNIMPLEMENTED;
 	return EGL_TRUE;
 }
 
@@ -2298,7 +2310,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers(EGLDisplay dpy, EGLSurface surface,
 			EGLNativePixmapType target)
 {
-#warning eglCopyBuffers unimplemented
+	FUNC_UNIMPLEMENTED;
 	return EGL_FALSE;
 }
 
@@ -2306,6 +2318,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers(EGLDisplay dpy, EGLSurface surface,
 EGLAPI __eglMustCastToProperFunctionPointerType EGLAPIENTRY
 eglGetProcAddress(const char *procname)
 {
-#warning eglGetProcAddress unimplemented
+	FUNC_UNIMPLEMENTED;
 	return NULL;
 }

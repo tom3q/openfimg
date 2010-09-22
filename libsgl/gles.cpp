@@ -284,7 +284,8 @@ GL_API void GL_APIENTRY glNormal3x (GLfixed nx, GLfixed ny, GLfixed nz)
 	glNormal3f(floatFromFixed(nx), floatFromFixed(ny), floatFromFixed(nz));
 }
 
-GL_API void GL_APIENTRY glMultiTexCoord4f (GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q)
+GL_API void GL_APIENTRY glMultiTexCoord4f (GLenum target,
+				GLfloat s, GLfloat t, GLfloat r, GLfloat q)
 {
 	GLint unit;
 
@@ -301,24 +302,30 @@ GL_API void GL_APIENTRY glMultiTexCoord4f (GLenum target, GLfloat s, GLfloat t, 
 	ctx->vertex[FGL_ARRAY_TEXTURE(unit)][FGL_COMP_Q] = q;
 }
 
-GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target, GLfixed s, GLfixed t, GLfixed r, GLfixed q)
+GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target,
+				GLfixed s, GLfixed t, GLfixed r, GLfixed q)
 {
-	glMultiTexCoord4f(target, floatFromFixed(s), floatFromFixed(t), floatFromFixed(r), floatFromFixed(q));
+	glMultiTexCoord4f(target, floatFromFixed(s), floatFromFixed(t),
+					floatFromFixed(r), floatFromFixed(q));
 }
 
-static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size, GLint type, GLint stride, const GLvoid *pointer)
+static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
+					GLint type, GLint stride, GLint width,
+					const GLvoid *pointer)
 {
 	ctx->array[idx].size	= size;
 	ctx->array[idx].type	= type;
 	ctx->array[idx].stride	= stride;
+	ctx->array[idx].width	= width;
 	ctx->array[idx].pointer	= pointer;
 
-	
 	if(ctx->array[idx].enabled)
-		fimgSetAttribute(ctx->fimg, idx, ctx->array[idx].type, ctx->array[idx].size);
+		fimgSetAttribute(ctx->fimg, idx, ctx->array[idx].type,
+							ctx->array[idx].size);
 }
 
-GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
+GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type,
+					GLsizei stride, const GLvoid *pointer)
 {
 	GLint fglType, fglStride;
 
@@ -359,13 +366,13 @@ GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type, GLsizei stride
 		return;
 	}
 
-	fglStride = (stride) ? stride : fglStride;
-
 	FGLContext *ctx = getContext();
-	fglSetupAttribute(ctx, FGL_ARRAY_VERTEX, size, fglType, fglStride, pointer);
+	fglSetupAttribute(ctx, FGL_ARRAY_VERTEX, size, fglType, stride,
+							fglStride, pointer);
 }
 
-GL_API void GL_APIENTRY glNormalPointer (GLenum type, GLsizei stride, const GLvoid *pointer)
+GL_API void GL_APIENTRY glNormalPointer (GLenum type, GLsizei stride,
+							const GLvoid *pointer)
 {
 	GLint fglType, fglStride;
 
@@ -396,13 +403,13 @@ GL_API void GL_APIENTRY glNormalPointer (GLenum type, GLsizei stride, const GLvo
 		return;
 	}
 
-	fglStride = (stride) ? stride : fglStride;
-
 	FGLContext *ctx = getContext();
-	fglSetupAttribute(ctx, FGL_ARRAY_NORMAL, 3, fglType, fglStride, pointer);
+	fglSetupAttribute(ctx, FGL_ARRAY_NORMAL, 3, fglType, stride,
+							fglStride, pointer);
 }
 
-GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
+GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type,
+				GLsizei stride, const GLvoid *pointer)
 {
 	GLint fglType, fglStride;
 
@@ -437,13 +444,13 @@ GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type, GLsizei stride,
 		return;
 	}
 
-	fglStride = (stride) ? stride : fglStride;
-
 	FGLContext *ctx = getContext();
-	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, size, fglType, fglStride, pointer);
+	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, 4, fglType, stride,
+							fglStride, pointer);
 }
 
-GL_API void GL_APIENTRY glPointSizePointerOES (GLenum type, GLsizei stride, const GLvoid *pointer)
+GL_API void GL_APIENTRY glPointSizePointerOES (GLenum type, GLsizei stride,
+							const GLvoid *pointer)
 {
 	GLint fglType, fglStride;
 
@@ -465,13 +472,13 @@ GL_API void GL_APIENTRY glPointSizePointerOES (GLenum type, GLsizei stride, cons
 		return;
 	}
 
-	fglStride = (stride) ? stride : fglStride;
-
 	FGLContext *ctx = getContext();
-	fglSetupAttribute(ctx, FGL_ARRAY_POINT_SIZE, 1, fglType, fglStride, pointer);
+	fglSetupAttribute(ctx, FGL_ARRAY_POINT_SIZE, 1, fglType, stride,
+							fglStride, pointer);
 }
 
-GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
+GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type,
+					GLsizei stride, const GLvoid *pointer)
 {
 	GLint fglType, fglStride;
 
@@ -512,10 +519,9 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type, GLsizei stri
 		return;
 	}
 
-	fglStride = (stride) ? stride : fglStride;
-
 	FGLContext *ctx = getContext();
-	fglSetupAttribute(ctx, FGL_ARRAY_TEXTURE(ctx->activeTexture), size, fglType, fglStride, pointer);
+	fglSetupAttribute(ctx, FGL_ARRAY_TEXTURE(ctx->clientActiveTexture),
+				size, fglType, stride, fglStride, pointer);
 }
 
 GL_API void GL_APIENTRY glEnableClientState (GLenum array)
@@ -671,6 +677,8 @@ static inline void fglSetupTextures(FGLContext *ctx)
 	}
 }
 
+#if 1
+
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 {
 	if(first < 0) {
@@ -755,6 +763,75 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 
 	putHardware(ctx);
 }
+
+#else
+
+GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
+{
+	if(first < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
+	FGLContext *ctx = getContext();
+
+	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
+		if(ctx->array[i].enabled) {
+			arrays[i].pointer	= ctx->array[i].pointer;
+			arrays[i].stride	= ctx->array[i].stride;
+			arrays[i].width		= ctx->array[i].width;
+		} else {
+			arrays[i].pointer	= &ctx->vertex[i];
+			arrays[i].stride	= 0;
+			arrays[i].width		= 0;
+		}
+	}
+
+	getHardware(ctx);
+
+	fglSetupMatrices(ctx);
+	fglSetupTextures(ctx);
+	
+	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
+
+	switch (mode) {
+	case GL_POINTS:
+		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedPoints(ctx->fimg, arrays, first, count);
+		break;
+	case GL_LINE_STRIP:
+		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedLineStrips(ctx->fimg, arrays, first, count);
+		break;
+	case GL_LINE_LOOP:
+		fimgSetVertexContext(ctx->fimg, FGPE_LINE_LOOP, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedLineLoops(ctx->fimg, arrays, first, count);
+		break;
+	case GL_LINES:
+		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedLines(ctx->fimg, arrays, first, count);
+		break;
+	case GL_TRIANGLE_STRIP:
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedTriangleStrips(ctx->fimg, arrays, first, count);
+		break;
+	case GL_TRIANGLE_FAN:
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_FAN, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedTriangleFans(ctx->fimg, arrays, first, count);
+		break;
+	case GL_TRIANGLES:
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedTriangles(ctx->fimg, arrays, first, count);
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+
+	putHardware(ctx);
+}
+
+#endif
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
 {
@@ -1190,12 +1267,55 @@ GL_API void GL_APIENTRY glPushMatrix (void)
 
 GL_API void GL_APIENTRY glCullFace (GLenum mode)
 {
+	unsigned int face;
 
+	switch (mode) {
+	case GL_FRONT:
+		face = FGRA_BFCULL_FACE_FRONT;
+		break;
+	case GL_BACK:
+		face = FGRA_BFCULL_FACE_BACK;
+		break;
+	case GL_FRONT_AND_BACK:
+		face = FGRA_BFCULL_FACE_BOTH;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
+	fimgSetFaceCullFace(ctx->fimg, face);
+
+	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glFrontFace (GLenum mode)
 {
+	int cw;
 
+	switch (mode) {
+	case GL_CW:
+		cw = 1;
+		break;
+	case GL_CCW:
+		cw = 0;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	getHardware(ctx);
+
+	fimgSetFaceCullFront(ctx->fimg, cw);
+
+	putHardware(ctx);
 }
 
 /**
@@ -1204,12 +1324,12 @@ GL_API void GL_APIENTRY glFrontFace (GLenum mode)
 
 GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei height)
 {
-	FGLContext *ctx = getContext();
-
 	if(width < 0 || height < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
+
+	FGLContext *ctx = getContext();
 
 	getHardware(ctx);
 

@@ -468,6 +468,16 @@ inline void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const unsigned 
 	}
 }
 
+/******************************************************************************/
+
+void fimgDrawArraysBufferedPoints(fimgContext *ctx, fimgArray *arrays,
+					unsigned int first, unsigned int count)
+{
+	
+}
+
+/******************************************************************************/
+
 /*****************************************************************************
  * FUNCTIONS:	fimgSetHInterface
  * SYNOPSIS:	This function defines whether vertex buffer, vertex cache and

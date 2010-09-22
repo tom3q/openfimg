@@ -120,7 +120,16 @@ typedef enum {
 	FGHI_ATTRIB_DT_HALF_FLOAT
 } fimgHostDataType;
 
+typedef struct {
+	const void	*pointer;
+	unsigned int	stride;
+	unsigned int	width;
+} fimgArray;
+
 /* Functions */
+void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
+				unsigned int first, unsigned int count);
+
 unsigned int fimgGetNumEmptyFIFOSlots(fimgContext *ctx);
 void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const unsigned int *buffer);
 #if defined(FIMG_INTERPOLATION_WORKAROUND)
@@ -216,6 +225,8 @@ void fimgSetPixelSamplePos(fimgContext *ctx, int corner);
 void fimgEnableDepthOffset(fimgContext *ctx, int enable);
 void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units);
 void fimgSetFaceCullEnable(fimgContext *ctx, int enable);
+void fimgSetFaceCullFace(fimgContext *ctx, unsigned int face);
+void fimgSetFaceCullFront(fimgContext *ctx, int bCW);
 void fimgSetFaceCullControl(fimgContext *ctx, int bCW,fimgCullingFace face);
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax);
 void fimgSetLODControl(fimgContext *ctx, fimgLODControl ctl);
