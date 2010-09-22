@@ -28,6 +28,7 @@ LOCAL_SRC_FILES := 	\
 	framebuffer.cpp \
 	mapper.cpp
 	
-LOCAL_MODULE := gralloc.s3c6410
-LOCAL_CFLAGS += -DLOG_TAG=\"gralloc\" -march=armv6zk -mtune=arm1176jzf-s -O2
+LOCAL_MODULE := gralloc.GT-I5700
+LOCAL_ARM_MODE := arm
+LOCAL_CFLAGS += -DLOG_TAG=\"gralloc\" -march=armv6zk -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp -O2
 include $(BUILD_SHARED_LIBRARY)
