@@ -19,15 +19,12 @@
  */
 
 typedef struct {
-	union {
-		unsigned int val;
-		struct {
-			unsigned range		:16;
-			unsigned		:8;
-			unsigned stride		:8;
-		} bits;
-	} ctrl;
-	unsigned int base;
+	unsigned int val;
+	struct {
+		unsigned range		:16;
+		unsigned		:8;
+		unsigned stride		:8;
+	};
 } fimgVtxBufAttrib;
 
 typedef union {
@@ -41,7 +38,7 @@ typedef union {
 		unsigned dt		:4;
 		unsigned		:15;
 		unsigned lastattr	:1;
-	} bits;
+	};
 	unsigned int val;
 } fimgAttribute;
 
@@ -313,7 +310,8 @@ void fimgRestoreGlobalState(fimgContext *ctx);
 
 typedef struct {
 	fimgAttribute attrib[FIMG_ATTRIB_NUM];
-	fimgVtxBufAttrib bufAttrib[FIMG_ATTRIB_NUM];
+	fimgVtxBufAttrib vbctrl[FIMG_ATTRIB_NUM];
+	unsigned int vbbase[FIMG_ATTRIB_NUM];
 	fimgHInterface control;
 	unsigned int indexOffset;
 } fimgHostContext;

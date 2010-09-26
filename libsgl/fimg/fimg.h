@@ -60,6 +60,7 @@ typedef union {
 /* Functions */
 fimgPipelineStatus fimgGetPipelineStatus(fimgContext *ctx);
 int fimgFlush(fimgContext *ctx/*, fimgPipelineStatus pipelineFlags*/);
+int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask);
 int fimgInvalidateFlushCache(fimgContext *ctx,
 			     unsigned int vtcclear, unsigned int tcclear,
 			     unsigned int ccflush, unsigned int zcflush);
@@ -79,8 +80,10 @@ fimgPipelineStatus fimgGetInterruptState(fimgContext *ctx);
 
 /* Workaround for rasterizer bug. Use 2 for alternative drawing if 1 fails. */
 #define FIMG_INTERPOLATION_WORKAROUND	1
-/* Workaroudn for clipper bug. */
+/* Workaround for clipper bug. */
 //#define FIMG_CLIPPER_WORKAROUND	1
+/* Enable buffered geometry transfer */
+#define FIMG_USE_VERTEX_BUFFER
 
 #define FIMG_ATTRIB_NUM			10
 
@@ -96,7 +99,7 @@ typedef union {
 		unsigned idxtype	:2;
 		unsigned		:5;
 		unsigned envb		:1;
-	} bits;
+	};
 } fimgHInterface;
 
 #define FGHI_NUMCOMP(i)		((i) - 1)
@@ -127,11 +130,22 @@ typedef struct {
 } fimgArray;
 
 /* Functions */
-void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
-				unsigned int first, unsigned int count);
+/* For points, lines and triangles */
+void fimgDrawArraysBufferedSeparate(fimgContext *ctx, fimgArray *arrays,
+					unsigned int first, unsigned int count);
+/* For line strips */
+void fimgDrawArraysBufferedRepeatLast(fimgContext *ctx, fimgArray *arrays,
+					unsigned int first, unsigned int count);
+/* For line loops */
+void fimgDrawArraysBufferedRepeatLastLoop(fimgContext *ctx, fimgArray *arrays,
+					unsigned int first, unsigned int count);
+/* For triangle strips */
+void fimgDrawArraysBufferedRepeatLastTwo(fimgContext *ctx, fimgArray *arrays,
+					unsigned int first, unsigned int count);
+/* For triangle fans */
+void fimgDrawArraysBufferedRepeatFirstLast(fimgContext *ctx, fimgArray *arrays,
+					unsigned int first, unsigned int count);
 
-unsigned int fimgGetNumEmptyFIFOSlots(fimgContext *ctx);
-void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const unsigned int *buffer);
 #if defined(FIMG_INTERPOLATION_WORKAROUND)
 void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
 void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
@@ -158,17 +172,10 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx,
 			       const void **ppvData,
 			       unsigned int *pStride,
 			       const unsigned short *idx);
-void fimgSetHInterface(fimgContext *ctx, fimgHInterface HI);
-void fimgSetIndexOffset(fimgContext *ctx, unsigned int offset);
-void fimgSetVtxBufferAddr(fimgContext *ctx, unsigned int addr);
-void fimgSendToVtxBuffer(fimgContext *ctx, unsigned int data);
 void fimgSetAttribute(fimgContext *ctx,
 		      unsigned int idx,
 		      unsigned int type,
 		      unsigned int numComp);
-void fimgSetVtxBufAttrib(fimgContext *ctx,
-			 unsigned char idx, unsigned short base,
-			 unsigned char stride, unsigned short range);
 void fimgSetAttribCount(fimgContext *ctx, unsigned char count);
 
 /*

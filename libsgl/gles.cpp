@@ -9,12 +9,12 @@
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -138,7 +138,7 @@ static inline void getHardware(FGLContext *ctx)
 		} else {
 			LOGE("Could not acquire hardware lock");
 			exit(EBUSY);
-		}	
+		}
 	}
 
 	fimgFlush(ctx->fimg);
@@ -315,7 +315,7 @@ static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
 {
 	ctx->array[idx].size	= size;
 	ctx->array[idx].type	= type;
-	ctx->array[idx].stride	= stride;
+	ctx->array[idx].stride	= (stride) ? stride : width;
 	ctx->array[idx].width	= width;
 	ctx->array[idx].pointer	= pointer;
 
@@ -677,7 +677,7 @@ static inline void fglSetupTextures(FGLContext *ctx)
 	}
 }
 
-#if 1
+#ifndef FIMG_USE_VERTEX_BUFFER
 
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 {
@@ -710,6 +710,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 
 	fglSetupMatrices(ctx);
 	fglSetupTextures(ctx);
+
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
 #if FIMG_INTERPOLATION_WORKAROUND != 2
 	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
@@ -764,7 +765,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	putHardware(ctx);
 }
 
-#else
+#else /* !FIMG_USE_VERTEX_BUFFER */
 
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 {
@@ -784,7 +785,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		} else {
 			arrays[i].pointer	= &ctx->vertex[i];
 			arrays[i].stride	= 0;
-			arrays[i].width		= 0;
+			arrays[i].width		= 16;
 		}
 	}
 
@@ -792,37 +793,55 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 
 	fglSetupMatrices(ctx);
 	fglSetupTextures(ctx);
-	
+
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
 
 	switch (mode) {
 	case GL_POINTS:
+		if (count < 1)
+			break;
 		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedPoints(ctx->fimg, arrays, first, count);
+		fimgDrawArraysBufferedSeparate(ctx->fimg, arrays, first, count);
 		break;
 	case GL_LINE_STRIP:
+		if (count < 2)
+			break;
 		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedLineStrips(ctx->fimg, arrays, first, count);
+		fimgDrawArraysBufferedRepeatLast(ctx->fimg, arrays, first, count);
 		break;
 	case GL_LINE_LOOP:
-		fimgSetVertexContext(ctx->fimg, FGPE_LINE_LOOP, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedLineLoops(ctx->fimg, arrays, first, count);
+		if (count < 2)
+			break;
+		/* Workaround for line loops in buffered mode */
+		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+		fimgDrawArraysBufferedRepeatLastLoop(ctx->fimg, arrays, first, count);
 		break;
 	case GL_LINES:
+		if (count < 2)
+			break;
+		count &= ~1;
 		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedLines(ctx->fimg, arrays, first, count);
+		fimgDrawArraysBufferedSeparate(ctx->fimg, arrays, first, count);
 		break;
 	case GL_TRIANGLE_STRIP:
+		if (count < 3)
+			break;
 		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedTriangleStrips(ctx->fimg, arrays, first, count);
+		fimgDrawArraysBufferedRepeatLastTwo(ctx->fimg, arrays, first, count);
 		break;
 	case GL_TRIANGLE_FAN:
+		if (count < 3)
+			break;
 		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_FAN, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedTriangleFans(ctx->fimg, arrays, first, count);
+		fimgDrawArraysBufferedRepeatFirstLast(ctx->fimg, arrays, first, count);
 		break;
 	case GL_TRIANGLES:
+		if (count < 3)
+			break;
+		if (count % 3)
+			count -= count % 3;
 		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedTriangles(ctx->fimg, arrays, first, count);
+		fimgDrawArraysBufferedSeparate(ctx->fimg, arrays, first, count);
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -1069,10 +1088,10 @@ GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat 
 
 	ctx->matrix.stack[idx].top().multiply(mat);
 	ctx->matrix.dirty[idx] = GL_TRUE;
-	
+
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
-	
+
 	mat.transpose();
 
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().leftMultiply(mat);
@@ -1438,7 +1457,7 @@ GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
 static inline GLint fglActionFromEnum(GLenum action)
 {
 	GLint fglAction;
-	
+
 	switch(action) {
 	case GL_KEEP:
 		fglAction = FGPF_TEST_ACTION_KEEP;
@@ -1774,7 +1793,7 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		}
 		fglTextureObjects[texture] = obj;
 	}
-	
+
 	if(ctx->texture[ctx->activeTexture].binding.isBound())
 		ctx->texture[ctx->activeTexture].binding.unbind();
 
@@ -2381,7 +2400,7 @@ FGLContext *fglCreateContext(void)
 	ctx->vertexShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;
 
 	ctx->pixelShader.data = fshaderFshader;
-#ifdef FIMG_INTERPOLATION_WORKAROUND	
+#ifdef FIMG_INTERPOLATION_WORKAROUND
 	ctx->pixelShader.numAttribs = 8;
 #else
 	ctx->pixelShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;

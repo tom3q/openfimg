@@ -65,6 +65,14 @@ int fimgFlush(fimgContext *ctx/*, fimgPipelineStatus pipelineFlags*/)
 	return fimgWaitForFlush(ctx, 0xffffffff);
 }
 
+int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask)
+{
+	if (fimgRead(ctx, FGGB_PIPESTATE) & mask)
+		return fimgWaitForFlush(ctx, mask);
+
+	return 0;
+}
+
 /*****************************************************************************
  * FUNCTIONS:	fimgClearCache
  * SYNOPSIS:	This function clears the caches
