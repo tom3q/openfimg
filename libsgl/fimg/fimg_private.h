@@ -18,7 +18,7 @@
  * Host interface
  */
 
-typedef struct {
+typedef union {
 	unsigned int val;
 	struct {
 		unsigned range		:16;

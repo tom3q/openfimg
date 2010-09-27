@@ -33,7 +33,7 @@
  *****************************************************************************/
 int fimgDeviceOpen(fimgContext *ctx)
 {
-	ctx->fd = open("/dev/s3c-g3d", O_RDWR, 0);
+	ctx->fd = open("/dev/s3c-g3d", O_RDWR | O_SYNC, 0);
 	if(ctx->fd < 0) {
 		LOGE("Couldn't open /dev/s3c-g3d (%s).", strerror(errno));
 		return -errno;
@@ -141,7 +141,7 @@ void fimgRestoreContext(fimgContext *ctx)
 int fimgAcquireHardwareLock(fimgContext *ctx)
 {
 	int ret;
-	
+
 	if((ret = ioctl(ctx->fd, S3C_G3D_LOCK, 0)) < 0) {
 		LOGE("Could not acquire the hardware lock");
 		return -1;

@@ -84,6 +84,10 @@ fimgPipelineStatus fimgGetInterruptState(fimgContext *ctx);
 //#define FIMG_CLIPPER_WORKAROUND	1
 /* Enable buffered geometry transfer */
 #define FIMG_USE_VERTEX_BUFFER
+/* Use vertex buffer 0 stride for constant attributes */
+#define FIMG_USE_STRIDE_0_CONSTANTS
+/* Use busy waiting instead of interrupts for FIFO transfers */
+//#define FIMG_FIFO_BUSY_WAIT
 
 #define FIMG_ATTRIB_NUM			10
 

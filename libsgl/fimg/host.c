@@ -37,7 +37,7 @@ typedef enum {
  * SYNOPSIS:	This function obtains how many FIFO slots are empty in host interface
  * RETURNS:	the number of empty slots
  *****************************************************************************/
-static inline uint32_t fimgGetNumEmptyFIFOSlots(fimgContext *ctx)
+static inline uint32_t fimgFIFOSlotsAvail(fimgContext *ctx)
 {
 	return fimgRead(ctx, FGHI_DWSPACE);
 }
@@ -48,7 +48,6 @@ static inline void fimgSetVertexBuffer(fimgContext *ctx, int enable)
 
 	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
 }
-
 
 /*
  * UNBUFFERED
@@ -69,17 +68,17 @@ static inline void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const un
 
 	// Transfer words to the FIFO
 	while(count--) {
-#if 0
+#ifdef FIMG_FIFO_BUSY_WAIT
 		/* The CPU is ours! Don't let it go!!!!! */
 		while(!nEmptySpace)
-			nEmptySpace = fimgRead(ctx, FGHI_DWSPACE);
+			nEmptySpace = fimgFIFOSlotsAvail(ctx);
 #else
 		/* Be more system friendly and share the CPU. */
 		if(!nEmptySpace) {
-			nEmptySpace = fimgRead(ctx, FGHI_DWSPACE);
+			nEmptySpace = fimgFIFOSlotsAvail(ctx);
 			if(!nEmptySpace) {
 				fimgWaitForFlush(ctx, 1);
-				nEmptySpace = fimgRead(ctx, FGHI_DWSPACE);
+				nEmptySpace = fimgFIFOSlotsAvail(ctx);
 			}
 		}
 #endif
@@ -507,10 +506,10 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
  * BUFFERED
  */
 
-#define FGHI_VERTICES_PER_VB_ATTRIB	256
+#define FGHI_VERTICES_PER_VB_ATTRIB	8
 #define FGHI_MAX_BYTES_PER_VERTEX	16
 #define FGHI_MAX_BYTES_PER_ATTRIB	(FGHI_VERTICES_PER_VB_ATTRIB)*(FGHI_MAX_BYTES_PER_VERTEX)
-#define FGHI_VBADDR_ATTRIB(i)		((i)*(FGHI_MAX_BYTES_PER_ATTRIB))
+#define FGHI_VBADDR_ATTRIB(attrib, buf)	((2*attrib + ((buf)&1))*(FGHI_MAX_BYTES_PER_ATTRIB))
 
 /*****************************************************************************
  * FUNCTIONS:	fimgSetVtxBufferAddr
@@ -518,28 +517,35 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
  *		which are used to send data into vertex buffer
  * PARAMETERS:	[IN] address: the starting address
  *****************************************************************************/
-static inline void fimgSetVtxBufferAddr(fimgContext *ctx, unsigned int addr)
+static inline void fimgSetVtxBufferAddr(fimgContext *ctx, uint32_t addr)
 {
+//	printf("< %08x\n", addr);
 	fimgWrite(ctx, addr, FGHI_VBADDR);
 }
 
-static inline size_t fimgFillVertexBuffer(fimgContext *ctx,
+/*****************************************************************************
+ * FUNCTIONS:	fimgSendToVtxBuffer
+ * SYNOPSIS:	The function copies data into vertex buffer.
+ * PARAMETERS:	[IN] data: data issued into vertex buffer
+ *****************************************************************************/
+static inline void fimgSendToVtxBuffer(fimgContext *ctx, uint32_t data)
+{
+//	printf("%08x\n", data);
+//	printf("> %08x\n", fimgRead(ctx, FGHI_VBADDR));
+	fimgWrite(ctx, data, FGHI_VB_ENTRY);
+}
+
+static inline void fimgFillVertexBuffer(fimgContext *ctx,
 					fimgArray *a, uint32_t cnt)
 {
 	register uint32_t word;
-	uint32_t written;
 
-#if 1
+//	printf("%s\n", __func__);
+
+#ifdef FIMG_USE_STRIDE_0_CONSTANTS
 	// Stride = 0 optimization
 	cnt = 1;
 #endif
-
-	// Each vertex must be word aligned
-	written  = ((a->width + 3) & ~3);
-	// Count in words
-	written /= 4;
-	// For each vertex
-	written *= cnt;
 
 	switch(a->width % 4) {
 	// words
@@ -554,7 +560,7 @@ static inline size_t fimgFillVertexBuffer(fimgContext *ctx,
 				len = a->width;
 
 				while (len) {
-					fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, *(data++));
 					len -= 4;
 				}
 			}
@@ -575,13 +581,13 @@ static inline size_t fimgFillVertexBuffer(fimgContext *ctx,
 				while (len >= 4) {
 					word = *(data++);
 					word |= *(data++) << 16;
-					fimgWrite(ctx, word, FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, word);
 					len -= 4;
 				}
 
 				// Single halfword left
 				if (len)
-					fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, *(data++));
 			}
 			break;
 		}
@@ -601,7 +607,7 @@ static inline size_t fimgFillVertexBuffer(fimgContext *ctx,
 					word |= *(data++) << 8;
 					word |= *(data++) << 16;
 					word |= *(data++) << 24;
-					fimgWrite(ctx, word, FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, word);
 					len -= 4;
 				}
 
@@ -613,28 +619,20 @@ static inline size_t fimgFillVertexBuffer(fimgContext *ctx,
 					if (len == 3)
 						word |= *(data++) << 16;
 
-					fimgWrite(ctx, word, FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, word);
 				}
 			}
 			break;
 		}
 	}
-
-	return written;
 }
 
-static inline size_t fimgPackToVertexBuffer(fimgContext *ctx,
+static inline void fimgPackToVertexBuffer(fimgContext *ctx,
 				fimgArray *a, uint32_t pos, uint32_t cnt)
 {
 	register uint32_t word;
-	uint32_t written;
 
-	// Each vertex must be word aligned
-	written  = ((a->width + 3) & ~3);
-	// Count in words
-	written /= 4;
-	// For each vertex
-	written *= cnt;
+//	printf("%s\n", __func__);
 
 	switch(a->width % 4) {
 	// words
@@ -648,7 +646,7 @@ static inline size_t fimgPackToVertexBuffer(fimgContext *ctx,
 				len = a->width;
 
 				while (len) {
-					fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, *(data++));
 					len -= 4;
 				}
 
@@ -670,13 +668,13 @@ static inline size_t fimgPackToVertexBuffer(fimgContext *ctx,
 				while (len >= 4) {
 					word = *(data++);
 					word |= *(data++) << 16;
-					fimgWrite(ctx, word, FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, word);
 					len -= 4;
 				}
 
 				// Single halfword left
 				if (len)
-					fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, *(data++));
 
 				data += srcpad;
 			}
@@ -697,7 +695,7 @@ static inline size_t fimgPackToVertexBuffer(fimgContext *ctx,
 					word |= *(data++) << 8;
 					word |= *(data++) << 16;
 					word |= *(data++) << 24;
-					fimgWrite(ctx, word, FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, word);
 					len -= 4;
 				}
 
@@ -709,7 +707,7 @@ static inline size_t fimgPackToVertexBuffer(fimgContext *ctx,
 					if (len == 3)
 						word |= *(data++) << 16;
 
-					fimgWrite(ctx, word, FGHI_VB_ENTRY);
+					fimgSendToVtxBuffer(ctx, word);
 				}
 
 				data += srcpad;
@@ -717,59 +715,58 @@ static inline size_t fimgPackToVertexBuffer(fimgContext *ctx,
 			break;
 		}
 	}
-
-	return written;
 }
 
-static inline size_t fimgCopyToVertexBuffer(fimgContext *ctx,
+static inline void fimgCopyToVertexBuffer(fimgContext *ctx,
 				fimgArray *a, uint32_t pos, uint32_t cnt)
 {
 	uint32_t len;
-	uint32_t written;
 	const uint32_t *data = (const uint32_t *)((const uint8_t *)a->pointer + pos*a->stride);
+
+//	printf("%s\n", __func__);
 
 	len = a->stride * cnt;
 	len /= 4;
-	written = len;
 
 	// Try to copy in bursts of 4 words
 	while (len >= 4) {
-		fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
-		fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
-		fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
-		fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
+		fimgSendToVtxBuffer(ctx, *(data++));
+		fimgSendToVtxBuffer(ctx, *(data++));
+		fimgSendToVtxBuffer(ctx, *(data++));
+		fimgSendToVtxBuffer(ctx, *(data++));
 		len -= 4;
 	}
 
 	while (len--)
-		fimgWrite(ctx, *(data++), FGHI_VB_ENTRY);
-
-	return written;
+		fimgSendToVtxBuffer(ctx, *(data++));
 }
 
-static inline size_t fimgLoadVertexBuffer(fimgContext *ctx, fimgArray *a,
+static inline void fimgLoadVertexBuffer(fimgContext *ctx, fimgArray *a,
 				uint32_t pos, uint32_t cnt)
 {
 	if (a->stride == 0)
 		// Fill the buffer with a constant
-		return fimgFillVertexBuffer(ctx, a, cnt);
-	else if (a->stride % 4 || a->stride > 16 || (unsigned long)a->pointer % 4)
+		fimgFillVertexBuffer(ctx, a, cnt);
+	else if ((a->stride % 4) || (a->stride > 16) || ((unsigned long)a->pointer % 4))
 		// Pack attribute data and store in the buffer
-		return fimgPackToVertexBuffer(ctx, a, pos, cnt);
+		fimgPackToVertexBuffer(ctx, a, pos, cnt);
 	else
 		// Copy packed attribute data to the buffer
-		return fimgCopyToVertexBuffer(ctx, a, pos, cnt);
+		fimgCopyToVertexBuffer(ctx, a, pos, cnt);
 }
 
-static inline void fimgPadVertexBuffer(fimgContext *ctx, size_t words)
+static inline void fimgPadVertexBuffer(fimgContext *ctx)
 {
-	size_t padding;
+	uint32_t val;
 
-	if (words % 4) {
-		padding = 4 - (words % 4);
+	val = fimgRead(ctx, FGHI_VBADDR);
 
-		while (padding--)
-			fimgWrite(ctx, 0, FGHI_VB_ENTRY);
+	val %= 4;
+	if (val) {
+		val = 4 - val;
+
+		while (val--)
+			fimgSendToVtxBuffer(ctx, 0);
 	}
 }
 
@@ -781,15 +778,20 @@ static inline void fimgSetupAttributes(fimgContext *ctx, fimgArray *arrays)
 	unsigned int i;
 
 	vbattr.val = 0;
-	vbattr.range = 256;
+	vbattr.range = 2*FGHI_VERTICES_PER_VB_ATTRIB;
 
 	// write attribute configuration
 	for (a = arrays, i = 0; i < ctx->numAttribs - 1; i++, a++) {
 		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
 
 		if (a->stride == 0)
+#ifdef FIMG_USE_STRIDE_0_CONSTANTS
+			// Stride = 0 optimization
 			vbattr.stride = 0;
-		else if (a->stride % 4 || a->stride > 16 || (unsigned long)a->pointer % 4)
+#else
+			vbattr.stride = (a->width + 3) & ~3;
+#endif
+		else if ((a->stride % 4) || (a->stride > 16) || ((unsigned long)a->pointer % 4))
 			vbattr.stride = (a->width + 3) & ~3;
 		else
 			vbattr.stride = a->stride;
@@ -801,52 +803,73 @@ static inline void fimgSetupAttributes(fimgContext *ctx, fimgArray *arrays)
 	last = ctx->host.attrib[i];
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
+
+	if (a->stride == 0)
+#ifdef FIMG_USE_STRIDE_0_CONSTANTS
+		// Stride = 0 optimization
+		vbattr.stride = 0;
+#else
+		vbattr.stride = (a->width + 3) & ~3;
+#endif
+	else if ((a->stride % 4) || (a->stride > 16) || ((unsigned long)a->pointer % 4))
+		vbattr.stride = (a->width + 3) & ~3;
+	else
+		vbattr.stride = a->stride;
+
+	fimgWrite(ctx, vbattr.val, FGHI_ATTRIB_VBCTRL(i));
 }
 
 static inline void fimgDrawAutoinc(fimgContext *ctx,
 				uint32_t first, uint32_t count)
 {
+	unsigned int words[2];
+
+	words[0] = count;
+	words[1] = first;
+
 	fimgSetVertexBuffer(ctx, 1);
-	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
-	fimgWrite(ctx, first, FGHI_FIFO_ENTRY);
+
+	fimgSendToFIFO(ctx, 8, words);
 }
 
 /* For points, lines and triangles */
 void fimgDrawArraysBufferedSeparate(fimgContext *ctx, fimgArray *arrays,
 					unsigned int first, unsigned int count)
 {
-	unsigned i, attrib, pos = 0;
-	size_t written;
+	unsigned i, attrib, pos = first;
 	fimgArray *a;
+	uint32_t buf = 0;
+
+	//fimgSelectiveFlush(ctx, 3);
 
 	fimgSetupAttributes(ctx, arrays);
 
 	while (count >= FGHI_VERTICES_PER_VB_ATTRIB) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
+		fimgSelectiveFlush(ctx, 3);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		// Points don't need to repeat anything
 		count -= FGHI_VERTICES_PER_VB_ATTRIB;
 		pos += FGHI_VERTICES_PER_VB_ATTRIB;
+
+		// Switch the buffer
+		buf ^= 1;
 	}
 
 	if (count) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos, count);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos, count);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, count);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, count);
 	}
 }
 
@@ -854,39 +877,41 @@ void fimgDrawArraysBufferedSeparate(fimgContext *ctx, fimgArray *arrays,
 void fimgDrawArraysBufferedRepeatLast(fimgContext *ctx, fimgArray *arrays,
 					unsigned int first, unsigned int count)
 {
-	unsigned i, attrib, pos = 0;
-	size_t written;
+	unsigned i, attrib, pos = first;
 	fimgArray *a;
+	uint32_t buf = 0;
+
+	//fimgSelectiveFlush(ctx, 3);
 
 	fimgSetupAttributes(ctx, arrays);
 
 	count--;
 	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 1) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
+		fimgSelectiveFlush(ctx, 3);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		// Repeat last vertex per group
 		count -= FGHI_VERTICES_PER_VB_ATTRIB - 1;
 		pos += FGHI_VERTICES_PER_VB_ATTRIB - 1;
+
+		// Switch the buffer
+		buf ^= 1;
 	}
 
 	if (count) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, 1 + count);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 1 + count);
 	}
 }
 
@@ -894,94 +919,99 @@ void fimgDrawArraysBufferedRepeatLast(fimgContext *ctx, fimgArray *arrays,
 void fimgDrawArraysBufferedRepeatLastLoop(fimgContext *ctx, fimgArray *arrays,
 					unsigned int first, unsigned int count)
 {
-	unsigned i, attrib, pos = 0;
-	size_t written;
+	unsigned i, attrib, pos = first;
 	fimgArray *a;
+	uint32_t buf = 0;
+
+	//fimgSelectiveFlush(ctx, 3);
 
 	fimgSetupAttributes(ctx, arrays);
 
 	count--;
 	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 1) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
+		fimgSelectiveFlush(ctx, 3);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		// Repeat last vertex per group
 		count -= FGHI_VERTICES_PER_VB_ATTRIB - 1;
 		pos += FGHI_VERTICES_PER_VB_ATTRIB - 1;
+
+		// Switch the buffer
+		buf ^= 1;
 	}
 
 	if (count) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, 1 + count);
+		fimgSelectiveFlush(ctx, 3);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 1 + count);
+
+		buf ^= 1;
 	}
 
 	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-		fimgSelectiveFlush(ctx, 3);
-
-		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-		written = fimgLoadVertexBuffer(ctx, a, 0, 1);
-		written += fimgLoadVertexBuffer(ctx, a, count - 1, 1);
-		fimgPadVertexBuffer(ctx, written);
+		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+		fimgLoadVertexBuffer(ctx, a, 0, 1);
+		fimgLoadVertexBuffer(ctx, a, count - 1, 1);
+		fimgPadVertexBuffer(ctx);
 	}
 
-	fimgDrawAutoinc(ctx, 0, 2);
+	fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 2);
 }
 
 /* For triangle strips */
 void fimgDrawArraysBufferedRepeatLastTwo(fimgContext *ctx, fimgArray *arrays,
 					unsigned int first, unsigned int count)
 {
-	unsigned i, attrib, pos = 0;
-	size_t written;
+	unsigned i, attrib, pos = first;
 	fimgArray *a;
+	uint32_t buf = 0;
+
+	//fimgSelectiveFlush(ctx, 3);
 
 	fimgSetupAttributes(ctx, arrays);
 
 	count -= 2;
 	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 2) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos - (pos % 2), 1);
-			written += fimgLoadVertexBuffer(ctx, a, pos - 1 + (pos % 2), 1);
-			written += fimgLoadVertexBuffer(ctx, a, pos + 2, FGHI_VERTICES_PER_VB_ATTRIB - 2);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos - (pos % 2), 1);
+			fimgLoadVertexBuffer(ctx, a, pos - 1 + (pos % 2), 1);
+			fimgLoadVertexBuffer(ctx, a, pos + 2, FGHI_VERTICES_PER_VB_ATTRIB - 2);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
+		fimgSelectiveFlush(ctx, 3);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		// Repeat last two vertices per group
 		count -= FGHI_VERTICES_PER_VB_ATTRIB - 2;
 		pos += FGHI_VERTICES_PER_VB_ATTRIB - 2;
+
+		// Switch the buffer
+		buf ^= 1;
 	}
 
 	if (count) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, pos - (pos % 2), 1);
-			written += fimgLoadVertexBuffer(ctx, a, pos - 1 + (pos % 2), 1);
-			written += fimgLoadVertexBuffer(ctx, a, pos + 2, count);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos - (pos % 2), 1);
+			fimgLoadVertexBuffer(ctx, a, pos - 1 + (pos % 2), 1);
+			fimgLoadVertexBuffer(ctx, a, pos + 2, count);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, 2 + count);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 2 + count);
 	}
 }
 
@@ -989,41 +1019,43 @@ void fimgDrawArraysBufferedRepeatLastTwo(fimgContext *ctx, fimgArray *arrays,
 void fimgDrawArraysBufferedRepeatFirstLast(fimgContext *ctx, fimgArray *arrays,
 					unsigned int first, unsigned int count)
 {
-	unsigned i, attrib, pos = 1;
-	size_t written;
+	unsigned i, attrib, pos = first + 1;
 	fimgArray *a;
+	uint32_t buf = 0;
+
+	//fimgSelectiveFlush(ctx, 3);
 
 	fimgSetupAttributes(ctx, arrays);
 
 	count -= 2;
 	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 2) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, 0, 1);
-			written += fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB - 1);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, first, 1);
+			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB - 1);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
+		fimgSelectiveFlush(ctx, 3);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		// Repeat first and last vertex per group
 		count -= FGHI_VERTICES_PER_VB_ATTRIB - 2;
 		pos += FGHI_VERTICES_PER_VB_ATTRIB - 2;
+
+		// Switch the buffer
+		buf ^= 1;
 	}
 
 	if (count) {
-		fimgSelectiveFlush(ctx, 3);
-
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i));
-			written = fimgLoadVertexBuffer(ctx, a, 0, 1);
-			written += fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
-			fimgPadVertexBuffer(ctx, written);
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, first, 1);
+			fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
+			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgDrawAutoinc(ctx, 0, 1 + count);
+		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 2 + count);
 	}
 }
 
@@ -1064,16 +1096,6 @@ void fimgSetIndexOffset(fimgContext *ctx, unsigned int offset)
 {
 	ctx->host.indexOffset = offset;
 	fimgWrite(ctx, offset, FGHI_IDXOFFSET);
-}
-
-/*****************************************************************************
- * FUNCTIONS:	fimgSendToVtxBuffer
- * SYNOPSIS:	The function copies data into vertex buffer.
- * PARAMETERS:	[IN] data: data issued into vertex buffer
- *****************************************************************************/
-void fimgSendToVtxBuffer(fimgContext *ctx, unsigned int data)
-{
-	fimgWrite(ctx, data, FGHI_VB_ENTRY);
 }
 
 /*****************************************************************************
@@ -1124,15 +1146,15 @@ void fimgRestoreHostState(fimgContext *ctx)
 	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
 	fimgWrite(ctx, ctx->host.indexOffset, FGHI_IDXOFFSET);
 #ifdef FIMG_USE_VERTEX_BUFFER
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(0), FGHI_ATTRIB_VBBASE(0));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(1), FGHI_ATTRIB_VBBASE(1));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(2), FGHI_ATTRIB_VBBASE(2));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(3), FGHI_ATTRIB_VBBASE(3));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(4), FGHI_ATTRIB_VBBASE(4));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(5), FGHI_ATTRIB_VBBASE(5));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(6), FGHI_ATTRIB_VBBASE(6));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(7), FGHI_ATTRIB_VBBASE(7));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(8), FGHI_ATTRIB_VBBASE(8));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(9), FGHI_ATTRIB_VBBASE(9));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(0, 0), FGHI_ATTRIB_VBBASE(0));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(1, 0), FGHI_ATTRIB_VBBASE(1));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(2, 0), FGHI_ATTRIB_VBBASE(2));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(3, 0), FGHI_ATTRIB_VBBASE(3));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(4, 0), FGHI_ATTRIB_VBBASE(4));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(5, 0), FGHI_ATTRIB_VBBASE(5));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(6, 0), FGHI_ATTRIB_VBBASE(6));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(7, 0), FGHI_ATTRIB_VBBASE(7));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(8, 0), FGHI_ATTRIB_VBBASE(8));
+	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(9, 0), FGHI_ATTRIB_VBBASE(9));
 #endif
 }
