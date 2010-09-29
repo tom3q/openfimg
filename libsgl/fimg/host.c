@@ -42,9 +42,10 @@ static inline uint32_t fimgFIFOSlotsAvail(fimgContext *ctx)
 	return fimgRead(ctx, FGHI_DWSPACE);
 }
 
-static inline void fimgSetVertexBuffer(fimgContext *ctx, int enable)
+static inline void fimgSetHostInterface(fimgContext *ctx, int vb, int autoinc)
 {
-	ctx->host.control.envb = !!enable;
+	ctx->host.control.envb		= !!vb;
+	ctx->host.control.autoinc	= !!autoinc;
 
 	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
 }
@@ -160,7 +161,7 @@ void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int first, unsigned int n
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+	fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = numVertices;
@@ -187,7 +188,7 @@ void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = 1;
@@ -215,7 +216,7 @@ void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = 2;
@@ -243,7 +244,7 @@ void fimgDrawNonIndexArraysLineStrips(fimgContext *ctx, unsigned int first, unsi
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = 2;
@@ -271,7 +272,7 @@ void fimgDrawNonIndexArraysLineLoops(fimgContext *ctx, unsigned int first, unsig
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = 2;
@@ -303,7 +304,7 @@ void fimgDrawNonIndexArraysTriangles(fimgContext *ctx, unsigned int first, unsig
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = 3;
@@ -332,7 +333,7 @@ void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, un
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = 3;
@@ -363,7 +364,7 @@ void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = 3;
@@ -394,7 +395,7 @@ void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, un
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = numVertices + 2;
@@ -424,7 +425,7 @@ void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = numVertices + 1;
@@ -465,7 +466,7 @@ void fimgDrawArraysUByteIndex(fimgContext *ctx, unsigned int numVertices, const 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = numVertices;
@@ -491,7 +492,7 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
 
-	fimgSetVertexBuffer(ctx, 0);
+ fimgSetHostInterface(ctx, 0, 1);
 
 	// write the number of vertices
 	words[0] = numVertices;
@@ -506,7 +507,8 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
  * BUFFERED
  */
 
-#define FGHI_VERTICES_PER_VB_ATTRIB	8
+#define FGHI_MAX_ATTRIBS		8
+#define FGHI_VERTICES_PER_VB_ATTRIB	16
 #define FGHI_MAX_BYTES_PER_VERTEX	16
 #define FGHI_MAX_BYTES_PER_ATTRIB	(FGHI_VERTICES_PER_VB_ATTRIB)*(FGHI_MAX_BYTES_PER_VERTEX)
 #define FGHI_VBADDR_ATTRIB(attrib, buf)	((2*attrib + ((buf)&1))*(FGHI_MAX_BYTES_PER_ATTRIB))
@@ -534,6 +536,73 @@ static inline void fimgSendToVtxBuffer(fimgContext *ctx, uint32_t data)
 //	printf("> %08x\n", fimgRead(ctx, FGHI_VBADDR));
 	fimgWrite(ctx, data, FGHI_VB_ENTRY);
 }
+
+static inline void fimgPadVertexBuffer(fimgContext *ctx)
+{
+	uint32_t val;
+
+	val = (fimgRead(ctx, FGHI_VBADDR) % 16) / 4;
+
+	if (val) {
+		val = 4 - val;
+
+		while (val--)
+			fimgSendToVtxBuffer(ctx, 0);
+	}
+}
+
+static inline void fimgSetupAttributes(fimgContext *ctx, fimgArray *arrays)
+{
+	fimgVtxBufAttrib vbattr;
+	fimgAttribute last;
+	fimgArray *a;
+	unsigned int i;
+
+	vbattr.val = 0;
+	vbattr.range = 2*FGHI_VERTICES_PER_VB_ATTRIB;
+
+	// write attribute configuration
+	for (a = arrays, i = 0; i < ctx->numAttribs - 1; i++, a++) {
+		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+
+		if (a->stride == 0)
+#ifdef FIMG_USE_STRIDE_0_CONSTANTS
+			// Stride = 0 optimization
+			vbattr.stride = 0;
+#else
+			vbattr.stride = (a->width + 3) & ~3;
+#endif
+		else if ((a->stride % 4) || (a->stride > 16) || ((unsigned long)a->pointer % 4))
+			vbattr.stride = (a->width + 3) & ~3;
+		else
+			vbattr.stride = a->stride;
+
+		fimgWrite(ctx, vbattr.val, FGHI_ATTRIB_VBCTRL(i));
+	}
+
+	// write the last one
+	last = ctx->host.attrib[i];
+	last.lastattr = 1;
+	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
+
+	if (a->stride == 0)
+#ifdef FIMG_USE_STRIDE_0_CONSTANTS
+		// Stride = 0 optimization
+		vbattr.stride = 0;
+#else
+		vbattr.stride = (a->width + 3) & ~3;
+#endif
+	else if ((a->stride % 4) || (a->stride > 16) || ((unsigned long)a->pointer % 4))
+		vbattr.stride = (a->width + 3) & ~3;
+	else
+		vbattr.stride = a->stride;
+
+	fimgWrite(ctx, vbattr.val, FGHI_ATTRIB_VBCTRL(i));
+}
+
+/*
+ * AUTOINDEXED
+ */
 
 static inline void fimgFillVertexBuffer(fimgContext *ctx,
 					fimgArray *a, uint32_t cnt)
@@ -571,7 +640,7 @@ static inline void fimgFillVertexBuffer(fimgContext *ctx,
 	case 2:
 		// Check if vertices are halfword aligned
 		if ((unsigned long)a->pointer % 2 == 0 && a->stride % 2 == 0) {
-			uint32_t len, num, srcpad = (a->stride - a->width) / 2;
+			uint32_t len;
 			const uint16_t *data;
 
 			while (cnt--) {
@@ -595,7 +664,7 @@ static inline void fimgFillVertexBuffer(fimgContext *ctx,
 	default:
 		// Fallback - no check required
 		{
-			uint32_t len, srcpad = a->stride - a->width;
+			uint32_t len;
 			const uint8_t *data;
 
 			while (cnt--) {
@@ -659,7 +728,7 @@ static inline void fimgPackToVertexBuffer(fimgContext *ctx,
 	case 2:
 		// Check if vertices are halfword aligned
 		if ((unsigned long)a->pointer % 2 == 0 && a->stride % 2 == 0) {
-			uint32_t len, num, srcpad = (a->stride - a->width) / 2;
+			uint32_t len, srcpad = (a->stride - a->width) / 2;
 			const uint16_t *data = (const uint16_t *)((const uint8_t *)a->pointer + pos*a->stride);
 
 			while (cnt--) {
@@ -755,70 +824,6 @@ static inline void fimgLoadVertexBuffer(fimgContext *ctx, fimgArray *a,
 		fimgCopyToVertexBuffer(ctx, a, pos, cnt);
 }
 
-static inline void fimgPadVertexBuffer(fimgContext *ctx)
-{
-	uint32_t val;
-
-	val = fimgRead(ctx, FGHI_VBADDR);
-
-	val %= 4;
-	if (val) {
-		val = 4 - val;
-
-		while (val--)
-			fimgSendToVtxBuffer(ctx, 0);
-	}
-}
-
-static inline void fimgSetupAttributes(fimgContext *ctx, fimgArray *arrays)
-{
-	fimgVtxBufAttrib vbattr;
-	fimgAttribute last;
-	fimgArray *a;
-	unsigned int i;
-
-	vbattr.val = 0;
-	vbattr.range = 2*FGHI_VERTICES_PER_VB_ATTRIB;
-
-	// write attribute configuration
-	for (a = arrays, i = 0; i < ctx->numAttribs - 1; i++, a++) {
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-
-		if (a->stride == 0)
-#ifdef FIMG_USE_STRIDE_0_CONSTANTS
-			// Stride = 0 optimization
-			vbattr.stride = 0;
-#else
-			vbattr.stride = (a->width + 3) & ~3;
-#endif
-		else if ((a->stride % 4) || (a->stride > 16) || ((unsigned long)a->pointer % 4))
-			vbattr.stride = (a->width + 3) & ~3;
-		else
-			vbattr.stride = a->stride;
-
-		fimgWrite(ctx, vbattr.val, FGHI_ATTRIB_VBCTRL(i));
-	}
-
-	// write the last one
-	last = ctx->host.attrib[i];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
-
-	if (a->stride == 0)
-#ifdef FIMG_USE_STRIDE_0_CONSTANTS
-		// Stride = 0 optimization
-		vbattr.stride = 0;
-#else
-		vbattr.stride = (a->width + 3) & ~3;
-#endif
-	else if ((a->stride % 4) || (a->stride > 16) || ((unsigned long)a->pointer % 4))
-		vbattr.stride = (a->width + 3) & ~3;
-	else
-		vbattr.stride = a->stride;
-
-	fimgWrite(ctx, vbattr.val, FGHI_ATTRIB_VBCTRL(i));
-}
-
 static inline void fimgDrawAutoinc(fimgContext *ctx,
 				uint32_t first, uint32_t count)
 {
@@ -827,11 +832,10 @@ static inline void fimgDrawAutoinc(fimgContext *ctx,
 	words[0] = count;
 	words[1] = first;
 
-	fimgSetVertexBuffer(ctx, 1);
-
 	fimgSendToFIFO(ctx, 8, words);
 }
 
+#if 0
 /* For points, lines and triangles */
 void fimgDrawArraysBufferedSeparate(fimgContext *ctx, fimgArray *arrays,
 					unsigned int first, unsigned int count)
@@ -1056,6 +1060,688 @@ void fimgDrawArraysBufferedRepeatFirstLast(fimgContext *ctx, fimgArray *arrays,
 		}
 
 		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 2 + count);
+	}
+}
+#endif
+
+static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
+		fimgArray *arrays, unsigned int first, unsigned int count)
+{
+	unsigned i, pos = first;
+	fimgArray *a;
+
+	//fimgSelectiveFlush(ctx, 3);
+
+	fimgSetHostInterface(ctx, 1, 1);
+	fimgSetupAttributes(ctx, arrays);
+
+	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
+		fimgLoadVertexBuffer(ctx, a, pos, count);
+		fimgPadVertexBuffer(ctx);
+	}
+
+	fimgDrawAutoinc(ctx, 0, count);
+}
+
+/*
+ * INDEXED BY CPU
+ */
+
+static inline void fimgSendIndices(fimgContext *ctx,
+					uint32_t first, uint32_t count)
+{
+	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
+
+	while (count--)
+		fimgWrite(ctx, first++, FGHI_FIFO_ENTRY);
+}
+
+void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
+					unsigned int first, unsigned int count)
+{
+	unsigned i, pos = first;
+	fimgArray *a;
+	uint32_t buf = 0;
+	unsigned int alignment;
+
+	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
+		fimgDrawArraysBufferedAutoinc(ctx, arrays, first, count);
+		return;
+	}
+
+	//fimgSelectiveFlush(ctx, 3);
+
+	fimgSetHostInterface(ctx, 1, 0);
+	fimgSetupAttributes(ctx, arrays);
+
+	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
+
+	if (alignment) {
+		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
+			fimgLoadVertexBuffer(ctx, a, pos, alignment);
+			fimgPadVertexBuffer(ctx);
+		}
+
+		fimgSendIndices(ctx, 0, alignment);
+
+		count -= alignment;
+		pos += alignment;
+
+		// Switch the buffer
+		buf ^= 1;
+	}
+
+	while (count) {
+		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
+			fimgPadVertexBuffer(ctx);
+		}
+
+		fimgSelectiveFlush(ctx, 3);
+		fimgSendIndices(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
+
+		count -= FGHI_VERTICES_PER_VB_ATTRIB;
+		pos += FGHI_VERTICES_PER_VB_ATTRIB;
+
+		// Switch the buffer
+		buf ^= 1;
+	}
+}
+
+/*
+ * DRAW ELEMENTS
+ */
+
+static inline void fimgPackToVertexBufferUByteIdx(fimgContext *ctx,
+				fimgArray *a, const uint8_t *idx, uint32_t cnt)
+{
+	register uint32_t word;
+
+//	printf("%s\n", __func__);
+
+	switch(a->width % 4) {
+	// words
+	case 0:
+		// Check if vertices are word aligned
+		if ((unsigned long)a->pointer % 4 == 0 && a->stride % 4 == 0) {
+			uint32_t len;
+			const uint32_t *data;
+
+			while (cnt--) {
+				data = (const uint32_t *)((const uint8_t *)a->pointer + *(idx++)*a->stride);
+				len = a->width;
+
+				while (len) {
+					fimgSendToVtxBuffer(ctx, *(data++));
+					len -= 4;
+				}
+			}
+
+			break;
+		}
+	// halfwords
+	case 2:
+		// Check if vertices are halfword aligned
+		if ((unsigned long)a->pointer % 2 == 0 && a->stride % 2 == 0) {
+			uint32_t len;
+			const uint16_t *data;
+
+			while (cnt--) {
+				data = (const uint16_t *)((const uint8_t *)a->pointer + *(idx++)*a->stride);
+				len = a->width;
+
+				while (len >= 4) {
+					word = *(data++);
+					word |= *(data++) << 16;
+					fimgSendToVtxBuffer(ctx, word);
+					len -= 4;
+				}
+
+				// Single halfword left
+				if (len)
+					fimgSendToVtxBuffer(ctx, *(data++));
+			}
+			break;
+		}
+	// bytes
+	default:
+		// Fallback - no check required
+		{
+			uint32_t len;
+			const uint8_t *data;
+
+			while (cnt--) {
+				data = (const uint8_t *)a->pointer + *(idx++)*a->stride;
+				len = a->width;
+
+				while (len >= 4) {
+					word = *(data++);
+					word |= *(data++) << 8;
+					word |= *(data++) << 16;
+					word |= *(data++) << 24;
+					fimgSendToVtxBuffer(ctx, word);
+					len -= 4;
+				}
+
+				// Up to 3 bytes left
+				if (len) {
+					word = *(data++);
+					if (len == 2)
+						word |= *(data++) << 8;
+					if (len == 3)
+						word |= *(data++) << 16;
+
+					fimgSendToVtxBuffer(ctx, word);
+				}
+			}
+			break;
+		}
+	}
+}
+
+static inline void fimgCopy4ToVertexBufferUByteIdx(fimgContext *ctx,
+				fimgArray *a, const uint8_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		cnt -= 4;
+	}
+
+	while (cnt--)
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+}
+
+static inline void fimgCopy8ToVertexBufferUByteIdx(fimgContext *ctx,
+				fimgArray *a, const uint8_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		cnt -= 4;
+	}
+
+	while (cnt--) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+	}
+}
+
+static inline void fimgCopy12ToVertexBufferUByteIdx(fimgContext *ctx,
+				fimgArray *a, const uint8_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		cnt -= 4;
+	}
+
+	while (cnt--) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+	}
+}
+
+static inline void fimgCopy16ToVertexBufferUByteIdx(fimgContext *ctx,
+				fimgArray *a, const uint8_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		cnt -= 4;
+	}
+
+	while (cnt--) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+	}
+}
+
+static inline void fimgLoadVertexBufferUByteIdx(fimgContext *ctx, fimgArray *a,
+				const uint8_t *indices, uint32_t cnt)
+{
+	switch (a->stride) {
+	case 0:
+		fimgFillVertexBuffer(ctx, a, cnt);
+		return;
+	case 4:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy4ToVertexBufferUByteIdx(ctx, a, indices, cnt);
+		return;
+	case 8:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy8ToVertexBufferUByteIdx(ctx, a, indices, cnt);
+		return;
+	case 12:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy12ToVertexBufferUByteIdx(ctx, a, indices, cnt);
+		return;
+	case 16:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy16ToVertexBufferUByteIdx(ctx, a, indices, cnt);
+		return;
+	}
+
+	fimgPackToVertexBufferUByteIdx(ctx, a, indices, cnt);
+}
+
+static inline void fimgDrawElementsBufferedAutoincUByteIdx(fimgContext *ctx,
+		fimgArray *arrays, unsigned int count, const uint8_t *indices)
+{
+	unsigned i;
+	fimgArray *a;
+
+	//fimgSelectiveFlush(ctx, 3);
+
+	fimgSetHostInterface(ctx, 1, 1);
+	fimgSetupAttributes(ctx, arrays);
+
+	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
+		fimgLoadVertexBufferUByteIdx(ctx, a, indices, count);
+		fimgPadVertexBuffer(ctx);
+	}
+
+	fimgDrawAutoinc(ctx, 0, count);
+}
+
+void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
+				unsigned int count, const uint8_t *indices)
+{
+	unsigned i;
+	fimgArray *a;
+	uint32_t buf = 0;
+	unsigned int alignment;
+
+	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
+		fimgDrawElementsBufferedAutoincUByteIdx(ctx, arrays,
+							count, indices);
+		return;
+	}
+
+	//fimgSelectiveFlush(ctx, 3);
+
+	fimgSetHostInterface(ctx, 1, 0);
+	fimgSetupAttributes(ctx, arrays);
+
+	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
+
+	if (alignment) {
+		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
+			fimgLoadVertexBufferUByteIdx(ctx, a, indices, alignment);
+			fimgPadVertexBuffer(ctx);
+		}
+
+		fimgSendIndices(ctx, 0, alignment);
+
+		count -= alignment;
+		indices += alignment;
+
+		// Switch the buffer
+		buf ^= 1;
+	}
+
+	while (count) {
+		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBufferUByteIdx(ctx, a, indices, FGHI_VERTICES_PER_VB_ATTRIB);
+			fimgPadVertexBuffer(ctx);
+		}
+
+		fimgSelectiveFlush(ctx, 3);
+		fimgSendIndices(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
+
+		count -= FGHI_VERTICES_PER_VB_ATTRIB;
+		indices += FGHI_VERTICES_PER_VB_ATTRIB;
+
+		// Switch the buffer
+		buf ^= 1;
+	}
+}
+
+static inline void fimgPackToVertexBufferUShortIdx(fimgContext *ctx,
+				fimgArray *a, const uint16_t *idx, uint32_t cnt)
+{
+	register uint32_t word;
+
+//	printf("%s\n", __func__);
+
+	switch(a->width % 4) {
+	// words
+	case 0:
+		// Check if vertices are word aligned
+		if ((unsigned long)a->pointer % 4 == 0 && a->stride % 4 == 0) {
+			uint32_t len;
+			const uint32_t *data;
+
+			while (cnt--) {
+				data = (const uint32_t *)((const uint8_t *)a->pointer + *(idx++)*a->stride);
+				len = a->width;
+
+				while (len) {
+					fimgSendToVtxBuffer(ctx, *(data++));
+					len -= 4;
+				}
+			}
+
+			break;
+		}
+	// halfwords
+	case 2:
+		// Check if vertices are halfword aligned
+		if ((unsigned long)a->pointer % 2 == 0 && a->stride % 2 == 0) {
+			uint32_t len;
+			const uint16_t *data;
+
+			while (cnt--) {
+				data = (const uint16_t *)((const uint8_t *)a->pointer + *(idx++)*a->stride);
+				len = a->width;
+
+				while (len >= 4) {
+					word = *(data++);
+					word |= *(data++) << 16;
+					fimgSendToVtxBuffer(ctx, word);
+					len -= 4;
+				}
+
+				// Single halfword left
+				if (len)
+					fimgSendToVtxBuffer(ctx, *(data++));
+			}
+			break;
+		}
+	// bytes
+	default:
+		// Fallback - no check required
+		{
+			uint32_t len;
+			const uint8_t *data;
+
+			while (cnt--) {
+				data = (const uint8_t *)a->pointer + *(idx++)*a->stride;
+				len = a->width;
+
+				while (len >= 4) {
+					word = *(data++);
+					word |= *(data++) << 8;
+					word |= *(data++) << 16;
+					word |= *(data++) << 24;
+					fimgSendToVtxBuffer(ctx, word);
+					len -= 4;
+				}
+
+				// Up to 3 bytes left
+				if (len) {
+					word = *(data++);
+					if (len == 2)
+						word |= *(data++) << 8;
+					if (len == 3)
+						word |= *(data++) << 16;
+
+					fimgSendToVtxBuffer(ctx, word);
+				}
+			}
+			break;
+		}
+	}
+}
+
+static inline void fimgCopy4ToVertexBufferUShortIdx(fimgContext *ctx,
+				fimgArray *a, const uint16_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+		cnt -= 4;
+	}
+
+	while (cnt--)
+		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
+}
+
+static inline void fimgCopy8ToVertexBufferUShortIdx(fimgContext *ctx,
+				fimgArray *a, const uint16_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		cnt -= 4;
+	}
+
+	while (cnt--) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+	}
+}
+
+static inline void fimgCopy12ToVertexBufferUShortIdx(fimgContext *ctx,
+				fimgArray *a, const uint16_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		cnt -= 4;
+	}
+
+	while (cnt--) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+	}
+}
+
+static inline void fimgCopy16ToVertexBufferUShortIdx(fimgContext *ctx,
+				fimgArray *a, const uint16_t *idx, uint32_t cnt)
+{
+	const uint32_t *data = (const uint32_t *)a->pointer;
+
+	while (cnt >= 4) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		cnt -= 4;
+	}
+
+	while (cnt--) {
+		fimgSendToVtxBuffer(ctx, data[*(idx)]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+	}
+}
+
+static inline void fimgLoadVertexBufferUShortIdx(fimgContext *ctx, fimgArray *a,
+				const uint16_t *indices, uint32_t cnt)
+{
+	switch (a->stride) {
+	case 0:
+		fimgFillVertexBuffer(ctx, a, cnt);
+		return;
+	case 4:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy4ToVertexBufferUShortIdx(ctx, a, indices, cnt);
+		return;
+	case 8:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy8ToVertexBufferUShortIdx(ctx, a, indices, cnt);
+		return;
+	case 12:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy12ToVertexBufferUShortIdx(ctx, a, indices, cnt);
+		return;
+	case 16:
+		if ((unsigned long)a->pointer % 4)
+			break;
+		fimgCopy16ToVertexBufferUShortIdx(ctx, a, indices, cnt);
+		return;
+	}
+
+	fimgPackToVertexBufferUShortIdx(ctx, a, indices, cnt);
+}
+
+static inline void fimgDrawElementsBufferedAutoincUShortIdx(fimgContext *ctx,
+		fimgArray *arrays, unsigned int count, const uint16_t *indices)
+{
+	unsigned i;
+	fimgArray *a;
+
+	//fimgSelectiveFlush(ctx, 3);
+
+	fimgSetHostInterface(ctx, 1, 1);
+	fimgSetupAttributes(ctx, arrays);
+
+	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
+		fimgLoadVertexBufferUShortIdx(ctx, a, indices, count);
+		fimgPadVertexBuffer(ctx);
+	}
+
+	fimgDrawAutoinc(ctx, 0, count);
+}
+
+void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, fimgArray *arrays,
+				unsigned int count, const uint16_t *indices)
+{
+	unsigned i;
+	fimgArray *a;
+	uint32_t buf = 0;
+	unsigned int alignment;
+
+	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
+		fimgDrawElementsBufferedAutoincUShortIdx(ctx, arrays,
+							count, indices);
+		return;
+	}
+
+	//fimgSelectiveFlush(ctx, 3);
+
+	fimgSetHostInterface(ctx, 1, 0);
+	fimgSetupAttributes(ctx, arrays);
+
+	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
+
+	if (alignment) {
+		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
+			fimgLoadVertexBufferUShortIdx(ctx, a, indices, alignment);
+			fimgPadVertexBuffer(ctx);
+		}
+
+		fimgSendIndices(ctx, 0, alignment);
+
+		count -= alignment;
+		indices += alignment;
+
+		// Switch the buffer
+		buf ^= 1;
+	}
+
+	while (count) {
+		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
+			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
+			fimgLoadVertexBufferUShortIdx(ctx, a, indices, FGHI_VERTICES_PER_VB_ATTRIB);
+			fimgPadVertexBuffer(ctx);
+		}
+
+		fimgSelectiveFlush(ctx, 3);
+		fimgSendIndices(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
+
+		count -= FGHI_VERTICES_PER_VB_ATTRIB;
+		indices += FGHI_VERTICES_PER_VB_ATTRIB;
+
+		// Switch the buffer
+		buf ^= 1;
 	}
 }
 

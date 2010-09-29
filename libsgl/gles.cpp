@@ -765,93 +765,6 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	putHardware(ctx);
 }
 
-#else /* !FIMG_USE_VERTEX_BUFFER */
-
-GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
-{
-	if(first < 0) {
-		setError(GL_INVALID_VALUE);
-		return;
-	}
-
-	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
-	FGLContext *ctx = getContext();
-
-	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
-		if(ctx->array[i].enabled) {
-			arrays[i].pointer	= ctx->array[i].pointer;
-			arrays[i].stride	= ctx->array[i].stride;
-			arrays[i].width		= ctx->array[i].width;
-		} else {
-			arrays[i].pointer	= &ctx->vertex[i];
-			arrays[i].stride	= 0;
-			arrays[i].width		= 16;
-		}
-	}
-
-	getHardware(ctx);
-
-	fglSetupMatrices(ctx);
-	fglSetupTextures(ctx);
-
-	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
-
-	switch (mode) {
-	case GL_POINTS:
-		if (count < 1)
-			break;
-		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedSeparate(ctx->fimg, arrays, first, count);
-		break;
-	case GL_LINE_STRIP:
-		if (count < 2)
-			break;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedRepeatLast(ctx->fimg, arrays, first, count);
-		break;
-	case GL_LINE_LOOP:
-		if (count < 2)
-			break;
-		/* Workaround for line loops in buffered mode */
-		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedRepeatLastLoop(ctx->fimg, arrays, first, count);
-		break;
-	case GL_LINES:
-		if (count < 2)
-			break;
-		count &= ~1;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedSeparate(ctx->fimg, arrays, first, count);
-		break;
-	case GL_TRIANGLE_STRIP:
-		if (count < 3)
-			break;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedRepeatLastTwo(ctx->fimg, arrays, first, count);
-		break;
-	case GL_TRIANGLE_FAN:
-		if (count < 3)
-			break;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_FAN, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedRepeatFirstLast(ctx->fimg, arrays, first, count);
-		break;
-	case GL_TRIANGLES:
-		if (count < 3)
-			break;
-		if (count % 3)
-			count -= count % 3;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawArraysBufferedSeparate(ctx->fimg, arrays, first, count);
-		break;
-	default:
-		setError(GL_INVALID_ENUM);
-	}
-
-	putHardware(ctx);
-}
-
-#endif
-
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
 {
 	GLint fglMode;
@@ -895,6 +808,174 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 
 	putHardware(ctx);
 }
+
+#else /* !FIMG_USE_VERTEX_BUFFER */
+
+GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
+{
+	if(first < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
+	FGLContext *ctx = getContext();
+
+	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
+		if(ctx->array[i].enabled) {
+			arrays[i].pointer	= ctx->array[i].pointer;
+			arrays[i].stride	= ctx->array[i].stride;
+			arrays[i].width		= ctx->array[i].width;
+		} else {
+			arrays[i].pointer	= &ctx->vertex[i];
+			arrays[i].stride	= 0;
+			arrays[i].width		= 16;
+		}
+	}
+
+	getHardware(ctx);
+
+	fglSetupMatrices(ctx);
+	fglSetupTextures(ctx);
+
+	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
+
+	switch (mode) {
+	case GL_POINTS:
+		if (count < 1)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_LINE_STRIP:
+		if (count < 2)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_LINE_LOOP:
+		if (count < 2)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_LINE_LOOP, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_LINES:
+		if (count < 2)
+			goto end;
+		count &= ~1;
+		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_TRIANGLE_STRIP:
+		if (count < 3)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_TRIANGLE_FAN:
+		if (count < 3)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_FAN, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_TRIANGLES:
+		if (count < 3)
+			goto end;
+		if (count % 3)
+			count -= count % 3;
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		goto end;
+	}
+
+	fimgDrawArraysBuffered(ctx->fimg, arrays, first, count);
+
+end:
+	putHardware(ctx);
+}
+
+GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
+{
+	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
+	FGLContext *ctx = getContext();
+
+	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
+		if(ctx->array[i].enabled) {
+			arrays[i].pointer	= ctx->array[i].pointer;
+			arrays[i].stride	= ctx->array[i].stride;
+			arrays[i].width		= ctx->array[i].width;
+		} else {
+			arrays[i].pointer	= &ctx->vertex[i];
+			arrays[i].stride	= 0;
+			arrays[i].width		= 16;
+		}
+	}
+
+	getHardware(ctx);
+
+	fglSetupMatrices(ctx);
+	fglSetupTextures(ctx);
+
+	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
+
+	switch (mode) {
+	case GL_POINTS:
+		if (count < 1)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_LINE_STRIP:
+		if (count < 2)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_LINE_LOOP:
+		if (count < 2)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_LINE_LOOP, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_LINES:
+		if (count < 2)
+			goto end;
+		count &= ~1;
+		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_TRIANGLE_STRIP:
+		if (count < 3)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_TRIANGLE_FAN:
+		if (count < 3)
+			goto end;
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_FAN, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_TRIANGLES:
+		if (count < 3)
+			goto end;
+		if (count % 3)
+			count -= count % 3;
+		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		goto end;
+	}
+
+	switch (type) {
+	case GL_UNSIGNED_BYTE:
+		fimgDrawElementsBufferedUByteIdx(ctx->fimg, arrays, count,
+						(const uint8_t *)indices);
+		break;
+	case GL_UNSIGNED_SHORT:
+		fimgDrawElementsBufferedUShortIdx(ctx->fimg, arrays, count,
+						(const uint16_t *)indices);
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+
+end:
+	putHardware(ctx);
+}
+
+#endif
 
 /**
 	Transformations
