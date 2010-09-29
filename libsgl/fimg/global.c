@@ -31,7 +31,7 @@ typedef union {
 		unsigned		:2;
 		unsigned vtcclear	:1;
 		unsigned		:19;
-	} bits;
+	};
 } fimgCacheCtl;
 
 /* TODO: Function inlining */
@@ -41,11 +41,9 @@ typedef union {
  * SYNOPSIS:	This function obtains status of the pipeline
  * RETURNS:	fimgPipelineStatus conaining pipeline status
  *****************************************************************************/
-fimgPipelineStatus fimgGetPipelineStatus(fimgContext *ctx)
+uint32_t fimgGetPipelineStatus(fimgContext *ctx)
 {
-	fimgPipelineStatus stat;
-	stat.val = fimgRead(ctx, FGGB_PIPESTATE);
-	return stat;
+	return fimgRead(ctx, FGGB_PIPESTATE);
 }
 
 /*****************************************************************************
@@ -55,14 +53,14 @@ fimgPipelineStatus fimgGetPipelineStatus(fimgContext *ctx)
  * RETURNS:	 0, on success
  *		-1, on timeout
  *****************************************************************************/
-int fimgFlush(fimgContext *ctx/*, fimgPipelineStatus pipelineFlags*/)
+int fimgFlush(fimgContext *ctx)
 {
 	/* Return if already flushed */
 	if(fimgRead(ctx, FGGB_PIPESTATE) == 0)
 		return 0;
 
-	/* Flush whole pipeline (TODO: Allow selective flushing) */
-	return fimgWaitForFlush(ctx, 0xffffffff);
+	/* Flush whole pipeline */
+	return fimgWaitForFlush(ctx, FGHI_PIPELINE_ALL);
 }
 
 int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask)
@@ -84,14 +82,16 @@ int fimgInvalidateFlushCache(fimgContext *ctx,
 			     unsigned int vtcclear, unsigned int tcclear,
 			     unsigned int ccflush, unsigned int zcflush)
 {
+#if 0
 	unsigned int timeout = 1000000;
+#endif
 	fimgCacheCtl ctl;
 
 	ctl.val = 0;
-	ctl.bits.vtcclear = vtcclear;
-	ctl.bits.tcclear = tcclear;
-	ctl.bits.ccflush = ccflush;
-	ctl.bits.zcflush = zcflush;
+	ctl.vtcclear = vtcclear;
+	ctl.tcclear = tcclear;
+	ctl.ccflush = ccflush;
+	ctl.zcflush = zcflush;
 
 	fimgWrite(ctx, ctl.val, FGGB_CACHECTL); // start clearing the cache
 
@@ -123,12 +123,20 @@ void fimgSoftReset(fimgContext *ctx)
  * SYNOPSIS:	This function gets FIMG-3DSE version.
  * RETURNS:	Version of 3D hardware
  *****************************************************************************/
-fimgVersion fimgGetVersion(fimgContext *ctx)
+void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev)
 {
-	fimgVersion ret;
+	fimgVersion version;
 
-	ret.val = fimgRead(ctx, FGGB_VERSION);
-	return ret;
+	version.val = fimgRead(ctx, FGGB_VERSION);
+
+	if (major)
+		*major = version.major;
+
+	if (minor)
+		*minor = version.minor;
+
+	if (rev)
+		*rev = version.revision;
 }
 
 /*****************************************************************************
@@ -175,10 +183,10 @@ void fimgDisableInterrupt(fimgContext *ctx)
  * SYNOPSIS:	This function sets pipeline blocks to generate interrupt.
  * PARAMETERS:	[IN] pipeMask: Oring PIPESTATE_XXXX block of generating interrupt
  *****************************************************************************/
-void fimgSetInterruptBlock(fimgContext *ctx, fimgPipelineStatus pipeMask)
+void fimgSetInterruptBlock(fimgContext *ctx, uint32_t pipeMask)
 {
-	ctx->global.intMask = pipeMask.val;
-	fimgWrite(ctx, pipeMask.val, FGGB_PIPEMASK);
+	ctx->global.intMask = pipeMask;
+	fimgWrite(ctx, pipeMask, FGGB_PIPEMASK);
 }
 
 /*****************************************************************************
@@ -186,10 +194,10 @@ void fimgSetInterruptBlock(fimgContext *ctx, fimgPipelineStatus pipeMask)
  * SYNOPSIS:	This function sets an interrupt generated state of each block
  * PARAMETERS:	[IN] status: each block state for interrupt to occur
  *****************************************************************************/
-void fimgSetInterruptState(fimgContext *ctx, fimgPipelineStatus status)
+void fimgSetInterruptState(fimgContext *ctx, uint32_t status)
 {
-	ctx->global.intTarget = status.val;
-	fimgWrite(ctx, status.val, FGGB_PIPETGTSTATE);
+	ctx->global.intTarget = status;
+	fimgWrite(ctx, status, FGGB_PIPETGTSTATE);
 }
 
 /*****************************************************************************
@@ -198,11 +206,9 @@ void fimgSetInterruptState(fimgContext *ctx, fimgPipelineStatus status)
  *          	is to occur
  * RETURNS:	fimgPipelineStatus containing interrupt state
  *****************************************************************************/
-fimgPipelineStatus fimgGetInterruptState(fimgContext *ctx)
+uint32_t fimgGetInterruptState(fimgContext *ctx)
 {
-	fimgPipelineStatus stat;
-	stat.val = fimgRead(ctx, FGGB_PIPEINTSTATE);
-	return stat;
+	return fimgRead(ctx, FGGB_PIPEINTSTATE);
 }
 
 void fimgCreateGlobalContext(fimgContext *ctx)

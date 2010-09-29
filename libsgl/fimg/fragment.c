@@ -40,12 +40,12 @@ void fimgSetScissorParams(fimgContext *ctx,
 			  unsigned int xMax, unsigned int xMin,
 			  unsigned int yMax, unsigned int yMin)
 {
-	ctx->fragment.scX.bits.max = xMax;
-	ctx->fragment.scX.bits.min = xMin;
+	ctx->fragment.scX.max = xMax;
+	ctx->fragment.scX.min = xMin;
 	fimgWrite(ctx, ctx->fragment.scX.val, FGPF_SCISSOR_X);
 
-	ctx->fragment.scY.bits.max = yMax;
-	ctx->fragment.scY.bits.min = yMin;
+	ctx->fragment.scY.max = yMax;
+	ctx->fragment.scY.min = yMin;
 	fimgWrite(ctx, ctx->fragment.scY.val, FGPF_SCISSOR_Y);
 }
 
@@ -57,7 +57,7 @@ void fimgSetScissorParams(fimgContext *ctx,
 *****************************************************************************/
 void fimgSetScissorEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.scX.bits.enable = !!enable;
+	ctx->fragment.scX.enable = !!enable;
 	fimgWrite(ctx, ctx->fragment.scX.val, FGPF_SCISSOR_X);
 }
 
@@ -73,8 +73,8 @@ void fimgSetScissorEnable(fimgContext *ctx, int enable)
 void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
 			fimgTestMode mode)
 {
-	ctx->fragment.alpha.bits.value = refAlpha;
-	ctx->fragment.alpha.bits.mode = mode;
+	ctx->fragment.alpha.value = refAlpha;
+	ctx->fragment.alpha.mode = mode;
 	fimgWrite(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
 }
 
@@ -87,7 +87,7 @@ void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
 *****************************************************************************/
 void fimgSetAlphaEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.alpha.bits.enable = !!enable;
+	ctx->fragment.alpha.enable = !!enable;
 	fimgWrite(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
 }
 
@@ -103,9 +103,9 @@ void fimgSetAlphaEnable(fimgContext *ctx, int enable)
 void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 			     unsigned char ref, unsigned char mask)
 {
-	ctx->fragment.stFront.bits.mode = mode;
-	ctx->fragment.stFront.bits.ref = ref;
-	ctx->fragment.stFront.bits.mask = mask;
+	ctx->fragment.stFront.mode = mode;
+	ctx->fragment.stFront.ref = ref;
+	ctx->fragment.stFront.mask = mask;
 	fimgWrite(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
@@ -121,9 +121,9 @@ void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
 			   fimgTestAction dpfail, fimgTestAction dppass)
 {
-	ctx->fragment.stFront.bits.sfail = sfail;
-	ctx->fragment.stFront.bits.dpfail = dpfail;
-	ctx->fragment.stFront.bits.dppass = dppass;
+	ctx->fragment.stFront.sfail = sfail;
+	ctx->fragment.stFront.dpfail = dpfail;
+	ctx->fragment.stFront.dppass = dppass;
 	fimgWrite(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
@@ -139,9 +139,9 @@ void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
 void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 			    unsigned char ref, unsigned char mask)
 {
-	ctx->fragment.stBack.bits.mode = mode;
-	ctx->fragment.stBack.bits.ref = ref;
-	ctx->fragment.stBack.bits.mask = mask;
+	ctx->fragment.stBack.mode = mode;
+	ctx->fragment.stBack.ref = ref;
+	ctx->fragment.stBack.mask = mask;
 	fimgWrite(ctx, ctx->fragment.stBack.val, FGPF_BACKST);
 }
 
@@ -157,9 +157,9 @@ void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
 			  fimgTestAction dpfail, fimgTestAction dppass)
 {
-	ctx->fragment.stBack.bits.sfail = sfail;
-	ctx->fragment.stBack.bits.dpfail = dpfail;
-	ctx->fragment.stBack.bits.dppass = dppass;
+	ctx->fragment.stBack.sfail = sfail;
+	ctx->fragment.stBack.dpfail = dpfail;
+	ctx->fragment.stBack.dppass = dppass;
 	fimgWrite(ctx, ctx->fragment.stBack.val, FGPF_BACKST);
 }
 
@@ -172,7 +172,7 @@ void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
 *****************************************************************************/
 void fimgSetStencilEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.stFront.bits.enable = !!enable;
+	ctx->fragment.stFront.enable = !!enable;
 	fimgWrite(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
@@ -183,7 +183,7 @@ void fimgSetStencilEnable(fimgContext *ctx, int enable)
 *****************************************************************************/
 void fimgSetDepthParams(fimgContext *ctx, fimgTestMode mode)
 {
-	ctx->fragment.depth.bits.mode = mode;
+	ctx->fragment.depth.mode = mode;
 	fimgWrite(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
 }
 
@@ -194,7 +194,7 @@ void fimgSetDepthParams(fimgContext *ctx, fimgTestMode mode)
 *****************************************************************************/
 void fimgSetDepthEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.depth.bits.enable = !!enable;
+	ctx->fragment.depth.enable = !!enable;
 	fimgWrite(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
 }
 
@@ -209,8 +209,8 @@ void fimgSetDepthEnable(fimgContext *ctx, int enable)
 void fimgSetBlendEquation(fimgContext *ctx,
 			  fimgBlendEquation alpha, fimgBlendEquation color)
 {
-	ctx->fragment.blend.bits.ablendequation = alpha;
-	ctx->fragment.blend.bits.cblendequation = color;
+	ctx->fragment.blend.ablendequation = alpha;
+	ctx->fragment.blend.cblendequation = color;
 	fimgWrite(ctx, ctx->fragment.blend.val, FGPF_BLEND);
 }
 
@@ -228,10 +228,10 @@ void fimgSetBlendFunc(fimgContext *ctx,
 		      fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 		      fimgBlendFunction dstAlpha, fimgBlendFunction dstColor)
 {
-	ctx->fragment.blend.bits.asrcblendfunc = srcAlpha;
-	ctx->fragment.blend.bits.csrcblendfunc = srcColor;
-	ctx->fragment.blend.bits.adstblendfunc = dstAlpha;
-	ctx->fragment.blend.bits.cdstblendfunc = dstColor;
+	ctx->fragment.blend.asrcblendfunc = srcAlpha;
+	ctx->fragment.blend.csrcblendfunc = srcColor;
+	ctx->fragment.blend.adstblendfunc = dstAlpha;
+	ctx->fragment.blend.cdstblendfunc = dstColor;
 	fimgWrite(ctx, ctx->fragment.blend.val, FGPF_BLEND);
 }
 
@@ -287,7 +287,7 @@ void fimgSetBlendFuncRGB565(fimgContext *ctx,
 *****************************************************************************/
 void fimgSetBlendEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.blend.bits.enable = !!enable;
+	ctx->fragment.blend.enable = !!enable;
 	fimgWrite(ctx, ctx->fragment.blend.val, FGPF_BLEND);
 }
 
@@ -310,7 +310,7 @@ void fimgSetBlendColor(fimgContext *ctx, unsigned int blendColor)
 *****************************************************************************/
 void fimgSetDitherEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.fbctl.bits.dither = !!enable;
+	ctx->fragment.fbctl.dither = !!enable;
 	fimgWrite(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 
@@ -325,8 +325,8 @@ void fimgSetDitherEnable(fimgContext *ctx, int enable)
 void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
 			    fimgLogicalOperation color)
 {
-	ctx->fragment.logop.bits.alpha = alpha;
-	ctx->fragment.logop.bits.color = color;
+	ctx->fragment.logop.alpha = alpha;
+	ctx->fragment.logop.color = color;
 	fimgWrite(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
 }
 
@@ -339,7 +339,7 @@ void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
 *****************************************************************************/
 void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.logop.bits.enable = !!enable;
+	ctx->fragment.logop.enable = !!enable;
 	fimgWrite(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
 }
 
@@ -353,10 +353,10 @@ void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
 *****************************************************************************/
 void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a)
 {
-	ctx->fragment.mask.bits.r = r;
-	ctx->fragment.mask.bits.g = g;
-	ctx->fragment.mask.bits.b = b;
-	ctx->fragment.mask.bits.a = a;
+	ctx->fragment.mask.r = r;
+	ctx->fragment.mask.g = g;
+	ctx->fragment.mask.b = b;
+	ctx->fragment.mask.a = a;
 	fimgWrite(ctx, ctx->fragment.mask.val, FGPF_CBMSK);
 }
 
@@ -371,9 +371,9 @@ void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a)
 void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask)
 {
 	if(!back)
-		ctx->fragment.dbmask.bits.frontmask = ~mask;
+		ctx->fragment.dbmask.frontmask = ~mask;
 	else
-		ctx->fragment.dbmask.bits.backmask = ~mask;
+		ctx->fragment.dbmask.backmask = ~mask;
 	fimgWrite(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
 }
 
@@ -385,7 +385,7 @@ void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask)
 *****************************************************************************/
 void fimgSetZBufWriteMask(fimgContext *ctx, int enable)
 {
-	ctx->fragment.dbmask.bits.depth = !enable;
+	ctx->fragment.dbmask.depth = !enable;
 	fimgWrite(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
 }
 
@@ -404,10 +404,10 @@ void fimgSetFrameBufParams(fimgContext *ctx,
 			   int opaqueAlpha, unsigned int thresholdAlpha,
 			   unsigned int constAlpha, fimgColorMode format)
 {
-	ctx->fragment.fbctl.bits.opaque = !!opaqueAlpha;
-	ctx->fragment.fbctl.bits.alphathreshold = thresholdAlpha;
-	ctx->fragment.fbctl.bits.alphaconst = constAlpha;
-	ctx->fragment.fbctl.bits.colormode = format;
+	ctx->fragment.fbctl.opaque = !!opaqueAlpha;
+	ctx->fragment.fbctl.alphathreshold = thresholdAlpha;
+	ctx->fragment.fbctl.alphaconst = constAlpha;
+	ctx->fragment.fbctl.colormode = format;
 	fimgWrite(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 

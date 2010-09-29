@@ -15,8 +15,59 @@
 // extern volatile void *fimgBase;
 
 /*
+ * Global block
+ */
+
+/* Type definitions */
+typedef union {
+	unsigned int val;
+	struct {
+		unsigned host_fifo	:1;
+		unsigned hi		:1;
+		unsigned hvf		:1;
+		unsigned vc		:1;
+		unsigned vs		:1;
+		unsigned		:3;
+		unsigned pe		:1;
+		unsigned tse		:1;
+		unsigned ra		:1;
+		unsigned		:1;
+		unsigned ps0		:1;
+		unsigned		:3;
+		unsigned pf0		:1;
+		unsigned		:1;
+		unsigned ccache0	:1;
+		unsigned		:13;
+	};
+} fimgPipelineStatus;
+
+typedef union {
+	unsigned int val;
+	struct {
+		unsigned		:8;
+		unsigned revision	:8;
+		unsigned minor		:8;
+		unsigned major		:8;
+	};
+} fimgVersion;
+
+/*
  * Host interface
  */
+
+typedef union {
+	unsigned int val;
+	struct {
+		unsigned numoutattrib	:4;
+		unsigned envc		:1;
+		unsigned		:11;
+		unsigned autoinc	:1;
+		unsigned		:7;
+		unsigned idxtype	:2;
+		unsigned		:5;
+		unsigned envb		:1;
+	};
+} fimgHInterface;
 
 typedef union {
 	unsigned int val;
@@ -56,7 +107,7 @@ typedef union {
 		unsigned pointSize	:1;
 		unsigned type		:8;
 		unsigned		:5;
-	} bits;
+	};
 } fimgVertexContext;
 
 /*
@@ -70,7 +121,7 @@ typedef union {
 		unsigned clockwise	:1;
 		unsigned enable		:1;
 		unsigned		:28;
-	} bits;
+	};
 } fimgCullingControl;
 
 typedef union {
@@ -80,8 +131,20 @@ typedef union {
 		unsigned		:4;
 		unsigned maxval		:12;
 		unsigned		:4;
-	} bits;
+	};
 } fimgClippingControl;
+
+typedef union {
+	unsigned int val;
+	struct {
+		struct {
+			unsigned lod	:1;
+			unsigned ddx	:1;
+			unsigned ddy	:1;
+		} coef[8];
+		unsigned		:8;
+	};
+} fimgLODControl;
 
 /*
  * Shaders
@@ -129,7 +192,7 @@ typedef union {
 	struct {
 		unsigned in		:4;
 		unsigned		:28;
-	} bits;
+	};
 } fimgShaderAttribNum;
 */
 
@@ -153,7 +216,7 @@ typedef union {
 		unsigned max		:12;
 		unsigned		:3;
 		unsigned enable		:1;
-	} bits;
+	};
 } fimgScissorTestData;
 
 typedef union {
@@ -163,7 +226,7 @@ typedef union {
 		unsigned mode		:4;
 		unsigned value		:8;
 		unsigned		:19;
-	} bits;
+	};
 } fimgAlphaTestData;
 
 typedef union {
@@ -177,7 +240,7 @@ typedef union {
 		unsigned sfail		:3;
 		unsigned dpfail		:3;
 		unsigned dppass		:3;
-	} bits;
+	};
 } fimgStencilTestData;
 
 typedef union {
@@ -186,7 +249,7 @@ typedef union {
 		unsigned enable		:1;
 		unsigned mode		:3;
 		unsigned		:28;
-	} bits;
+	};
 } fimgDepthTestData;
 
 typedef union {
@@ -200,7 +263,7 @@ typedef union {
 		unsigned cblendequation	:3;
 		unsigned ablendequation	:3;
 		unsigned		:9;
-	} bits;
+	};
 } fimgBlendControl;
 
 typedef union {
@@ -210,7 +273,7 @@ typedef union {
 		unsigned color		:4;
 		unsigned alpha		:4;
 		unsigned		:23;
-	} bits;
+	};
 } fimgLogOpControl;
 
 typedef union {
@@ -221,7 +284,7 @@ typedef union {
 		unsigned g		:1;
 		unsigned r		:1;
 		unsigned		:28;
-	} bits;
+	};
 } fimgColorBufMask;
 
 typedef union {
@@ -231,7 +294,7 @@ typedef union {
 		unsigned		:15;
 		unsigned frontmask	:8;
 		unsigned backmask	:8;
-	} bits;
+	};
 } fimgDepthBufMask;
 
 typedef union {
@@ -243,7 +306,7 @@ typedef union {
 		unsigned alphathreshold	:8;
 		unsigned opaque		:1;
 		unsigned		:11;
-	} bits;
+	};
 } fimgFramebufferControl;
 
 /*
@@ -281,7 +344,7 @@ typedef union {
 		unsigned vmod		:2;
 		unsigned umod		:2;
 		unsigned		:20;
-	} bits;
+	};
 } fimgVtxTexControl;
 
 struct _fimgTexture {
@@ -339,12 +402,13 @@ typedef struct {
 	float dOffUnits;
 	fimgCullingControl cull;
 	fimgClippingControl yClip;
-	fimgClippingControl xClip;
 	float pointWidth;
 	float pointWidthMin;
 	float pointWidthMax;
 	unsigned int spriteCoordAttrib;
 	float lineWidth;
+	fimgLODControl lodGen;
+	fimgClippingControl xClip;
 } fimgRasterizerContext;
 
 void fimgCreateRasterizerContext(fimgContext *ctx);

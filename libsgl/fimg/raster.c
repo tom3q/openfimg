@@ -80,18 +80,18 @@ void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
  *****************************************************************************/
 void fimgSetFaceCullEnable(fimgContext *ctx, int enable)
 {
-	ctx->rasterizer.cull.bits.enable = !!enable;
+	ctx->rasterizer.cull.enable = !!enable;
 	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 
 void fimgSetFaceCullFace(fimgContext *ctx, unsigned int face)
 {
-	ctx->rasterizer.cull.bits.face = face;
+	ctx->rasterizer.cull.face = face;
 	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 void fimgSetFaceCullFront(fimgContext *ctx, int bCW)
 {
-	ctx->rasterizer.cull.bits.clockwise = !!bCW;
+	ctx->rasterizer.cull.clockwise = !!bCW;
 	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 
@@ -103,8 +103,8 @@ void fimgSetFaceCullFront(fimgContext *ctx, int bCW)
  *****************************************************************************/
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 {
-	ctx->rasterizer.yClip.bits.maxval = ymax;
-	ctx->rasterizer.yClip.bits.minval = ymin;
+	ctx->rasterizer.yClip.maxval = ymax;
+	ctx->rasterizer.yClip.minval = ymin;
 
 	fimgWrite(ctx, ctx->rasterizer.yClip.val, FGRA_YCLIP);
 }
@@ -114,9 +114,14 @@ void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
  * SYNOPSIS:	This function sets LOD calculation control.
  * PARAMETERS:	[IN] fimgLODControl ctl: lodcon values
  *****************************************************************************/
-void fimgSetLODControl(fimgContext *ctx, fimgLODControl ctl)
+void fimgSetLODControl(fimgContext *ctx, unsigned int attrib,
+						int lod, int ddx, int ddy)
 {
-	fimgWrite(ctx, ctl.val, FGRA_LODCTL);
+	ctx->rasterizer.lodGen.coef[attrib].lod = lod;
+	ctx->rasterizer.lodGen.coef[attrib].ddx = ddx;
+	ctx->rasterizer.lodGen.coef[attrib].ddy = ddy;
+
+	fimgWrite(ctx, ctx->rasterizer.lodGen.val, FGRA_LODCTL);
 }
 
 /*****************************************************************************
@@ -127,8 +132,8 @@ void fimgSetLODControl(fimgContext *ctx, fimgLODControl ctl)
  *****************************************************************************/
 void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
 {
-	ctx->rasterizer.xClip.bits.maxval = xmax;
-	ctx->rasterizer.xClip.bits.minval = xmin;
+	ctx->rasterizer.xClip.maxval = xmax;
+	ctx->rasterizer.xClip.minval = xmin;
 
 	fimgWrite(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
 }
@@ -206,10 +211,11 @@ void fimgRestoreRasterizerState(fimgContext *ctx)
 	fimgWriteF(ctx, ctx->rasterizer.dOffUnits, FGRA_D_OFF_UNITS);
 	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 	fimgWrite(ctx, ctx->rasterizer.yClip.val, FGRA_YCLIP);
-	fimgWrite(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
 	fimgWriteF(ctx, ctx->rasterizer.pointWidth, FGRA_PWIDTH);
 	fimgWriteF(ctx, ctx->rasterizer.pointWidthMin, FGRA_PSIZE_MIN);
 	fimgWriteF(ctx, ctx->rasterizer.pointWidthMax, FGRA_PSIZE_MAX);
 	fimgWrite(ctx, ctx->rasterizer.spriteCoordAttrib, FGRA_COORDREPLACE);
 	fimgWriteF(ctx, ctx->rasterizer.lineWidth, FGRA_LWIDTH);
+	fimgWrite(ctx, ctx->rasterizer.lodGen.val, FGRA_LODCTL);
+	fimgWrite(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
 }

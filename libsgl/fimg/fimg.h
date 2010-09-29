@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "config.h"
 
 //=============================================================================
 
@@ -24,88 +25,48 @@ typedef struct _fimgContext fimgContext;
  * Global block
  */
 
-/* Type definitions */
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned host_fifo	:1;
-		unsigned hi		:1;
-		unsigned hvf		:1;
-		unsigned vc		:1;
-		unsigned vs		:1;
-		unsigned		:3;
-		unsigned pe		:1;
-		unsigned tse		:1;
-		unsigned ra		:1;
-		unsigned		:1;
-		unsigned ps0		:1;
-		unsigned		:3;
-		unsigned pf0		:1;
-		unsigned		:1;
-		unsigned ccache0	:1;
-		unsigned		:13;
-	} bits;
-} fimgPipelineStatus;
+#define FGHI_PIPELINE_FIFO	(1 << 0)
+#define FGHI_PIPELINE_HOSTIF	(1 << 1)
+#define FGHI_PIPELINE_HVF	(1 << 2)
+#define FGHI_PIPELINE_VCACHE	(1 << 3)
+#define FGHI_PIPELINE_VSHADER	(1 << 4)
+#define FGHI_PIPELINE_PRIM_ENG	(1 << 8)
+#define FGHI_PIPELINE_TRI_ENG	(1 << 9)
+#define FGHI_PIPELINE_RA_ENG	(1 << 10)
+#define FGHI_PIPELINE_PSHADER	(1 << 12)
+#define FGHI_PIPELINE_PER_FRAG	(1 << 16)
+#define FGHI_PIPELINE_CCACHE	(1 << 18)
 
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned		:8;
-		unsigned revision	:8;
-		unsigned minor		:8;
-		unsigned major		:8;
-	} bits;
-} fimgVersion;
+#define FGHI_PIPELINE_ALL ( \
+	FGHI_PIPELINE_FIFO | FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF | \
+	FGHI_PIPELINE_VCACHE | FGHI_PIPELINE_VSHADER | FGHI_PIPELINE_PRIM_ENG |\
+	FGHI_PIPELINE_TRI_ENG | FGHI_PIPELINE_RA_ENG | FGHI_PIPELINE_PSHADER | \
+	FGHI_PIPELINE_PER_FRAG | FGHI_PIPELINE_CCACHE )
 
 /* Functions */
-fimgPipelineStatus fimgGetPipelineStatus(fimgContext *ctx);
-int fimgFlush(fimgContext *ctx/*, fimgPipelineStatus pipelineFlags*/);
+uint32_t fimgGetPipelineStatus(fimgContext *ctx);
+int fimgFlush(fimgContext *ctx);
 int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask);
 int fimgInvalidateFlushCache(fimgContext *ctx,
 			     unsigned int vtcclear, unsigned int tcclear,
 			     unsigned int ccflush, unsigned int zcflush);
 void fimgSoftReset(fimgContext *ctx);
-fimgVersion fimgGetVersion(fimgContext *ctx);
+void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev);
 unsigned int fimgGetInterrupt(fimgContext *ctx);
 void fimgClearInterrupt(fimgContext *ctx);
 void fimgEnableInterrupt(fimgContext *ctx);
 void fimgDisableInterrupt(fimgContext *ctx);
-void fimgSetInterruptBlock(fimgContext *ctx, fimgPipelineStatus pipeMask);
-void fimgSetInterruptState(fimgContext *ctx, fimgPipelineStatus status);
-fimgPipelineStatus fimgGetInterruptState(fimgContext *ctx);
+void fimgSetInterruptBlock(fimgContext *ctx, uint32_t pipeMask);
+void fimgSetInterruptState(fimgContext *ctx, uint32_t status);
+uint32_t fimgGetInterruptState(fimgContext *ctx);
 
 /*
  * Host interface
  */
 
-/* Workaround for rasterizer bug. Use 2 for alternative drawing if 1 fails. */
-#define FIMG_INTERPOLATION_WORKAROUND	1
-/* Workaround for clipper bug. */
-//#define FIMG_CLIPPER_WORKAROUND	1
-/* Enable buffered geometry transfer */
-#define FIMG_USE_VERTEX_BUFFER
-/* Use vertex buffer 0 stride for constant attributes */
-#define FIMG_USE_STRIDE_0_CONSTANTS
-/* Use busy waiting instead of interrupts for FIFO transfers */
-//#define FIMG_FIFO_BUSY_WAIT
-
 #define FIMG_ATTRIB_NUM			10
 
 /* Type definitions */
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned numoutattrib	:4;
-		unsigned envc		:1;
-		unsigned		:11;
-		unsigned autoinc	:1;
-		unsigned		:7;
-		unsigned idxtype	:2;
-		unsigned		:5;
-		unsigned envb		:1;
-	};
-} fimgHInterface;
-
 #define FGHI_NUMCOMP(i)		((i) - 1)
 
 typedef enum {
@@ -227,18 +188,6 @@ typedef enum {
 	FGRA_BFCULL_FACE_BOTH = 3
 } fimgCullingFace;
 
-typedef union {
-	unsigned int val;
-	struct {
-		struct {
-			unsigned lod	:1;
-			unsigned ddx	:1;
-			unsigned ddy	:1;
-		} coef[8];
-		unsigned		:8;
-	} bits;
-} fimgLODControl;
-
 /* Functions */
 void fimgSetPixelSamplePos(fimgContext *ctx, int corner);
 void fimgEnableDepthOffset(fimgContext *ctx, int enable);
@@ -248,7 +197,8 @@ void fimgSetFaceCullFace(fimgContext *ctx, unsigned int face);
 void fimgSetFaceCullFront(fimgContext *ctx, int bCW);
 void fimgSetFaceCullControl(fimgContext *ctx, int bCW,fimgCullingFace face);
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax);
-void fimgSetLODControl(fimgContext *ctx, fimgLODControl ctl);
+void fimgSetLODControl(fimgContext *ctx, unsigned int attrib,
+					int lod, int ddx, int ddy);
 void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax);
 void fimgSetPointWidth(fimgContext *ctx, float pWidth);
 void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin);
