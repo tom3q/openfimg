@@ -175,6 +175,9 @@ void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int first, unsigned int n
 
 	fimgSetHostInterface(ctx, 0, 1);
 
+	// Flush the context
+	fimgQueueFlush(ctx);
+
 	// write the number of vertices
 	words[0] = numVertices;
 	words[1] = 0xffffffff;
@@ -200,7 +203,10 @@ void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = 1;
@@ -228,7 +234,10 @@ void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = 2;
@@ -256,7 +265,10 @@ void fimgDrawNonIndexArraysLineStrips(fimgContext *ctx, unsigned int first, unsi
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = 2;
@@ -284,7 +296,10 @@ void fimgDrawNonIndexArraysLineLoops(fimgContext *ctx, unsigned int first, unsig
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = 2;
@@ -316,7 +331,10 @@ void fimgDrawNonIndexArraysTriangles(fimgContext *ctx, unsigned int first, unsig
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = 3;
@@ -345,7 +363,10 @@ void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, un
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = 3;
@@ -376,7 +397,10 @@ void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = 3;
@@ -407,7 +431,10 @@ void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, un
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = numVertices + 2;
@@ -437,7 +464,10 @@ void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = numVertices + 1;
@@ -478,7 +508,10 @@ void fimgDrawArraysUByteIndex(fimgContext *ctx, unsigned int numVertices, const 
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = numVertices;
@@ -504,7 +537,10 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
 	last.lastattr = 1;
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
 
- fimgSetHostInterface(ctx, 0, 1);
+	fimgSetHostInterface(ctx, 0, 1);
+
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	// write the number of vertices
 	words[0] = numVertices;
@@ -847,242 +883,14 @@ static inline void fimgDrawAutoinc(fimgContext *ctx,
 	fimgSendToFIFO(ctx, 8, words);
 }
 
-#if 0
-/* For points, lines and triangles */
-void fimgDrawArraysBufferedSeparate(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count)
-{
-	unsigned i, attrib, pos = first;
-	fimgArray *a;
-	uint32_t buf = 0;
-
-	//fimgSelectiveFlush(ctx, 3);
-
-	fimgSetupAttributes(ctx, arrays);
-
-	while (count >= FGHI_VERTICES_PER_VB_ATTRIB) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgSelectiveFlush(ctx, 3);
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
-
-		// Points don't need to repeat anything
-		count -= FGHI_VERTICES_PER_VB_ATTRIB;
-		pos += FGHI_VERTICES_PER_VB_ATTRIB;
-
-		// Switch the buffer
-		buf ^= 1;
-	}
-
-	if (count) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos, count);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, count);
-	}
-}
-
-/* For line strips */
-void fimgDrawArraysBufferedRepeatLast(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count)
-{
-	unsigned i, attrib, pos = first;
-	fimgArray *a;
-	uint32_t buf = 0;
-
-	//fimgSelectiveFlush(ctx, 3);
-
-	fimgSetupAttributes(ctx, arrays);
-
-	count--;
-	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 1) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgSelectiveFlush(ctx, 3);
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
-
-		// Repeat last vertex per group
-		count -= FGHI_VERTICES_PER_VB_ATTRIB - 1;
-		pos += FGHI_VERTICES_PER_VB_ATTRIB - 1;
-
-		// Switch the buffer
-		buf ^= 1;
-	}
-
-	if (count) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 1 + count);
-	}
-}
-
-/* For line loops */
-void fimgDrawArraysBufferedRepeatLastLoop(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count)
-{
-	unsigned i, attrib, pos = first;
-	fimgArray *a;
-	uint32_t buf = 0;
-
-	//fimgSelectiveFlush(ctx, 3);
-
-	fimgSetupAttributes(ctx, arrays);
-
-	count--;
-	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 1) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgSelectiveFlush(ctx, 3);
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
-
-		// Repeat last vertex per group
-		count -= FGHI_VERTICES_PER_VB_ATTRIB - 1;
-		pos += FGHI_VERTICES_PER_VB_ATTRIB - 1;
-
-		// Switch the buffer
-		buf ^= 1;
-	}
-
-	if (count) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgSelectiveFlush(ctx, 3);
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 1 + count);
-
-		buf ^= 1;
-	}
-
-	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-		fimgLoadVertexBuffer(ctx, a, 0, 1);
-		fimgLoadVertexBuffer(ctx, a, count - 1, 1);
-		fimgPadVertexBuffer(ctx);
-	}
-
-	fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 2);
-}
-
-/* For triangle strips */
-void fimgDrawArraysBufferedRepeatLastTwo(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count)
-{
-	unsigned i, attrib, pos = first;
-	fimgArray *a;
-	uint32_t buf = 0;
-
-	//fimgSelectiveFlush(ctx, 3);
-
-	fimgSetupAttributes(ctx, arrays);
-
-	count -= 2;
-	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 2) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos - (pos % 2), 1);
-			fimgLoadVertexBuffer(ctx, a, pos - 1 + (pos % 2), 1);
-			fimgLoadVertexBuffer(ctx, a, pos + 2, FGHI_VERTICES_PER_VB_ATTRIB - 2);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgSelectiveFlush(ctx, 3);
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
-
-		// Repeat last two vertices per group
-		count -= FGHI_VERTICES_PER_VB_ATTRIB - 2;
-		pos += FGHI_VERTICES_PER_VB_ATTRIB - 2;
-
-		// Switch the buffer
-		buf ^= 1;
-	}
-
-	if (count) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, pos - (pos % 2), 1);
-			fimgLoadVertexBuffer(ctx, a, pos - 1 + (pos % 2), 1);
-			fimgLoadVertexBuffer(ctx, a, pos + 2, count);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 2 + count);
-	}
-}
-
-/* For triangle fans */
-void fimgDrawArraysBufferedRepeatFirstLast(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count)
-{
-	unsigned i, attrib, pos = first + 1;
-	fimgArray *a;
-	uint32_t buf = 0;
-
-	//fimgSelectiveFlush(ctx, 3);
-
-	fimgSetupAttributes(ctx, arrays);
-
-	count -= 2;
-	while (count >= FGHI_VERTICES_PER_VB_ATTRIB - 2) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, first, 1);
-			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB - 1);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgSelectiveFlush(ctx, 3);
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, FGHI_VERTICES_PER_VB_ATTRIB);
-
-		// Repeat first and last vertex per group
-		count -= FGHI_VERTICES_PER_VB_ATTRIB - 2;
-		pos += FGHI_VERTICES_PER_VB_ATTRIB - 2;
-
-		// Switch the buffer
-		buf ^= 1;
-	}
-
-	if (count) {
-		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
-			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
-			fimgLoadVertexBuffer(ctx, a, first, 1);
-			fimgLoadVertexBuffer(ctx, a, pos, 1 + count);
-			fimgPadVertexBuffer(ctx);
-		}
-
-		fimgDrawAutoinc(ctx, (buf) ? FGHI_VERTICES_PER_VB_ATTRIB : 0, 2 + count);
-	}
-}
-#endif
-
 static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
 		fimgArray *arrays, unsigned int first, unsigned int count)
 {
 	unsigned i, pos = first;
 	fimgArray *a;
 
-	//fimgSelectiveFlush(ctx, 3);
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	fimgSetHostInterface(ctx, 1, 1);
 	fimgSetupAttributes(ctx, arrays);
@@ -1122,7 +930,8 @@ void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
 		return;
 	}
 
-	//fimgSelectiveFlush(ctx, 3);
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	fimgSetHostInterface(ctx, 1, 0);
 	fimgSetupAttributes(ctx, arrays);
@@ -1393,7 +1202,8 @@ static inline void fimgDrawElementsBufferedAutoincUByteIdx(fimgContext *ctx,
 	unsigned i;
 	fimgArray *a;
 
-	//fimgSelectiveFlush(ctx, 3);
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	fimgSetHostInterface(ctx, 1, 1);
 	fimgSetupAttributes(ctx, arrays);
@@ -1421,7 +1231,8 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
 		return;
 	}
 
-	//fimgSelectiveFlush(ctx, 3);
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	fimgSetHostInterface(ctx, 1, 0);
 	fimgSetupAttributes(ctx, arrays);
@@ -1688,7 +1499,8 @@ static inline void fimgDrawElementsBufferedAutoincUShortIdx(fimgContext *ctx,
 	unsigned i;
 	fimgArray *a;
 
-	//fimgSelectiveFlush(ctx, 3);
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	fimgSetHostInterface(ctx, 1, 1);
 	fimgSetupAttributes(ctx, arrays);
@@ -1716,7 +1528,8 @@ void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, fimgArray *arrays,
 		return;
 	}
 
-	//fimgSelectiveFlush(ctx, 3);
+	// Flush the context
+	fimgQueueFlush(ctx);
 
 	fimgSetHostInterface(ctx, 1, 0);
 	fimgSetupAttributes(ctx, arrays);

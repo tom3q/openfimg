@@ -114,23 +114,6 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
 				unsigned int count, const uint8_t *indices);
 void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, fimgArray *arrays,
 				unsigned int count, const uint16_t *indices);
-#if 0
-/* For points, lines and triangles */
-void fimgDrawArraysBufferedSeparate(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count);
-/* For line strips */
-void fimgDrawArraysBufferedRepeatLast(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count);
-/* For line loops */
-void fimgDrawArraysBufferedRepeatLastLoop(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count);
-/* For triangle strips */
-void fimgDrawArraysBufferedRepeatLastTwo(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count);
-/* For triangle fans */
-void fimgDrawArraysBufferedRepeatFirstLast(fimgContext *ctx, fimgArray *arrays,
-					unsigned int first, unsigned int count);
-#endif
 
 #if defined(FIMG_INTERPOLATION_WORKAROUND)
 void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);

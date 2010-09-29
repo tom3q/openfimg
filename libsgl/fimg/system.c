@@ -89,14 +89,20 @@ void fimgDeviceClose(fimgContext *ctx)
 fimgContext *fimgCreateContext(void)
 {
 	fimgContext *ctx;
-	int i;
+	uint32_t *queue;
 
-	if((ctx = malloc(sizeof(*ctx))) == NULL)
+	if ((ctx = malloc(sizeof(*ctx))) == NULL)
 		return NULL;
+
+	if ((queue = malloc(2*FIMG_MAX_QUEUE_LEN*sizeof(uint32_t))) == NULL) {
+		free(ctx);
+		return NULL;
+	}
 
 	memset(ctx, 0, sizeof(fimgContext));
 
 	if(fimgDeviceOpen(ctx)) {
+		free(queue);
 		free(ctx);
 		return NULL;
 	}
@@ -107,7 +113,9 @@ fimgContext *fimgCreateContext(void)
 	fimgCreateRasterizerContext(ctx);
 	fimgCreateFragmentContext(ctx);
 
-	ctx->numAttribs = 0;
+	ctx->queue = queue;
+	ctx->queue[0] = 0;
+	ctx->queueStart = queue;
 
 	return ctx;
 }
@@ -119,6 +127,7 @@ fimgContext *fimgCreateContext(void)
 void fimgDestroyContext(fimgContext *ctx)
 {
 	fimgDeviceClose(ctx);
+	free(ctx->queue);
 	free(ctx);
 }
 
@@ -138,6 +147,10 @@ void fimgRestoreContext(fimgContext *ctx)
 	fimgRestoreRasterizerState(ctx);
 //	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
 	fimgRestoreFragmentState(ctx);
+
+	ctx->queue = ctx->queueStart;
+	ctx->queue[0] = 0;
+	ctx->queueLen = 0;
 }
 
 /**

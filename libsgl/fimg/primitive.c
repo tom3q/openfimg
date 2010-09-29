@@ -80,10 +80,10 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 	ctx->primitive.halfPX = half_px;
 	ctx->primitive.halfPY = half_py;
 
-	fimgWriteF(ctx, ox, FGPE_VIEWPORT_OX);
-	fimgWriteF(ctx, oy, FGPE_VIEWPORT_OY);
-	fimgWriteF(ctx, half_px, FGPE_VIEWPORT_HALF_PX);
-	fimgWriteF(ctx, half_py, FGPE_VIEWPORT_HALF_PY);
+	fimgQueueF(ctx, ox, FGPE_VIEWPORT_OX);
+	fimgQueueF(ctx, oy, FGPE_VIEWPORT_OY);
+	fimgQueueF(ctx, half_px, FGPE_VIEWPORT_HALF_PX);
+	fimgQueueF(ctx, half_py, FGPE_VIEWPORT_HALF_PY);
 }
 
 /*****************************************************************************
@@ -101,8 +101,8 @@ void fimgSetDepthRange(fimgContext *ctx, float n, float f)
 	ctx->primitive.halfDistance = half_distance;
 	ctx->primitive.center = center;
 
-	fimgWriteF(ctx, half_distance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
-	fimgWriteF(ctx, center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
+	fimgQueueF(ctx, half_distance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
+	fimgQueueF(ctx, center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }
 
 void fimgCreatePrimitiveContext(fimgContext *ctx)

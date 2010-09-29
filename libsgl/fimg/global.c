@@ -22,6 +22,10 @@
 #include "fimg_private.h"
 #include <unistd.h>
 
+/*
+ * Global hardware
+ */
+
 #define FGGB_PIPESTATE		0x0000
 #define FGGB_CACHECTL		0x0004
 #define FGGB_RST		0x0008

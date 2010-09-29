@@ -25,8 +25,6 @@
 /* Include public part */
 #include "fimg.h"
 
-// extern volatile void *fimgBase;
-
 /*
  * Global block
  */
@@ -198,24 +196,6 @@ typedef struct {
 	unsigned int	vsOutAttribTable[12];
 	unsigned int	psInAttribTable[12];
 } fimgShaderAttribTable;
-
-/*
-typedef union {
-	unsigned int val;
-	struct {
-		unsigned in		:4;
-		unsigned		:28;
-	};
-} fimgShaderAttribNum;
-*/
-
-/*
- * Texture engine
- */
-
-/*
- * OpenGL 1.1 compatibility
- */
 
 /*
  * Per-fragment unit
@@ -459,6 +439,10 @@ struct _fimgContext {
 	fimgFragmentContext fragment;
 	/* Shared context */
 	unsigned int numAttribs;
+	/* Register queue */
+	unsigned int *queueStart;
+	unsigned int *queue;
+	unsigned int queueLen;
 };
 
 /* Registry accessors */
@@ -484,6 +468,73 @@ static inline float fimgReadF(fimgContext *ctx, unsigned int addr)
 {
 	volatile float *reg = (volatile float *)((volatile char *)ctx->base + addr);
 	return *reg;
+}
+
+/* Register queue */
+#define FIMG_MAX_QUEUE_LEN	64
+
+static inline void fimgQueueFlush(fimgContext *ctx)
+{
+	unsigned int cnt;
+	unsigned int *ptr;
+
+	if (!ctx->queueLen)
+		return;
+
+	/* Above the maximum length it's more effective to restore the whole
+	 * context than just the changed registers */
+	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN) {
+		fimgRestoreContext(ctx);
+		return;
+	}
+
+	cnt = ctx->queueLen;
+	ptr = ctx->queueStart;
+
+	while (cnt--) {
+		fimgWrite(ctx, ptr[1], ptr[0]);
+		ptr += 2;
+	}
+
+	ctx->queueLen = 0;
+	ctx->queue = ctx->queueStart;
+	ctx->queue[0] = 0;
+}
+
+static inline void fimgQueue(fimgContext *ctx, unsigned int data, unsigned int addr)
+{
+	if (ctx->queue[0] == addr) {
+		ctx->queue[1] = data;
+		return;
+	}
+
+	/* Above the maximum length it's more effective to restore the whole
+	 * context than just the changed registers */
+	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN)
+		return;
+
+	ctx->queue += 2;
+	ctx->queueLen++;
+	ctx->queue[0] = addr;
+	ctx->queue[1] = data;
+}
+
+static inline void fimgQueueF(fimgContext *ctx, float data, unsigned int addr)
+{
+	if (ctx->queue[0] == addr) {
+		((float *)ctx->queue)[1] = data;
+		return;
+	}
+
+	/* Above the maximum length it's more effective to restore the whole
+	 * context than just the changed registers */
+	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN)
+		return;
+
+	ctx->queue += 2;
+	ctx->queueLen++;
+	ctx->queue[0] = addr;
+	((float *)ctx->queue)[1] = data;
 }
 
 #endif /* _FIMG_PRIVATE_H_ */

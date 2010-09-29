@@ -988,11 +988,7 @@ GL_API void GL_APIENTRY glDepthRangef (GLclampf zNear, GLclampf zFar)
 	zNear	= clampFloat(zNear);
 	zFar	= clampFloat(zFar);
 
-	getHardware(ctx);
-
 	fimgSetDepthRange(ctx->fimg, zNear, zFar);
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glDepthRangex (GLclampx zNear, GLclampx zFar)
@@ -1009,11 +1005,7 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetViewportParams(ctx->fimg, x, y, width, height);
-
-	putHardware(ctx);
 }
 
 /**
@@ -1386,11 +1378,7 @@ GL_API void GL_APIENTRY glCullFace (GLenum mode)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetFaceCullFace(ctx->fimg, face);
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glFrontFace (GLenum mode)
@@ -1411,11 +1399,7 @@ GL_API void GL_APIENTRY glFrontFace (GLenum mode)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetFaceCullFront(ctx->fimg, cw);
-
-	putHardware(ctx);
 }
 
 /**
@@ -1431,11 +1415,7 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
-
-	putHardware(ctx);
 }
 
 static inline void fglAlphaFunc (GLenum func, GLubyte ref)
@@ -1474,11 +1454,7 @@ static inline void fglAlphaFunc (GLenum func, GLubyte ref)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetAlphaParams(ctx->fimg, ref, fglFunc);
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glAlphaFunc (GLenum func, GLclampf ref)
@@ -1527,12 +1503,8 @@ GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetFrontStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
 	fimgSetBackStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
-
-	putHardware(ctx);
 }
 
 static inline GLint fglActionFromEnum(GLenum action)
@@ -1586,12 +1558,8 @@ GL_API void GL_APIENTRY glStencilOp (GLenum fail, GLenum zfail, GLenum zpass)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetFrontStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
 	fimgSetBackStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glDepthFunc (GLenum func)
@@ -1630,11 +1598,7 @@ GL_API void GL_APIENTRY glDepthFunc (GLenum func)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetDepthParams(ctx->fimg, fglFunc);
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
@@ -1706,11 +1670,7 @@ GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
@@ -1773,23 +1733,15 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetLogicalOpParams(ctx->fimg, fglOp, fglOp);
-
-	putHardware(ctx);
 }
 
 void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
 {
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
 	fimgSetXClip(ctx->fimg, left, right);
 	fimgSetYClip(ctx->fimg, top, bottom);
-
-	putHardware(ctx);
 }
 
 /**
@@ -2330,8 +2282,6 @@ static inline void fglSet(GLenum cap, bool state)
 		return;
 	}
 
-	getHardware(ctx);
-
 	switch (cap) {
 	case GL_CULL_FACE:
 		fimgSetFaceCullEnable(ctx->fimg, state);
@@ -2364,8 +2314,6 @@ static inline void fglSet(GLenum cap, bool state)
 		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);
 		//setError(GL_INVALID_ENUM);
 	}
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glEnable (GLenum cap)
