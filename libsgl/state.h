@@ -34,6 +34,7 @@
 #include "fglstack.h"
 #include "fglmatrix.h"
 #include "fgltextureobject.h"
+#include "fglbufferobject.h"
 #include "fglobject.h"
 
 enum {
@@ -180,6 +181,8 @@ struct FGLContext {
 	FGLShaderState pixelShader;
 	FGLTextureState texture[FGL_MAX_TEXTURE_UNITS];
 	FGLuint unpackAlignment;
+	FGLBufferObjectBinding arrayBuffer;
+	FGLBufferObjectBinding elementArrayBuffer;
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;

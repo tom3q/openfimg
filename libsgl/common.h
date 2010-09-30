@@ -24,6 +24,7 @@
 
 #define FGL_MAX_TEXTURE_UNITS	2
 #define FGL_MAX_TEXTURE_OBJECTS 1024
+#define FGL_MAX_BUFFER_OBJECTS 1024
 #define FGL_MAX_MIPMAP_LEVEL 11
 
 #define likely(x)       __builtin_expect((x),1)

@@ -309,6 +309,177 @@ GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target,
 					floatFromFixed(r), floatFromFixed(q));
 }
 
+/*
+ * Buffer objects
+ */
+
+FGLPoolAllocator<FGLBufferObject, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
+
+GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
+{
+	int name;
+
+	if(n <= 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	while(n--) {
+		name = fglBufferObjects.get();
+		if(name < 0) {
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+		fglBufferObjects[name] = NULL;
+		LOGD("Allocated buffer %d", name);
+		*buffers = name;
+		buffers++;
+	}
+}
+
+GL_API void GL_APIENTRY glDeleteBuffers (GLsizei n, const GLuint *buffers)
+{
+	unsigned name;
+
+	if(n <= 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	while(n--) {
+		name = *buffers;
+		buffers++;
+
+		if(!fglBufferObjects.isValid(name)) {
+			LOGD("Tried to free invalid buffer %d", name);
+			continue;
+		}
+
+		LOGD("Freeing buffer %d", name);
+		delete (fglBufferObjects[name]);
+		fglBufferObjects.put(name);
+	}
+}
+
+GL_API void GL_APIENTRY glBindBuffer (GLenum target, GLuint buffer)
+{
+	FGLBufferObjectBinding *binding;
+
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_ARRAY_BUFFER:
+		binding = &ctx->arrayBuffer;
+		break;
+	case GL_ELEMENT_ARRAY_BUFFER:
+		binding = &ctx->elementArrayBuffer;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if(buffer == 0) {
+		FGLContext *ctx = getContext();
+		if(binding->isBound())
+			binding->unbind();
+		return;
+	}
+
+	if(!fglBufferObjects.isValid(buffer)) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLBufferObject *obj = fglBufferObjects[buffer];
+	if(obj == NULL) {
+		obj = new FGLBufferObject;
+		if (obj == NULL) {
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+		fglBufferObjects[buffer] = obj;
+	}
+
+	if(binding->isBound())
+		binding->unbind();
+
+	obj->bind(binding);
+}
+
+GL_API void GL_APIENTRY glBufferData (GLenum target, GLsizeiptr size,
+					const GLvoid *data, GLenum usage)
+{
+	FGLBufferObjectBinding *binding;
+
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_ARRAY_BUFFER:
+		binding = &ctx->arrayBuffer;
+		break;
+	case GL_ELEMENT_ARRAY_BUFFER:
+		binding = &ctx->elementArrayBuffer;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if (!binding->isBound()) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLBuffer *buf = binding->get();
+
+	if (buf->create(size)) {
+		setError(GL_OUT_OF_MEMORY);
+		return;
+	}
+
+	if (data != NULL)
+		memcpy(buf->memory, data, size);
+}
+
+GL_API void GL_APIENTRY glBufferSubData (GLenum target, GLintptr offset,
+					GLsizeiptr size, const GLvoid *data)
+{
+	FGLBufferObjectBinding *binding;
+
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_ARRAY_BUFFER:
+		binding = &ctx->arrayBuffer;
+		break;
+	case GL_ELEMENT_ARRAY_BUFFER:
+		binding = &ctx->elementArrayBuffer;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if (!binding->isBound()) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLBuffer *buf = binding->get();
+
+	if (offset + size > buf->size) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	memcpy((uint8_t *)buf->memory + offset, data, size);
+}
+
+/*
+ * Arrays
+ */
+
 static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
 					GLint type, GLint stride, GLint width,
 					const GLvoid *pointer)
@@ -366,6 +537,10 @@ GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type,
 	}
 
 	FGLContext *ctx = getContext();
+
+	if(ctx->arrayBuffer.isBound())
+		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
+
 	fglSetupAttribute(ctx, FGL_ARRAY_VERTEX, size, fglType, stride,
 							fglStride, pointer);
 }
@@ -403,6 +578,10 @@ GL_API void GL_APIENTRY glNormalPointer (GLenum type, GLsizei stride,
 	}
 
 	FGLContext *ctx = getContext();
+
+	if(ctx->arrayBuffer.isBound())
+		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
+
 	fglSetupAttribute(ctx, FGL_ARRAY_NORMAL, 3, fglType, stride,
 							fglStride, pointer);
 }
@@ -444,6 +623,10 @@ GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type,
 	}
 
 	FGLContext *ctx = getContext();
+
+	if(ctx->arrayBuffer.isBound())
+		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
+
 	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, 4, fglType, stride,
 							fglStride, pointer);
 }
@@ -472,6 +655,10 @@ GL_API void GL_APIENTRY glPointSizePointerOES (GLenum type, GLsizei stride,
 	}
 
 	FGLContext *ctx = getContext();
+
+	if(ctx->arrayBuffer.isBound())
+		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
+
 	fglSetupAttribute(ctx, FGL_ARRAY_POINT_SIZE, 1, fglType, stride,
 							fglStride, pointer);
 }
@@ -519,6 +706,10 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type,
 	}
 
 	FGLContext *ctx = getContext();
+
+	if(ctx->arrayBuffer.isBound())
+		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
+
 	fglSetupAttribute(ctx, FGL_ARRAY_TEXTURE(ctx->clientActiveTexture),
 				size, fglType, stride, fglStride, pointer);
 }
@@ -776,6 +967,9 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
 
+	if(ctx->elementArrayBuffer.isBound())
+		indices = ctx->elementArrayBuffer.get()->getAddress(indices);
+
 	getHardware(ctx);
 
 	fglSetupMatrices(ctx);
@@ -893,6 +1087,9 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 {
 	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
+
+	if(ctx->elementArrayBuffer.isBound())
+		indices = ctx->elementArrayBuffer.get()->getAddress(indices);
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
 		if(ctx->array[i].enabled) {
