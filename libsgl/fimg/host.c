@@ -561,6 +561,8 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
 #define FGHI_MAX_BYTES_PER_ATTRIB	(FGHI_VERTICES_PER_VB_ATTRIB)*(FGHI_MAX_BYTES_PER_VERTEX)
 #define FGHI_VBADDR_ATTRIB(attrib, buf)	((2*attrib + ((buf)&1))*(FGHI_MAX_BYTES_PER_ATTRIB))
 
+/* Utils */
+
 /*****************************************************************************
  * FUNCTIONS:	fimgSetVtxBufferAddr
  * SYNOPSIS:	This function defines the starting address in vertex buffer,
@@ -599,7 +601,23 @@ static inline void fimgPadVertexBuffer(fimgContext *ctx)
 	}
 }
 
-static inline void fimgSetupAttributes(fimgContext *ctx, fimgArray *arrays)
+static inline void fimgDrawAutoinc(fimgContext *ctx,
+				uint32_t first, uint32_t count)
+{
+	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
+	fimgWrite(ctx, first, FGHI_FIFO_ENTRY);
+}
+
+static inline void fimgSendIndices(fimgContext *ctx,
+					uint32_t first, uint32_t count)
+{
+	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
+
+	while (count--)
+		fimgWrite(ctx, first++, FGHI_FIFO_ENTRY);
+}
+
+static void fimgSetupAttributes(fimgContext *ctx, fimgArray *arrays)
 {
 	fimgVtxBufAttrib vbattr;
 	fimgAttribute last;
@@ -648,11 +666,9 @@ static inline void fimgSetupAttributes(fimgContext *ctx, fimgArray *arrays)
 	fimgWrite(ctx, vbattr.val, FGHI_ATTRIB_VBCTRL(i));
 }
 
-/*
- * AUTOINDEXED
- */
+/* Draw arrays */
 
-static inline void fimgFillVertexBuffer(fimgContext *ctx,
+static void fimgFillVertexBuffer(fimgContext *ctx,
 					fimgArray *a, uint32_t cnt)
 {
 	register uint32_t word;
@@ -744,7 +760,7 @@ static inline void fimgFillVertexBuffer(fimgContext *ctx,
 	}
 }
 
-static inline void fimgPackToVertexBuffer(fimgContext *ctx,
+static void fimgPackToVertexBuffer(fimgContext *ctx,
 				fimgArray *a, uint32_t pos, uint32_t cnt)
 {
 	register uint32_t word;
@@ -834,7 +850,7 @@ static inline void fimgPackToVertexBuffer(fimgContext *ctx,
 	}
 }
 
-static inline void fimgCopyToVertexBuffer(fimgContext *ctx,
+static void fimgCopyToVertexBuffer(fimgContext *ctx,
 				fimgArray *a, uint32_t pos, uint32_t cnt)
 {
 	uint32_t len;
@@ -872,17 +888,6 @@ static inline void fimgLoadVertexBuffer(fimgContext *ctx, fimgArray *a,
 		fimgCopyToVertexBuffer(ctx, a, pos, cnt);
 }
 
-static inline void fimgDrawAutoinc(fimgContext *ctx,
-				uint32_t first, uint32_t count)
-{
-	unsigned int words[2];
-
-	words[0] = count;
-	words[1] = first;
-
-	fimgSendToFIFO(ctx, 8, words);
-}
-
 static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
 		fimgArray *arrays, unsigned int first, unsigned int count)
 {
@@ -902,19 +907,6 @@ static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
 	}
 
 	fimgDrawAutoinc(ctx, 0, count);
-}
-
-/*
- * INDEXED BY CPU
- */
-
-static inline void fimgSendIndices(fimgContext *ctx,
-					uint32_t first, uint32_t count)
-{
-	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
-
-	while (count--)
-		fimgWrite(ctx, first++, FGHI_FIFO_ENTRY);
 }
 
 void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
@@ -972,11 +964,9 @@ void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
 	}
 }
 
-/*
- * DRAW ELEMENTS
- */
+/* Draw elements */
 
-static inline void fimgPackToVertexBufferUByteIdx(fimgContext *ctx,
+static void fimgPackToVertexBufferUByteIdx(fimgContext *ctx,
 				fimgArray *a, const uint8_t *idx, uint32_t cnt)
 {
 	register uint32_t word;
@@ -1063,7 +1053,11 @@ static inline void fimgPackToVertexBufferUByteIdx(fimgContext *ctx,
 	}
 }
 
-static inline void fimgCopy4ToVertexBufferUByteIdx(fimgContext *ctx,
+typedef uint32_t fglVertex8[2];
+typedef uint32_t fglVertex12[3];
+typedef uint32_t fglVertex16[4];
+
+static void fimgCopy4ToVertexBufferUByteIdx(fimgContext *ctx,
 				fimgArray *a, const uint8_t *idx, uint32_t cnt)
 {
 	const uint32_t *data = (const uint32_t *)a->pointer;
@@ -1080,87 +1074,87 @@ static inline void fimgCopy4ToVertexBufferUByteIdx(fimgContext *ctx,
 		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
 }
 
-static inline void fimgCopy8ToVertexBufferUByteIdx(fimgContext *ctx,
+static void fimgCopy8ToVertexBufferUByteIdx(fimgContext *ctx,
 				fimgArray *a, const uint8_t *idx, uint32_t cnt)
 {
-	const uint32_t *data = (const uint32_t *)a->pointer;
+	const fglVertex8 *data = (const fglVertex8 *)a->pointer;
 
 	while (cnt >= 4) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
 		cnt -= 4;
 	}
 
 	while (cnt--) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
 	}
 }
 
-static inline void fimgCopy12ToVertexBufferUByteIdx(fimgContext *ctx,
+static void fimgCopy12ToVertexBufferUByteIdx(fimgContext *ctx,
 				fimgArray *a, const uint8_t *idx, uint32_t cnt)
 {
-	const uint32_t *data = (const uint32_t *)a->pointer;
+	const fglVertex12 *data = (const fglVertex12 *)a->pointer;
 
 	while (cnt >= 4) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
 		cnt -= 4;
 	}
 
 	while (cnt--) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
 	}
 }
 
-static inline void fimgCopy16ToVertexBufferUByteIdx(fimgContext *ctx,
+static void fimgCopy16ToVertexBufferUByteIdx(fimgContext *ctx,
 				fimgArray *a, const uint8_t *idx, uint32_t cnt)
 {
-	const uint32_t *data = (const uint32_t *)a->pointer;
+	const fglVertex16 *data = (const fglVertex16 *)a->pointer;
 
 	while (cnt >= 4) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
 		cnt -= 4;
 	}
 
 	while (cnt--) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
 	}
 }
 
@@ -1273,7 +1267,7 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
 	}
 }
 
-static inline void fimgPackToVertexBufferUShortIdx(fimgContext *ctx,
+static void fimgPackToVertexBufferUShortIdx(fimgContext *ctx,
 				fimgArray *a, const uint16_t *idx, uint32_t cnt)
 {
 	register uint32_t word;
@@ -1360,7 +1354,7 @@ static inline void fimgPackToVertexBufferUShortIdx(fimgContext *ctx,
 	}
 }
 
-static inline void fimgCopy4ToVertexBufferUShortIdx(fimgContext *ctx,
+static void fimgCopy4ToVertexBufferUShortIdx(fimgContext *ctx,
 				fimgArray *a, const uint16_t *idx, uint32_t cnt)
 {
 	const uint32_t *data = (const uint32_t *)a->pointer;
@@ -1377,87 +1371,87 @@ static inline void fimgCopy4ToVertexBufferUShortIdx(fimgContext *ctx,
 		fimgSendToVtxBuffer(ctx, data[*(idx++)]);
 }
 
-static inline void fimgCopy8ToVertexBufferUShortIdx(fimgContext *ctx,
+static void fimgCopy8ToVertexBufferUShortIdx(fimgContext *ctx,
 				fimgArray *a, const uint16_t *idx, uint32_t cnt)
 {
-	const uint32_t *data = (const uint32_t *)a->pointer;
+	const fglVertex8 *data = (const fglVertex8 *)a->pointer;
 
 	while (cnt >= 4) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
 		cnt -= 4;
 	}
 
 	while (cnt--) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][1]);
 	}
 }
 
-static inline void fimgCopy12ToVertexBufferUShortIdx(fimgContext *ctx,
+static void fimgCopy12ToVertexBufferUShortIdx(fimgContext *ctx,
 				fimgArray *a, const uint16_t *idx, uint32_t cnt)
 {
-	const uint32_t *data = (const uint32_t *)a->pointer;
+	const fglVertex12 *data = (const fglVertex12 *)a->pointer;
 
 	while (cnt >= 4) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
 		cnt -= 4;
 	}
 
 	while (cnt--) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][2]);
 	}
 }
 
-static inline void fimgCopy16ToVertexBufferUShortIdx(fimgContext *ctx,
+static void fimgCopy16ToVertexBufferUShortIdx(fimgContext *ctx,
 				fimgArray *a, const uint16_t *idx, uint32_t cnt)
 {
-	const uint32_t *data = (const uint32_t *)a->pointer;
+	const fglVertex16 *data = (const fglVertex16 *)a->pointer;
 
 	while (cnt >= 4) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
 		cnt -= 4;
 	}
 
 	while (cnt--) {
-		fimgSendToVtxBuffer(ctx, data[*(idx)]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 1]);
-		fimgSendToVtxBuffer(ctx, data[*(idx) + 2]);
-		fimgSendToVtxBuffer(ctx, data[*(idx++) + 3]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][0]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][1]);
+		fimgSendToVtxBuffer(ctx, data[*(idx)][2]);
+		fimgSendToVtxBuffer(ctx, data[*(idx++)][3]);
 	}
 }
 
