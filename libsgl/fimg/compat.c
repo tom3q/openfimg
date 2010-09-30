@@ -69,6 +69,9 @@ void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, float *pfData)
 void fimgEnableTexture(fimgContext *ctx, unsigned int unit)
 {
 	unsigned int val;
+	val = fimgRead(ctx, FGVS_CBOOL_START);
+	val |= (1 << unit);
+	fimgWrite(ctx, val, FGVS_CBOOL_START);
 	val = fimgRead(ctx, FGPS_CBOOL_START);
 	val |= (1 << unit);
 	fimgWrite(ctx, val, FGPS_CBOOL_START);
@@ -77,6 +80,9 @@ void fimgEnableTexture(fimgContext *ctx, unsigned int unit)
 void fimgDisableTexture(fimgContext *ctx, unsigned int unit)
 {
 	unsigned int val;
+	val = fimgRead(ctx, FGVS_CBOOL_START);
+	val &= ~(1 << unit);
+	fimgWrite(ctx, val, FGVS_CBOOL_START);
 	val = fimgRead(ctx, FGPS_CBOOL_START);
 	val &= ~(1 << unit);
 	fimgWrite(ctx, val, FGPS_CBOOL_START);

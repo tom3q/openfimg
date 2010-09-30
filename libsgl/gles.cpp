@@ -320,8 +320,7 @@ static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
 	ctx->array[idx].pointer	= pointer;
 
 	if(ctx->array[idx].enabled)
-		fimgSetAttribute(ctx->fimg, idx, ctx->array[idx].type,
-							ctx->array[idx].size);
+		fimgSetAttribute(ctx->fimg, idx, type, size);
 }
 
 GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type,
@@ -1880,7 +1879,7 @@ void fglGenerateMipmaps(FGLTexture *obj)
 
 }
 
-inline size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
+static inline size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 					unsigned int height, unsigned int bpp)
 {
 	size_t offset, size;
@@ -1916,7 +1915,7 @@ inline size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 	return offset;
 }
 
-void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
+static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
@@ -1927,7 +1926,7 @@ void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 	memcpy((uint8_t *)obj->surface.vaddr + offset, pixels, size);
 }
 
-void fglLoadTexture(FGLTexture *obj, unsigned level,
+static void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
@@ -1956,7 +1955,7 @@ static inline uint16_t fglPackLA88(uint8_t l, uint8_t a)
 	return (a << 8) | l;
 }
 
-void fglConvertTexture(FGLTexture *obj, unsigned level,
+static void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
@@ -2077,11 +2076,11 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 					fglLoadTexture(obj, level, pixels,
 						       ctx->unpackAlignment);
 			}
+
+			obj->levels |= 1 << level;
+
+			fglFlushPmemSurface(&obj->surface);
 		}
-
-		obj->levels |= 1 << level;
-
-		fglFlushPmemSurface(&obj->surface);
 
 		return;
 	}
@@ -2139,12 +2138,12 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 				fglLoadTexture(obj, level, pixels,
 						ctx->unpackAlignment);
 		}
+
+		if (obj->genMipmap)
+			fglGenerateMipmaps(obj);
+
+		fglFlushPmemSurface(&obj->surface);
 	}
-
-	if (obj->genMipmap)
-		fglGenerateMipmaps(obj);
-
-	fglFlushPmemSurface(&obj->surface);
 }
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)

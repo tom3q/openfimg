@@ -45,7 +45,7 @@ label notexture0
 
 label notexture1
 	# Store the pixel
-	mov_sat oColor, r0
+	mov oColor, r0
 
 	# Return
 	ret

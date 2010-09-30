@@ -40,12 +40,26 @@ label start
 	# Pass vertex point size
 	mov o3, v3
 
-	# Pass vertex texcoord 0
-	mov o4, v4
+	# Skip if texture0 is disabled
+	bf notexture0, b0
 
-	# Pass vertex texcoord 1
-	mov o5, v5
+	# Transform texture0 coordinates
+	mul r1.xyzw, c8.xyzw,  v4.xxxx
+	mad r1.xyzw, c9.xyzw,  v4.yyyy, r1.xyzw
+	mad r1.xyzw, c10.xyzw, v4.zzzz, r1.xyzw
+	mad o4.xyzw, c11.xyzw, v4.wwww, r1.xyzw
 
+label notexture0
+	# Skip if texture1 is disabled
+	bf notexture1, b1
+
+	# Transform texture1 coordinates
+	mul r2.xyzw, c12.xyzw, v5.xxxx
+	mad r2.xyzw, c13.xyzw, v5.yyyy, r2.xyzw
+	mad r2.xyzw, c14.xyzw, v5.zzzz, r2.xyzw
+	mad o5.xyzw, c15.xyzw, v5.wwww, r2.xyzw
+
+label notexture1
 	# Return
 	ret
 # End of shader code
