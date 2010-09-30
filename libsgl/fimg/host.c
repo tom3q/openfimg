@@ -684,7 +684,7 @@ static void fimgFillVertexBuffer(fimgContext *ctx,
 	// words
 	case 0:
 		// Check if vertices are word aligned
-		if ((unsigned long)a->pointer % 4 == 0 && a->stride % 4 == 0) {
+		if ((unsigned long)a->pointer % 4 == 0) {
 			uint32_t len;
 			const uint32_t *data;
 
@@ -703,7 +703,7 @@ static void fimgFillVertexBuffer(fimgContext *ctx,
 	// halfwords
 	case 2:
 		// Check if vertices are halfword aligned
-		if ((unsigned long)a->pointer % 2 == 0 && a->stride % 2 == 0) {
+		if ((unsigned long)a->pointer % 2 == 0) {
 			uint32_t len;
 			const uint16_t *data;
 
@@ -891,7 +891,7 @@ static inline void fimgLoadVertexBuffer(fimgContext *ctx, fimgArray *a,
 static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
 		fimgArray *arrays, unsigned int first, unsigned int count)
 {
-	unsigned i, pos = first;
+	unsigned i;
 	fimgArray *a;
 
 	// Flush the context
@@ -902,7 +902,7 @@ static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
 
 	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
-		fimgLoadVertexBuffer(ctx, a, pos, count);
+		fimgLoadVertexBuffer(ctx, a, first, count);
 		fimgPadVertexBuffer(ctx);
 	}
 
