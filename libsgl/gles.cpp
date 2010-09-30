@@ -340,11 +340,11 @@ GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type,
 
 	switch(type) {
 	case GL_BYTE:
-		fglType = FGHI_ATTRIB_DT_BYTE;
+		fglType = FGHI_ATTRIB_DT_NBYTE;
 		fglStride = size;
 		break;
 	case GL_SHORT:
-		fglType = FGHI_ATTRIB_DT_SHORT;
+		fglType = FGHI_ATTRIB_DT_NSHORT;
 		fglStride = 2*size;
 		break;
 	case GL_FIXED:
@@ -377,11 +377,11 @@ GL_API void GL_APIENTRY glNormalPointer (GLenum type, GLsizei stride,
 
 	switch(type) {
 	case GL_BYTE:
-		fglType = FGHI_ATTRIB_DT_BYTE;
+		fglType = FGHI_ATTRIB_DT_NBYTE;
 		fglStride = 3;
 		break;
 	case GL_SHORT:
-		fglType = FGHI_ATTRIB_DT_SHORT;
+		fglType = FGHI_ATTRIB_DT_NSHORT;
 		fglStride = 6;
 		break;
 	case GL_FIXED:
@@ -422,7 +422,7 @@ GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type,
 
 	switch(type) {
 	case GL_UNSIGNED_BYTE:
-		fglType = FGHI_ATTRIB_DT_UBYTE;
+		fglType = FGHI_ATTRIB_DT_NUBYTE;
 		fglStride = 1*size;
 		break;
 	case GL_FIXED:
@@ -493,11 +493,11 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type,
 
 	switch(type) {
 	case GL_BYTE:
-		fglType = FGHI_ATTRIB_DT_BYTE;
+		fglType = FGHI_ATTRIB_DT_NBYTE;
 		fglStride = 1*size;
 		break;
 	case GL_SHORT:
-		fglType = FGHI_ATTRIB_DT_SHORT;
+		fglType = FGHI_ATTRIB_DT_NSHORT;
 		fglStride = 2*size;
 		break;
 	case GL_FIXED:
