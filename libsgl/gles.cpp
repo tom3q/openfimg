@@ -2475,10 +2475,7 @@ static inline void fglSet(GLenum cap, bool state)
 	switch (cap) {
 	case GL_TEXTURE_2D:
 		ctx->texture[ctx->activeTexture].enabled = state;
-		return;
-	}
-
-	switch (cap) {
+		break;
 	case GL_CULL_FACE:
 		fimgSetFaceCullEnable(ctx->fimg, state);
 		break;
