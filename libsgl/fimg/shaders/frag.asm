@@ -24,7 +24,7 @@ ps_3_0
 # FIMG version >= 1.5
 fimg_version	0x01050000
 
-%cfloat
+% f cfloat
 
 # 0.0 constant
 def c0, 0.0, 0.0, 0.0, 0.0
@@ -35,78 +35,87 @@ def c2, 0.5, 0.5, 0.5, 0.5
 # 4.0 constant
 def c3, 4.0, 4.0, 4.0, 4.0
 
-# Texture environment color
+# Texture environment color 0
 def c4, 0.0, 0.0, 0.0, 0.0
-# Alpha combiner scale
+# Combiner scale 0
 def c5, 1.0, 1.0, 1.0, 1.0
-# Color combiner scale
-def c6, 1.0, 1.0, 1.0, 1.0
 
-%header
+# Texture environment color 1
+def c6, 0.0, 0.0, 0.0, 0.0
+# Combiner scale 1
+def c7, 1.0, 1.0, 1.0, 1.0
+
+% f header
 
 # Shader header
 label start
 	# Get fragment color
-	mov r2, v1
-	mov r0, v1
+	mov r0, v0
 
 # Code is being inserted here dynamically
 
 ################################################################################
 
-%texture0
+% f texture0
 
 # Sampling function
 #
 # Output:	r1 - texture value
 
 # Texture 0
-	texld r1, v3, s0
+	texld r1, v1, s0
+	mov r2, c4
+	mov r3, c5
 
-%texture1
+% f texture1
 
 # Sampling function
 #
 # Output:	r1 - texture value
 
 # Texture 1
-	texld r1, v4, s1
+	texld r1, v2, s1
+	mov r2, c6
+	mov r3, c7
 
 ################################################################################
 
-%replace
+% f replace
 
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
 # Output:	r0 - new fragment value
 
 # Replace
 	mov r0, r1
 
-%modulate
+% f modulate
 
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
 # Output:	r0 - new fragment value
 
 # Modulate
 	mul r0, r0, r1
 
-%decal
+% f decal
 
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
 # Output:	r0 - new fragment value
 
@@ -115,29 +124,31 @@ label start
 	mul r0.xyz, r0, r3.w
 	mad r0.xyz, r1, r1.w, r0
 
-%blend
+% f blend
 
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r4 - combiner scale
 #
 # Output:	r0 - new fragment value
 
 # Blend
-	mov r3.w, r1
-	add r3.xyz, c1, -r1
-	mul r0, r0, r3
+	mov r4.w, r1
+	add r4.xyz, c1, -r1
+	mul r0, r0, r4
 	mad r0.xyz, c4, r1, r0
 
-%add
+% f add
 
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
 # Output:	r0 - new fragment value
 
@@ -145,30 +156,14 @@ label start
 	mul r0.w, r0, r1
 	add r0.xyz, r0, r1
 
-%combine_a
+% f combine_col
 
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
-#
-# Output:	r0 - new fragment value
-
-# Alpha combiner
-	# Here go argument functions for alpha combiner
-	# Here go argument modifier functions for alpha combiner
-	# Here goes combine function for alpha combiner
-
-	mul_sat r0.w, r3, c5
-
-%combine_col
-
-# Texturing function
-#
-# Inputs:	r0 - current fragment value
-#		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
 # Output:	r0 - new fragment value
 
@@ -177,410 +172,456 @@ label start
 	# Here go argument modifier functions for color combiner
 	# Here goes combine function for color combiner
 
-	mul_sat r0.xyz, r3, c6
+	mul_sat r0.xyz, r4, r3
+
+% f combine_a
+
+# Texturing function
+#
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
+#
+# Output:	r0 - new fragment value
+
+# Alpha combiner
+	# Here go argument functions for alpha combiner
+	# Here go argument modifier functions for alpha combiner
+	# Here goes combine function for alpha combiner
+
+	mul_sat r0.w, r4, r3
+
+% f combine_uni
+
+# Texturing function
+#
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
+#
+# Output:	r0 - new fragment value
+
+# Unified combiner
+	# Here go argument functions for unified combiner
+	# Here go argument modifier functions for unified combiner
+	# Here goes combine function for unified combiner
+
+	mul_sat r0, r4, r3
 
 ################################################################################
 
-%combine_arg0tex
+% f combine_arg0tex
 
 # Combine argument 0 function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r3 - argument 0
-
-# Texture
-	mov r3, r1
-
-%combine_arg0const
-
-# Combine argument 0 function
-#
-# Inputs:	r0 - current fragment value
-#		r1 - texture value
-#		r2 - original fragment value
-#
-# Output:	r3 - argument 0
-
-# Constant
-	mov r3, c4
-
-%combine_arg0col
-
-# Combine argument 0 function
-#
-# Inputs:	r0 - current fragment value
-#		r1 - texture value
-#		r2 - original fragment value
-#
-# Output:	r3 - argument 0
-
-# Primary color
-	mov r3, r2
-
-%combine_arg0prev
-
-# Combine argument 0 function
-#
-# Inputs:	r0 - current fragment value
-#		r1 - texture value
-#		r2 - original fragment value
-#
-# Output:	r3 - argument 0
-
-# Previous
-	mov r3, r0
-
-################################################################################
-
-%combine_arg1tex
-
-# Combine argument 1 function
-#
-# Inputs:	r0 - current fragment value
-#		r1 - texture value
-#		r2 - original fragment value
-#
-# Output:	r4 - argument 1
+# Output:	r4 - argument 0
 
 # Texture
 	mov r4, r1
 
-%combine_arg1const
+% f combine_arg0const
 
-# Combine argument 1 function
+# Combine argument 0 function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r4 - argument 1
+# Output:	r4 - argument 0
 
 # Constant
-	mov r4, c4
-
-%combine_arg1col
-
-# Combine argument 1 function
-#
-# Inputs:	r0 - current fragment value
-#		r1 - texture value
-#		r2 - original fragment value
-#
-# Output:	r4 - argument 1
-
-# Primary color
 	mov r4, r2
 
-%combine_arg1prev
+% f combine_arg0col
 
-# Combine argument 1 function
+# Combine argument 0 function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r4 - argument 1
+# Output:	r4 - argument 0
+
+# Primary color
+	mov r4, v0
+
+% f combine_arg0prev
+
+# Combine argument 0 function
+#
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#
+# Output:	r4 - argument 0
 
 # Previous
 	mov r4, r0
 
 ################################################################################
 
-%combine_arg2tex
+% f combine_arg1tex
 
-# Combine argument 2 function
+# Combine argument 1 function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r5 - argument 2
+# Output:	r5 - argument 1
 
 # Texture
 	mov r5, r1
 
-%combine_arg2const
+% f combine_arg1const
 
-# Combine argument 2 function
+# Combine argument 1 function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r5 - argument 2
+# Output:	r5 - argument 1
 
 # Constant
-	mov r5, c4
-
-%combine_arg2col
-
-# Combine argument 2 function
-#
-# Inputs:	r0 - current fragment value
-#		r1 - texture value
-#		r2 - original fragment value
-#
-# Output:	r5 - argument 2
-
-# Primary color
 	mov r5, r2
 
-%combine_arg2prev
+% f combine_arg1col
 
-# Combine argument 2 function
+# Combine argument 1 function
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
-#		r2 - original fragment value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r5 - argument 2
+# Output:	r5 - argument 1
+
+# Primary color
+	mov r5, v0
+
+% f combine_arg1prev
+
+# Combine argument 1 function
+#
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
+#
+# Output:	r5 - argument 1
 
 # Previous
 	mov r5, r0
 
 ################################################################################
 
-%combine_arg0_sc
+% f combine_arg2tex
 
-# Combine argument 0 modifier
+# Combine argument 2 function
 #
-# Inputs:	r3 - argument 0
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r3 - modified argument 0
+# Output:	r6 - argument 2
 
-# Source color
-	# Do nothing
+# Texture
+	mov r6, r1
 
-%combine_arg0_omsc
+% f combine_arg2const
 
-# Combine argument 0 modifier
+# Combine argument 2 function
 #
-# Inputs:	r3 - argument 0
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r3 - modified argument 0
+# Output:	r6 - argument 2
 
-# One minus source color
-	add r3, c1, -r3
+# Constant
+	mov r6, r2
 
-%combine_arg0_sa
+% f combine_arg2col
 
-# Combine argument 0 modifier
+# Combine argument 2 function
 #
-# Inputs:	r3 - argument 0
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r3 - modified argument 0
+# Output:	r6 - argument 2
 
-# Source alpha
-	mov r3, r3.w
+# Primary color
+	mov r6, v0
 
-%combine_arg0_omsa
+% f combine_arg2prev
 
-# Combine argument 0 modifier
+# Combine argument 2 function
 #
-# Inputs:	r3 - argument 0
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
 #
-# Output:	r3 - modified argument 0
+# Output:	r6 - argument 2
 
-# One minus source alpha
-	add r3, c1, -r3.w
+# Previous
+	mov r6, r0
 
 ################################################################################
 
-%combine_arg1_sc
+% f combine_arg0sc
 
-# Combine argument 1 modifier
+# Combine argument 0 modifier
 #
-# Inputs:	r4 - argument 1
+# Inputs:	r4 - argument 0
 #
-# Output:	r4 - modified argument 1
+# Output:	r4 - modified argument 0
 
 # Source color
 	# Do nothing
 
-%combine_arg1_omsc
+% f combine_arg0omsc
 
-# Combine argument 1 modifier
+# Combine argument 0 modifier
 #
-# Inputs:	r4 - argument 1
+# Inputs:	r4 - argument 0
 #
-# Output:	r4 - modified argument 1
+# Output:	r4 - modified argument 0
 
 # One minus source color
 	add r4, c1, -r4
 
-%combine_arg1_sa
+% f combine_arg0sa
 
-# Combine argument 1 modifier
+# Combine argument 0 modifier
 #
-# Inputs:	r4 - argument 1
+# Inputs:	r4 - argument 0
 #
-# Output:	r4 - modified argument 1
+# Output:	r4 - modified argument 0
 
 # Source alpha
 	mov r4, r4.w
 
-%combine_arg1_omsa
+% f combine_arg0omsa
 
-# Combine argument 1 modifier
+# Combine argument 0 modifier
 #
-# Inputs:	r4 - argument 1
+# Inputs:	r4 - argument 0
 #
-# Output:	r4 - modified argument 1
+# Output:	r4 - modified argument 0
 
 # One minus source alpha
 	add r4, c1, -r4.w
 
 ################################################################################
 
-%combine_arg2_sc
+% f combine_arg1sc
 
-# Combine argument 2 modifier
+# Combine argument 1 modifier
 #
-# Inputs:	r5 - argument 2
+# Inputs:	r5 - argument 1
 #
-# Output:	r5 - modified argument 2
+# Output:	r5 - modified argument 1
 
 # Source color
 	# Do nothing
 
-%combine_arg2_omsc
+% f combine_arg1omsc
 
-# Combine argument 2 modifier
+# Combine argument 1 modifier
 #
-# Inputs:	r5 - argument 2
+# Inputs:	r5 - argument 1
 #
-# Output:	r5 - modified argument 2
+# Output:	r5 - modified argument 1
 
 # One minus source color
 	add r5, c1, -r5
 
-%combine_arg2_sa
+% f combine_arg1sa
 
-# Combine argument 2 modifier
+# Combine argument 1 modifier
 #
-# Inputs:	r5 - argument 2
+# Inputs:	r5 - argument 1
 #
-# Output:	r5 - modified argument 2
+# Output:	r5 - modified argument 1
 
 # Source alpha
 	mov r5, r5.w
 
-%combine_arg2_omsa
+% f combine_arg1omsa
 
-# Combine argument 2 modifier
+# Combine argument 1 modifier
 #
-# Inputs:	r5 - argument 2
+# Inputs:	r5 - argument 1
 #
-# Output:	r5 - modified argument 2
+# Output:	r5 - modified argument 1
 
 # One minus source alpha
 	add r5, c1, -r5.w
 
 ################################################################################
 
-%combine_replace
+% f combine_arg2sc
+
+# Combine argument 2 modifier
+#
+# Inputs:	r6 - argument 2
+#
+# Output:	r6 - modified argument 2
+
+# Source color
+	# Do nothing
+
+% f combine_arg2omsc
+
+# Combine argument 2 modifier
+#
+# Inputs:	r6 - argument 2
+#
+# Output:	r6 - modified argument 2
+
+# One minus source color
+	add r6, c1, -r6
+
+% f combine_arg2sa
+
+# Combine argument 2 modifier
+#
+# Inputs:	r6 - argument 2
+#
+# Output:	r6 - modified argument 2
+
+# Source alpha
+	mov r6, r6.w
+
+% f combine_arg2omsa
+
+# Combine argument 2 modifier
+#
+# Inputs:	r6 - argument 2
+#
+# Output:	r6 - modified argument 2
+
+# One minus source alpha
+	add r6, c1, -r6.w
+
+################################################################################
+
+% f combine_replace
 
 # Combine function
 #
-# Inputs:	r3 - argument 0
-#		r4 - argument 1
-#		r5 - argument 2
+# Inputs:	r4 - argument 0
+#		r5 - argument 1
+#		r6 - argument 2
 #
-# Output:	r3 - result
+# Output:	r4 - result
 
 # Replace
 	# Do nothing
 
-%combine_modulate
+% f combine_modulate
 
 # Combine function
 #
-# Inputs:	r3 - argument 0
-#		r4 - argument 1
-#		r5 - argument 2
+# Inputs:	r4 - argument 0
+#		r5 - argument 1
+#		r6 - argument 2
 #
-# Output:	r3 - result
+# Output:	r4 - result
 
 # Modulate
-	mul r3, r3, r4
+	mul r4, r4, r5
 
-%combine_add
+% f combine_add
 
 # Combine function
 #
-# Inputs:	r3 - argument 0
-#		r4 - argument 1
-#		r5 - argument 2
+# Inputs:	r4 - argument 0
+#		r5 - argument 1
+#		r6 - argument 2
 #
-# Output:	r3 - result
+# Output:	r4 - result
 
 # Add
-	add r3, r3, r4
+	add r4, r4, r5
 
-%combine_adds
+% f combine_adds
 
 # Combine function
 #
-# Inputs:	r3 - argument 0
-#		r4 - argument 1
-#		r5 - argument 2
+# Inputs:	r4 - argument 0
+#		r5 - argument 1
+#		r6 - argument 2
 #
-# Output:	r3 - result
+# Output:	r4 - result
 
 # Add signed
-	add r3, r3, r4
-	add r3, r3, -c2
+	add r4, r4, r5
+	add r4, r4, -c2
 
-%combine_intepolate
+% f combine_intepolate
 
 # Combine function
 #
-# Inputs:	r3 - argument 0
-#		r4 - argument 1
-#		r5 - argument 2
+# Inputs:	r4 - argument 0
+#		r5 - argument 1
+#		r6 - argument 2
 #
-# Output:	r3 - result
+# Output:	r4 - result
 
 # Interpolate
-	mul r3, r3, r5
-	add r5, c1, -r5
-	mad r3, r4, r5, r3
+	mul r4, r4, r6
+	add r6, c1, -r6
+	mad r4, r5, r6, r4
 
-%combine_subtract
+% f combine_subtract
 
 # Combine function
 #
-# Inputs:	r3 - argument 0
-#		r4 - argument 1
-#		r5 - argument 2
+# Inputs:	r4 - argument 0
+#		r5 - argument 1
+#		r6 - argument 2
 #
-# Output:	r3 - result
+# Output:	r4 - result
 
 # Subtract
-	add r3, r3, -r4
+	add r4, r4, -r5
 
-%combine_dot3
+% f combine_dot3
 
 # Combine function
 #
-# Inputs:	r3 - argument 0
-#		r4 - argument 1
-#		r5 - argument 2
+# Inputs:	r4 - argument 0
+#		r5 - argument 1
+#		r6 - argument 2
 #
-# Output:	r3 - result
+# Output:	r4 - result
 
 # Dot 3
-	add r3, r3, -c2
 	add r4, r4, -c2
-	dp3 r3, r3, r4
-	mul r3, r3, c3
+	add r5, r5, -c2
+	dp3 r4, r4, r5
+	mul r4, r4, c3
 
 ################################################################################
 
-%footer
+% f footer
 
 # Shader footer
 	# Emit the pixel
