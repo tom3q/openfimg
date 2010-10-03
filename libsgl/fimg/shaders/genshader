@@ -1,0 +1,83 @@
+#!/bin/gawk -f
+
+function compile(f, t)
+{
+	if (f != "") {
+		close(f)
+		system("wine orion.exe -a -" t " " f)
+		system("rm -f " f " " f ".h ")
+	}
+}
+
+function remove(f)
+{
+	if (f != "") {
+		system("rm -f " f)
+	}
+}
+
+function copy(s, d)
+{
+	if (s != "" && d != "") {
+		system("cp " s " " d)
+	}
+}
+
+BEGIN {
+	blkfile = ""
+	cmnfile = ""
+	common = 1
+}
+
+FNR == 1 {
+	compile(blkfile, type)
+
+	common = 1
+
+	split(FILENAME, tmp, ".")
+	file = tmp[1]
+	delete tmp
+
+	cmnfile = file ".common"
+	remove(cmnfile)
+}
+
+/^%.*$/ {
+	common = 0
+
+	compile(blkfile, type)
+
+	if ($2 == "" || $3 == "") {
+		print "Syntax error at line " FNR " in file " FILENAME
+		exit 1
+	}
+
+	if ($2 != "f" && $2 != "v") {
+		print "Invalid shader type at line " FNR " in file " FILENAME
+		print "Valid shader types are 'f' and 'v'"
+		exit 1
+	}
+
+	print "Generating " $3
+
+	type = $2
+	blkfile = file "_" $3
+
+	close(cmnfile)
+	copy(cmnfile, blkfile)
+
+	next
+}
+
+{ 
+	if (common == 1) {
+		print $0 >> cmnfile
+	} else {
+		print $0 >> blkfile
+	}
+}
+
+END {
+	compile(blkfile, type)
+	remove(cmnfile)
+}
