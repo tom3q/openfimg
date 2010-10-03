@@ -24,6 +24,8 @@ ps_3_0
 # FIMG version >= 1.5
 fimg_version	0x01050000
 
+%cfloat
+
 # 0.0 constant
 def c0, 0.0, 0.0, 0.0, 0.0
 # 1.0 constant
@@ -40,6 +42,8 @@ def c5, 1.0, 1.0, 1.0, 1.0
 # Color combiner scale
 def c6, 1.0, 1.0, 1.0, 1.0
 
+%header
+
 # Shader header
 label start
 	# Get fragment color
@@ -48,13 +52,29 @@ label start
 
 # Code is being inserted here dynamically
 
-# Shader footer
-	# Emit the pixel
-	mov oColor, r0
-	# Return
-	ret
+################################################################################
+
+%texture0
+
+# Sampling function
+#
+# Output:	r1 - texture value
+
+# Texture 0
+	texld r1, v3, s0
+
+%texture1
+
+# Sampling function
+#
+# Output:	r1 - texture value
+
+# Texture 1
+	texld r1, v4, s1
 
 ################################################################################
+
+%replace
 
 # Texturing function
 #
@@ -67,6 +87,8 @@ label start
 # Replace
 	mov r0, r1
 
+%modulate
+
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
@@ -77,6 +99,8 @@ label start
 
 # Modulate
 	mul r0, r0, r1
+
+%decal
 
 # Texturing function
 #
@@ -90,6 +114,8 @@ label start
 	add r3.w, c1, -r1
 	mul r0.xyz, r0, r3.w
 	mad r0.xyz, r1, r1.w, r0
+
+%blend
 
 # Texturing function
 #
@@ -105,6 +131,8 @@ label start
 	mul r0, r0, r3
 	mad r0.xyz, c4, r1, r0
 
+%add
+
 # Texturing function
 #
 # Inputs:	r0 - current fragment value
@@ -116,6 +144,8 @@ label start
 # Add
 	mul r0.w, r0, r1
 	add r0.xyz, r0, r1
+
+%combine_a
 
 # Texturing function
 #
@@ -131,6 +161,8 @@ label start
 	# Here goes combine function for alpha combiner
 
 	mul_sat r0.w, r3, c5
+
+%combine_col
 
 # Texturing function
 #
@@ -149,6 +181,8 @@ label start
 
 ################################################################################
 
+%combine_arg0tex
+
 # Combine argument 0 function
 #
 # Inputs:	r0 - current fragment value
@@ -159,6 +193,8 @@ label start
 
 # Texture
 	mov r3, r1
+
+%combine_arg0const
 
 # Combine argument 0 function
 #
@@ -171,6 +207,8 @@ label start
 # Constant
 	mov r3, c4
 
+%combine_arg0col
+
 # Combine argument 0 function
 #
 # Inputs:	r0 - current fragment value
@@ -181,6 +219,8 @@ label start
 
 # Primary color
 	mov r3, r2
+
+%combine_arg0prev
 
 # Combine argument 0 function
 #
@@ -195,6 +235,8 @@ label start
 
 ################################################################################
 
+%combine_arg1tex
+
 # Combine argument 1 function
 #
 # Inputs:	r0 - current fragment value
@@ -205,6 +247,8 @@ label start
 
 # Texture
 	mov r4, r1
+
+%combine_arg1const
 
 # Combine argument 1 function
 #
@@ -217,6 +261,8 @@ label start
 # Constant
 	mov r4, c4
 
+%combine_arg1col
+
 # Combine argument 1 function
 #
 # Inputs:	r0 - current fragment value
@@ -227,6 +273,8 @@ label start
 
 # Primary color
 	mov r4, r2
+
+%combine_arg1prev
 
 # Combine argument 1 function
 #
@@ -241,6 +289,8 @@ label start
 
 ################################################################################
 
+%combine_arg2tex
+
 # Combine argument 2 function
 #
 # Inputs:	r0 - current fragment value
@@ -251,6 +301,8 @@ label start
 
 # Texture
 	mov r5, r1
+
+%combine_arg2const
 
 # Combine argument 2 function
 #
@@ -263,6 +315,8 @@ label start
 # Constant
 	mov r5, c4
 
+%combine_arg2col
+
 # Combine argument 2 function
 #
 # Inputs:	r0 - current fragment value
@@ -273,6 +327,8 @@ label start
 
 # Primary color
 	mov r5, r2
+
+%combine_arg2prev
 
 # Combine argument 2 function
 #
@@ -287,6 +343,8 @@ label start
 
 ################################################################################
 
+%combine_arg0_sc
+
 # Combine argument 0 modifier
 #
 # Inputs:	r3 - argument 0
@@ -295,6 +353,8 @@ label start
 
 # Source color
 	# Do nothing
+
+%combine_arg0_omsc
 
 # Combine argument 0 modifier
 #
@@ -305,6 +365,8 @@ label start
 # One minus source color
 	add r3, c1, -r3
 
+%combine_arg0_sa
+
 # Combine argument 0 modifier
 #
 # Inputs:	r3 - argument 0
@@ -313,6 +375,8 @@ label start
 
 # Source alpha
 	mov r3, r3.w
+
+%combine_arg0_omsa
 
 # Combine argument 0 modifier
 #
@@ -325,6 +389,8 @@ label start
 
 ################################################################################
 
+%combine_arg1_sc
+
 # Combine argument 1 modifier
 #
 # Inputs:	r4 - argument 1
@@ -333,6 +399,8 @@ label start
 
 # Source color
 	# Do nothing
+
+%combine_arg1_omsc
 
 # Combine argument 1 modifier
 #
@@ -343,6 +411,8 @@ label start
 # One minus source color
 	add r4, c1, -r4
 
+%combine_arg1_sa
+
 # Combine argument 1 modifier
 #
 # Inputs:	r4 - argument 1
@@ -351,6 +421,8 @@ label start
 
 # Source alpha
 	mov r4, r4.w
+
+%combine_arg1_omsa
 
 # Combine argument 1 modifier
 #
@@ -363,6 +435,8 @@ label start
 
 ################################################################################
 
+%combine_arg2_sc
+
 # Combine argument 2 modifier
 #
 # Inputs:	r5 - argument 2
@@ -371,6 +445,8 @@ label start
 
 # Source color
 	# Do nothing
+
+%combine_arg2_omsc
 
 # Combine argument 2 modifier
 #
@@ -381,6 +457,8 @@ label start
 # One minus source color
 	add r5, c1, -r5
 
+%combine_arg2_sa
+
 # Combine argument 2 modifier
 #
 # Inputs:	r5 - argument 2
@@ -389,6 +467,8 @@ label start
 
 # Source alpha
 	mov r5, r5.w
+
+%combine_arg2_omsa
 
 # Combine argument 2 modifier
 #
@@ -401,6 +481,8 @@ label start
 
 ################################################################################
 
+%combine_replace
+
 # Combine function
 #
 # Inputs:	r3 - argument 0
@@ -411,6 +493,8 @@ label start
 
 # Replace
 	# Do nothing
+
+%combine_modulate
 
 # Combine function
 #
@@ -423,6 +507,8 @@ label start
 # Modulate
 	mul r3, r3, r4
 
+%combine_add
+
 # Combine function
 #
 # Inputs:	r3 - argument 0
@@ -433,6 +519,8 @@ label start
 
 # Add
 	add r3, r3, r4
+
+%combine_adds
 
 # Combine function
 #
@@ -445,6 +533,8 @@ label start
 # Add signed
 	add r3, r3, r4
 	add r3, r3, -c2
+
+%combine_intepolate
 
 # Combine function
 #
@@ -459,6 +549,8 @@ label start
 	add r5, c1, -r5
 	mad r3, r4, r5, r3
 
+%combine_subtract
+
 # Combine function
 #
 # Inputs:	r3 - argument 0
@@ -469,6 +561,8 @@ label start
 
 # Subtract
 	add r3, r3, -r4
+
+%combine_dot3
 
 # Combine function
 #
@@ -483,5 +577,15 @@ label start
 	add r4, r4, -c2
 	dp3 r3, r3, r4
 	mul r3, r3, c3
+
+################################################################################
+
+%footer
+
+# Shader footer
+	# Emit the pixel
+	mov oColor, r0
+	# Return
+	ret
 
 # End of shader code
