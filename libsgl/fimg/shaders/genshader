@@ -6,6 +6,11 @@ function compile(f, t)
 		close(f)
 		system("wine orion.exe -a -" t " " f)
 		system("rm -f " f " " f ".h ")
+		print "static const unsigned int " f "[] = {" >> file ".h"
+		system("hexdump -s 72 -v -e '1 \"\t0x%08x, 0x%08x, 0x%08x, 0x%08x,\"' -e '\"\n\"' " f ".bin >> " file ".h")
+		print "};" >> file ".h"
+		print "" >> file ".h"
+		system("rm -f " f ".bin")
 	}
 }
 
@@ -40,6 +45,7 @@ FNR == 1 {
 
 	cmnfile = file ".common"
 	remove(cmnfile)
+	remove(file ".h")
 }
 
 /^%.*$/ {
