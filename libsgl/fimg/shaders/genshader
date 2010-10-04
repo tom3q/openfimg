@@ -36,6 +36,9 @@ BEGIN {
 
 FNR == 1 {
 	compile(blkfile, type)
+	if(blkfile != "") {
+		print "#endif" >> file ".h"
+	}
 
 	common = 1
 
@@ -45,7 +48,11 @@ FNR == 1 {
 
 	cmnfile = file ".common"
 	remove(cmnfile)
+
 	remove(file ".h")
+	print "#ifndef _" toupper(file) "_H_" >> file ".h"
+	print "#define _" toupper(file) "_H_" >> file ".h"
+	print "" >> file ".h"
 }
 
 /^%.*$/ {
@@ -85,5 +92,10 @@ FNR == 1 {
 
 END {
 	compile(blkfile, type)
+
+        if(blkfile != "") {
+                print "#endif" >> file ".h"
+        }
+
 	remove(cmnfile)
 }

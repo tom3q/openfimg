@@ -1,3 +1,6 @@
+#ifndef _FRAG_H_
+#define _FRAG_H_
+
 static const unsigned int frag_cfloat[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x3f800000, 0x3f800000, 0x3f800000, 0x3f800000,
@@ -194,3 +197,4 @@ static const unsigned int frag_footer[] = {
 	0x00000000, 0x00000000, 0x1e000000, 0x00000000,
 };
 
+#endif
