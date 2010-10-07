@@ -112,6 +112,7 @@ fimgContext *fimgCreateContext(void)
 	fimgCreatePrimitiveContext(ctx);
 	fimgCreateRasterizerContext(ctx);
 	fimgCreateFragmentContext(ctx);
+	fimgCreateCompatContext(ctx);
 
 	ctx->queue = queue;
 	ctx->queue[0] = 0;
@@ -147,6 +148,7 @@ void fimgRestoreContext(fimgContext *ctx)
 	fimgRestoreRasterizerState(ctx);
 //	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
 	fimgRestoreFragmentState(ctx);
+	fimgRestoreCompatState(ctx);
 
 	ctx->queue = ctx->queueStart;
 	ctx->queue[0] = 0;

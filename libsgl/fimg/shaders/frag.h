@@ -54,6 +54,9 @@ static const unsigned int frag_add[] = {
 	0x01000000, 0x0100e401, 0x023820e4, 0x00000000,
 };
 
+static const unsigned int frag_combine[] = {
+};
+
 static const unsigned int frag_combine_col[] = {
 	0x03000000, 0x0104e401, 0x033a20e4, 0x00000000,
 };
@@ -175,7 +178,7 @@ static const unsigned int frag_combine_adds[] = {
 	0x02000000, 0x0104e442, 0x027824e4, 0x00000000,
 };
 
-static const unsigned int frag_combine_intepolate[] = {
+static const unsigned int frag_combine_interpolate[] = {
 	0x06000000, 0x0104e401, 0x037824e4, 0x00000000,
 	0x06000000, 0x0201e441, 0x227826e4, 0x00000000,
 	0x06e40104, 0x0105e401, 0x0ef824e4, 0x00000000,

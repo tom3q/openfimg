@@ -122,8 +122,26 @@ unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level)
 
 void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 {
-	/* This should get optimized into burst copy by the compiler */
-	memcpy((void *)(ctx->base + FGTU_TSTA(unit)), texture, sizeof(*texture));
+	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base +FGTU_TSTA(unit));
+	uint32_t *data = (uint32_t *)texture;
+	unsigned count = sizeof(fimgTexture);
+
+	while (count >= 4) {
+		*(reg++) = *(data++);
+		*(reg++) = *(data++);
+		*(reg++) = *(data++);
+		*(reg++) = *(data++);
+		count -= 4;
+	}
+
+	if (count--)
+		*(reg++) = *(data++);
+
+	if (count--)
+		*(reg++) = *(data++);
+
+	if (count--)
+		*(reg++) = *(data++);
 }
 
 /*****************************************************************************

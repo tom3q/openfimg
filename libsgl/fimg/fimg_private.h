@@ -25,6 +25,9 @@
 /* Include public part */
 #include "fimg.h"
 
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
 /*
  * Global block
  */
@@ -103,6 +106,10 @@ typedef union {
 	};
 	unsigned int val;
 } fimgAttribute;
+
+void fimgGetHardware(fimgContext *ctx);
+void fimgFlushContext(fimgContext *ctx);
+void fimgPutHardware(fimgContext *ctx);
 
 /*
  * Primitive Engine
@@ -428,6 +435,40 @@ typedef struct {
 void fimgCreateFragmentContext(fimgContext *ctx);
 void fimgRestoreFragmentState(fimgContext *ctx);
 
+typedef struct {
+	fimgCombArgSrc src;
+	fimgCombArgMod mod;
+} fimgCombArg;
+
+typedef struct {
+	fimgCombFunc func;
+	fimgCombArg arg[3];
+} fimgCombiner;
+
+typedef struct {
+	int enabled;
+	int dirty;
+	fimgTexFunc func;
+	fimgCombiner combc;
+	fimgCombiner comba;
+	float env[4];
+	float scale[4];
+	fimgTexture *texture;
+} fimgTextureCompat;
+
+typedef struct {
+	int vsDirty;
+	int psDirty;
+	fimgTextureCompat texture[FIMG_NUM_TEXTURE_UNITS];
+	int matrixDirty[2 + FIMG_NUM_TEXTURE_UNITS];
+	float matrix[4*16];
+	/* More to come */
+} fimgCompatContext;
+
+void fimgCreateCompatContext(fimgContext *ctx);
+void fimgRestoreCompatState(fimgContext *ctx);
+void fimgCompatFlush(fimgContext *ctx);
+
 struct _fimgContext {
 	volatile char *base;
 	int fd;
@@ -437,6 +478,7 @@ struct _fimgContext {
 	fimgPrimitiveContext primitive;
 	fimgRasterizerContext rasterizer;
 	fimgFragmentContext fragment;
+	fimgCompatContext compat;
 	/* Shared context */
 	unsigned int numAttribs;
 	/* Register queue */

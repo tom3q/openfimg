@@ -63,6 +63,7 @@ int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask);
 int fimgInvalidateFlushCache(fimgContext *ctx,
 			     unsigned int vtcclear, unsigned int tcclear,
 			     unsigned int ccflush, unsigned int zcflush);
+void fimgFinish(fimgContext *ctx);
 void fimgSoftReset(fimgContext *ctx);
 void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev);
 unsigned int fimgGetInterrupt(fimgContext *ctx);
@@ -108,39 +109,18 @@ typedef struct {
 } fimgArray;
 
 /* Functions */
-void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
+void fimgDrawArrays(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 					unsigned int first, unsigned int count);
-void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
+void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 				unsigned int count, const uint8_t *indices);
-void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, fimgArray *arrays,
+void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 				unsigned int count, const uint16_t *indices);
-
-#if defined(FIMG_INTERPOLATION_WORKAROUND)
-void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
-void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
-void fimgDrawNonIndexArraysLineStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
-void fimgDrawNonIndexArraysLineLoops(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
-void fimgDrawNonIndexArraysTriangles(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
-#endif
-#if defined(FIMG_INTERPOLATION_WORKAROUND) || defined(FIMG_CLIPPER_WORKAROUND)
-void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
-void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride);
-#endif
-void fimgDrawNonIndexArrays(fimgContext *ctx,
-			    unsigned int first,
-			    unsigned int numVertices,
-			    const void **ppvData,
-			    unsigned int *pStride);
-void fimgDrawArraysUByteIndex(fimgContext *ctx,
-			      unsigned int numVertices,
-			      const void **ppvData,
-			      unsigned int *pStride,
-			      const unsigned char *idx);
-void fimgDrawArraysUShortIndex(fimgContext *ctx,
-			       unsigned int numVertices,
-			       const void **ppvData,
-			       unsigned int *pStride,
-			       const unsigned short *idx);
+void fimgDrawArraysBuffered(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
+					unsigned int first, unsigned int count);
+void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
+				unsigned int count, const uint8_t *indices);
+void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
+				unsigned int count, const uint16_t *indices);
 void fimgSetAttribute(fimgContext *ctx,
 		      unsigned int idx,
 		      unsigned int type,
@@ -164,9 +144,7 @@ typedef enum {
 } fimgPrimitiveType;
 
 /* Functions */
-void fimgSetVertexContext(fimgContext *ctx,
-			  unsigned int type,
-			  unsigned int count);
+void fimgSetVertexContext(fimgContext *ctx, unsigned int type);
 void fimgSetViewportParams(fimgContext *ctx,
 			   float x0, float y0,
 			   float px, float py);
@@ -356,16 +334,72 @@ void fimgSetVtxTexBaseAddr(fimgContext *ctx, unsigned int unit,
  * OpenGL 1.1 compatibility
  */
 
-enum {
-	FGVS_MATRIX_TRANSFORM = 0,
-	FGVS_MATRIX_NORMALS,
-	FGVS_MATRIX_TEXTURE
-};
-#define FGVS_MATRIX_TEXTURE(i)	(FGVS_MATRIX_TEXTURE + (i))
+#define FIMG_NUM_TEXTURE_UNITS	2
 
-void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, float *pData);
+typedef enum {
+	FGFP_MATRIX_TRANSFORM = 0,
+	FGFP_MATRIX_LIGHTING,
+	FGFP_MATRIX_TEXTURE
+} fimgMatrix;
+#define FGFP_MATRIX_TEXTURE(i)	(FGFP_MATRIX_TEXTURE + (i))
+
+typedef enum {
+	FGFP_TEXFUNC_REPLACE = 0,
+	FGFP_TEXFUNC_MODULATE,
+	FGFP_TEXFUNC_DECAL,
+	FGFP_TEXFUNC_BLEND,
+	FGFP_TEXFUNC_ADD,
+	FGFP_TEXFUNC_COMBINE
+} fimgTexFunc;
+
+typedef enum {
+	FGFP_COMBFUNC_REPLACE = 0,
+	FGFP_COMBFUNC_MODULATE,
+	FGFP_COMBFUNC_ADD,
+	FGFP_COMBFUNC_ADD_SIGNED,
+	FGFP_COMBFUNC_INTERPOLATE,
+	FGFP_COMBFUNC_SUBTRACT,
+	FGFP_COMBFUNC_DOT3_RGB,
+	FGFP_COMBFUNC_DOT3_RGBA
+} fimgCombFunc;
+
+typedef enum {
+	FGFP_COMBARG_TEX = 0,
+	FGFP_COMBARG_CONST,
+	FGFP_COMBARG_COL,
+	FGFP_COMBARG_PREV
+} fimgCombArgSrc;
+
+typedef enum {
+	FGFP_COMBARG_SRC_COLOR = 0,
+	FGFP_COMBARG_ONE_MINUS_SRC_COLOR,
+	FGFP_COMBARG_SRC_ALPHA,
+	FGFP_COMBARG_ONE_MINUS_SRC_ALPHA
+} fimgCombArgMod;
+
+void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, const float *pData);
 void fimgEnableTexture(fimgContext *ctx, unsigned int unit);
 void fimgDisableTexture(fimgContext *ctx, unsigned int unit);
+void fimgCompatLoadPixelShader(fimgContext *ctx);
+void fimgCompatSetTextureEnable(fimgContext *ctx, unsigned unit, int enable);
+void fimgCompatSetTextureFunc(fimgContext *ctx, unsigned unit, fimgTexFunc func);
+void fimgCompatSetColorCombiner(fimgContext *ctx, unsigned unit,
+							fimgCombFunc func);
+void fimgCompatSetAlphaCombiner(fimgContext *ctx, unsigned unit,
+							fimgCombFunc func);
+void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, unsigned unit,
+					unsigned arg, fimgCombArgSrc src);
+void fimgCompatSetColorCombineArgMod(fimgContext *ctx, unsigned unit,
+					unsigned arg, fimgCombArgMod mod);
+void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, unsigned unit,
+					unsigned arg, fimgCombArgSrc src);
+void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, unsigned unit,
+					unsigned arg, fimgCombArgMod src);
+void fimgCompatSetColorScale(fimgContext *ctx, unsigned unit, float scale);
+void fimgCompatSetAlphaScale(fimgContext *ctx, unsigned unit, float scale);
+void fimgCompatSetEnvColor(fimgContext *ctx, unsigned unit,
+					float r, float g, float b, float a);
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, unsigned unit);
 
 /*
  * Per-fragment unit

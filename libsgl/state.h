@@ -137,14 +137,6 @@ struct FGLEGLState {
 		flags(0), dpy(0), config(0), draw(0), depth(0), read(0) {};
 };
 
-struct FGLShaderState {
-	const unsigned int *data;
-	unsigned int numAttribs;
-
-	FGLShaderState() :
-		data(0), numAttribs(1) {};
-};
-
 struct FGLSurfaceState {
 	FGLSurface draw;
 	FGLSurface read;
@@ -177,8 +169,6 @@ struct FGLContext {
 	GLint activeTexture;
 	GLint clientActiveTexture;
 	FGLMatrixState matrix;
-	FGLShaderState vertexShader;
-	FGLShaderState pixelShader;
 	FGLTextureState texture[FGL_MAX_TEXTURE_UNITS];
 	FGLuint unpackAlignment;
 	FGLBufferObjectBinding arrayBuffer;
@@ -192,8 +182,7 @@ struct FGLContext {
 
 	FGLContext(fimgContext *fctx) :
 		fimg(fctx), activeTexture(0), clientActiveTexture(0), matrix(),
-		vertexShader(), pixelShader(), unpackAlignment(4), egl(),
-		surface()
+		unpackAlignment(4), egl(), surface()
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 	}

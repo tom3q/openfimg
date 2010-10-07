@@ -48,6 +48,11 @@ static inline GLfloat floatFromShort(GLshort c)
 	return (GLfloat)(2*c + 1) / ((1 << 16) - 1);
 }
 
+static inline GLfloat floatFromInt(GLint c)
+{
+	return (GLfloat)(2*c + 1) / (0xFFFFFFFF);
+}
+
 static inline GLfloat floatFromFixed(GLfixed c)
 {
 	return (GLfloat)c / (1 << 16);

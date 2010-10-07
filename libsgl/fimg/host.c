@@ -19,7 +19,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include "fimg_private.h"
 
 #define FGHI_FIFO_SIZE		32
@@ -44,6 +46,34 @@ typedef enum {
 
 /* TODO: Function inlining */
 
+inline void fimgGetHardware(fimgContext *ctx)
+{
+	int ret;
+
+	if(unlikely((ret = fimgAcquireHardwareLock(ctx)) != 0)) {
+		if(likely(ret > 0)) {
+			fimgFlush(ctx);
+			fimgRestoreContext(ctx);
+			fimgInvalidateFlushCache(ctx, 1, 1, 0, 0);
+			return;
+		} else {
+			fprintf(stderr, "FIMG: Could not acquire hardware lock");
+			exit(EBUSY);
+		}
+	}
+}
+
+inline void fimgFlushContext(fimgContext *ctx)
+{
+	fimgQueueFlush(ctx);
+	fimgCompatFlush(ctx);
+}
+
+inline void fimgPutHardware(fimgContext *ctx)
+{
+	fimgReleaseHardwareLock(ctx);
+}
+
 /*****************************************************************************
  * FUNCTIONS:	fimgGetNumEmptyFIFOSlots
  * SYNOPSIS:	This function obtains how many FIFO slots are empty in host interface
@@ -62,6 +92,16 @@ static inline void fimgSetHostInterface(fimgContext *ctx, int vb, int autoinc)
 	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
 }
 
+/*****************************************************************************
+ * FUNCTIONS:	fimgSetIndexOffset
+ * SYNOPSIS:	This function defines index offset which is used in the auto increment mode
+ * PARAMETERS:	[IN] offset: index offset value
+ *****************************************************************************/
+static inline void fimgSetIndexOffset(fimgContext *ctx, unsigned int offset)
+{
+	fimgWrite(ctx, offset, FGHI_IDXOFFSET);
+}
+
 /*
  * UNBUFFERED
  */
@@ -69,15 +109,12 @@ static inline void fimgSetHostInterface(fimgContext *ctx, int vb, int autoinc)
 /*****************************************************************************
  * FUNCTIONS:	fimgSendToFIFO
  * SYNOPSIS:	This function sends data to the 3D rendering pipeline
- * PARAMETERS:	[IN] buffer: pointer of input data
- *            	[IN] bytes: the total bytes count of input data
+ * PARAMETERS:	[IN] count: number of words to send
+ *            	[IN] ptr: buffer containing the data
  *****************************************************************************/
 static inline void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const unsigned int *ptr)
 {
 	unsigned int nEmptySpace = 0;
-
-	// We're sending only full words
-	count /= 4;
 
 	// Transfer words to the FIFO
 	while(count--) {
@@ -100,39 +137,44 @@ static inline void fimgSendToFIFO(fimgContext *ctx, unsigned int count, const un
 	}
 }
 
-static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData, unsigned int *pStride, unsigned int i)
+static inline void fimgDrawVertex(fimgContext *ctx, fimgArray *arrays, unsigned int i)
 {
-	unsigned int j, n;
+	uint32_t j, n;
 
 	for(j = 0; j < ctx->numAttribs; j++) {
 		switch(ctx->host.attrib[j].dt) {
-			// 1bytes
+		// 1bytes
 		case FGHI_ATTRIB_DT_BYTE:
 		case FGHI_ATTRIB_DT_UBYTE:
 		case FGHI_ATTRIB_DT_NBYTE:
 		case FGHI_ATTRIB_DT_NUBYTE: {
-			unsigned int word = 0;
-			unsigned char *bits = (unsigned char *)&word;
+			uint32_t word = 0;
+			uint8_t *bytes = (uint8_t *)&word;
+			const uint8_t *data = (const uint8_t *)
+				((const uint8_t *)arrays[j].pointer +
+				i*arrays[j].stride);
 
 			for(n = 0; n <= ctx->host.attrib[j].numcomp; n++)
-				bits[n] = (ppData[j] + i*pStride[j])[n];
+				bytes[n] = data[n];
 
-			fimgSendToFIFO(ctx, 4, &word);
-
+			fimgSendToFIFO(ctx, 1, &word);
 			break; }
 		// 2bytes
 		case FGHI_ATTRIB_DT_SHORT:
 		case FGHI_ATTRIB_DT_USHORT:
 		case FGHI_ATTRIB_DT_NSHORT:
 		case FGHI_ATTRIB_DT_NUSHORT: {
-			unsigned int word[2] = {0, 0};
-			unsigned short *bits = (unsigned short *)word;
+			uint32_t words[2] = {0, 0};
+			uint16_t *halfwords = (uint16_t *)words;
+			const uint16_t *data = (const uint16_t *)
+				((const uint8_t *)arrays[j].pointer +
+				i*arrays[j].stride);
+			uint32_t cnt = (ctx->host.attrib[j].numcomp + 2) / 2;
 
 			for(n = 0; n <= ctx->host.attrib[j].numcomp; n++)
-				bits[n] = ((unsigned short *)(ppData[j] + i*pStride[j]))[n];
+				halfwords[n] = data[n];
 
-			fimgSendToFIFO(ctx, ((ctx->host.attrib[j].numcomp + 2) / 2) * 4, word);
-
+			fimgSendToFIFO(ctx, cnt, words);
 			break; }
 		// 4 bytes
 		case FGHI_ATTRIB_DT_FIXED:
@@ -141,29 +183,38 @@ static inline void fimgDrawVertex(fimgContext *ctx, const unsigned char **ppData
 		case FGHI_ATTRIB_DT_INT:
 		case FGHI_ATTRIB_DT_UINT:
 		case FGHI_ATTRIB_DT_NINT:
-		case FGHI_ATTRIB_DT_NUINT:
-			fimgSendToFIFO(ctx, 4 * (ctx->host.attrib[j].numcomp + 1), (const unsigned int *)(ppData[j] + i*pStride[j]));
-			break;
+		case FGHI_ATTRIB_DT_NUINT: {
+			const uint32_t *data = (const uint32_t *)
+				((const uint8_t *)arrays[j].pointer +
+				i*arrays[j].stride);
+			uint32_t cnt = ctx->host.attrib[j].numcomp + 1;
+
+			fimgSendToFIFO(ctx, cnt, data);
+			break; }
 		}
 	}
 }
 
 /*****************************************************************************
- * FUNCTIONS:	fimgDrawNonIndexArrays
- * SYNOPSIS:	This function sends geometric data to rendering pipeline using non-index scheme.
- * PARAMETERS:	[IN] numAttribs: number of input attributes
- *		[IN] pAttrib: array of input attributes
- *		[IN] numVertices: number of vertices
- *		[IN] ppData: array of pointers of input data
- *		[IN] pConst: array of constant data
- *		[IN] stride: stride of input data
+ * FUNCTIONS:	fimgDrawArrays
+ * SYNOPSIS:	This function sends geometry data to rendering pipeline
+ * 		using FIFO.
+ * PARAMETERS:	[IN] arrays: description of geometry layout
+ * 		[IN] first: index of first vertex
+ *		[IN] count: number of vertices
  *****************************************************************************/
-void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
+void fimgDrawArrays(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
+					unsigned int first, unsigned int count)
 {
 	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
 	fimgAttribute last;
 	unsigned int words[2];
+
+	// Get hardware lock
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+	fimgFlushContext(ctx);
+	fimgSetVertexContext(ctx, mode);
 
 	// write attribute configuration
 	for(i = 0; i < ctx->numAttribs - 1; i++)
@@ -175,330 +226,38 @@ void fimgDrawNonIndexArrays(fimgContext *ctx, unsigned int first, unsigned int n
 
 	fimgSetHostInterface(ctx, 0, 1);
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	// write the number of vertices
-	words[0] = numVertices;
+	words[0] = count;
 	words[1] = 0xffffffff;
-	fimgSendToFIFO(ctx, 8, words);
+	fimgSendToFIFO(ctx, 2, words);
 
-	for(i=first; i<first+numVertices; i++)
-		fimgDrawVertex(ctx, ppData, pStride, i);
+	for(i=first; i<first+count; i++)
+		fimgDrawVertex(ctx, arrays, i);
+
+	// Free hardware lock
+	fimgPutHardware(ctx);
 }
-
-#ifdef FIMG_INTERPOLATION_WORKAROUND
-void fimgDrawNonIndexArraysPoints(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = 1;
-	words[1] = 0xffffffff;
-	fimgSendToFIFO(ctx, 8, words);
-
-	for(i=first; i<first+numVertices; i++) {
-		fimgSendToFIFO(ctx, 8, words);
-		fimgDrawVertex(ctx, ppData, pStride, i);
-	}
-}
-
-void fimgDrawNonIndexArraysLines(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = 2;
-	words[1] = 0xffffffff;
-
-	for(i=first; i<first+numVertices-1; i+=2) {
-		fimgSendToFIFO(ctx, 8, words);
-		fimgDrawVertex(ctx, ppData, pStride, i);
-		fimgDrawVertex(ctx, ppData, pStride, i+1);
-	}
-}
-
-void fimgDrawNonIndexArraysLineStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = 2;
-	words[1] = 0xffffffff;
-
-	for(i=first; i<first+numVertices-1; i++) {
-		fimgSendToFIFO(ctx, 8, words);
-		fimgDrawVertex(ctx, ppData, pStride, i);
-		fimgDrawVertex(ctx, ppData, pStride, i+1);
-	}
-}
-
-void fimgDrawNonIndexArraysLineLoops(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = 2;
-	words[1] = 0xffffffff;
-
-	for(i=first; i<first+numVertices-1; i++) {
-		fimgSendToFIFO(ctx, 8, words);
-		fimgDrawVertex(ctx, ppData, pStride, i);
-		fimgDrawVertex(ctx, ppData, pStride, i+1);
-	}
-
-	fimgSendToFIFO(ctx, 8, words);
-	fimgDrawVertex(ctx, ppData, pStride, first+numVertices-1);
-	fimgDrawVertex(ctx, ppData, pStride, first);
-}
-
-void fimgDrawNonIndexArraysTriangles(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = 3;
-	words[1] = 0xffffffff;
-
-	for(i=first; i<first+numVertices-2; i+=3) {
-		fimgSendToFIFO(ctx, 8, words);
-		fimgDrawVertex(ctx, ppData, pStride, i);
-		fimgDrawVertex(ctx, ppData, pStride, i+1);
-		fimgDrawVertex(ctx, ppData, pStride, i+2);
-	}
-}
-
-void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = 3;
-	words[1] = 0xffffffff;
-
-	for(i=first+1; i<first+numVertices-1; i++) {
-		fimgFlush(ctx);
-		fimgSendToFIFO(ctx, 8, words);
-		fimgDrawVertex(ctx, ppData, pStride, first);
-		fimgDrawVertex(ctx, ppData, pStride, i);
-		fimgDrawVertex(ctx, ppData, pStride, i+1);
-	}
-}
-
-void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-	const unsigned lookup[2][3] = { {0,1,2},{1,0,2} };
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = 3;
-	words[1] = 0xffffffff;
-	fimgSendToFIFO(ctx, 8, words);
-
-	for(i=first; i<first+numVertices-2; i++) {
-		fimgSendToFIFO(ctx, 8, words);
-		fimgDrawVertex(ctx, ppData, pStride, i + lookup[i & 1][0]);
-		fimgDrawVertex(ctx, ppData, pStride, i + lookup[i & 1][1]);
-		fimgDrawVertex(ctx, ppData, pStride, i + lookup[i & 1][2]);
-	}
-}
-#else
-#ifdef FIMG_CLIPPER_WORKAROUND
-void fimgDrawNonIndexArraysTriangleFans(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = numVertices + 2;
-	words[1] = 0xffffffff;
-	fimgSendToFIFO(ctx, 8, words);
-
-	/* WORKAROUND */
-	fimgDrawVertex(ctx, ppData, pStride, 0);
-	fimgDrawVertex(ctx, ppData, pStride, 0);
-
-	for(i=0; i<numVertices; i++)
-		fimgDrawVertex(ctx, ppData, pStride, i);
-}
-
-void fimgDrawNonIndexArraysTriangleStrips(fimgContext *ctx, unsigned int first, unsigned int numVertices, const void **ppvData, unsigned int *pStride)
-{
-	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
-	fimgAttribute last;
-	unsigned int words[2];
-
-	// write attribute configuration
-	for(i = 0; i < ctx->numAttribs - 1; i++)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
-	// write the last one
-	last = ctx->host.attrib[ctx->numAttribs - 1];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(ctx->numAttribs - 1));
-
-	fimgSetHostInterface(ctx, 0, 1);
-
-	// Flush the context
-	fimgQueueFlush(ctx);
-
-	// write the number of vertices
-	words[0] = numVertices + 1;
-	words[1] = 0xffffffff;
-	fimgSendToFIFO(ctx, 8, words);
-
-	for(i=0; i<numVertices; i++)
-		fimgDrawVertex(ctx, ppData, pStride, i);
-
-	/* WORKAROUND */
-	fimgDrawVertex(ctx, ppData, pStride, numVertices - 1);
-}
-#endif
-#endif
 
 /*****************************************************************************
- * FUNCTIONS:	fimgDrawNonIndexArrays
- * SYNOPSIS:	This function sends geometric data to rendering pipeline using non-index scheme.
- * PARAMETERS:	[IN] numAttribs: number of input attributes
- *		[IN] pAttrib: array of input attributes
- *		[IN] numVertices: number of vertices
- *		[IN] ppData: array of pointers of input data
- *		[IN] pConst: array of constant data
- *		[IN] stride: stride of input data
+ * FUNCTIONS:	fimgDrawElementsUByteIdx
+ * SYNOPSIS:	This function sends indexed geometry data to rendering pipeline
+ * 		using FIFO.
+ * PARAMETERS:	[IN] arrays: description of geometry layout
+ *		[IN] count: number of vertices
+ *		[IN] idx: array of ubyte indices
  *****************************************************************************/
-void fimgDrawArraysUByteIndex(fimgContext *ctx, unsigned int numVertices, const void **ppvData, unsigned int *pStride, const unsigned char *idx)
+void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
+			unsigned int count, const unsigned char *idx)
 {
 	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
 	fimgAttribute last;
 	unsigned int words[2];
+
+	// Get hardware lock
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+	fimgFlushContext(ctx);
+	fimgSetVertexContext(ctx, mode);
 
 	// write attribute configuration
 	for(i = 0; i < ctx->numAttribs - 1; i++)
@@ -510,24 +269,38 @@ void fimgDrawArraysUByteIndex(fimgContext *ctx, unsigned int numVertices, const 
 
 	fimgSetHostInterface(ctx, 0, 1);
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	// write the number of vertices
-	words[0] = numVertices;
+	words[0] = count;
 	words[1] = 0xffffffff;
-	fimgSendToFIFO(ctx, 8, words);
+	fimgSendToFIFO(ctx, 2, words);
 
-	for(i=0; i<numVertices; i++)
-		fimgDrawVertex(ctx, ppData, pStride, idx[i]);
+	for(i=0; i<count; i++)
+		fimgDrawVertex(ctx, arrays, idx[i]);
+
+	// Free hardware lock
+	fimgPutHardware(ctx);
 }
 
-void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const void **ppvData, unsigned int *pStride, const unsigned short *idx)
+/*****************************************************************************
+ * FUNCTIONS:	fimgDrawElementsUShortIdx
+ * SYNOPSIS:	This function sends indexed geometry data to rendering pipeline
+ * 		using FIFO.
+ * PARAMETERS:	[IN] arrays: description of geometry layout
+ *		[IN] count: number of vertices
+ *		[IN] idx: array of ushort indices
+ *****************************************************************************/
+void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
+			unsigned int count, const unsigned short *idx)
 {
 	unsigned int i;
-	const unsigned char **ppData = (const unsigned char **)ppvData;
 	fimgAttribute last;
 	unsigned int words[2];
+
+	// Get hardware lock
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+	fimgFlushContext(ctx);
+	fimgSetVertexContext(ctx, mode);
 
 	// write attribute configuration
 	for(i = 0; i < ctx->numAttribs - 1; i++)
@@ -539,16 +312,16 @@ void fimgDrawArraysUShortIndex(fimgContext *ctx, unsigned int numVertices, const
 
 	fimgSetHostInterface(ctx, 0, 1);
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	// write the number of vertices
-	words[0] = numVertices;
+	words[0] = count;
 	words[1] = 0xffffffff;
-	fimgSendToFIFO(ctx, 8, words);
+	fimgSendToFIFO(ctx, 2, words);
 
-	for(i=0; i<numVertices; i++)
-		fimgDrawVertex(ctx, ppData, pStride, idx[i]);
+	for(i=0; i<count; i++)
+		fimgDrawVertex(ctx, arrays, idx[i]);
+
+	// Free hardware lock
+	fimgPutHardware(ctx);
 }
 
 /*
@@ -894,11 +667,8 @@ static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
 	unsigned i;
 	fimgArray *a;
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	fimgSetHostInterface(ctx, 1, 1);
-	fimgSetupAttributes(ctx, arrays);
+	fimgSetIndexOffset(ctx, 1);
 
 	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
@@ -909,7 +679,7 @@ static inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
 	fimgDrawAutoinc(ctx, 0, count);
 }
 
-void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
+void fimgDrawArraysBuffered(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 					unsigned int first, unsigned int count)
 {
 	unsigned i, pos = first;
@@ -917,16 +687,22 @@ void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
 	uint32_t buf = 0;
 	unsigned int alignment;
 
+	// Get hardware lock
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+	fimgFlushContext(ctx);
+
+	fimgSetVertexContext(ctx, mode);
+	fimgSetupAttributes(ctx, arrays);
+
 	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
 		fimgDrawArraysBufferedAutoinc(ctx, arrays, first, count);
+		fimgPutHardware(ctx);
 		return;
 	}
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	fimgSetHostInterface(ctx, 1, 0);
-	fimgSetupAttributes(ctx, arrays);
+	fimgSetIndexOffset(ctx, 0);
 
 	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
 
@@ -962,6 +738,8 @@ void fimgDrawArraysBuffered(fimgContext *ctx, fimgArray *arrays,
 		// Switch the buffer
 		buf ^= 1;
 	}
+
+	fimgPutHardware(ctx);
 }
 
 /* Draw elements */
@@ -1196,11 +974,8 @@ static inline void fimgDrawElementsBufferedAutoincUByteIdx(fimgContext *ctx,
 	unsigned i;
 	fimgArray *a;
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	fimgSetHostInterface(ctx, 1, 1);
-	fimgSetupAttributes(ctx, arrays);
+	fimgSetIndexOffset(ctx, 1);
 
 	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
@@ -1211,7 +986,7 @@ static inline void fimgDrawElementsBufferedAutoincUByteIdx(fimgContext *ctx,
 	fimgDrawAutoinc(ctx, 0, count);
 }
 
-void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
+void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 				unsigned int count, const uint8_t *indices)
 {
 	unsigned i;
@@ -1219,17 +994,23 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
 	uint32_t buf = 0;
 	unsigned int alignment;
 
+	// Flush the context
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+	fimgFlushContext(ctx);
+
+	fimgSetVertexContext(ctx, mode);
+	fimgSetupAttributes(ctx, arrays);
+
 	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
 		fimgDrawElementsBufferedAutoincUByteIdx(ctx, arrays,
 							count, indices);
+		fimgPutHardware(ctx);
 		return;
 	}
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	fimgSetHostInterface(ctx, 1, 0);
-	fimgSetupAttributes(ctx, arrays);
+	fimgSetIndexOffset(ctx, 0);
 
 	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
 
@@ -1265,6 +1046,8 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, fimgArray *arrays,
 		// Switch the buffer
 		buf ^= 1;
 	}
+
+	fimgPutHardware(ctx);
 }
 
 static void fimgPackToVertexBufferUShortIdx(fimgContext *ctx,
@@ -1493,11 +1276,8 @@ static inline void fimgDrawElementsBufferedAutoincUShortIdx(fimgContext *ctx,
 	unsigned i;
 	fimgArray *a;
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	fimgSetHostInterface(ctx, 1, 1);
-	fimgSetupAttributes(ctx, arrays);
+	fimgSetIndexOffset(ctx, 1);
 
 	for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 		fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
@@ -1508,7 +1288,7 @@ static inline void fimgDrawElementsBufferedAutoincUShortIdx(fimgContext *ctx,
 	fimgDrawAutoinc(ctx, 0, count);
 }
 
-void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, fimgArray *arrays,
+void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 				unsigned int count, const uint16_t *indices)
 {
 	unsigned i;
@@ -1516,17 +1296,23 @@ void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, fimgArray *arrays,
 	uint32_t buf = 0;
 	unsigned int alignment;
 
+	// Flush the context
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+	fimgFlushContext(ctx);
+
+	fimgSetVertexContext(ctx, mode);
+	fimgSetupAttributes(ctx, arrays);
+
 	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
 		fimgDrawElementsBufferedAutoincUShortIdx(ctx, arrays,
 							count, indices);
+		fimgPutHardware(ctx);
 		return;
 	}
 
-	// Flush the context
-	fimgQueueFlush(ctx);
-
 	fimgSetHostInterface(ctx, 1, 0);
-	fimgSetupAttributes(ctx, arrays);
+	fimgSetIndexOffset(ctx, 0);
 
 	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
 
@@ -1562,6 +1348,8 @@ void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, fimgArray *arrays,
 		// Switch the buffer
 		buf ^= 1;
 	}
+
+	fimgPutHardware(ctx);
 }
 
 /*
@@ -1589,18 +1377,8 @@ void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
 #else
 	ctx->host.control.numoutattrib = count;
 #endif
-	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
-}
-
-/*****************************************************************************
- * FUNCTIONS:	fimgSetIndexOffset
- * SYNOPSIS:	This function defines index offset which is used in the auto increment mode
- * PARAMETERS:	[IN] offset: index offset value
- *****************************************************************************/
-void fimgSetIndexOffset(fimgContext *ctx, unsigned int offset)
-{
-	ctx->host.indexOffset = offset;
-	fimgWrite(ctx, offset, FGHI_IDXOFFSET);
+	ctx->numAttribs = count;
+	//fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
 }
 
 /*****************************************************************************
@@ -1633,7 +1411,6 @@ void fimgCreateHostContext(fimgContext *ctx)
 	int i;
 
 	ctx->host.control.autoinc = 1;
-	ctx->host.indexOffset = 1;
 #ifdef FIMG_USE_VERTEX_BUFFER
 	ctx->host.control.envb = 1;
 #endif
@@ -1649,7 +1426,6 @@ void fimgCreateHostContext(fimgContext *ctx)
 void fimgRestoreHostState(fimgContext *ctx)
 {
 	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
-	fimgWrite(ctx, ctx->host.indexOffset, FGHI_IDXOFFSET);
 #ifdef FIMG_USE_VERTEX_BUFFER
 	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(0, 0), FGHI_ATTRIB_VBBASE(0));
 	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(1, 0), FGHI_ATTRIB_VBBASE(1));
@@ -1659,7 +1435,7 @@ void fimgRestoreHostState(fimgContext *ctx)
 	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(5, 0), FGHI_ATTRIB_VBBASE(5));
 	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(6, 0), FGHI_ATTRIB_VBBASE(6));
 	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(7, 0), FGHI_ATTRIB_VBBASE(7));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(8, 0), FGHI_ATTRIB_VBBASE(8));
-	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(9, 0), FGHI_ATTRIB_VBBASE(9));
+//	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(8, 0), FGHI_ATTRIB_VBBASE(8));
+//	fimgWrite(ctx, FGHI_VBADDR_ATTRIB(9, 0), FGHI_ATTRIB_VBBASE(9));
 #endif
 }

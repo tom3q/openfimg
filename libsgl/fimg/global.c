@@ -123,6 +123,14 @@ int fimgInvalidateFlushCache(fimgContext *ctx,
 	return 0;
 }
 
+void fimgFinish(fimgContext *ctx)
+{
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+	fimgInvalidateFlushCache(ctx, 0, 0, 1, 1);
+	fimgPutHardware(ctx);
+}
+
 /*****************************************************************************
  * FUNCTIONS:	fimgSoftReset
  * SYNOPSIS:	This function resets FIMG-3DSE, but the SFR values are not affected

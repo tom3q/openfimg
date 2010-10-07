@@ -156,6 +156,20 @@ label start
 	mul r0.w, r0, r1
 	add r0.xyz, r0, r1
 
+% f combine
+
+# Texturing function
+#
+# Inputs:	r0 - current fragment value
+#		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
+#
+# Output:	r0 - new fragment value
+
+# Combine
+	# Do nothing
+
 % f combine_col
 
 # Texturing function
@@ -575,7 +589,7 @@ label start
 	add r4, r4, r5
 	add r4, r4, -c2
 
-% f combine_intepolate
+% f combine_interpolate
 
 # Combine function
 #

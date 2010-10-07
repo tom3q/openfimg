@@ -41,16 +41,14 @@
  *		and the number of input attributes
  * PARAMETERS:	[IN] pVtx: the pointer of FGL_Vertex strucutre
  *****************************************************************************/
-void fimgSetVertexContext(fimgContext *ctx, unsigned int type, unsigned int count)
+void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 {
 	ctx->primitive.vctx.type = type; // See fimgPrimitiveType enum
 #ifdef FIMG_INTERPOLATION_WORKAROUND
 	ctx->primitive.vctx.vsOut = 8; // WORKAROUND
 #else
-	ctx->primitive.vctx.vsOut = count - 1; // Without position
+	ctx->primitive.vctx.vsOut = ctx->numAttribs - 1; // Without position
 #endif
-
-	ctx->numAttribs = count;
 
 	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
 }

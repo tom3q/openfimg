@@ -30,10 +30,6 @@
 #include "fglpoolallocator.h"
 #include "fimg/fimg.h"
 
-/* Shaders */
-#include "vshader.h"
-#include "fshader.h"
-
 //#define GLES_DEBUG
 #define GLES_ERR_DEBUG
 
@@ -91,62 +87,6 @@ static inline FGLContext *getContext(void)
 	}
 
 	return ctx;
-}
-
-static void fglRestoreHardwareState(FGLContext *ctx)
-{
-	/*
-		TODO:
-		- implement shared context support (textures, shaders)
-	*/
-
-	/* Restore device specific context */
-	fprintf(stderr, "FGL: Restoring hardware context\n");
-	fflush(stderr);
-	fimgRestoreContext(ctx->fimg);
-
-	/* Restore shaders */
-	fprintf(stderr, "FGL: Loading vertex shader\n");
-	fflush(stderr);
-	if(fimgLoadVShader(ctx->fimg, ctx->vertexShader.data, ctx->vertexShader.numAttribs)) {
-		fprintf(stderr, "FGL: Failed to load vertex shader\n");
-		fflush(stderr);
-	}
-
-	fprintf(stderr, "FGL: Loading pixel shader\n");
-	fflush(stderr);
-	if(fimgLoadPShader(ctx->fimg, ctx->pixelShader.data, ctx->pixelShader.numAttribs)) {
-		fprintf(stderr, "FGL: Failed to load pixel shader\n");
-		fflush(stderr);
-	}
-
-	for (int i = FGL_MATRIX_PROJECTION; i < FGL_MATRIX_TEXTURE(FGL_MAX_TEXTURE_UNITS); i++)
-		ctx->matrix.dirty[i] = GL_TRUE;
-
-	fprintf(stderr, "FGL: Invalidating caches\n");
-	fflush(stderr);
-	fimgInvalidateFlushCache(ctx->fimg, 1, 1, 0, 0);
-}
-
-static inline void getHardware(FGLContext *ctx)
-{
-	int ret;
-
-	if(unlikely((ret = fimgAcquireHardwareLock(ctx->fimg)) != 0)) {
-		if(likely(ret > 0)) {
-			fglRestoreHardwareState(ctx);
-		} else {
-			LOGE("Could not acquire hardware lock");
-			exit(EBUSY);
-		}
-	}
-
-	fimgFlush(ctx->fimg);
-}
-
-static inline void putHardware(FGLContext *ctx)
-{
-	fimgReleaseHardwareLock(ctx->fimg);
 }
 
 /**
@@ -835,8 +775,8 @@ static inline void fglSetupMatrices(FGLContext *ctx)
 	{
 		FGLmatrix matrix = ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
 		matrix.multiply(ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top());
-		fimgLoadMatrix(ctx->fimg, FGVS_MATRIX_TRANSFORM, matrix.data);
-		fimgLoadMatrix(ctx->fimg, FGVS_MATRIX_NORMALS, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TRANSFORM, matrix.data);
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_LIGHTING, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
 		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW] = GL_FALSE;
 		ctx->matrix.dirty[FGL_MATRIX_PROJECTION] = GL_FALSE;
 		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_FALSE;
@@ -847,7 +787,7 @@ static inline void fglSetupMatrices(FGLContext *ctx)
 		if(!ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)])
 			continue;
 
-		fimgLoadMatrix(ctx->fimg, FGVS_MATRIX_TEXTURE(i), ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top().data);
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(i), ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top().data);
 		ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)] = GL_FALSE;
 	}
 }
@@ -859,232 +799,98 @@ static inline void fglSetupTextures(FGLContext *ctx)
 		FGLTexture *obj = ctx->texture[i].getTexture();
 
 		if(enabled && obj->surface.isValid() && obj->isComplete()) {
-			fimgSetupTexture(ctx->fimg, obj->fimg, i);
-			fimgEnableTexture(ctx->fimg, i);
+			fimgCompatSetupTexture(ctx->fimg, obj->fimg, i);
+			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 		} else {
-			fimgDisableTexture(ctx->fimg, i);
+			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
 		}
 	}
 }
+
+GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
+{
+	uint32_t fglMode;
+
+	if(first < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
+	FGLContext *ctx = getContext();
+
+	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
+		if(ctx->array[i].enabled) {
+			arrays[i].pointer	= ctx->array[i].pointer;
+			arrays[i].stride	= ctx->array[i].stride;
+			arrays[i].width		= ctx->array[i].width;
+		} else {
+			arrays[i].pointer	= &ctx->vertex[i];
+			arrays[i].stride	= 0;
+			arrays[i].width		= 16;
+		}
+	}
+
+#warning Unfinished changes
+	fglSetupMatrices(ctx);
+	fglSetupTextures(ctx);
+
+	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
+
+	switch (mode) {
+	case GL_POINTS:
+		if (count < 1)
+			return;
+		fglMode = FGPE_POINTS;
+		break;
+	case GL_LINE_STRIP:
+		if (count < 2)
+			return;
+		fglMode = FGPE_LINE_STRIP;
+		break;
+	case GL_LINE_LOOP:
+		if (count < 2)
+			return;
+		fglMode = FGPE_LINE_LOOP;
+		break;
+	case GL_LINES:
+		if (count < 2)
+			return;
+		count &= ~1;
+		fglMode = FGPE_LINES;
+		break;
+	case GL_TRIANGLE_STRIP:
+		if (count < 3)
+			return;
+		fglMode = FGPE_TRIANGLE_STRIP;
+		break;
+	case GL_TRIANGLE_FAN:
+		if (count < 3)
+			return;
+		fglMode = FGPE_TRIANGLE_FAN;
+		break;
+	case GL_TRIANGLES:
+		if (count < 3)
+			return;
+		if (count % 3)
+			count -= count % 3;
+		fglMode = FGPE_TRIANGLES;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
 
 #ifndef FIMG_USE_VERTEX_BUFFER
-
-GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
-{
-	if(first < 0) {
-		setError(GL_INVALID_VALUE);
-		return;
-	}
-
-	GLint fglMode;
-	if((fglMode = fglModeFromModeEnum(mode)) < 0) {
-		setError(GL_INVALID_ENUM);
-		return;
-	}
-
-	unsigned int stride[4 + FGL_MAX_TEXTURE_UNITS];
-	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
-	FGLContext *ctx = getContext();
-
-	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
-		if(ctx->array[i].enabled) {
-			pointers[i] 			= (const unsigned char *)ctx->array[i].pointer/* + first * ctx->array[i].stride*/;
-			stride[i] 			= ctx->array[i].stride;
-		} else {
-			pointers[i]			= &ctx->vertex[i];
-			stride[i]			= 0;
-		}
-	}
-
-	getHardware(ctx);
-
-	fglSetupMatrices(ctx);
-	fglSetupTextures(ctx);
-
-	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
-#if FIMG_INTERPOLATION_WORKAROUND != 2
-	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
+	fimgDrawArrays(ctx->fimg, fglMode, arrays, first, count);
+#else
+	fimgDrawArraysBuffered(ctx->fimg, fglMode, arrays, first, count);
 #endif
-	switch(mode) {
-#if FIMG_INTERPOLATION_WORKAROUND == 2
-	case GL_POINTS:
-		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawNonIndexArraysPoints(ctx->fimg, first, count, pointers, stride);
-		break;
-	case GL_LINES:
-		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawNonIndexArraysLines(ctx->fimg, first, count, pointers, stride);
-		break;
-	case GL_LINE_LOOP:
-		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawNonIndexArraysLineLoops(ctx->fimg, first, count, pointers, stride);
-		break;
-	case GL_LINE_STRIP:
-		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawNonIndexArraysLineStrips(ctx->fimg, first, count, pointers, stride);
-		break;
-	case GL_TRIANGLES:
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawNonIndexArraysTriangles(ctx->fimg, first, count, pointers, stride);
-		break;
-	case GL_TRIANGLE_FAN:
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawNonIndexArraysTriangleFans(ctx->fimg, first, count, pointers, stride);
-		break;
-	case GL_TRIANGLE_STRIP:
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
-		fimgDrawNonIndexArraysTriangleStrips(ctx->fimg, first, count, pointers, stride);
-		break;
-#else /* FIMG_INTERPOLATION_WORKAROUND == 2 */
-#ifdef FIMG_CLIPPER_WORKAROUND
-	case GL_TRIANGLE_FAN:
-		fimgDrawNonIndexArraysTriangleFans(ctx->fimg, first, count, pointers, stride);
-		break;
-	case GL_TRIANGLE_STRIP:
-		fimgDrawNonIndexArraysTriangleStrips(ctx->fimg, first, count, pointers, stride);
-		break;
-#endif /* FIMG_CLIPPER_WORKAROUND */
-#endif /* FIMG_INTERPOLATION_WORKAROUND == 2 */
-	default:
-#if FIMG_INTERPOLATION_WORKAROUND == 2
-		fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
-#endif
-		fimgDrawNonIndexArrays(ctx->fimg, first, count, pointers, stride);
-	}
-
-	putHardware(ctx);
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
 {
-	GLint fglMode;
-	if((fglMode = fglModeFromModeEnum(mode)) < 0) {
-		setError(GL_INVALID_ENUM);
-		return;
-	}
-
-	unsigned int stride[4 + FGL_MAX_TEXTURE_UNITS];
-	const void *pointers[4 + FGL_MAX_TEXTURE_UNITS];
-	FGLContext *ctx = getContext();
-
-	if(ctx->elementArrayBuffer.isBound())
-		indices = ctx->elementArrayBuffer.get()->getAddress(indices);
-
-	getHardware(ctx);
-
-	fglSetupMatrices(ctx);
-	fglSetupTextures(ctx);
-
-	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
-		if(ctx->array[i].enabled) {
-			pointers[i] 			= ctx->array[i].pointer;
-			stride[i] 			= ctx->array[i].stride;
-		} else {
-			pointers[i]			= &ctx->vertex[i];
-			stride[i]			= 0;
-		}
-	}
-
-	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
-	fimgSetVertexContext(ctx->fimg, fglMode, 4 + FGL_MAX_TEXTURE_UNITS);
-
-	switch (type) {
-	case GL_UNSIGNED_BYTE:
-		fimgDrawArraysUByteIndex(ctx->fimg, count, pointers, stride, (const unsigned char *)indices);
-		break;
-	case GL_UNSIGNED_SHORT:
-		fimgDrawArraysUShortIndex(ctx->fimg, count, pointers, stride, (const unsigned short *)indices);
-		break;
-	default:
-		setError(GL_INVALID_ENUM);
-	}
-
-	putHardware(ctx);
-}
-
-#else /* !FIMG_USE_VERTEX_BUFFER */
-
-GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
-{
-	if(first < 0) {
-		setError(GL_INVALID_VALUE);
-		return;
-	}
-
-	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
-	FGLContext *ctx = getContext();
-
-	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
-		if(ctx->array[i].enabled) {
-			arrays[i].pointer	= ctx->array[i].pointer;
-			arrays[i].stride	= ctx->array[i].stride;
-			arrays[i].width		= ctx->array[i].width;
-		} else {
-			arrays[i].pointer	= &ctx->vertex[i];
-			arrays[i].stride	= 0;
-			arrays[i].width		= 16;
-		}
-	}
-
-	getHardware(ctx);
-
-	fglSetupMatrices(ctx);
-	fglSetupTextures(ctx);
-
-	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
-
-	switch (mode) {
-	case GL_POINTS:
-		if (count < 1)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
-		break;
-	case GL_LINE_STRIP:
-		if (count < 2)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
-		break;
-	case GL_LINE_LOOP:
-		if (count < 2)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINE_LOOP, 4 + FGL_MAX_TEXTURE_UNITS);
-		break;
-	case GL_LINES:
-		if (count < 2)
-			goto end;
-		count &= ~1;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
-		break;
-	case GL_TRIANGLE_STRIP:
-		if (count < 3)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
-		break;
-	case GL_TRIANGLE_FAN:
-		if (count < 3)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_FAN, 4 + FGL_MAX_TEXTURE_UNITS);
-		break;
-	case GL_TRIANGLES:
-		if (count < 3)
-			goto end;
-		if (count % 3)
-			count -= count % 3;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
-		break;
-	default:
-		setError(GL_INVALID_ENUM);
-		goto end;
-	}
-
-	fimgDrawArraysBuffered(ctx->fimg, arrays, first, count);
-
-end:
-	putHardware(ctx);
-}
-
-GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
-{
+	uint32_t fglMode;
 	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
 
@@ -1103,8 +909,7 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 		}
 	}
 
-	getHardware(ctx);
-
+#warning Unfinished changes
 	fglSetupMatrices(ctx);
 	fglSetupTextures(ctx);
 
@@ -1113,65 +918,70 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	switch (mode) {
 	case GL_POINTS:
 		if (count < 1)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_POINTS, 4 + FGL_MAX_TEXTURE_UNITS);
+			return;
+		fglMode = FGPE_POINTS;
 		break;
 	case GL_LINE_STRIP:
 		if (count < 2)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+			return;
+		fglMode = FGPE_LINE_STRIP;
 		break;
 	case GL_LINE_LOOP:
 		if (count < 2)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINE_LOOP, 4 + FGL_MAX_TEXTURE_UNITS);
+			return;
+		fglMode = FGPE_LINE_LOOP;
 		break;
 	case GL_LINES:
 		if (count < 2)
-			goto end;
+			return;
 		count &= ~1;
-		fimgSetVertexContext(ctx->fimg, FGPE_LINES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fglMode = FGPE_LINES;
 		break;
 	case GL_TRIANGLE_STRIP:
 		if (count < 3)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_STRIP, 4 + FGL_MAX_TEXTURE_UNITS);
+			return;
+		fglMode = FGPE_TRIANGLE_STRIP;
 		break;
 	case GL_TRIANGLE_FAN:
 		if (count < 3)
-			goto end;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLE_FAN, 4 + FGL_MAX_TEXTURE_UNITS);
+			return;
+		fglMode = FGPE_TRIANGLE_FAN;
 		break;
 	case GL_TRIANGLES:
 		if (count < 3)
-			goto end;
+			return;
 		if (count % 3)
 			count -= count % 3;
-		fimgSetVertexContext(ctx->fimg, FGPE_TRIANGLES, 4 + FGL_MAX_TEXTURE_UNITS);
+		fglMode = FGPE_TRIANGLES;
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
-		goto end;
+		return;
 	}
 
 	switch (type) {
 	case GL_UNSIGNED_BYTE:
-		fimgDrawElementsBufferedUByteIdx(ctx->fimg, arrays, count,
+#ifndef FIMG_USE_VERTEX_BUFFER
+		fimgDrawElementsUByteIdx(ctx->fimg, fglMode, arrays, count,
 						(const uint8_t *)indices);
+#else
+		fimgDrawElementsBufferedUByteIdx(ctx->fimg, fglMode, arrays, count,
+						(const uint8_t *)indices);
+#endif
 		break;
 	case GL_UNSIGNED_SHORT:
-		fimgDrawElementsBufferedUShortIdx(ctx->fimg, arrays, count,
+#ifndef FIMG_USE_VERTEX_BUFFER
+		fimgDrawElementsUShortIdx(ctx->fimg, fglMode, arrays, count,
 						(const uint16_t *)indices);
+#else
+		fimgDrawElementsBufferedUShortIdx(ctx->fimg, fglMode, arrays, count,
+						(const uint16_t *)indices);
+#endif
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
 	}
-
-end:
-	putHardware(ctx);
 }
-
-#endif
 
 /**
 	Transformations
@@ -2464,6 +2274,431 @@ GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname, const GLf
 	glTexParameteri(target, pname, intFromFixed(*params));
 }
 
+GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
+{
+	if (target != GL_TEXTURE_ENV) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	GLint unit = ctx->activeTexture;
+
+	switch (pname) {
+	case GL_TEXTURE_ENV_MODE:
+		switch (param) {
+		case GL_REPLACE:
+			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_REPLACE);
+			break;
+		case GL_MODULATE:
+			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_MODULATE);
+			break;
+		case GL_DECAL:
+			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_DECAL);
+			break;
+		case GL_BLEND:
+			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_BLEND);
+			break;
+		case GL_ADD:
+			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_ADD);
+			break;
+		case GL_COMBINE:
+ 			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_COMBINE);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_COMBINE_RGB:
+		switch (param) {
+		case GL_REPLACE:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_REPLACE);
+			break;
+		case GL_MODULATE:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_MODULATE);
+			break;
+		case GL_ADD:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD);
+			break;
+		case GL_ADD_SIGNED:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD_SIGNED);
+			break;
+		case GL_INTERPOLATE:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_INTERPOLATE);
+			break;
+		case GL_SUBTRACT:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_SUBTRACT);
+			break;
+		case GL_DOT3_RGB:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_DOT3_RGB);
+			break;
+		case GL_DOT3_RGBA:
+			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_DOT3_RGBA);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_COMBINE_ALPHA:
+		switch (param) {
+		case GL_REPLACE:
+			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_REPLACE);
+			break;
+		case GL_MODULATE:
+			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_MODULATE);
+			break;
+		case GL_ADD:
+			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD);
+			break;
+		case GL_ADD_SIGNED:
+			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD_SIGNED);
+			break;
+		case GL_INTERPOLATE:
+			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_INTERPOLATE);
+			break;
+		case GL_SUBTRACT:
+			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_SUBTRACT);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_RGB_SCALE:
+		if (param != 1 && param != 2 && param != 4) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+		fimgCompatSetColorScale(ctx->fimg, unit, floatFromInt(param));
+		break;
+	case GL_ALPHA_SCALE:
+		if (param != 1 && param != 2 && param != 4) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+		fimgCompatSetAlphaScale(ctx->fimg, unit, floatFromInt(param));
+		break;
+	case GL_SRC0_RGB:
+		switch (param) {
+		case GL_TEXTURE:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_TEX);
+			break;
+		case GL_CONSTANT:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_CONST);
+			break;
+		case GL_PRIMARY_COLOR:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_COL);
+			break;
+		case GL_PREVIOUS:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_PREV);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_OPERAND0_RGB:
+		switch (param) {
+		case GL_SRC_COLOR:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+					unit, 0, FGFP_COMBARG_SRC_COLOR);
+			break;
+		case GL_ONE_MINUS_SRC_COLOR:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+				unit, 0, FGFP_COMBARG_ONE_MINUS_SRC_COLOR);
+			break;
+		case GL_SRC_ALPHA:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+					unit, 0, FGFP_COMBARG_SRC_ALPHA);
+			break;
+		case GL_ONE_MINUS_SRC_ALPHA:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+				unit, 0, FGFP_COMBARG_ONE_MINUS_SRC_ALPHA);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_SRC0_ALPHA:
+		switch (param) {
+		case GL_TEXTURE:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_TEX);
+			break;
+		case GL_CONSTANT:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_CONST);
+			break;
+		case GL_PRIMARY_COLOR:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_COL);
+			break;
+		case GL_PREVIOUS:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_PREV);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_OPERAND0_ALPHA:
+		switch (param) {
+		case GL_SRC_ALPHA:
+			fimgCompatSetAlphaCombineArgMod(ctx->fimg,
+					unit, 0, FGFP_COMBARG_SRC_ALPHA);
+			break;
+		case GL_ONE_MINUS_SRC_ALPHA:
+			fimgCompatSetAlphaCombineArgMod(ctx->fimg,
+				unit, 0, FGFP_COMBARG_ONE_MINUS_SRC_ALPHA);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_SRC1_RGB:
+		switch (param) {
+		case GL_TEXTURE:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_TEX);
+			break;
+		case GL_CONSTANT:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_CONST);
+			break;
+		case GL_PRIMARY_COLOR:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_COL);
+			break;
+		case GL_PREVIOUS:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_PREV);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_OPERAND1_RGB:
+		switch (param) {
+		case GL_SRC_COLOR:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+					unit, 1, FGFP_COMBARG_SRC_COLOR);
+			break;
+		case GL_ONE_MINUS_SRC_COLOR:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+				unit, 1, FGFP_COMBARG_ONE_MINUS_SRC_COLOR);
+			break;
+		case GL_SRC_ALPHA:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+					unit, 1, FGFP_COMBARG_SRC_ALPHA);
+			break;
+		case GL_ONE_MINUS_SRC_ALPHA:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+				unit, 1, FGFP_COMBARG_ONE_MINUS_SRC_ALPHA);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_SRC1_ALPHA:
+		switch (param) {
+		case GL_TEXTURE:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_TEX);
+			break;
+		case GL_CONSTANT:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_CONST);
+			break;
+		case GL_PRIMARY_COLOR:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_COL);
+			break;
+		case GL_PREVIOUS:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_PREV);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_OPERAND1_ALPHA:
+		switch (param) {
+		case GL_SRC_ALPHA:
+			fimgCompatSetAlphaCombineArgMod(ctx->fimg,
+					unit, 1, FGFP_COMBARG_SRC_ALPHA);
+			break;
+		case GL_ONE_MINUS_SRC_ALPHA:
+			fimgCompatSetAlphaCombineArgMod(ctx->fimg,
+				unit, 1, FGFP_COMBARG_ONE_MINUS_SRC_ALPHA);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_SRC2_RGB:
+		switch (param) {
+		case GL_TEXTURE:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_TEX);
+			break;
+		case GL_CONSTANT:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_CONST);
+			break;
+		case GL_PRIMARY_COLOR:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_COL);
+			break;
+		case GL_PREVIOUS:
+			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_PREV);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_OPERAND2_RGB:
+		switch (param) {
+		case GL_SRC_COLOR:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+					unit, 2, FGFP_COMBARG_SRC_COLOR);
+			break;
+		case GL_ONE_MINUS_SRC_COLOR:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+				unit, 2, FGFP_COMBARG_ONE_MINUS_SRC_COLOR);
+			break;
+		case GL_SRC_ALPHA:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+					unit, 2, FGFP_COMBARG_SRC_ALPHA);
+			break;
+		case GL_ONE_MINUS_SRC_ALPHA:
+			fimgCompatSetColorCombineArgMod(ctx->fimg,
+				unit, 2, FGFP_COMBARG_ONE_MINUS_SRC_ALPHA);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_SRC2_ALPHA:
+		switch (param) {
+		case GL_TEXTURE:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_TEX);
+			break;
+		case GL_CONSTANT:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_CONST);
+			break;
+		case GL_PRIMARY_COLOR:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_COL);
+			break;
+		case GL_PREVIOUS:
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_PREV);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	case GL_OPERAND2_ALPHA:
+		switch (param) {
+		case GL_SRC_ALPHA:
+			fimgCompatSetAlphaCombineArgMod(ctx->fimg,
+					unit, 2, FGFP_COMBARG_SRC_ALPHA);
+			break;
+		case GL_ONE_MINUS_SRC_ALPHA:
+			fimgCompatSetAlphaCombineArgMod(ctx->fimg,
+				unit, 2, FGFP_COMBARG_ONE_MINUS_SRC_ALPHA);
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+}
+
+GL_API void GL_APIENTRY glTexEnvfv (GLenum target, GLenum pname, const GLfloat *params)
+{
+	if (target != GL_TEXTURE_ENV) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	GLint unit = ctx->activeTexture;
+
+	switch (pname) {
+	case GL_TEXTURE_ENV_COLOR:
+		fimgCompatSetEnvColor(ctx->fimg, unit,
+				params[0], params[1], params[2], params[3]);
+		break;
+	default:
+		glTexEnvf(target, pname, *params);
+	}
+}
+
+GL_API void GL_APIENTRY glTexEnvf (GLenum target, GLenum pname, GLfloat param)
+{
+	if (target != GL_TEXTURE_ENV) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	GLint unit = ctx->activeTexture;
+
+	switch (pname) {
+	case GL_RGB_SCALE:
+		if (param != 1.0 && param != 2.0 && param != 4.0) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+		fimgCompatSetColorScale(ctx->fimg, unit, param);
+		break;
+	case GL_ALPHA_SCALE:
+		if (param != 1.0 && param != 2.0 && param != 4.0) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+		fimgCompatSetAlphaScale(ctx->fimg, unit, param);
+		break;
+	default:
+		glTexEnvi(target, pname, intFromFloat(param));
+	}
+}
+
+GL_API void GL_APIENTRY glTexEnvx (GLenum target, GLenum pname, GLfixed param)
+{
+	glTexEnvf(target, pname, floatFromFixed(param));
+}
+
+GL_API void GL_APIENTRY glTexEnviv (GLenum target, GLenum pname, const GLint *params)
+{
+	if (target != GL_TEXTURE_ENV) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	GLint unit = ctx->activeTexture;
+
+	switch (pname) {
+	case GL_TEXTURE_ENV_COLOR:
+		fimgCompatSetEnvColor(ctx->fimg, unit,
+			floatFromInt(params[0]), floatFromInt(params[1]),
+			floatFromInt(params[2]), floatFromInt(params[3]));
+		break;
+	default:
+		glTexEnvf(target, pname, floatFromInt(*params));
+	}
+}
+
+GL_API void GL_APIENTRY glTexEnvxv (GLenum target, GLenum pname, const GLfixed *params)
+{
+	if (target != GL_TEXTURE_ENV) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	GLint unit = ctx->activeTexture;
+
+	switch (pname) {
+	case GL_TEXTURE_ENV_COLOR:
+		fimgCompatSetEnvColor(ctx->fimg, unit,
+			floatFromFixed(params[0]), floatFromFixed(params[1]),
+			floatFromFixed(params[2]), floatFromFixed(params[3]));
+		break;
+	default:
+		glTexEnvf(target, pname, floatFromFixed(*params));
+	}
+}
+
 /**
 	Enable/disable
 */
@@ -2592,11 +2827,7 @@ GL_API void GL_APIENTRY glFinish (void)
 {
 	FGLContext *ctx = getContext();
 
-	getHardware(ctx);
-
-	fimgInvalidateFlushCache(ctx->fimg, 0, 0, 1, 1);
-
-	putHardware(ctx);
+	fimgFinish(ctx->fimg);
 }
 
 /**
@@ -2617,16 +2848,6 @@ FGLContext *fglCreateContext(void)
 		fimgDestroyContext(fimg);
 		return NULL;
 	}
-
-	ctx->vertexShader.data = vshaderVshader;
-	ctx->vertexShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;
-
-	ctx->pixelShader.data = fshaderFshader;
-#ifdef FIMG_INTERPOLATION_WORKAROUND
-	ctx->pixelShader.numAttribs = 8;
-#else
-	ctx->pixelShader.numAttribs = 4 + FGL_MAX_TEXTURE_UNITS;
-#endif
 
 	for(int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++)
 		fimgSetAttribute(ctx->fimg, i, FGHI_ATTRIB_DT_FLOAT, fglDefaultAttribSize[i]);

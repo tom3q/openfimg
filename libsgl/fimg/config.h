@@ -22,11 +22,8 @@
 #ifndef _FIMG_CONFIG_H_
 #define _FIMG_CONFIG_H_
 
-/* Workaround for rasterizer bug. Use 2 for alternative drawing if 1 fails. */
-#define FIMG_INTERPOLATION_WORKAROUND	1
-
-/* Workaround for clipper bug. (UNCONFIRMED) */
-//#define FIMG_CLIPPER_WORKAROUND
+/* Workaround for rasterizer bug. */
+#define FIMG_INTERPOLATION_WORKAROUND
 
 /* Enable buffered geometry transfer */
 #define FIMG_USE_VERTEX_BUFFER

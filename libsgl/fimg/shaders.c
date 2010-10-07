@@ -26,8 +26,6 @@
  * Vertex shader
  */
 
-#define VSHADER_OFFSET		0x10000
-
 #define FGVS_INSTMEM_START	(0x10000)
 
 #define FGVS_CFLOAT_START	(0x14000)
