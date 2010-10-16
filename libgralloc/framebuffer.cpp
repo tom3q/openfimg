@@ -190,6 +190,8 @@ static int fb_compositionComplete(struct framebuffer_device_t* dev)
 
 /*****************************************************************************/
 
+//#define FORCE_24BPP
+
 int mapFrameBufferLocked(struct private_module_t* module)
 {
 	DEBUG_ENTER();
@@ -241,7 +243,24 @@ int mapFrameBufferLocked(struct private_module_t* module)
 	info.yoffset = 0;
 	info.activate = FB_ACTIVATE_NOW;
 
-	module->fbFormat = HAL_PIXEL_FORMAT_RGB_565;
+#ifdef FORCE_24BPP
+	info.bits_per_pixel = 24;
+#endif
+
+	switch (info.bits_per_pixel) {
+	case 32:
+	case 24:
+		module->fbFormat = HAL_PIXEL_FORMAT_BGRA_8888;
+		break;
+	case 16:
+		module->fbFormat = HAL_PIXEL_FORMAT_RGB_565;
+		break;
+	default:
+		LOGW("Unsupported pixel format (%d bpp), requesting RGB565.",
+							info.bits_per_pixel);
+		module->fbFormat = HAL_PIXEL_FORMAT_RGB_565;
+		info.bits_per_pixel = 16;
+	}
 
 	/*
 	* Request NUM_BUFFERS screens (at lest 2 for page flipping)
