@@ -141,6 +141,8 @@ static int get_format(int format)
 		return G2D_RGBX32;
 	case COPYBIT_FORMAT_RGBA_8888:
 		return G2D_RGBA32;
+	case COPYBIT_FORMAT_BGRA_8888:
+		return G2D_XRGB32;
 	default:
 		return -1;
 	}
