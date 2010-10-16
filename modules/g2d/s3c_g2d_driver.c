@@ -89,7 +89,8 @@ static struct g2d_drvdata *drvdata;
 struct g2d_context
 {
 	struct g2d_drvdata	*data;	// driver data
-	struct s3c_g2d_req	*req;	// blit request
+	struct s3c_g2d_req	*blit;	// blit request
+	struct s3c_g2d_fillrect	*fill;	// fillrect request
 	uint32_t		blend;	// blending mode
 	uint32_t		alpha;	// plane alpha value
 	uint32_t		rot;	// rotation mode
@@ -171,10 +172,9 @@ static inline uint32_t g2d_pack_xy(uint32_t x, uint32_t y)
 static int g2d_do_blit(struct g2d_context *ctx)
 {
 	struct g2d_drvdata *data = ctx->data;
-	struct s3c_g2d_req *req = ctx->req;
+	struct s3c_g2d_req *req = ctx->blit;
 	uint32_t srcw, srch, dstw, dsth;
 	uint32_t xincr, yincr;
-	//uint32_t xref, yref;
 	uint32_t stretch;
 	uint32_t blend;
 	uint32_t vdx1, vdy1, vdx2, vdy2, vsw, vsh;
@@ -259,9 +259,6 @@ static int g2d_do_blit(struct g2d_context *ctx)
 					req->src.w, req->src.h, req->src.fmt);
 
 	g2d_write(data, req->src.base + req->src.offs, G2D_SRC_BASE_ADDR);
-	//g2d_write(data, req->src.w, G2D_SRC_HORI_REG);
-	//g2d_write(data, req->src.h, G2D_SRC_VERT_REG);
-	/* NOTE: Which one is faster? */
 	g2d_write(data, g2d_pack_xy(req->src.w, req->src.h), G2D_SRC_RES_REG);
 	g2d_write(data, req->src.fmt, G2D_SRC_FORMAT_REG);
 	g2d_write(data, (req->src.fmt == G2D_RGBA32), G2D_END_RDSIZE_REG);
@@ -271,20 +268,13 @@ static int g2d_do_blit(struct g2d_context *ctx)
 					req->dst.w, req->dst.h, req->dst.fmt);
 
 	g2d_write(data, req->dst.base + req->dst.offs, G2D_DST_BASE_ADDR);
-	//g2d_write(data, req->dst.w, G2D_DST_HORI_REG);
-	//g2d_write(data, req->dst.h, G2D_DST_VERT_REG);
-	/* NOTE: Which one is faster? */
 	g2d_write(data, g2d_pack_xy(req->dst.w, req->dst.h), G2D_DST_RES_REG);
 	g2d_write(data, req->dst.fmt, G2D_DST_FORMAT_REG);
 
 	/* Configure clipping window to destination size */
 	DBG("CLIP (%d,%d) (%d,%d)\n", 0, 0, req->dst.w - 1, req->dst.h - 1);
 
-	//g2d_write(data, 0, G2D_CW_LT_X_REG);
-	//g2d_write(data, 0, G2D_CW_LT_Y_REG);
 	g2d_write(data, g2d_pack_xy(0, 0), G2D_CW_LT_REG);
-	//g2d_write(data, req->dst.w - 1, G2D_CW_RB_X_REG);
-	//g2d_write(data, req->dst.h - 1, G2D_CW_RB_Y_REG);
 	g2d_write(data, g2d_pack_xy(req->dst.w - 1, req->dst.h - 1),
 							G2D_CW_RB_REG);
 
@@ -314,8 +304,6 @@ static int g2d_do_blit(struct g2d_context *ctx)
 
 	/* Configure rotation */
 	g2d_write(data, ctx->rot, G2D_ROTATE_REG);
-	//g2d_write(data, xref, G2D_ROT_OC_X_REG);
-	//g2d_write(data, yref, G2D_ROT_OC_Y_REG);
 	g2d_write(data, g2d_pack_xy(vdx1, vdy1), G2D_ROT_OC_REG);
 
 	DBG("BLEND %08x ROTATE %08x REF=(%d, %d)\n",
@@ -326,20 +314,10 @@ static int g2d_do_blit(struct g2d_context *ctx)
 		req->src.l, req->src.t, req->src.r, req->src.b,
 		vdx1, vdy1, vdx2, vdy2);
 
-	//g2d_write(data, req->src.l, G2D_COORD0_X_REG);
-	//g2d_write(data, req->src.t, G2D_COORD0_Y_REG);
 	g2d_write(data, g2d_pack_xy(req->src.l, req->src.t), G2D_COORD0_REG);
-	//g2d_write(data, req->src.r, G2D_COORD1_X_REG);
-	//g2d_write(data, req->src.b, G2D_COORD1_Y_REG);
 	g2d_write(data, g2d_pack_xy(req->src.r, req->src.b), G2D_COORD1_REG);
 
-	//g2d_write(data, req->dst.l, G2D_COORD2_X_REG);
-	//g2d_write(data, req->dst.t, G2D_COORD2_Y_REG);
-	//g2d_write(data, g2d_pack_xy(req->dst.l, req->dst.t), G2D_COORD2_REG);
 	g2d_write(data, g2d_pack_xy(vdx1, vdy1), G2D_COORD2_REG);
-	//g2d_write(data, req->dst.r, G2D_COORD3_X_REG);
-	//g2d_write(data, req->dst.b, G2D_COORD3_Y_REG);
-	//g2d_write(data, g2d_pack_xy(req->dst.r, req->dst.b), G2D_COORD3_REG);
 	g2d_write(data, g2d_pack_xy(vdx2, vdy2), G2D_COORD3_REG);
 
 	/* Configure scaling factors */
@@ -354,6 +332,65 @@ static int g2d_do_blit(struct g2d_context *ctx)
 		g2d_write(data, G2D_CMD1_REG_S, G2D_CMD1_REG);
 	else
 		g2d_write(data, G2D_CMD1_REG_N, G2D_CMD1_REG);
+
+	return 0;
+}
+
+static int g2d_do_fillrect(struct g2d_context *ctx)
+{
+	struct g2d_drvdata *data = ctx->data;
+	struct s3c_g2d_fillrect *req = ctx->fill;
+
+	/* NOTE: Theoretically this could by skipped */
+	if (g2d_check_fifo(data, 19)) {
+		ERR("timeout while waiting for FIFO\n");
+		return -EBUSY;
+	}
+
+	/* Configure images */
+	DBG("DST %08x + %08x, %dx%d, fmt = %d\n", req->dst.base, req->dst.offs,
+					req->dst.w, req->dst.h, req->dst.fmt);
+
+	g2d_write(data, req->dst.base + req->dst.offs, G2D_SRC_BASE_ADDR);
+	g2d_write(data, req->dst.base + req->dst.offs, G2D_DST_BASE_ADDR);
+	g2d_write(data, g2d_pack_xy(req->dst.w, req->dst.h), G2D_SRC_RES_REG);
+	g2d_write(data, g2d_pack_xy(req->dst.w, req->dst.h), G2D_DST_RES_REG);
+	g2d_write(data, req->dst.fmt, G2D_SRC_FORMAT_REG);
+	g2d_write(data, req->dst.fmt, G2D_DST_FORMAT_REG);
+	g2d_write(data, (req->dst.fmt == G2D_RGBA32), G2D_END_RDSIZE_REG);
+
+	/* Configure clipping window to destination size */
+	DBG("CLIP (%d,%d) (%d,%d)\n", 0, 0, req->dst.w - 1, req->dst.h - 1);
+
+	g2d_write(data, g2d_pack_xy(0, 0), G2D_CW_LT_REG);
+	g2d_write(data, g2d_pack_xy(req->dst.w - 1, req->dst.h - 1),
+							G2D_CW_RB_REG);
+
+	/* Configure ROP and alpha blending */
+	g2d_write(data, G2D_ROP_REG_OS_FG_COLOR | G2D_ROP_3RD_OPRND_ONLY,
+								G2D_ROP_REG);
+	g2d_write(data, req->alpha, G2D_ALPHA_REG);
+
+	/* Configure fill color */
+	g2d_write(data, req->color, G2D_FG_COLOR_REG);
+
+	/* Configure rotation */
+	g2d_write(data, G2D_ROTATE_REG_R0_0, G2D_ROTATE_REG);
+
+	/* Configure coordinates */
+	DBG("FILL %08x => (%d,%d) (%d,%d)\n", req->color, req->dst.l,
+					req->dst.t, req->dst.r, req->dst.b);
+
+	g2d_write(data, g2d_pack_xy(req->dst.l, req->dst.t), G2D_COORD0_REG);
+	g2d_write(data, g2d_pack_xy(req->dst.r, req->dst.b), G2D_COORD1_REG);
+
+	g2d_write(data, g2d_pack_xy(req->dst.l, req->dst.t), G2D_COORD2_REG);
+	g2d_write(data, g2d_pack_xy(req->dst.r, req->dst.b), G2D_COORD3_REG);
+
+	g2d_write(data, G2D_INTEN_REG_ACF, G2D_INTEN_REG);
+
+	/* Start the operation */
+	g2d_write(data, G2D_CMD1_REG_N, G2D_CMD1_REG);
 
 	return 0;
 }
@@ -517,39 +554,95 @@ static enum hrtimer_restart g2d_idle_func(struct hrtimer *t)
 	File operations
 */
 
-static int s3c_g2d_ioctl(struct inode *inode, struct file *file,
-				unsigned int cmd, unsigned long arg)
+static int s3c_g2d_fill(struct g2d_context *ctx, unsigned long arg, int nblock)
 {
-	struct g2d_context *ctx = (struct g2d_context *)file->private_data;
+	struct g2d_drvdata *data = ctx->data;
+	struct file *dstf = 0;
+	struct s3c_g2d_fillrect req;
+	int ret = 0;
+
+	if(!mutex_trylock(&data->mutex)) {
+		if(nblock)
+			return -EWOULDBLOCK;
+		else
+			mutex_lock(&data->mutex);
+	}
+
+	if (unlikely(copy_from_user(&req, (struct s3c_g2d_fillrect*)arg,
+					sizeof(struct s3c_g2d_fillrect)))) {
+		ERR("copy_from_user failed\n");
+		ret = -EFAULT;
+		goto err_noput;
+	}
+
+	if (unlikely((req.dst.w <= 1) || (req.dst.h <= 1))) {
+		ERR("invalid destination resolution\n");
+		ret = -EINVAL;
+		goto err_noput;
+	}
+
+	if (unlikely(req.dst.base == 0) && unlikely(get_img(&req.dst, &dstf))) {
+		ERR("could not retrieve dst image from memory\n");
+		ret = -EINVAL;
+		goto err_noput;
+	}
+
+	ctx->srcf = 0;
+	ctx->dstf = dstf;
+	ctx->fill = &req; // becomes invalid after leaving this function!
+
+#ifdef USE_G2D_DOMAIN_GATING
+	hrtimer_cancel(&data->timer);
+	ret = g2d_power_up(data);
+	if (ret != 0) {
+		ERR("G2D power up failed\n");
+		ret = -EFAULT;
+		goto err_cmd;
+	}
+#endif /* USE_G2D_DOMAIN_GATING */
+
+	flush_img(&req.dst, dstf);
+
+	ret = g2d_do_fillrect(ctx);
+	if(ret != 0) {
+		ERR("Failed to start G2D operation (%d)\n", ret);
+		g2d_soft_reset(data);
+		goto err_cmd;
+	}
+
+	// block mode
+	if (nblock) {
+		atomic_long_set(&data->work.data, (long)ctx);
+		schedule_work(&data->work);
+		return 0;
+	} else if (!wait_for_completion_interruptible_timeout(&data->completion,
+								G2D_TIMEOUT)) {
+		ERR("Timeout while waiting for interrupt, resetting\n");
+		g2d_soft_reset(data);
+		ret = -EFAULT;
+	}
+
+err_cmd:
+#ifdef USE_G2D_DOMAIN_GATING
+	hrtimer_start(&data->timer, ktime_set(G2D_IDLE_TIME_SECS, 0),
+							HRTIMER_MODE_REL);
+#endif /* USE_G2D_DOMAIN_GATING */
+	put_img(dstf);
+err_noput:
+	mutex_unlock(&data->mutex);
+
+	return ret;
+}
+
+static int s3c_g2d_blit(struct g2d_context *ctx, unsigned long arg, int nblock)
+{
 	struct g2d_drvdata *data = ctx->data;
 	struct file *srcf = 0, *dstf = 0;
 	struct s3c_g2d_req req;
 	int ret = 0;
 
-	switch (cmd) {
-	/* Proceed to the operation */
-	case S3C_G2D_BITBLT:
-		break;
-	/* Set the parameter and return */
-	case S3C_G2D_SET_TRANSFORM:
-		ctx->rot = arg;
-		return 0;
-	case S3C_G2D_SET_ALPHA_VAL:
-		ctx->alpha = (arg > ALPHA_VALUE_MAX) ? 255 : arg;
-		return 0;
-	case S3C_G2D_SET_RASTER_OP:
-		ctx->rop = arg & 0xff;
-		return 0;
-	case S3C_G2D_SET_BLENDING:
-		ctx->blend = arg;
-		return 0;
-	/* Invalid IOCTL call */
-	default:
-		return -EINVAL;
-	}
-
 	if(!mutex_trylock(&data->mutex)) {
-		if(file->f_flags & O_NONBLOCK)
+		if(nblock)
 			return -EWOULDBLOCK;
 		else
 			mutex_lock(&data->mutex);
@@ -591,7 +684,7 @@ static int s3c_g2d_ioctl(struct inode *inode, struct file *file,
 
 	ctx->srcf = srcf;
 	ctx->dstf = dstf;
-	ctx->req = &req; // becomes invalid after leaving this function!
+	ctx->blit = &req; // becomes invalid after leaving this function!
 
 #ifdef USE_G2D_DOMAIN_GATING
 	hrtimer_cancel(&data->timer);
@@ -614,7 +707,7 @@ static int s3c_g2d_ioctl(struct inode *inode, struct file *file,
 	}
 
 	// block mode
-	if (file->f_flags & O_NONBLOCK) {
+	if (nblock) {
 		atomic_long_set(&data->work.data, (long)ctx);
 		schedule_work(&data->work);
 		return 0;
@@ -636,6 +729,37 @@ err_noput:
 	mutex_unlock(&data->mutex);
 
 	return ret;
+}
+
+static int s3c_g2d_ioctl(struct inode *inode, struct file *file,
+				unsigned int cmd, unsigned long arg)
+{
+	struct g2d_context *ctx = (struct g2d_context *)file->private_data;
+	int nblock = file->f_flags & O_NONBLOCK;
+
+	switch (cmd) {
+	/* Proceed to the operation */
+	case S3C_G2D_BITBLT:
+		return s3c_g2d_blit(ctx, arg, nblock);
+	case S3C_G2D_FILLRECT:
+		return s3c_g2d_fill(ctx, arg, nblock);
+	/* Set the parameter and return */
+	case S3C_G2D_SET_TRANSFORM:
+		ctx->rot = arg;
+		return 0;
+	case S3C_G2D_SET_ALPHA_VAL:
+		ctx->alpha = (arg > ALPHA_VALUE_MAX) ? 255 : arg;
+		return 0;
+	case S3C_G2D_SET_RASTER_OP:
+		ctx->rop = arg & 0xff;
+		return 0;
+	case S3C_G2D_SET_BLENDING:
+		ctx->blend = arg;
+		return 0;
+	/* Invalid IOCTL call */
+	default:
+		return -EINVAL;
+	}
 }
 
 static unsigned int s3c_g2d_poll(struct file *file, poll_table *wait)

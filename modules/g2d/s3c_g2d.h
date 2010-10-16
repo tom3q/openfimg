@@ -36,6 +36,15 @@
 #define S3C_G2D_BITBLT			_IOW(G2D_IOCTL_MAGIC, 0, struct s3c_g2d_req)
 
 /*
+ * S3C_G2D_FILLRECT
+ * Start hardware fillrect operation.
+ * Argument:	a pointer to struct s3c_g2d_fillrect with operation parameters
+ * Returns:	  0 on success,
+ *		< 0, on error
+ */
+#define S3C_G2D_FILLRECT		_IOW(G2D_IOCTL_MAGIC, 8, struct s3c_g2d_fillrect)
+
+/*
  * S3C_G2D_SET_TRANSFORM
  * Set requested image transformation.
  * Argument:	one of G2D_ROT_* values
@@ -124,6 +133,14 @@ struct s3c_g2d_req
 {
 	struct s3c_g2d_image src; // source image
 	struct s3c_g2d_image dst; // destination image
+};
+
+/* Fillrect request */
+struct s3c_g2d_fillrect
+{
+	struct s3c_g2d_image dst;
+	uint32_t color;
+	uint8_t alpha;
 };
 
 #endif

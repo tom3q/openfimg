@@ -154,12 +154,12 @@
 #define G2D_COLOR_RGBX_8888			(6<<0)
 
 /* rotation mode */
-#define G2D_ROTATRE_REG_FY			(1<<5)
-#define G2D_ROTATRE_REG_FX			(1<<4)
-#define G2D_ROTATRE_REG_R3_270			(1<<3)
-#define G2D_ROTATRE_REG_R2_180			(1<<2)
-#define G2D_ROTATRE_REG_R1_90			(1<<1)
-#define G2D_ROTATRE_REG_R0_0			(1<<0)
+#define G2D_ROTATE_REG_FY			(1<<5)
+#define G2D_ROTATE_REG_FX			(1<<4)
+#define G2D_ROTATE_REG_R3_270			(1<<3)
+#define G2D_ROTATE_REG_R2_180			(1<<2)
+#define G2D_ROTATE_REG_R1_90			(1<<1)
+#define G2D_ROTATE_REG_R0_0			(1<<0)
 
 /* Endianess and read size */
 #define G2D_ENDIAN_READSIZE_BIG_ENDIAN		(1<<4)
