@@ -39,27 +39,27 @@
 #define FGVS_OUT_ATTR_IDX(i)	(0x20014 + 4*(i))
 
 typedef union {
-	unsigned int val;
+	uint32_t val;
 	struct {
 		unsigned copyPC		:1;
 		unsigned clrStatus	:1;
 		unsigned		:30;
-	} bits;
+	};
 } fimgVShaderConfig;
 
 typedef union {
-	unsigned int val;
+	uint32_t val;
 	struct {
 		unsigned PCStart	:9;
 		unsigned		:7;
 		unsigned PCEnd		:9;
 		unsigned		:6;
 		unsigned ignorePCEnd	:1;
-	} bits;
+	};
 } fimgVShaderPCRange;
 
 typedef union {
-	unsigned int val;
+	uint32_t val;
 	struct {
 		unsigned num		:4;
 		unsigned		:4;
@@ -79,25 +79,13 @@ typedef union {
 #define FGPS_IBSTATUS		(0x4c814)
 
 typedef union {
-	unsigned int val;
+	uint32_t val;
 	struct {
 		unsigned PCEnd		:9;
 		unsigned ignorePCEnd	:1;
 		unsigned		:22;
-	} bits;
+	};
 } fimgPShaderPCEnd;
-
-/**
-	Compatibility module for OpenGL ES 1.1 operation.
-
-	Use functions from this file only when the fixed-pipeline shader is loaded.
-
-	matrix	<=>	const float mapping:
-	TRANSFORMATION	0-3
-	MODELVIEW_INV	4-7
-	TEXTURE(0)	8-11
-	TEXTURE(1)	12-5
-*/
 
 /*****************************************************************************
  * FUNCTIONS:	fimgLoadMatrix
@@ -106,7 +94,7 @@ typedef union {
  * PARAMETERS:	[IN] matrix - which matrix to load (FGL_MATRIX_*)
  *		[IN] pData - pointer to matrix elements in column-major ordering
  *****************************************************************************/
-void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, const float *pfData)
+void fimgLoadMatrix(fimgContext *ctx, uint32_t matrix, const float *pfData)
 {
 	const uint32_t *data = (const uint32_t *)pfData;
 	memcpy(&ctx->compat.matrix[16*matrix], data, 64);
@@ -118,11 +106,23 @@ void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, const float *pfData)
  */
 
 struct shaderBlock {
-	const unsigned int *data;
-	unsigned int len;
+	const uint32_t *data;
+	uint32_t len;
+};
+#define SHADER_BLOCK(blk)	{ blk, sizeof(blk) / 16 }
+
+/* Vertex shader */
+
+static const struct shaderBlock vertexConstFloat = SHADER_BLOCK(vert_cfloat);
+static const struct shaderBlock vertexHeader = SHADER_BLOCK(vert_header);
+static const struct shaderBlock vertexFooter = SHADER_BLOCK(vert_footer);
+
+static const struct shaderBlock texcoordTransform[] = {
+	SHADER_BLOCK(vert_texture0),
+	SHADER_BLOCK(vert_texture1)
 };
 
-#define SHADER_BLOCK(blk)	{ blk, sizeof(blk) / 16 }
+static const struct shaderBlock vertexClear = SHADER_BLOCK(vert_clear);
 
 /* Pixel shader */
 
@@ -213,26 +213,38 @@ static const struct shaderBlock combine_c = SHADER_BLOCK(frag_combine_col);
 static const struct shaderBlock combine_a = SHADER_BLOCK(frag_combine_a);
 static const struct shaderBlock combine_u = SHADER_BLOCK(frag_combine_uni);
 
-/* Vertex shader */
-
-static const struct shaderBlock vertexConstFloat = SHADER_BLOCK(vert_cfloat);
-static const struct shaderBlock vertexHeader = SHADER_BLOCK(vert_header);
-static const struct shaderBlock vertexFooter = SHADER_BLOCK(vert_footer);
-
-static const struct shaderBlock texcoordTransform[] = {
-	SHADER_BLOCK(vert_texture0),
-	SHADER_BLOCK(vert_texture1)
-};
+static const struct shaderBlock pixelClear = SHADER_BLOCK(frag_clear);
 
 /* Shader functions */
 
 //#define FIMG_DYNSHADER_DEBUG
 
-static unsigned loadShaderBlock(const struct shaderBlock *blk,
-						volatile unsigned int *addr)
+static inline volatile void *vsInstAddr(fimgContext *ctx, unsigned int slot)
 {
-	unsigned inst;
-	const unsigned int *data = blk->data;
+	return ctx->base + FGVS_INSTMEM_START + 16*slot;
+}
+
+static inline uint32_t vsInstLen(fimgContext *ctx, volatile void *vaddr)
+{
+	return ((volatile char *)vaddr - (ctx->base + FGVS_INSTMEM_START)) / 16;
+}
+
+static inline volatile void *psInstAddr(fimgContext *ctx, unsigned int slot)
+{
+	return ctx->base + FGPS_INSTMEM_START + 16*slot;
+}
+
+static inline uint32_t psInstLen(fimgContext *ctx, volatile void *vaddr)
+{
+	return ((volatile char *)vaddr - (ctx->base + FGPS_INSTMEM_START)) / 16;
+}
+
+static uint32_t loadShaderBlock(const struct shaderBlock *blk,
+						volatile void *vaddr)
+{
+	uint32_t inst;
+	const uint32_t *data = blk->data;
+	volatile uint32_t *addr = (volatile uint32_t *)vaddr;
 
 	for (inst = 0; inst < blk->len; inst++) {
 #ifdef FIMG_DYNSHADER_DEBUG
@@ -248,25 +260,25 @@ static unsigned loadShaderBlock(const struct shaderBlock *blk,
 	return 4*inst;
 }
 
-static inline void setVertexShaderAttribCount(fimgContext *ctx, unsigned count)
+static inline void setVertexShaderAttribCount(fimgContext *ctx, uint32_t count)
 {
 	fimgWrite(ctx, count, FGVS_ATTRIB_NUM);
 }
 
 static inline void setVertexShaderRange(fimgContext *ctx,
-					unsigned int start, unsigned int end)
+					uint32_t start, uint32_t end)
 {
 	fimgVShaderPCRange PCRange;
 	fimgVShaderConfig Config;
 
 	PCRange.val = 0;
-	PCRange.bits.PCStart = start;
-	PCRange.bits.PCEnd = end;
+	PCRange.PCStart = start;
+	PCRange.PCEnd = end;
 	fimgWrite(ctx, PCRange.val, FGVS_PCRANGE);
 
 	Config.val = 0;
-	Config.bits.copyPC = 1;
-	Config.bits.clrStatus = 1;
+	Config.copyPC = 1;
+	Config.clrStatus = 1;
 	fimgWrite(ctx, Config.val, FGVS_CONFIG);
 }
 
@@ -275,7 +287,7 @@ static inline void setPixelShaderState(fimgContext *ctx, int state)
 	fimgWrite(ctx, !!state, FGPS_EXE_MODE);
 }
 
-static inline void setPixelShaderAttribCount(fimgContext *ctx, unsigned count)
+static inline void setPixelShaderAttribCount(fimgContext *ctx, uint32_t count)
 {
 	fimgWrite(ctx, count, FGPS_ATTRIB_NUM);
 
@@ -283,7 +295,7 @@ static inline void setPixelShaderAttribCount(fimgContext *ctx, unsigned count)
 }
 
 static inline void setPixelShaderRange(fimgContext *ctx,
-					unsigned int start, unsigned int end)
+					uint32_t start, uint32_t end)
 {
 	fimgWrite(ctx, start, FGPS_PC_START);
 	fimgWrite(ctx, end, FGPS_PC_END);
@@ -292,12 +304,12 @@ static inline void setPixelShaderRange(fimgContext *ctx,
 
 void fimgCompatLoadVertexShader(fimgContext *ctx)
 {
-	unsigned unit;
-	volatile unsigned int *addr;
+	uint32_t unit;
+	volatile uint32_t *addr;
 	fimgTextureCompat *texture;
 
 	texture = ctx->compat.texture;
-	addr = (volatile unsigned int *)(ctx->base + FGVS_INSTMEM_START);
+	addr = vsInstAddr(ctx, 0);
 
 	addr += loadShaderBlock(&vertexHeader, addr);
 
@@ -310,21 +322,25 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 
 	addr += loadShaderBlock(&vertexFooter, addr);
 
-	setVertexShaderRange(ctx, 0, (addr - ((volatile unsigned int *)(ctx->base + FGVS_INSTMEM_START)))/4 - 1);
+	ctx->compat.vshaderEnd = vsInstLen(ctx, addr) - 1;
 
-	addr = (volatile unsigned int *)(ctx->base + FGVS_CFLOAT_START);
+	setVertexShaderRange(ctx, 0, ctx->compat.vshaderEnd);
+
+	loadShaderBlock(&vertexClear, vsInstAddr(ctx, 512 - vertexClear.len));
+
+	addr = (volatile uint32_t *)(ctx->base + FGVS_CFLOAT_START);
 
 	loadShaderBlock(&vertexConstFloat, addr);
 }
 
 void fimgCompatLoadPixelShader(fimgContext *ctx)
 {
-	unsigned unit, arg;
-	volatile unsigned int *addr;
+	uint32_t unit, arg;
+	volatile uint32_t *addr;
 	fimgTextureCompat *texture;
 
 	texture = ctx->compat.texture;
-	addr = (volatile unsigned int *)(ctx->base + FGPS_INSTMEM_START);
+	addr = psInstAddr(ctx, 0);
 
 	addr += loadShaderBlock(&pixelHeader, addr);
 
@@ -339,11 +355,14 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 			continue;
 
 		for (arg = 0; arg < 3; arg++) {
-			addr += loadShaderBlock(&combineArg[arg][texture->combc.arg[arg].src], addr);
-			addr += loadShaderBlock(&combineArgMod[arg][texture->combc.arg[arg].mod], addr);
+			addr += loadShaderBlock(&combineArg[arg]
+					[texture->combc.arg[arg].src], addr);
+			addr += loadShaderBlock(&combineArgMod[arg]
+					[texture->combc.arg[arg].mod], addr);
 		}
 
-		addr += loadShaderBlock(&combineFunc[texture->combc.func], addr);
+		addr += loadShaderBlock(&combineFunc[texture->combc.func],
+									addr);
 #if 0
 		if (texture->combc.func == texture->comba.func) {
 			addr += loadShaderBlock(&combine_u, addr);
@@ -358,25 +377,30 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 		addr += loadShaderBlock(&combine_c, addr);
 
 		for (arg = 0; arg < 3; arg++) {
-			addr += loadShaderBlock(&combineArg[arg][texture->comba.arg[arg].src], addr);
-			addr += loadShaderBlock(&combineArgMod[arg][texture->comba.arg[arg].mod], addr);
+			addr += loadShaderBlock(&combineArg[arg]
+					[texture->comba.arg[arg].src], addr);
+			addr += loadShaderBlock(&combineArgMod[arg]
+					[texture->comba.arg[arg].mod], addr);
 		}
 
-		addr += loadShaderBlock(&combineFunc[texture->comba.func], addr);
+		addr += loadShaderBlock(&combineFunc[texture->comba.func],
+									addr);
 		addr += loadShaderBlock(&combine_a, addr);
 	}
 
 	addr += loadShaderBlock(&pixelFooter, addr);
 
-	setPixelShaderRange(ctx, 0, (addr - ((volatile unsigned int *)(ctx->base + FGPS_INSTMEM_START)))/4 - 1);
-	setPixelShaderAttribCount(ctx, 8);
+	ctx->compat.pshaderEnd = psInstLen(ctx, addr) - 1;
+	setPixelShaderRange(ctx, 0, ctx->compat.pshaderEnd);
 
-	addr = (volatile unsigned int *)(ctx->base + FGPS_CFLOAT_START);
+	loadShaderBlock(&pixelClear, psInstAddr(ctx, 512 - pixelClear.len));
+
+	addr = (volatile uint32_t *)(ctx->base + FGPS_CFLOAT_START);
 
 	loadShaderBlock(&pixelConstFloat, addr);
 }
 
-void fimgCompatSetTextureEnable(fimgContext *ctx, unsigned unit, int enable)
+void fimgCompatSetTextureEnable(fimgContext *ctx, uint32_t unit, int enable)
 {
 	if (ctx->compat.texture[unit].enabled == !!enable)
 		return;
@@ -386,7 +410,7 @@ void fimgCompatSetTextureEnable(fimgContext *ctx, unsigned unit, int enable)
 	ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetTextureFunc(fimgContext *ctx, unsigned unit, fimgTexFunc func)
+void fimgCompatSetTextureFunc(fimgContext *ctx, uint32_t unit, fimgTexFunc func)
 {
 	if (ctx->compat.texture[unit].func == func)
 		return;
@@ -397,7 +421,7 @@ void fimgCompatSetTextureFunc(fimgContext *ctx, unsigned unit, fimgTexFunc func)
 		ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetColorCombiner(fimgContext *ctx, unsigned unit,
+void fimgCompatSetColorCombiner(fimgContext *ctx, uint32_t unit,
 							fimgCombFunc func)
 {
 	if (ctx->compat.texture[unit].combc.func == func)
@@ -410,7 +434,7 @@ void fimgCompatSetColorCombiner(fimgContext *ctx, unsigned unit,
 		ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetAlphaCombiner(fimgContext *ctx, unsigned unit,
+void fimgCompatSetAlphaCombiner(fimgContext *ctx, uint32_t unit,
 							fimgCombFunc func)
 {
 	if (ctx->compat.texture[unit].comba.func == func)
@@ -423,8 +447,8 @@ void fimgCompatSetAlphaCombiner(fimgContext *ctx, unsigned unit,
 		ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgSrc src)
+void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgSrc src)
 {
 	if (ctx->compat.texture[unit].combc.arg[arg].src == src)
 		return;
@@ -436,8 +460,8 @@ void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, unsigned unit,
 		ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetColorCombineArgMod(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgMod mod)
+void fimgCompatSetColorCombineArgMod(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgMod mod)
 {
 	if (ctx->compat.texture[unit].combc.arg[arg].mod == mod)
 		return;
@@ -449,8 +473,8 @@ void fimgCompatSetColorCombineArgMod(fimgContext *ctx, unsigned unit,
 		ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgSrc src)
+void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgSrc src)
 {
 	if (ctx->compat.texture[unit].comba.arg[arg].src == src)
 		return;
@@ -462,8 +486,8 @@ void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, unsigned unit,
 		ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgMod mod)
+void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgMod mod)
 {
 	if (ctx->compat.texture[unit].comba.arg[arg].mod == mod)
 		return;
@@ -475,7 +499,7 @@ void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, unsigned unit,
 		ctx->compat.psDirty = 1;
 }
 
-void fimgCompatSetColorScale(fimgContext *ctx, unsigned unit, float scale)
+void fimgCompatSetColorScale(fimgContext *ctx, uint32_t unit, float scale)
 {
 	ctx->compat.texture[unit].scale[0] = scale;
 	ctx->compat.texture[unit].scale[1] = scale;
@@ -484,14 +508,14 @@ void fimgCompatSetColorScale(fimgContext *ctx, unsigned unit, float scale)
 	ctx->compat.texture[unit].dirty = 1;
 }
 
-void fimgCompatSetAlphaScale(fimgContext *ctx, unsigned unit, float scale)
+void fimgCompatSetAlphaScale(fimgContext *ctx, uint32_t unit, float scale)
 {
 	ctx->compat.texture[unit].scale[3] = scale;
 
 	ctx->compat.texture[unit].dirty = 1;
 }
 
-void fimgCompatSetEnvColor(fimgContext *ctx, unsigned unit,
+void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
 					float r, float g, float b, float a)
 {
 	ctx->compat.texture[unit].env[0] = r;
@@ -502,14 +526,14 @@ void fimgCompatSetEnvColor(fimgContext *ctx, unsigned unit,
 	ctx->compat.texture[unit].dirty = 1;
 }
 
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, unsigned unit)
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
 {
 	ctx->compat.texture[unit].texture = tex;
 }
 
 void fimgCreateCompatContext(fimgContext *ctx)
 {
-	unsigned unit;
+	uint32_t unit;
 	fimgTextureCompat *texture;
 
 	texture = ctx->compat.texture;
@@ -541,28 +565,31 @@ void fimgCreateCompatContext(fimgContext *ctx)
 
 	ctx->compat.vsDirty = 1;
 	ctx->compat.psDirty = 1;
+
+	ctx->clear.depth = 1.0;
 }
 
 #define FGFP_TEXENV(unit)	(4 + 2*(unit))
 #define FGFP_COMBSCALE(unit)	(5 + 2*(unit))
 
-static void loadPSConstFloat(fimgContext *ctx, const float *pfData, unsigned slot)
+static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
+								uint32_t slot)
 {
 	const uint32_t *data = (const uint32_t *)pfData;
-	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base + FGPS_CFLOAT_START + 16*slot);
-
+	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
+						+ FGPS_CFLOAT_START + 16*slot);
 	*(reg++) = *(data++);
 	*(reg++) = *(data++);
 	*(reg++) = *(data++);
 	*(reg++) = *(data++);
 }
 
-static void loadVSMatrix(fimgContext *ctx, const float *pfData, unsigned slot)
+static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 {
-	unsigned i;
+	uint32_t i;
 	const uint32_t *data = (const uint32_t *)pfData;
-	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base + FGVS_CFLOAT_START + 16*slot);
-
+	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
+						+ FGVS_CFLOAT_START + 16*slot);
 	for (i = 0; i < 4; i++) {
 		*(reg++) = *(data++);
 		*(reg++) = *(data++);
@@ -573,7 +600,7 @@ static void loadVSMatrix(fimgContext *ctx, const float *pfData, unsigned slot)
 
 void fimgCompatFlush(fimgContext *ctx)
 {
-	unsigned i;
+	uint32_t i;
 
 	if (ctx->compat.vsDirty) {
 		fimgCompatLoadVertexShader(ctx);
@@ -595,6 +622,7 @@ void fimgCompatFlush(fimgContext *ctx)
 		fimgCompatLoadPixelShader(ctx);
 		ctx->compat.psDirty = 0;
 	}
+	setPixelShaderAttribCount(ctx, 8);
 
 	for (i = 0; i < FIMG_NUM_TEXTURE_UNITS; i++) {
 		if (!ctx->compat.texture[i].enabled)
@@ -605,8 +633,10 @@ void fimgCompatFlush(fimgContext *ctx)
 		if (!ctx->compat.texture[i].dirty)
 			continue;
 
-		loadPSConstFloat(ctx, ctx->compat.texture[i].env, FGFP_TEXENV(i));
-		loadPSConstFloat(ctx, ctx->compat.texture[i].scale, FGFP_COMBSCALE(i));
+		loadPSConstFloat(ctx, ctx->compat.texture[i].env,
+							FGFP_TEXENV(i));
+		loadPSConstFloat(ctx, ctx->compat.texture[i].scale,
+							FGFP_COMBSCALE(i));
 
 		ctx->compat.texture[i].dirty = 0;
 	}
@@ -616,7 +646,7 @@ void fimgCompatFlush(fimgContext *ctx)
 
 void fimgRestoreCompatState(fimgContext *ctx)
 {
-	unsigned i;
+	uint32_t i;
 
 	for (i = 0; i < 2 + FIMG_NUM_TEXTURE_UNITS; i++)
 		ctx->compat.matrixDirty[i] = 1;
@@ -626,4 +656,151 @@ void fimgRestoreCompatState(fimgContext *ctx)
 
 	ctx->compat.vsDirty = 1;
 	ctx->compat.psDirty = 1;
+
+	fimgCompatFlush(ctx);
+}
+
+/*
+ * Clear
+ */
+
+#define FGHI_ATTRIB(i)		(0x8040 + 4*(i))
+#define FGHI_ATTRIB_VBCTRL(i)	(0x8080 + 4*(i))
+#define FGRA_BFCULL		(0x38014)
+#define FGRA_PWIDTH		(0x3801c)
+#define FGPF_ALPHAT		(0x70008)
+#define FGPF_FRONTST		(0x7000c)
+#define FGPF_DEPTHT		(0x70014)
+#define FGPF_BLEND		(0x7001c)
+#define FGPF_LOGOP		(0x70020)
+#define FGPF_CBMSK		(0x70024)
+
+void fimgClear(fimgContext *ctx, uint32_t mode)
+{
+	fimgArray array;
+	fimgAttribute pos;
+	fimgVtxBufAttrib vbattr;
+	fimgStencilTestData stencil;
+	fimgDepthTestData depth;
+
+	// prepare hardware
+	fimgGetHardware(ctx);
+	fimgFlush(ctx);
+
+	// load clear vertex shader
+	setVertexShaderAttribCount(ctx, 1);
+	setVertexShaderRange(ctx, 512 - vertexClear.len, 511);
+
+	// load clear pixel shader
+	setPixelShaderState(ctx, 0);
+	setPixelShaderAttribCount(ctx, 1);
+	setPixelShaderRange(ctx, 512 - pixelClear.len, 511);
+	loadPSConstFloat(ctx, ctx->clear.color, 255);
+	setPixelShaderState(ctx, 1);
+
+	// setup rasterizer
+	fimgWrite(ctx, 0, FGRA_BFCULL);
+	fimgWriteF(ctx, 2048.0f, FGRA_PWIDTH);
+
+	// setup per-fragment
+	fimgWrite(ctx, 0, FGPF_ALPHAT);
+	fimgWrite(ctx, 0, FGPF_BLEND);
+	fimgWrite(ctx, 0, FGPF_LOGOP);
+
+	// setup stencil test
+	stencil.val = 0;
+	if (mode & FGFP_CLEAR_STENCIL) {
+		stencil.dppass = FGPF_TEST_ACTION_REPLACE;
+		stencil.mask = 0xff;
+		stencil.ref = ctx->clear.stencil;
+		stencil.mode = FGPF_STENCIL_MODE_ALWAYS;
+		stencil.enable = 1;
+	}
+	fimgWrite(ctx, stencil.val, FGPF_FRONTST);
+
+	// setup depth test
+	depth.val = 0;
+	if (mode & FGFP_CLEAR_DEPTH) {
+		depth.mode = FGPF_TEST_MODE_ALWAYS;
+		depth.enable = 1;
+	}
+	fimgWrite(ctx, depth.val, FGPF_DEPTHT);
+
+	if ((mode & FGFP_CLEAR_COLOR) == 0)
+		fimgWrite(ctx, 0xF, FGPF_CBMSK);
+
+	// setup context
+	fimgSetAttribCount(ctx, 1);
+	fimgSetVertexContext(ctx, FGPE_POINTS);
+
+	// setup attribute
+	pos.val = 0;
+	pos.lastattr = 1;
+	pos.dt = FGHI_ATTRIB_DT_FLOAT;
+	pos.numcomp = FGHI_NUMCOMP(1);
+	pos.srcw = 3;
+	pos.srcz = 0;
+	pos.srcy = 1;
+	pos.srcx = 2;
+	fimgWrite(ctx, pos.val, FGHI_ATTRIB(0));
+
+	// setup vtxbuf attrib
+	vbattr.val = 0;
+	vbattr.range = 1;
+	vbattr.stride = 0;
+	fimgWrite(ctx, vbattr.val, FGHI_ATTRIB_VBCTRL(0));
+
+	// setup vertex array
+	array.pointer = &ctx->clear.depth;
+	array.stride = 0;
+	array.width = sizeof(float);
+
+	// start drawing
+	fimgDrawArraysBufferedAutoinc(ctx, &array, 0, 1);
+
+	// wait for hardware
+	fimgFlush(ctx);
+	fimgInvalidateFlushCache(ctx, 0, 0, 1, 1);
+
+	// restore rasterizer
+	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
+	fimgWriteF(ctx, ctx->rasterizer.pointWidth, FGRA_PWIDTH);
+
+	// restore per-fragment
+	fimgWrite(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
+	fimgWrite(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
+	fimgWrite(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
+	fimgWrite(ctx, ctx->fragment.blend.val, FGPF_BLEND);
+	fimgWrite(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
+	fimgWrite(ctx, ctx->fragment.mask.val, FGPF_CBMSK);
+
+	// restore vertex shader
+	setVertexShaderRange(ctx, 0, ctx->compat.vshaderEnd);
+
+	// restore pixel shader
+	setPixelShaderState(ctx, 0);
+	setPixelShaderRange(ctx, 0, ctx->compat.pshaderEnd);
+	setPixelShaderState(ctx, 1);
+
+	// release hardware
+	fimgPutHardware(ctx);
+}
+
+void fimgSetClearColor(fimgContext *ctx, float red, float green,
+						float blue, float alpha)
+{
+	ctx->clear.color[0] = red;
+	ctx->clear.color[1] = green;
+	ctx->clear.color[2] = blue;
+	ctx->clear.color[3] = alpha;
+}
+
+void fimgSetClearDepth(fimgContext *ctx, float depth)
+{
+	ctx->clear.depth = depth;
+}
+
+void fimgSetClearStencil(fimgContext *ctx, uint8_t stencil)
+{
+	ctx->clear.stencil = stencil;
 }

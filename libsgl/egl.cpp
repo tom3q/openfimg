@@ -62,26 +62,26 @@
 #include "fimg/fimg.h"
 
 #define FUNC_UNIMPLEMENTED \
-	LOGW("Application called unimplemented function:"); \
-	LOGW("%s", __func__)
+	LOGW("Application called unimplemented function: %s", __func__)
 
 #undef NELEM
 #define NELEM(x) (sizeof(x)/sizeof(*(x)))
 
 #define FGL_EGL_MAJOR		1
-#define FGL_EGL_MINOR		3
+#define FGL_EGL_MINOR		4
 
 using namespace android;
 
-static char const * const gVendorString     = "notSamsung";
+static char const * const gVendorString     = "GLES6410";
 static char const * const gVersionString    = "1.4 S3C6410 Android 0.0.1";
 static char const * const gClientApisString = "OpenGL_ES";
 static char const * const gExtensionsString =
-	"EGL_KHR_image_base "
-	"EGL_KHR_image_pixmap "
-	"EGL_ANDROID_image_native_buffer "
-	"EGL_ANDROID_swap_rectangle "
-	"EGL_ANDROID_get_render_buffer ";
+//	"EGL_KHR_image_base "
+//	"EGL_KHR_image_pixmap "
+//	"EGL_ANDROID_image_native_buffer "
+//	"EGL_ANDROID_swap_rectangle "
+//	"EGL_ANDROID_get_render_buffer "
+	"";
 
 pthread_key_t eglContextKey = -1;
 
@@ -148,7 +148,7 @@ EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 
 #ifdef EGL_ERR_DEBUG
 #define setError(a) ( \
-	LOGD("EGL error %s in %s", #a, __func__), \
+	LOGD("EGL error %s in %s in line %d", #a, __func__, __LINE__), \
 	_setError(a))
 static void _setError(EGLint error)
 #else
@@ -361,7 +361,7 @@ static FGLConfigPair const configAttributes2[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,       0 },
-	{ EGL_CONFIG_ID,        6 },
+	{ EGL_CONFIG_ID,        2 },
 	{ EGL_STENCIL_SIZE,     0 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
@@ -373,7 +373,7 @@ static FGLConfigPair const configAttributes3[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,      24 },
-	{ EGL_CONFIG_ID,        7 },
+	{ EGL_CONFIG_ID,        3 },
 	{ EGL_STENCIL_SIZE,     8 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
@@ -386,7 +386,7 @@ static FGLConfigPair const configAttributes4[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,       0 },
-	{ EGL_CONFIG_ID,        2 },
+	{ EGL_CONFIG_ID,        4 },
 	{ EGL_STENCIL_SIZE,     0 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
@@ -398,37 +398,10 @@ static FGLConfigPair const configAttributes5[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,      24 },
-	{ EGL_CONFIG_ID,        3 },
+	{ EGL_CONFIG_ID,        5 },
 	{ EGL_STENCIL_SIZE,     8 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
-
-#if 0
-// A 8 configs
-static FGLConfigPair const configAttributes6[] = {
-	{ EGL_BUFFER_SIZE,      8 },
-	{ EGL_ALPHA_SIZE,       8 },
-	{ EGL_BLUE_SIZE,        0 },
-	{ EGL_GREEN_SIZE,       0 },
-	{ EGL_RED_SIZE,         0 },
-	{ EGL_DEPTH_SIZE,       0 },
-	{ EGL_CONFIG_ID,        4 },
-	{ EGL_STENCIL_SIZE,     0 },
-	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT|EGL_PIXMAP_BIT },
-};
-
-static FGLConfigPair const configAttributes7[] = {
-	{ EGL_BUFFER_SIZE,      8 },
-	{ EGL_ALPHA_SIZE,       8 },
-	{ EGL_BLUE_SIZE,        0 },
-	{ EGL_GREEN_SIZE,       0 },
-	{ EGL_RED_SIZE,         0 },
-	{ EGL_DEPTH_SIZE,      24 },
-	{ EGL_CONFIG_ID,        5 },
-	{ EGL_STENCIL_SIZE,     8 },
-	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT|EGL_PIXMAP_BIT },
-};
-#endif
 
 static FGLConfigs const gConfigs[] = {
 	{ configAttributes0, NELEM(configAttributes0) },
@@ -437,10 +410,6 @@ static FGLConfigs const gConfigs[] = {
 	{ configAttributes3, NELEM(configAttributes3) },
 	{ configAttributes4, NELEM(configAttributes4) },
 	{ configAttributes5, NELEM(configAttributes5) },
-#if 0
-	{ configAttributes6, NELEM(configAttributes6) },
-	{ configAttributes7, NELEM(configAttributes7) },
-#endif
 };
 
 static FGLConfigMatcher const gConfigManagement[] = {
@@ -764,6 +733,9 @@ void fglFlushPmemSurface(FGLSurface *s)
 {
 	struct pmem_region region;
 
+	if (!s->isPMEM())
+		return;
+
 	region.offset = 0;
 	region.len = s->size;
 
@@ -823,7 +795,7 @@ err_open:
 
 void fglDestroyPmemSurface(FGLSurface *s)
 {
-	if(!s->isValid())
+	if(!s->isPMEM())
 		return;
 
 	munmap(s->vaddr, s->size);
@@ -1283,18 +1255,18 @@ void FGLWindowSurface::copyBlt(
 		const Rect& r(*cur++);
 		ssize_t w = r.right - r.left;
 		ssize_t h = r.bottom - r.top;
-		
+
 		if (w <= 0 || h<=0) continue;
-		
+
 		size_t size = w * bpp;
 		uint8_t const * s = src_bits + (r.left + src->stride * r.top) * bpp;
 		uint8_t       * d = dst_bits + (r.left + dst->stride * r.top) * bpp;
-		
+
 		if (dbpr==sbpr && size==sbpr) {
 			size *= h;
 			h = 1;
 		}
-		
+
 		do {
 			memcpy(d, s, size);
 			d += dbpr;
@@ -1412,11 +1384,11 @@ static bool supportedCopybitsDestinationFormat(int format) {
 #endif
 
 #define FB_DEVICE_NAME "/dev/graphics/fb0"
-static unsigned long getFramebufferAddress(void)
+static inline unsigned long getFramebufferAddress(void)
 {
 	static unsigned long address = 0;
 
-	LOGD("getFramebufferAddress");
+//	LOGD("getFramebufferAddress");
 
 	if (address == 0) {
 		int fb_fd = open(FB_DEVICE_NAME, O_RDWR, 0);
@@ -1444,7 +1416,7 @@ static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer
 {
 	const private_handle_t* hnd = static_cast<const private_handle_t*>(buffer->handle);
 
-	LOGD("fglGetBufferPhysicalAddress");
+//	LOGD("fglGetBufferPhysicalAddress");
 
 	// this pointer came from framebuffer
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
@@ -1492,7 +1464,7 @@ EGLBoolean FGLWindowSurface::bindDrawSurface(FGLContext* gl)
 EGLBoolean FGLWindowSurface::bindReadSurface(FGLContext* gl)
 {
 	FGLSurface buffer;
-	
+
 	buffer.width   = this->buffer->width;
 	buffer.height  = this->buffer->height;
 	buffer.stride  = this->buffer->stride;
@@ -1500,9 +1472,9 @@ EGLBoolean FGLWindowSurface::bindReadSurface(FGLContext* gl)
 	buffer.paddr   = 0;
 	buffer.size    = 0;
 	buffer.format  = this->format;
-	
+
 	fglSetReadBuffer(gl, &buffer);
-	
+
 	return EGL_TRUE;
 }
 
@@ -1687,7 +1659,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy, EGLConfig c
 		setError(EGL_BAD_DISPLAY);
 		return EGL_NO_SURFACE;
 	}
-	
+
 	if (win == 0) {
 		setError(EGL_BAD_MATCH);
 		return EGL_NO_SURFACE;
@@ -1812,10 +1784,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
-	
+
 	if (surface != EGL_NO_SURFACE) {
 		FGLRenderSurface* fglSurface( static_cast<FGLRenderSurface*>(surface) );
-		
+
 		if (!fglSurface->isValid()) {
 			setError(EGL_BAD_SURFACE);
 			return EGL_FALSE;
@@ -1831,10 +1803,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 			fglSurface->disconnect();
 			fglSurface->ctx = 0;
 		}
-		
+
 		delete fglSurface;
 	}
-	
+
 	return EGL_TRUE;
 }
 
@@ -1845,9 +1817,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
-	
+
 	FGLRenderSurface* fglSurface = static_cast<FGLRenderSurface*>(surface);
-	
+
 	if (!fglSurface->isValid()) {
 		setError(EGL_BAD_SURFACE);
 		return EGL_FALSE;
@@ -1859,7 +1831,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 	}
 
 	EGLBoolean ret = EGL_TRUE;
-	
+
 	switch (attribute) {
 		case EGL_CONFIG_ID:
 			ret = getConfigAttrib(dpy, fglSurface->config, EGL_CONFIG_ID, value);
@@ -1910,7 +1882,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 			setError(EGL_BAD_ATTRIBUTE);
 			ret = EGL_FALSE;
 	}
-	
+
 	return ret;
 }
 
@@ -1924,7 +1896,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglBindAPI(EGLenum api)
 		setError(EGL_BAD_PARAMETER);
 		return EGL_FALSE;
 	}
-	
+
 	return EGL_TRUE;
 }
 
@@ -2020,9 +1992,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 
 	if (c->egl.flags & FGL_IS_CURRENT)
 		setGlThreadSpecific(0);
-	
+
 	fglDestroyContext(c);
-	
+
 	return EGL_TRUE;
 }
 
@@ -2072,19 +2044,19 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 
 	if (draw) {
 		FGLRenderSurface* s = (FGLRenderSurface*)draw;
-		
+
 		if (!s->isValid()) {
 			setError(EGL_BAD_SURFACE);
 			return EGL_FALSE;
 		}
-		
+
 		if (s->dpy != dpy) {
 			setError(EGL_BAD_DISPLAY);
 			return EGL_FALSE;
 		}
 		// TODO: check that draw is compatible with the context
 	}
-	
+
 	if (read && read!=draw) {
 		FGLRenderSurface* s = (FGLRenderSurface*)read;
 
@@ -2118,7 +2090,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 	} else {
 		FGLRenderSurface* d = (FGLRenderSurface*)draw;
 		FGLRenderSurface* r = (FGLRenderSurface*)read;
-		
+
 		if ((d && d->ctx && d->ctx != ctx) ||
 		(r && r->ctx && r->ctx != ctx)) {
 			// one of the surface is bound to a context in another thread
@@ -2137,7 +2109,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 				FGLRenderSurface* s = reinterpret_cast<FGLRenderSurface*>(gl->egl.draw);
 				s->disconnect();
 			}
-			
+
 			if (gl->egl.read) {
 				// FIXME: unlock/disconnect the read surface too
 			}
@@ -2149,7 +2121,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 				gl->egl.flags &= ~FGL_NEVER_CURRENT;
 				GLint w = 0;
 				GLint h = 0;
-				
+
 				if (draw) {
 					w = d->getWidth();
 					h = d->getHeight();
@@ -2243,16 +2215,16 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
-	
+
 	FGLContext* c = (FGLContext*)ctx;
-	
+
 	switch (attribute) {
 	case EGL_CONFIG_ID:
 		// Returns the ID of the EGL frame buffer configuration with
 		// respect to which the context was created
 		return getConfigAttrib(dpy, c->egl.config, EGL_CONFIG_ID, value);
 	}
-	
+
 	setError(EGL_BAD_ATTRIBUTE);
 	return EGL_FALSE;
 }
@@ -2277,12 +2249,12 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 	}
 
 	FGLRenderSurface* d = static_cast<FGLRenderSurface*>(surface);
-	
+
 	if (!d->isValid()) {
 		setError(EGL_BAD_SURFACE);
 		return EGL_FALSE;
 	}
-	
+
 	if (d->dpy != dpy) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
@@ -2294,12 +2266,12 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 	// if it's bound to a context, update the buffer
 	if (d->ctx != EGL_NO_CONTEXT) {
 		FGLContext* c = (FGLContext*)d->ctx;
-		
+
 		d->bindDrawSurface(c);
 		// if this surface is also the read surface of the context
 		// it is bound to, make sure to update the read buffer as well.
 		// The EGL spec is a little unclear about this.
-		
+
 		if (c->egl.read == surface)
 			d->bindReadSurface(c);
 	}
@@ -2314,10 +2286,126 @@ EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers(EGLDisplay dpy, EGLSurface surface,
 	return EGL_FALSE;
 }
 
+// ----------------------------------------------------------------------------
+// ANDROID extensions
+// ----------------------------------------------------------------------------
+
+EGLBoolean eglSetSwapRectangleANDROID(EGLDisplay dpy, EGLSurface draw,
+	EGLint left, EGLint top, EGLint width, EGLint height)
+{
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_FALSE;
+	}
+
+	FGLRenderSurface* d = static_cast<FGLRenderSurface*>(draw);
+
+	if (!d->isValid()) {
+		setError(EGL_BAD_SURFACE);
+		return EGL_FALSE;
+	}
+
+	if (d->dpy != dpy) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_FALSE;
+	}
+
+	// post the surface
+	d->setSwapRectangle(left, top, width, height);
+
+	return EGL_TRUE;
+}
+
+EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
+{
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return (EGLClientBuffer)0;
+	}
+
+	FGLRenderSurface* d = static_cast<FGLRenderSurface*>(draw);
+
+	if (!d->isValid()) {
+		setError(EGL_BAD_SURFACE);
+		return (EGLClientBuffer)0;
+	}
+
+	if (d->dpy != dpy) {
+		setError(EGL_BAD_DISPLAY);
+		return (EGLClientBuffer)0;
+	}
+
+	// post the surface
+	return d->getRenderBuffer();
+}
+
+struct extention_map_t {
+    const char * const name;
+    __eglMustCastToProperFunctionPointerType address;
+};
+
+static const extention_map_t gExtentionMap[] = {
+#if 0
+	{ "glDrawTexsOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexsOES },
+	{ "glDrawTexiOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexiOES },
+	{ "glDrawTexfOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexfOES },
+	{ "glDrawTexxOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexxOES },
+	{ "glDrawTexsvOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexsvOES },
+	{ "glDrawTexivOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexivOES },
+	{ "glDrawTexfvOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexfvOES },
+	{ "glDrawTexxvOES",
+		(__eglMustCastToProperFunctionPointerType)&glDrawTexxvOES },
+	{ "glQueryMatrixxOES",
+		(__eglMustCastToProperFunctionPointerType)&glQueryMatrixxOES },
+	{ "glEGLImageTargetTexture2DOES",
+		(__eglMustCastToProperFunctionPointerType)&glEGLImageTargetTexture2DOES },
+	{ "glEGLImageTargetRenderbufferStorageOES",
+		(__eglMustCastToProperFunctionPointerType)&glEGLImageTargetRenderbufferStorageOES },
+	{ "glClipPlanef",
+		(__eglMustCastToProperFunctionPointerType)&glClipPlanef },
+	{ "glClipPlanex",
+		(__eglMustCastToProperFunctionPointerType)&glClipPlanex },
+#endif
+	{ "glBindBuffer",
+		(__eglMustCastToProperFunctionPointerType)&glBindBuffer },
+	{ "glBufferData",
+		(__eglMustCastToProperFunctionPointerType)&glBufferData },
+	{ "glBufferSubData",
+		(__eglMustCastToProperFunctionPointerType)&glBufferSubData },
+	{ "glDeleteBuffers",
+		(__eglMustCastToProperFunctionPointerType)&glDeleteBuffers },
+	{ "glGenBuffers",
+		(__eglMustCastToProperFunctionPointerType)&glGenBuffers },
+#if 0
+	{ "eglCreateImageKHR",
+		(__eglMustCastToProperFunctionPointerType)&eglCreateImageKHR },
+	{ "eglDestroyImageKHR",
+		(__eglMustCastToProperFunctionPointerType)&eglDestroyImageKHR },
+#endif
+	{ "eglSetSwapRectangleANDROID",
+		(__eglMustCastToProperFunctionPointerType)&eglSetSwapRectangleANDROID },
+	{ "eglGetRenderBufferANDROID",
+		(__eglMustCastToProperFunctionPointerType)&eglGetRenderBufferANDROID },
+};
 
 EGLAPI __eglMustCastToProperFunctionPointerType EGLAPIENTRY
 eglGetProcAddress(const char *procname)
 {
-	FUNC_UNIMPLEMENTED;
+	extention_map_t const * const map = gExtentionMap;
+
+	for (uint32_t i=0 ; i<NELEM(gExtentionMap) ; i++) {
+		if (!strcmp(procname, map[i].name))
+			return map[i].address;
+	}
+
+	LOGE("Requested not implemented function %s address", procname);
+
 	return NULL;
 }

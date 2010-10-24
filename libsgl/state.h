@@ -160,6 +160,49 @@ struct FGLTextureState {
 	}
 };
 
+struct FGLScissorState {
+	GLint left;
+	GLint top;
+	GLint width;
+	GLint height;
+	GLboolean enabled;
+
+	FGLScissorState() :
+		left(0), top(0), width(2048), height(2048), enabled(GL_FALSE) {};
+};
+
+struct FGLMaskState {
+	GLboolean alpha;
+	GLboolean red;
+	GLboolean green;
+	GLboolean blue;
+	GLboolean depth;
+	GLint stencil;
+
+	FGLMaskState() :
+		alpha(1), red(1), green(1), blue(1), depth(1), stencil(0xff) {};
+};
+
+struct FGLPerFragmentState {
+	FGLScissorState scissor;
+	FGLMaskState mask;
+
+	FGLPerFragmentState() :
+		scissor() {};
+};
+
+struct FGLClearState {
+	GLclampf red;
+	GLclampf green;
+	GLclampf blue;
+	GLclampf alpha;
+	GLclampf depth;
+	GLint stencil;
+
+	FGLClearState() :
+		red(0), green(0), blue(0), alpha(0), depth(1.0), stencil(0) {};
+};
+
 struct FGLContext {
 	/* HW state */
 	fimgContext *fimg;
@@ -173,6 +216,8 @@ struct FGLContext {
 	FGLuint unpackAlignment;
 	FGLBufferObjectBinding arrayBuffer;
 	FGLBufferObjectBinding elementArrayBuffer;
+	FGLPerFragmentState perFragment;
+	FGLClearState clear;
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;

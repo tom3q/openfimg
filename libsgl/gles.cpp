@@ -37,7 +37,7 @@
 	Client API information
 */
 
-static char const * const gVendorString     = "notSamsung";
+static char const * const gVendorString     = "GLES6410";
 static char const * const gRendererString   = "S3C6410 FIMG-3DSE";
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
 static char const * const gExtensionsString =
@@ -831,7 +831,6 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		}
 	}
 
-#warning Unfinished changes
 	fglSetupMatrices(ctx);
 	fglSetupTextures(ctx);
 
@@ -909,7 +908,6 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 		}
 	}
 
-#warning Unfinished changes
 	fglSetupMatrices(ctx);
 	fglSetupTextures(ctx);
 
@@ -1421,6 +1419,11 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 
 	FGLContext *ctx = getContext();
 
+	ctx->perFragment.scissor.left	= x;
+	ctx->perFragment.scissor.top	= y;
+	ctx->perFragment.scissor.width	= width;
+	ctx->perFragment.scissor.height	= height;
+
 	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
 }
 
@@ -1772,7 +1775,6 @@ GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
 			return;
 		}
 		fglTextureObjects[name] = NULL;
-		LOGD("Allocated texture %d", name);
 		*textures = name;
 		textures++;
 	}
@@ -1796,7 +1798,6 @@ GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures)
 			continue;
 		}
 
-		LOGD("Freeing texture %d", name);
 		delete (fglTextureObjects[name]);
 		fglTextureObjects.put(name);
 	}
@@ -2256,22 +2257,22 @@ GL_API void GL_APIENTRY glTexParameteriv (GLenum target, GLenum pname, const GLi
 
 GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname, GLfloat param)
 {
-	glTexParameteri(target, pname, intFromFloat(param));
+	glTexParameteri(target, pname, (GLint)(param));
 }
 
 GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname, const GLfloat *params)
 {
-	glTexParameteri(target, pname, intFromFloat(*params));
+	glTexParameteri(target, pname, (GLint)(*params));
 }
 
 GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname, GLfixed param)
 {
-	glTexParameteri(target, pname, intFromFixed(param));
+	glTexParameteri(target, pname, param);
 }
 
 GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname, const GLfixed *params)
 {
-	glTexParameteri(target, pname, intFromFixed(*params));
+	glTexParameteri(target, pname, *params);
 }
 
 GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
@@ -2648,13 +2649,38 @@ GL_API void GL_APIENTRY glTexEnvf (GLenum target, GLenum pname, GLfloat param)
 		fimgCompatSetAlphaScale(ctx->fimg, unit, param);
 		break;
 	default:
-		glTexEnvi(target, pname, intFromFloat(param));
+		glTexEnvi(target, pname, (GLint)(param));
 	}
 }
 
 GL_API void GL_APIENTRY glTexEnvx (GLenum target, GLenum pname, GLfixed param)
 {
-	glTexEnvf(target, pname, floatFromFixed(param));
+	if (target != GL_TEXTURE_ENV) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	GLint unit = ctx->activeTexture;
+
+	switch (pname) {
+	case GL_RGB_SCALE:
+		if (param != 1.0 && param != 2.0 && param != 4.0) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+		fimgCompatSetColorScale(ctx->fimg, unit, floatFromFixed(param));
+		break;
+	case GL_ALPHA_SCALE:
+		if (param != 1.0 && param != 2.0 && param != 4.0) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+		fimgCompatSetAlphaScale(ctx->fimg, unit, floatFromFixed(param));
+		break;
+	default:
+		glTexEnvi(target, pname, param);
+	}
 }
 
 GL_API void GL_APIENTRY glTexEnviv (GLenum target, GLenum pname, const GLint *params)
@@ -2695,7 +2721,7 @@ GL_API void GL_APIENTRY glTexEnvxv (GLenum target, GLenum pname, const GLfixed *
 			floatFromFixed(params[2]), floatFromFixed(params[3]));
 		break;
 	default:
-		glTexEnvf(target, pname, floatFromFixed(*params));
+		glTexEnvx(target, pname, *params);
 	}
 }
 
@@ -2718,6 +2744,7 @@ static inline void fglSet(GLenum cap, bool state)
 		fimgEnableDepthOffset(ctx->fimg, state);
 		break;
 	case GL_SCISSOR_TEST:
+		ctx->perFragment.scissor.enabled = state;
 		fimgSetScissorEnable(ctx->fimg, state);
 		break;
 	case GL_ALPHA_TEST:
@@ -2777,41 +2804,519 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei h
 	Clearing buffers
 */
 
-/* HACK ALERT: Implement a proper clear function using G2D hardware */
-GL_API void GL_APIENTRY glClear (GLbitfield mask)
+static void *fillSingle16(void *buf, uint16_t val, size_t cnt)
 {
-	FGLContext *ctx = getContext();
-	FGLSurface *draw = &ctx->surface.draw;
+	uint16_t *buf16 = (uint16_t *)buf;
 
-	if(draw->vaddr) {
-		memset(draw->vaddr, 0, draw->size);
-		fglFlushPmemSurface(draw);
+	do {
+		*(buf16++) = val;
+	} while (--cnt);
+
+	return buf16;
+}
+
+static void *fillSingle16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
+{
+	uint16_t *buf16 = (uint16_t *)buf;
+	uint16_t tmp;
+
+	do {
+		tmp = *buf16 & mask;
+		tmp |= val;
+		*(buf16++) = tmp;
+	} while (--cnt);
+
+	return buf16;
+}
+
+static void *fillSingle32(void *buf, uint32_t val, size_t cnt)
+{
+	uint32_t *buf32 = (uint32_t *)buf;
+
+	do {
+		*(buf32++) = val;
+	} while (--cnt);
+
+	return buf32;
+}
+
+static void *fillBurst32(void *buf, uint32_t val, size_t cnt)
+{
+	asm volatile (
+		"mov r0, %1\n\t"
+		"mov r1, %1\n\t"
+		"mov r2, %1\n\t"
+		"mov r3, %1\n\t"
+		"1:\n\t"
+		"stmia %0!, {r0-r3}\n\t"
+		"subs %2, %2, $1\n\t"
+		"bne 1b\n\t"
+		: "+r"(buf)
+		: "r"(val), "r"(cnt)
+		: "r0", "r1", "r2", "r3"
+	);
+
+	return buf;
+}
+
+static void *fillSingle32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
+{
+	uint32_t *buf32 = (uint32_t *)buf;
+	uint32_t tmp;
+
+	do {
+		tmp = *buf32 & mask;
+		tmp |= val;
+		*(buf32++) = tmp;
+	} while (--cnt);
+
+	return buf32;
+}
+
+static void *fillBurst32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
+{
+	asm volatile (
+		"mov r0, %1\n\t"
+		"mov r1, %1\n\t"
+		"mov r2, %1\n\t"
+		"mov r3, %1\n\t"
+		"1:\n\t"
+		"ldmia %0, {r0-r3}\n\t"
+		"and r0, r0, %2\n\t"
+		"and r1, r1, %2\n\t"
+		"and r2, r2, %2\n\t"
+		"and r3, r3, %2\n\t"
+		"orr r0, r0, %1\n\t"
+		"orr r1, r1, %1\n\t"
+		"orr r2, r2, %1\n\t"
+		"orr r3, r3, %1\n\t"
+		"stmia %0!, {r0-r3}\n\t"
+		"subs %3, %3, $1\n\t"
+		"bne 1b\n\t"
+		: "+r"(buf)
+		: "r"(val), "r"(mask), "r"(cnt)
+		: "r0", "r1", "r2", "r3"
+	);
+
+	return buf;
+}
+
+static void fill32(void *buf, uint32_t val, size_t cnt)
+{
+	uint32_t *buf32 = (uint32_t *)buf;
+	uint32_t align = (intptr_t)buf32 % 16;
+
+	if (align) {
+		align = 16 - align;
+		align /= 4;
+		if (align > cnt) {
+			fillSingle32(buf32, val, cnt);
+			return;
+		}
+		buf32 = (uint32_t *)fillSingle32(buf32, val, align);
+		cnt -= align;
+	}
+
+	if(cnt / 4)
+		buf32 = (uint32_t *)fillBurst32(buf32, val, cnt / 4);
+
+	if(cnt % 4)
+		fillSingle32(buf32, val, cnt % 4);
+}
+
+static void fill32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
+{
+	uint32_t *buf32 = (uint32_t *)buf;
+	uint32_t align = (intptr_t)buf32 % 16;
+
+	val &= mask;
+	mask = ~mask;
+
+	if (align) {
+		align = 16 - align;
+		align /= 4;
+		if (align > cnt) {
+			fillSingle32masked(buf32, val, mask, cnt);
+			return;
+		}
+		buf32 = (uint32_t *)fillSingle32masked(buf32, val, mask, align);
+		cnt -= align;
+	}
+
+	if(cnt / 4)
+		buf32 = (uint32_t *)fillBurst32masked(buf32, val, mask, cnt / 4);
+
+	if(cnt % 4)
+		fillSingle32masked(buf32, val, mask, cnt % 4);
+}
+
+static void fill16(void *buf, uint16_t val, size_t cnt)
+{
+	uint16_t *buf16 = (uint16_t *)buf;
+	uint32_t align = (intptr_t)buf16 % 16;
+
+	if (align) {
+		align = 16 - align;
+		align /= 2;
+		if (align > cnt) {
+			fillSingle16(buf16, val, cnt);
+			return;
+		}
+		buf16 = (uint16_t *)fillSingle16(buf16, val, align);
+		cnt -= align;
+	}
+
+	if(cnt / 8)
+		buf16 = (uint16_t *)fillBurst32(buf16, (val << 16) | val, cnt / 8);
+
+	if(cnt % 8)
+		fillSingle16(buf16, val, cnt % 8);
+}
+
+static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
+{
+	uint16_t *buf16 = (uint16_t *)buf;
+	uint32_t align = (intptr_t)buf16 % 16;
+
+	val &= mask;
+	mask = ~mask;
+
+	if (align) {
+		align = 16 - align;
+		align /= 2;
+		if (align > cnt) {
+			fillSingle16masked(buf16, val, mask, cnt);
+			return;
+		}
+		buf16 = (uint16_t *)fillSingle16masked(buf16, val, mask, align);
+		cnt -= align;
+	}
+
+	if(cnt / 8)
+		buf16 = (uint16_t *)fillBurst32masked(buf16, (val << 16) | val,
+						(mask << 16) | mask, cnt / 8);
+
+	if(cnt % 8)
+		fillSingle16masked(buf16, val, mask, cnt % 8);
+}
+
+static inline uint32_t getFillColor(FGLContext *ctx, uint32_t *mask, bool *is32bpp)
+{
+	uint8_t r8, g8, b8, a8;
+	uint32_t val = 0;
+	uint32_t mval = 0xffffffff;
+
+	r8 = ubyteFromClampf(ctx->clear.red);
+	g8 = ubyteFromClampf(ctx->clear.green);
+	b8 = ubyteFromClampf(ctx->clear.blue);
+	a8 = ubyteFromClampf(ctx->clear.alpha);
+
+	switch (ctx->surface.draw.format) {
+	case FGPF_COLOR_MODE_555:
+		val |= ((r8 & 0xf8) << 7);
+		if (ctx->perFragment.mask.red)
+			mval &= ~(0x1f << 10);
+		val |= ((g8 & 0xf8) << 2);
+		if (ctx->perFragment.mask.green)
+			mval &= ~(0x1f << 5);
+		val |= (b8 >> 3);
+		if (ctx->perFragment.mask.blue)
+			mval &= ~0x1f;
+		*mask = mval;
+		*is32bpp = false;
+		return val;
+	case FGPF_COLOR_MODE_565:
+		val |= ((r8 & 0xf8) << 8);
+		if (ctx->perFragment.mask.red)
+			mval &= ~(0x1f << 11);
+		val |= ((g8 & 0xfc) << 2);
+		if (ctx->perFragment.mask.green)
+			mval &= ~(0x3f << 5);
+		val |= (b8 >> 3);
+		if (ctx->perFragment.mask.blue)
+			mval &= ~0x1f;
+		*mask = mval;
+		*is32bpp = false;
+		return val;
+	case FGPF_COLOR_MODE_4444:
+		val |= ((a8 & 0xf0) << 8);
+		if (ctx->perFragment.mask.alpha)
+			mval &= ~(0x0f << 12);
+		val |= ((r8 & 0xf0) << 4);
+		if (ctx->perFragment.mask.red)
+			mval &= ~(0x0f << 8);
+		val |= (g8 & 0xf0);
+		if (ctx->perFragment.mask.green)
+			mval &= ~(0x0f << 4);
+		val |= (b8 >> 4);
+		if (ctx->perFragment.mask.blue)
+			mval &= ~0x0f;
+		*mask = mval;
+		*is32bpp = false;
+		return val;
+	case FGPF_COLOR_MODE_1555:
+		val |= ((a8 & 0x80) << 15);
+		if (ctx->perFragment.mask.alpha)
+			mval &= ~(0x01 << 15);
+		val |= ((r8 & 0xf8) << 7);
+		if (ctx->perFragment.mask.red)
+			mval &= ~(0x1f << 10);
+		val |= ((g8 & 0xf8) << 2);
+		if (ctx->perFragment.mask.green)
+			mval &= ~(0x1f << 5);
+		val |= (b8 >> 3);
+		if (ctx->perFragment.mask.blue)
+			mval &= ~0x1f;
+		*mask = mval;
+		*is32bpp = false;
+		return val;
+	case FGPF_COLOR_MODE_0888:
+		val |= 0xff << 24;
+		if (ctx->perFragment.mask.alpha)
+			mval &= ~(0xff << 24);
+		val |= r8 << 16;
+		if (ctx->perFragment.mask.red)
+			mval &= ~(0xff << 16);
+		val |= g8 << 8;
+		if (ctx->perFragment.mask.green)
+			mval &= ~(0xff << 8);
+		val |= b8;
+		if (ctx->perFragment.mask.blue)
+			mval &= ~0xff;
+		*mask = mval;
+		*is32bpp = true;
+		return val;
+	case FGPF_COLOR_MODE_8888:
+		val |= a8 << 24;
+		if (ctx->perFragment.mask.alpha)
+			mval &= ~(0xff << 24);
+		val |= r8 << 16;
+		if (ctx->perFragment.mask.red)
+			mval &= ~(0xff << 16);
+		val |= g8 << 8;
+		if (ctx->perFragment.mask.green)
+			mval &= ~(0xff << 8);
+		val |= b8;
+		if (ctx->perFragment.mask.blue)
+			mval &= ~0xff;
+		*mask = mval;
+		*is32bpp = true;
+		return val;
+	default:
+		return 0;
 	}
 }
 
-GL_API void GL_APIENTRY glClearColor (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
+static inline uint32_t getFillDepth(FGLContext *ctx, uint32_t *mask, GLbitfield mode)
 {
+	uint32_t mval = 0xffffffff;
+	uint32_t val = 0;
 
+	if (mode & GL_DEPTH_BUFFER_BIT && ctx->perFragment.mask.depth) {
+		mval &= ~0x00ffffff;
+		val |= (uint32_t)(ctx->clear.depth * 0x00ffffff);
+	}
+
+	if (mode & GL_STENCIL_BUFFER_BIT) {
+		mval &= ~ctx->perFragment.mask.stencil << 24;
+		val |= ctx->clear.stencil << 24;
+	}
+
+	*mask = mval;
+	return val;
 }
 
-GL_API void GL_APIENTRY glClearColorx (GLclampx red, GLclampx green, GLclampx blue, GLclampx alpha)
+static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
+	FGLSurface *draw = &ctx->surface.draw;
+	uint32_t stride = draw->width;
+	bool lineByLine = false;
+	int32_t l, t, w, h;
 
+	l = max(ctx->perFragment.scissor.left, 0);
+	t = max(ctx->perFragment.scissor.top, 0);
+	w = min(ctx->perFragment.scissor.width, draw->width);
+	h = min(ctx->perFragment.scissor.height, draw->height);
+
+	lineByLine |= l > 0;
+	lineByLine |= w < draw->width;
+	lineByLine &= ctx->perFragment.scissor.enabled == true;
+
+	if (mode & GL_COLOR_BUFFER_BIT) {
+		bool is32bpp;
+		uint32_t mask;
+		uint32_t color = getFillColor(ctx, &mask, &is32bpp);
+
+		if (lineByLine) {
+			if (!is32bpp) {
+				uint16_t *buf16 = (uint16_t *)draw->vaddr;
+				buf16 += t * stride;
+				if (mask & 0xffff) {
+					while (h--) {
+						uint16_t *line = buf16 + l;
+						fill16masked(line, color, ~mask, w);
+						buf16 += stride;
+					}
+				} else {
+					while (h--) {
+						uint16_t *line = buf16 + l;
+						fill16(line, color, w);
+						buf16 += stride;
+					}
+				}
+			} else {
+				uint32_t *buf32 = (uint32_t *)draw->vaddr;
+				buf32 += t * stride;
+				if (mask) {
+					while (h--) {
+						uint32_t *line = buf32 + l;
+						fill32masked(line, color, ~mask, w);
+						buf32 += stride;
+					}
+				} else {
+					while (h--) {
+						uint32_t *line = buf32 + l;
+						fill32(line, color, w);
+						buf32 += stride;
+					}
+				}
+			}
+		} else {
+			if (!is32bpp) {
+				uint16_t *buf16 = (uint16_t *)draw->vaddr;
+				buf16 += t * stride;
+				if (mask & 0xffff)
+					fill16masked(buf16, color, ~mask, w*h);
+				else
+					fill16(buf16, color, w*h);
+			} else {
+				uint32_t *buf32 = (uint32_t *)draw->vaddr;
+				buf32 += t * stride;
+				if (mask)
+					fill32masked(buf32, color, ~mask, w*h);
+				else
+					fill32(buf32, color, w*h);
+			}
+		}
+
+		fglFlushPmemSurface(draw);
+	}
+
+	if (mode & (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)) {
+		FGLSurface *depth = &ctx->surface.depth;
+		if (!depth->format)
+			return;
+
+		uint32_t mask;
+		uint32_t val = getFillDepth(ctx, &mask, mode);
+
+		if (lineByLine) {
+			uint32_t *buf32 = (uint32_t *)depth->vaddr;
+			buf32 += t * stride;
+			if (mask) {
+				while (h--) {
+					uint32_t *line = buf32 + l;
+					fill32masked(line, val, ~mask, w);
+					buf32 += stride;
+				}
+			} else {
+				while (h--) {
+					uint32_t *line = buf32 + l;
+					fill32(line, val, w);
+					buf32 += stride;
+				}
+			}
+		} else {
+			uint32_t *buf32 = (uint32_t *)depth->vaddr;
+			buf32 += t * stride;
+			if (mask)
+				fill32masked(buf32, val, ~mask, w*h);
+			else
+				fill32(buf32, val, w*h);
+		}
+
+		fglFlushPmemSurface(depth);
+	}
+}
+
+#define FGL_CLEAR_MASK \
+	(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
+
+//#define FGL_HARDWARE_CLEAR
+
+GL_API void GL_APIENTRY glClear (GLbitfield mask)
+{
+	FGLContext *ctx = getContext();
+
+	if ((mask & FGL_CLEAR_MASK) == 0)
+		return;
+
+#ifdef FGL_HARDWARE_CLEAR
+	uint32_t mode = 0;
+
+	if (mask & GL_COLOR_BUFFER_BIT)
+		mode |= FGFP_CLEAR_COLOR;
+
+	if (mask & GL_DEPTH_BUFFER_BIT)
+		mode |= FGFP_CLEAR_DEPTH;
+
+	if (mask & GL_STENCIL_BUFFER_BIT)
+		mode |= FGFP_CLEAR_STENCIL;
+
+	fimgClear(ctx->fimg, mode);
+#else
+	fglClear(ctx, mask);
+#endif
+}
+
+GL_API void GL_APIENTRY glClearColor (GLclampf red, GLclampf green,
+						GLclampf blue, GLclampf alpha)
+{
+	FGLContext *ctx = getContext();
+
+	ctx->clear.red = clampFloat(red);
+	ctx->clear.green = clampFloat(green);
+	ctx->clear.blue = clampFloat(blue);
+	ctx->clear.alpha = clampFloat(alpha);
+
+#ifdef FGL_HARDWARE_CLEAR
+	fimgSetClearColor(ctx->fimg, clampFloat(red), clampFloat(green),
+				clampFloat(blue), clampFloat(alpha));
+#endif
+}
+
+GL_API void GL_APIENTRY glClearColorx (GLclampx red, GLclampx green,
+						GLclampx blue, GLclampx alpha)
+{
+	glClearColor(floatFromFixed(red), floatFromFixed(green),
+				floatFromFixed(blue), floatFromFixed(alpha));
 }
 
 GL_API void GL_APIENTRY glClearDepthf (GLclampf depth)
 {
+	FGLContext *ctx = getContext();
 
+	ctx->clear.depth = clampFloat(depth);
+
+#ifdef FGL_HARDWARE_CLEAR
+	fimgSetClearDepth(ctx->fimg, clampFloat(depth));
+#endif
 }
 
 GL_API void GL_APIENTRY glClearDepthx (GLclampx depth)
 {
-
+	glClearDepthf(floatFromFixed(depth));
 }
 
 GL_API void GL_APIENTRY glClearStencil (GLint s)
 {
+	FGLContext *ctx = getContext();
 
+	ctx->clear.stencil = s;
+
+#ifdef FGL_HARDWARE_CLEAR
+	fimgSetClearStencil(ctx->fimg, s);
+#endif
 }
 
 /**
@@ -2828,6 +3333,27 @@ GL_API void GL_APIENTRY glFinish (void)
 	FGLContext *ctx = getContext();
 
 	fimgFinish(ctx->fimg);
+}
+
+/**
+	glGet*
+*/
+
+GL_API const GLubyte * GL_APIENTRY glGetString (GLenum name)
+{
+	switch (name) {
+	case GL_VENDOR:
+		return (const GLubyte *)gVendorString;
+	case GL_RENDERER:
+		return (const GLubyte *)gRendererString;
+	case GL_VERSION:
+		return (const GLubyte *)gVersionString;
+	case GL_EXTENSIONS:
+		return (const GLubyte *)gExtensionsString;
+	default:
+		setError(GL_INVALID_ENUM);
+		return NULL;
+	}
 }
 
 /**

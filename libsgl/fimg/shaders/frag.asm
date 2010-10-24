@@ -36,14 +36,14 @@ def c2, 0.5, 0.5, 0.5, 0.5
 def c3, 4.0, 4.0, 4.0, 4.0
 
 # Texture environment color 0
-def c4, 0.0, 0.0, 0.0, 0.0
+# def c4, 0.0, 0.0, 0.0, 0.0
 # Combiner scale 0
-def c5, 1.0, 1.0, 1.0, 1.0
+# def c5, 1.0, 1.0, 1.0, 1.0
 
 # Texture environment color 1
-def c6, 0.0, 0.0, 0.0, 0.0
+# def c6, 0.0, 0.0, 0.0, 0.0
 # Combiner scale 1
-def c7, 1.0, 1.0, 1.0, 1.0
+# def c7, 1.0, 1.0, 1.0, 1.0
 
 % f header
 
@@ -641,6 +641,14 @@ label start
 	# Emit the pixel
 	mov oColor, r0
 	# Return
+	ret
+
+################################################################################
+
+% f clear
+
+# Shader for glClear
+	mov_sat oColor, c255
 	ret
 
 # End of shader code

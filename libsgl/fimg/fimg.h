@@ -78,7 +78,7 @@ uint32_t fimgGetInterruptState(fimgContext *ctx);
  * Host interface
  */
 
-#define FIMG_ATTRIB_NUM			10
+#define FIMG_ATTRIB_NUM			8
 
 /* Type definitions */
 #define FGHI_NUMCOMP(i)		((i) - 1)
@@ -184,12 +184,14 @@ void fimgSetLineWidth(fimgContext *ctx, float lWidth);
  * Shaders
  */
 
+#ifndef FIMG_FIXED_PIPELINE
 /* Vertex shader functions */
 int fimgLoadVShader(fimgContext *ctx,
 		    const unsigned int *pShaderCode, unsigned int numAttribs);
 /* Pixel shader functions */
 int fimgLoadPShader(fimgContext *ctx,
 		    const unsigned int *pShaderCode, unsigned int numAttribs);
+#endif
 
 /*
  * Texture engine
@@ -293,46 +295,11 @@ void fimgSetTexMinFilter(fimgTexture *texture, unsigned mode);
 void fimgSetTexMagFilter(fimgTexture *texture, unsigned mode);
 void fimgSetTexMipmap(fimgTexture *texture, unsigned mode);
 
-#if 0
-/* To be removed */
-void fimgSetTexUnitParams(fimgContext *ctx, unsigned int unit,
-			  fimgTexUnitParams *params);
-void fimgSetTexStatusParams(fimgContext *ctx, unsigned int unit,
-			    fimgTexControl params);
-void fimgSetTexUSize(fimgContext *ctx, unsigned int unit,
-		     unsigned int uSize);
-void fimgSetTexVSize(fimgContext *ctx, unsigned int unit,
-		     unsigned int vSize);
-void fimgSetTexPSize(fimgContext *ctx, unsigned int unit,
-		     unsigned int pSize);
-unsigned int fimgCalculateMipmapOffset(fimgContext *ctx, unsigned int unit,
-				       unsigned int uSize, unsigned int vSize,
-				       unsigned int maxLevel);
-unsigned int fimgCalculateMipmapOffsetYUV(fimgContext *ctx, unsigned int unit,
-					  unsigned int uSize, unsigned int vSize,
-					  unsigned int maxLevel);
-unsigned int fimgCalculateMipmapOffsetS3TC(fimgContext *ctx, unsigned int unit,
-					   unsigned int uSize, unsigned int vSize,
-					   unsigned int maxLevel);
-void fimgSetTexMipmapLevel(fimgContext *ctx, unsigned int unit,
-			   int min, int max);
-void fimgSetTexBaseAddr(fimgContext *ctx, unsigned int unit,
-			unsigned int addr);
-void fimgSetTexColorKey(fimgContext *ctx, unsigned int unit,
-			unsigned char r, unsigned char g, unsigned char b);
-void fimgSetTexColorKeyYUV(fimgContext *ctx, unsigned char u, unsigned char v);
-void fimgSetTexColorKeyMask(fimgContext *ctx, unsigned char bitsToMask);
-void fimgSetTexPaletteAddr(fimgContext *ctx, unsigned char addr);
-void fimgSetTexPaletteEntry(fimgContext *ctx, unsigned int entry);
-void fimgSetVtxTexUnitParams(fimgContext *ctx, unsigned int unit,
-			     fimgVtxTexControl vts);
-void fimgSetVtxTexBaseAddr(fimgContext *ctx, unsigned int unit,
-						unsigned int addr);
-#endif
-
 /*
  * OpenGL 1.1 compatibility
  */
+
+#ifdef FIMG_FIXED_PIPELINE
 
 #define FIMG_NUM_TEXTURE_UNITS	2
 
@@ -400,6 +367,20 @@ void fimgCompatSetAlphaScale(fimgContext *ctx, unsigned unit, float scale);
 void fimgCompatSetEnvColor(fimgContext *ctx, unsigned unit,
 					float r, float g, float b, float a);
 void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, unsigned unit);
+
+#endif
+
+enum {
+	FGFP_CLEAR_COLOR	= 1,
+	FGFP_CLEAR_DEPTH	= 2,
+	FGFP_CLEAR_STENCIL	= 4
+};
+
+void fimgClear(fimgContext *ctx, uint32_t mode);
+void fimgSetClearColor(fimgContext *ctx, float red, float green,
+						float blue, float alpha);
+void fimgSetClearDepth(fimgContext *ctx, float depth);
+void fimgSetClearStencil(fimgContext *ctx, uint8_t stencil);
 
 /*
  * Per-fragment unit

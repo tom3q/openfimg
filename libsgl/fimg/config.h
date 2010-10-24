@@ -34,4 +34,7 @@
 /* Use busy waiting instead of interrupts for FIFO transfers */
 //#define FIMG_FIFO_BUSY_WAIT
 
+/* Use fixed pipeline emulation */
+#define FIMG_FIXED_PIPELINE
+
 #endif /* _FIMG_CONFIG_H_ */

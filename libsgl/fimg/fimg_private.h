@@ -23,6 +23,9 @@
 #define _FIMG_PRIVATE_H_
 
 /* Include public part */
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 #include "fimg.h"
 
 #define likely(x)       __builtin_expect((x),1)
@@ -107,9 +110,8 @@ typedef union {
 	unsigned int val;
 } fimgAttribute;
 
-void fimgGetHardware(fimgContext *ctx);
-void fimgFlushContext(fimgContext *ctx);
-void fimgPutHardware(fimgContext *ctx);
+inline void fimgDrawArraysBufferedAutoinc(fimgContext *ctx,
+		fimgArray *arrays, unsigned int first, unsigned int count);
 
 /*
  * Primitive Engine
@@ -435,6 +437,8 @@ typedef struct {
 void fimgCreateFragmentContext(fimgContext *ctx);
 void fimgRestoreFragmentState(fimgContext *ctx);
 
+#ifdef FIMG_FIXED_PIPELINE
+
 typedef struct {
 	fimgCombArgSrc src;
 	fimgCombArgMod mod;
@@ -458,7 +462,9 @@ typedef struct {
 
 typedef struct {
 	int vsDirty;
+	uint32_t vshaderEnd;
 	int psDirty;
+	uint32_t pshaderEnd;
 	fimgTextureCompat texture[FIMG_NUM_TEXTURE_UNITS];
 	int matrixDirty[2 + FIMG_NUM_TEXTURE_UNITS];
 	float matrix[4*16];
@@ -469,6 +475,14 @@ void fimgCreateCompatContext(fimgContext *ctx);
 void fimgRestoreCompatState(fimgContext *ctx);
 void fimgCompatFlush(fimgContext *ctx);
 
+#endif
+
+typedef struct {
+	float color[4];
+	float depth;
+	uint8_t stencil;
+} fimgClearContext;
+
 struct _fimgContext {
 	volatile char *base;
 	int fd;
@@ -478,7 +492,10 @@ struct _fimgContext {
 	fimgPrimitiveContext primitive;
 	fimgRasterizerContext rasterizer;
 	fimgFragmentContext fragment;
+#ifdef FIMG_FIXED_PIPELINE
 	fimgCompatContext compat;
+#endif
+	fimgClearContext clear;
 	/* Shared context */
 	unsigned int numAttribs;
 	/* Register queue */
@@ -577,6 +594,38 @@ static inline void fimgQueueF(fimgContext *ctx, float data, unsigned int addr)
 	ctx->queueLen++;
 	ctx->queue[0] = addr;
 	((float *)ctx->queue)[1] = data;
+}
+
+/* Hardware context */
+
+static inline void fimgGetHardware(fimgContext *ctx)
+{
+	int ret;
+
+	if(unlikely((ret = fimgAcquireHardwareLock(ctx)) != 0)) {
+		if(likely(ret > 0)) {
+			fimgFlush(ctx);
+			fimgRestoreContext(ctx);
+			fimgInvalidateFlushCache(ctx, 1, 1, 0, 0);
+			return;
+		} else {
+			fprintf(stderr, "FIMG: Could not acquire hardware lock");
+			exit(EBUSY);
+		}
+	}
+}
+
+static inline void fimgFlushContext(fimgContext *ctx)
+{
+	fimgQueueFlush(ctx);
+#ifdef FIMG_FIXED_PIPELINE
+	fimgCompatFlush(ctx);
+#endif
+}
+
+static inline void fimgPutHardware(fimgContext *ctx)
+{
+	fimgReleaseHardwareLock(ctx);
 }
 
 #endif /* _FIMG_PRIVATE_H_ */

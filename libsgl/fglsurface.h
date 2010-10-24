@@ -35,11 +35,16 @@ struct FGLSurface {
 	FGLint		format;	// pixel format
 
 	FGLSurface() :
-		vaddr(NULL) {};
+		fd(-1), vaddr(NULL) {};
 
 	inline bool isValid(void)
 	{
 		return vaddr != NULL;
+	}
+
+	inline bool isPMEM(void)
+	{
+		return fd != -1;
 	}
 };
 
