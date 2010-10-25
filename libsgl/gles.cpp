@@ -23,12 +23,14 @@
 #include <cstdlib>
 #include <errno.h>
 #include <pthread.h>
+#include <fcntl.h>
 #include <cutils/log.h>
 #include <GLES/gl.h>
 #include "state.h"
 #include "types.h"
 #include "fglpoolallocator.h"
 #include "fimg/fimg.h"
+#include "s3c_g2d.h"
 
 //#define GLES_DEBUG
 #define GLES_ERR_DEBUG
@@ -1840,7 +1842,7 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 	obj->bind(&ctx->texture[ctx->activeTexture].binding);
 }
 
-int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *conv)
+static int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *conv)
 {
 	*conv = 0;
 	switch (type) {
@@ -1882,12 +1884,238 @@ int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *conv)
 	}
 }
 
-void fglGenerateMipmaps(FGLTexture *obj)
+static void fglGenerateMipmapsSW(FGLTexture *obj)
 {
+	int level = 0;
 
+	int w = obj->surface.width;
+	int h = obj->surface.height;
+	if ((w&h) == 1)
+		return;
+
+	w = (w>>1) ? : 1;
+	h = (h>>1) ? : 1;
+
+	void *curLevel = obj->surface.vaddr;
+	void *nextLevel = (uint8_t *)obj->surface.vaddr
+				+ fimgGetTexMipmapOffset(obj->fimg, 1);
+
+	while(true) {
+		++level;
+		int stride = w;
+		int bs = w;
+
+		if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_565) {
+			uint16_t const * src = (uint16_t const *)curLevel;
+			uint16_t* dst = (uint16_t*)nextLevel;
+			const uint32_t mask = 0x07E0F81F;
+			for (int y=0 ; y<h ; y++) {
+				size_t offset = (y*2) * bs;
+				for (int x=0 ; x<w ; x++) {
+					uint32_t p00 = src[offset];
+					uint32_t p10 = src[offset+1];
+					uint32_t p01 = src[offset+bs];
+					uint32_t p11 = src[offset+bs+1];
+					p00 = (p00 | (p00 << 16)) & mask;
+					p01 = (p01 | (p01 << 16)) & mask;
+					p10 = (p10 | (p10 << 16)) & mask;
+					p11 = (p11 | (p11 << 16)) & mask;
+					uint32_t grb = ((p00 + p10 + p01 + p11) >> 2) & mask;
+					uint32_t rgb = (grb & 0xFFFF) | (grb >> 16);
+					dst[x + y*stride] = rgb;
+					offset += 2;
+				}
+			}
+		} else if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_1555) {
+			uint16_t const * src = (uint16_t const *)curLevel;
+			uint16_t* dst = (uint16_t*)nextLevel;
+			for (int y=0 ; y<h ; y++) {
+				size_t offset = (y*2) * bs;
+				for (int x=0 ; x<w ; x++) {
+					uint32_t p00 = src[offset];
+					uint32_t p10 = src[offset+1];
+					uint32_t p01 = src[offset+bs];
+					uint32_t p11 = src[offset+bs+1];
+					uint32_t r = ((p00>>11)+(p10>>11)+(p01>>11)+(p11>>11)+2)>>2;
+					uint32_t g = (((p00>>6)+(p10>>6)+(p01>>6)+(p11>>6)+2)>>2)&0x3F;
+					uint32_t b = ((p00&0x3E)+(p10&0x3E)+(p01&0x3E)+(p11&0x3E)+4)>>3;
+					uint32_t a = ((p00&1)+(p10&1)+(p01&1)+(p11&1)+2)>>2;
+					dst[x + y*stride] = (r<<11)|(g<<6)|(b<<1)|a;
+					offset += 2;
+				}
+			}
+		} else if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_8888) {
+			uint32_t const * src = (uint32_t const *)curLevel;
+			uint32_t* dst = (uint32_t*)nextLevel;
+			for (int y=0 ; y<h ; y++) {
+				size_t offset = (y*2) * bs;
+				for (int x=0 ; x<w ; x++) {
+					uint32_t p00 = src[offset];
+					uint32_t p10 = src[offset+1];
+					uint32_t p01 = src[offset+bs];
+					uint32_t p11 = src[offset+bs+1];
+					uint32_t rb00 = p00 & 0x00FF00FF;
+					uint32_t rb01 = p01 & 0x00FF00FF;
+					uint32_t rb10 = p10 & 0x00FF00FF;
+					uint32_t rb11 = p11 & 0x00FF00FF;
+					uint32_t ga00 = (p00 >> 8) & 0x00FF00FF;
+					uint32_t ga01 = (p01 >> 8) & 0x00FF00FF;
+					uint32_t ga10 = (p10 >> 8) & 0x00FF00FF;
+					uint32_t ga11 = (p11 >> 8) & 0x00FF00FF;
+					uint32_t rb = (rb00 + rb01 + rb10 + rb11)>>2;
+					uint32_t ga = (ga00 + ga01 + ga10 + ga11)>>2;
+					uint32_t rgba = (rb & 0x00FF00FF) | ((ga & 0x00FF00FF)<<8);
+					dst[x + y*stride] = rgba;
+					offset += 2;
+				}
+			}
+		} else if ((obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_88) ||
+		(obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_8)) {
+			int skip;
+			switch (obj->fglFormat) {
+			case FGTU_TSTA_TEXTURE_FORMAT_88:	skip = 2;   break;
+			default:				skip = 1;   break;
+			}
+			uint8_t const * src = (uint8_t const *)curLevel;
+			uint8_t* dst = (uint8_t*)nextLevel;
+			bs *= skip;
+			stride *= skip;
+			for (int y=0 ; y<h ; y++) {
+				size_t offset = (y*2) * bs;
+				for (int x=0 ; x<w ; x++) {
+					for (int c=0 ; c<skip ; c++) {
+						uint32_t p00 = src[c+offset];
+						uint32_t p10 = src[c+offset+skip];
+						uint32_t p01 = src[c+offset+bs];
+						uint32_t p11 = src[c+offset+bs+skip];
+						dst[x + y*stride + c] = (p00 + p10 + p01 + p11) >> 2;
+					}
+					offset += 2*skip;
+				}
+			}
+		} else if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_4444) {
+			uint16_t const * src = (uint16_t const *)curLevel;
+			uint16_t* dst = (uint16_t*)nextLevel;
+			for (int y=0 ; y<h ; y++) {
+				size_t offset = (y*2) * bs;
+				for (int x=0 ; x<w ; x++) {
+					uint32_t p00 = src[offset];
+					uint32_t p10 = src[offset+1];
+					uint32_t p01 = src[offset+bs];
+					uint32_t p11 = src[offset+bs+1];
+					p00 = ((p00 << 12) & 0x0F0F0000) | (p00 & 0x0F0F);
+					p10 = ((p10 << 12) & 0x0F0F0000) | (p10 & 0x0F0F);
+					p01 = ((p01 << 12) & 0x0F0F0000) | (p01 & 0x0F0F);
+					p11 = ((p11 << 12) & 0x0F0F0000) | (p11 & 0x0F0F);
+					uint32_t rbga = (p00 + p10 + p01 + p11) >> 2;
+					uint32_t rgba = (rbga & 0x0F0F) | ((rbga>>12) & 0xF0F0);
+					dst[x + y*stride] = rgba;
+					offset += 2;
+				}
+			}
+		} else {
+			LOGE("Unsupported format (%d)", obj->fglFormat);
+			return;
+		}
+
+		// exit condition: we just processed the 1x1 LODs
+		if ((w&h) == 1)
+		break;
+
+		w = (w>>1) ? : 1;
+		h = (h>>1) ? : 1;
+
+		curLevel = nextLevel;
+		nextLevel = (uint8_t *)obj->surface.vaddr
+				+ fimgGetTexMipmapOffset(obj->fimg, level + 1);
+	}
 }
 
-static inline size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
+static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
+{
+	int fd;
+	struct s3c_g2d_req req;
+
+	// Setup source image (level 0 image)
+	req.src.base	= obj->surface.paddr;
+	req.src.offs	= 0;
+	req.src.w	= obj->surface.width;
+	req.src.h	= obj->surface.height;
+	req.src.l	= 0;
+	req.src.t	= 0;
+	req.src.r	= obj->surface.width - 1;
+	req.src.b	= obj->surface.height - 1;
+	req.src.fmt	= format;
+
+	// Setup destination image template for generated mipmaps
+	req.dst.base	= obj->surface.paddr;
+	req.dst.l	= 0;
+	req.dst.t	= 0;
+	req.dst.fmt	= format;
+
+	fd = open("/dev/s3c-g2d", O_RDWR, 0);
+	if (fd < 0) {
+		LOGW("Failed to open G2D device. Falling back to software.");
+		return -1;
+	}
+
+	if (ioctl(fd, S3C_G2D_SET_BLENDING, G2D_NO_ALPHA) < 0) {
+		LOGW("Failed to set G2D parameters. Falling back to software.");
+		close(fd);
+		return -1;
+	}
+
+	unsigned width = obj->surface.width;
+	unsigned height = obj->surface.height;
+
+	for (int lvl = 1; lvl <= obj->maxLevel; lvl++) {
+		if (width > 1)
+			width /= 2;
+
+		if (height > 1)
+			height /= 2;
+
+		req.dst.offs	= fimgGetTexMipmapOffset(obj->fimg, lvl);
+		req.dst.w	= width;
+		req.dst.h	= height;
+		req.dst.r	= width - 1;
+		req.dst.b	= height - 1;
+
+		if (ioctl(fd, S3C_G2D_BITBLT, &req) < 0) {
+			LOGW("Failed to perform G2D blit operation. "
+			     "Falling back to software.");
+			close(fd);
+			return -1;
+		}
+	}
+
+	close(fd);
+	return 0;
+}
+
+static void fglGenerateMipmaps(FGLTexture *obj)
+{
+	/* Handle cases supported by G2D hardware */
+	switch (obj->fglFormat) {
+	case FGTU_TSTA_TEXTURE_FORMAT_565:
+		if(fglGenerateMipmapsG2D(obj, G2D_RGB16))
+			break;
+		return;
+	case FGTU_TSTA_TEXTURE_FORMAT_1555:
+		if(fglGenerateMipmapsG2D(obj, G2D_RGBA16))
+			break;
+		return;
+	case FGTU_TSTA_TEXTURE_FORMAT_8888:
+		if(fglGenerateMipmapsG2D(obj, G2D_ARGB32))
+			break;
+		return;
+	}
+
+	/* Handle other cases (including G2D failure) */
+	fglGenerateMipmapsSW(obj);
+}
+
+static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 					unsigned int height, unsigned int bpp)
 {
 	size_t offset, size;
