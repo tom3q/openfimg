@@ -23,24 +23,22 @@
 #define _LIBSGL_FGLPOOLALLOCATOR_
 
 template<typename T, int size>
-class FGLPoolAllocator {
+class FGLObjectManager {
 	/* Array of pointers addressed by used names */
-	T		guard;
-	T		**pool;
+	FGLObject<T>	guard;
+	FGLObject<T>	**pool;
 	/* Stack of unused names */
 	unsigned	*unused;
 	unsigned	write;
 	bool		valid;
 public:
-	/* Better than constructor/destructor since we can call the destructor
-	   only if the constructor succeeded */
-	FGLPoolAllocator() :
-		pool(NULL), unused(NULL), valid(false)
+	FGLObjectManager() :
+		guard(0), pool(NULL), unused(NULL), valid(false)
 	{
 		if(size <= 0)
 			return;
 
-		pool = new T*[size];
+		pool = new FGLObject<T>*[size];
 		if (pool == NULL)
 			return;
 
@@ -58,7 +56,7 @@ public:
 		valid = true;
 	}
 
-	~FGLPoolAllocator()
+	~FGLObjectManager()
 	{
 		delete[] unused;
 		delete[] pool;
@@ -81,12 +79,12 @@ public:
 		write++;
 	}
 
-	inline const T* &operator[](unsigned name) const
+	inline const FGLObject<T>* &operator[](unsigned name) const
 	{
 		return pool[name - 1];
 	}
 
-	inline T* &operator[](unsigned name)
+	inline FGLObject<T>* &operator[](unsigned name)
 	{
 		return pool[name - 1];
 	}

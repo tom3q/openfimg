@@ -63,6 +63,11 @@ public:
 		return &object->object;
 	}
 
+	inline unsigned int getName(void)
+	{
+		return object->name;
+	}
+
 	friend class FGLObject<T>;
 };
 
@@ -75,12 +80,13 @@ public:
 template<typename T>
 class FGLObject {
 	FGLObjectBinding<T> *list;
+	unsigned int name;
 
 public:
 	T object;
 
-	FGLObject() :
-		list(NULL), object() {};
+	FGLObject(unsigned int id) :
+		list(NULL), name(id), object() {};
 
 	inline void unbindAll(void)
 	{
@@ -126,6 +132,8 @@ public:
 	{
 		return b->object == this;
 	}
+
+	friend class FGLObjectBinding<T>;
 };
 
 #endif

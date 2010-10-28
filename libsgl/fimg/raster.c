@@ -231,3 +231,35 @@ void fimgRestoreRasterizerState(fimgContext *ctx)
 	fimgWrite(ctx, ctx->rasterizer.lodGen.val, FGRA_LODCTL);
 	fimgWrite(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
 }
+
+float fimgGetRasterizerStateF(fimgContext *ctx, unsigned int name)
+{
+	switch (name) {
+	case FIMG_POINT_SIZE:
+		return ctx->rasterizer.pointWidth;
+	case FIMG_LINE_WIDTH:
+		return ctx->rasterizer.lineWidth;
+	case FIMG_DEPTH_OFFSET_FACTOR:
+		return ctx->rasterizer.dOffFactor;
+	case FIMG_DEPTH_OFFSET_UNITS:
+		return ctx->rasterizer.dOffUnits;
+	}
+
+	return 0;
+}
+
+unsigned int fimgGetRasterizerState(fimgContext *ctx, unsigned int name)
+{
+	switch (name) {
+	case FIMG_CULL_FACE_EN:
+		return ctx->rasterizer.cull.enable;
+	case FIMG_DEPTH_OFFSET_EN:
+		return ctx->rasterizer.dOffEn;
+	case FIMG_CULL_FACE_MODE:
+		return ctx->rasterizer.cull.face;
+	case FIMG_FRONT_FACE:
+		return ctx->rasterizer.cull.clockwise;
+	}
+
+	return 0;
+}

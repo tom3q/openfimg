@@ -151,6 +151,17 @@ void fimgSetViewportParams(fimgContext *ctx,
 void fimgSetDepthRange(fimgContext *ctx,
 		       float n, float f);
 
+enum {
+	FIMG_VIEWPORT_X,
+	FIMG_VIEWPORT_Y,
+	FIMG_VIEWPORT_W,
+	FIMG_VIEWPORT_H,
+	FIMG_DEPTH_RANGE_NEAR,
+	FIMG_DEPTH_RANGE_FAR
+};
+
+float fimgGetPrimitiveStateF(fimgContext *ctx, unsigned int name);
+
 /*
  * Raster engine
  */
@@ -179,6 +190,20 @@ void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin);
 void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax);
 void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum);
 void fimgSetLineWidth(fimgContext *ctx, float lWidth);
+
+enum {
+	FIMG_CULL_FACE_EN,
+	FIMG_DEPTH_OFFSET_EN,
+	FIMG_POINT_SIZE,
+	FIMG_LINE_WIDTH,
+	FIMG_CULL_FACE_MODE,
+	FIMG_FRONT_FACE,
+	FIMG_DEPTH_OFFSET_FACTOR,
+	FIMG_DEPTH_OFFSET_UNITS
+};
+
+float fimgGetRasterizerStateF(fimgContext *ctx, unsigned int name);
+unsigned int fimgGetRasterizerState(fimgContext *ctx, unsigned int name);
 
 /*
  * Shaders
@@ -520,6 +545,31 @@ void fimgSetFrameBufParams(fimgContext *ctx,
 void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width);
+
+enum {
+	FIMG_SCISSOR_TEST,
+	FIMG_ALPHA_TEST,
+	FIMG_STENCIL_TEST,
+	FIMG_DEPTH_TEST,
+	FIMG_BLEND,
+	FIMG_DITHER,
+	FIMG_COLOR_LOGIC_OP,
+	FIMG_FRONT_STENCIL_FUNC,
+	FIMG_FRONT_STENCIL_MASK,
+	FIMG_FRONT_STENCIL_REF,
+	FIMG_FRONT_STENCIL_SFAIL,
+	FIMG_FRONT_STENCIL_DPFAIL,
+	FIMG_FRONT_STENCIL_DPPASS,
+	FIMG_BACK_STENCIL_FUNC,
+	FIMG_BACK_STENCIL_MASK,
+	FIMG_BACK_STENCIL_REF,
+	FIMG_BACK_STENCIL_SFAIL,
+	FIMG_BACK_STENCIL_DPFAIL,
+	FIMG_BACK_STENCIL_DPPASS,
+	FIMG_DEPTH_FUNC
+};
+
+unsigned int fimgGetFragmentState(fimgContext *ctx, unsigned int op);
 
 /*
  * OS support

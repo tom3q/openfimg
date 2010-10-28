@@ -22,10 +22,18 @@
 #ifndef _LIBSGL_COMMON_H_
 #define _LIBSGL_COMMON_H_
 
-#define FGL_MAX_TEXTURE_UNITS	2
-#define FGL_MAX_TEXTURE_OBJECTS 1024
-#define FGL_MAX_BUFFER_OBJECTS 1024
-#define FGL_MAX_MIPMAP_LEVEL 11
+#define FGL_MAX_TEXTURE_UNITS		2
+#define FGL_MAX_TEXTURE_OBJECTS		1024
+#define FGL_MAX_BUFFER_OBJECTS		128
+#define FGL_MAX_MIPMAP_LEVEL		11
+#define FGL_MAX_LIGHTS			8
+#define FGL_MAX_CLIP_PLANES		1
+#define FGL_MAX_MODELVIEW_STACK_DEPTH	16
+#define FGL_MAX_PROJECTION_STACK_DEPTH	2
+#define FGL_MAX_TEXTURE_STACK_DEPTH	2
+#define FGL_MAX_SUBPIXEL_BITS		4
+#define FGL_MAX_TEXTURE_SIZE		2048
+#define FGL_MAX_VIEWPORT_DIMS		2048
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)

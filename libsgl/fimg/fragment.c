@@ -480,3 +480,51 @@ void fimgRestoreFragmentState(fimgContext *ctx)
 	fimgWrite(ctx, ctx->fragment.colorAddr, FGPF_CBADDR);
 	fimgWrite(ctx, ctx->fragment.bufWidth, FGPF_FBW);
 }
+
+unsigned int fimgGetFragmentState(fimgContext *ctx, unsigned int name)
+{
+	switch (name) {
+	case FIMG_SCISSOR_TEST:
+		return ctx->fragment.scX.enable;
+	case FIMG_ALPHA_TEST:
+		return ctx->fragment.alpha.enable;
+	case FIMG_STENCIL_TEST:
+		return ctx->fragment.stFront.enable;
+	case FIMG_DEPTH_TEST:
+		return ctx->fragment.depth.enable;
+	case FIMG_BLEND:
+		return ctx->fragment.blend.enable;
+	case FIMG_DITHER:
+		return ctx->fragment.fbctl.dither;
+	case FIMG_COLOR_LOGIC_OP:
+		return ctx->fragment.logop.enable;
+	case FIMG_FRONT_STENCIL_FUNC:
+		return ctx->fragment.stFront.mode;
+	case FIMG_FRONT_STENCIL_MASK:
+		return ctx->fragment.stFront.mask;
+	case FIMG_FRONT_STENCIL_REF:
+		return ctx->fragment.stFront.ref;
+	case FIMG_FRONT_STENCIL_SFAIL:
+		return ctx->fragment.stFront.sfail;
+	case FIMG_FRONT_STENCIL_DPFAIL:
+		return ctx->fragment.stFront.dpfail;
+	case FIMG_FRONT_STENCIL_DPPASS:
+		return ctx->fragment.stFront.dppass;
+	case FIMG_BACK_STENCIL_FUNC:
+		return ctx->fragment.stBack.mode;
+	case FIMG_BACK_STENCIL_MASK:
+		return ctx->fragment.stBack.mask;
+	case FIMG_BACK_STENCIL_REF:
+		return ctx->fragment.stBack.ref;
+	case FIMG_BACK_STENCIL_SFAIL:
+		return ctx->fragment.stBack.sfail;
+	case FIMG_BACK_STENCIL_DPFAIL:
+		return ctx->fragment.stBack.dpfail;
+	case FIMG_BACK_STENCIL_DPPASS:
+		return ctx->fragment.stBack.dppass;
+	case FIMG_DEPTH_FUNC:
+		return ctx->fragment.depth.mode;
+	}
+
+	return 0;
+}

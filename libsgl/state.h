@@ -214,6 +214,7 @@ struct FGLContext {
 	FGLMatrixState matrix;
 	FGLTextureState texture[FGL_MAX_TEXTURE_UNITS];
 	FGLuint unpackAlignment;
+	FGLuint packAlignment;
 	FGLBufferObjectBinding arrayBuffer;
 	FGLBufferObjectBinding elementArrayBuffer;
 	FGLPerFragmentState perFragment;
@@ -227,7 +228,7 @@ struct FGLContext {
 
 	FGLContext(fimgContext *fctx) :
 		fimg(fctx), activeTexture(0), clientActiveTexture(0), matrix(),
-		unpackAlignment(4), egl(), surface()
+		unpackAlignment(4), packAlignment(4), egl(), surface()
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 	}
