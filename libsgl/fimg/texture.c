@@ -124,15 +124,20 @@ void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 {
 	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base +FGTU_TSTA(unit));
 	uint32_t *data = (uint32_t *)texture;
-	unsigned count = sizeof(fimgTexture);
+	unsigned count = sizeof(fimgTexture) / 4;
 
-	while (count >= 4) {
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-		count -= 4;
-	}
+	asm volatile (
+		"1:\n\t"
+		"ldmia %1!, {r0-r3}\n\t"
+		"stmia %0!, {r0-r3}\n\t"
+		"subs %2, %2, $1\n\t"
+		"bne 1b\n\t"
+		: "+r"(reg)
+		: "r"(data), "r"(count / 4)
+		: "r0", "r1", "r2", "r3"
+	);
+
+	count %= 4;
 
 	if (count--)
 		*(reg++) = *(data++);
@@ -222,6 +227,11 @@ void fimgSetTexMagFilter(fimgTexture *texture, unsigned mode)
 void fimgSetTexMipmap(fimgTexture *texture, unsigned mode)
 {
 	texture->control.useMipmap = mode;
+}
+
+void fimgSetTexCoordSys(fimgTexture *texture, unsigned mode)
+{
+	texture->control.texCoordSys = mode;
 }
 
 #if 0

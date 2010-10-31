@@ -61,12 +61,6 @@
 #include "state.h"
 #include "fimg/fimg.h"
 
-#define FUNC_UNIMPLEMENTED \
-	LOGW("Application called unimplemented function: %s", __func__)
-
-#undef NELEM
-#define NELEM(x) (sizeof(x)/sizeof(*(x)))
-
 #define FGL_EGL_MAJOR		1
 #define FGL_EGL_MINOR		4
 
@@ -76,12 +70,15 @@ static char const * const gVendorString     = "GLES6410";
 static char const * const gVersionString    = "1.4 S3C6410 Android 0.0.1";
 static char const * const gClientApisString = "OpenGL_ES";
 static char const * const gExtensionsString =
-//	"EGL_KHR_image_base "
-//	"EGL_KHR_image_pixmap "
-//	"EGL_ANDROID_image_native_buffer "
-//	"EGL_ANDROID_swap_rectangle "
-//	"EGL_ANDROID_get_render_buffer "
-	"";
+#if 0
+	"EGL_KHR_image "
+	"EGL_KHR_image_base "
+	"EGL_KHR_image_pixmap "
+	"EGL_ANDROID_image_native_buffer "
+#endif
+	"EGL_ANDROID_swap_rectangle "
+	"EGL_ANDROID_get_render_buffer"
+;
 
 pthread_key_t eglContextKey = -1;
 
@@ -745,7 +742,7 @@ void fglFlushPmemSurface(FGLSurface *s)
 
 int fglCreatePmemSurface(FGLSurface *s)
 {
-	int err, fd;
+	int err = 0, fd;
 	void *vaddr;
 	size_t size;
 	pmem_region region;
@@ -2024,7 +2021,7 @@ static int fglMakeCurrent(FGLContext* gl)
 	} else {
 		if (current) {
 			// mark the current context as not current, and flush
-			glFlush();
+			glFinish();
 			current->egl.flags &= ~FGL_IS_CURRENT;
 		}
 		// this thread has no context attached to it

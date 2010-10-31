@@ -28,29 +28,29 @@ typedef GLfloat FGLvec4f[4];
 typedef GLfloat FGLvec3f[3];
 typedef GLfloat FGLvec2f[2];
 
-static inline GLfloat floatFromUByte(GLubyte c)
+static inline GLclampf clampfFromUByte(GLubyte c)
 {
-	return (GLfloat)c / ((1 << 8) - 1);
+	return (GLclampf)c / ((1 << 8) - 1);
 }
 
-static inline GLfloat floatFromByte(GLbyte c)
+static inline GLclampf clampfFromByte(GLbyte c)
 {
-	return (GLfloat)(2*c + 1) / ((1 << 8) - 1);
+	return (GLclampf)(2*c + 1) / ((1 << 8) - 1);
 }
 
-static inline GLfloat floatFromUShort(GLushort c)
+static inline GLclampf clampfFromUShort(GLushort c)
 {
-	return (GLfloat)c / ((1 << 16) - 1);
+	return (GLclampf)c / ((1 << 16) - 1);
 }
 
-static inline GLfloat floatFromShort(GLshort c)
+static inline GLclampf clampfFromShort(GLshort c)
 {
-	return (GLfloat)(2*c + 1) / ((1 << 16) - 1);
+	return (GLclampf)(2*c + 1) / ((1 << 16) - 1);
 }
 
-static inline GLfloat floatFromInt(GLint c)
+static inline GLclampf clampfFromInt(GLint c)
 {
-	return (GLfloat)(2*c + 1) / (0xFFFFFFFF);
+	return (GLclampf)(2*c + 1) / (0xffffffff);
 }
 
 static inline GLfloat floatFromFixed(GLfixed c)
@@ -71,12 +71,12 @@ static inline GLclampf clampFloat(GLclampf f)
 
 static inline GLubyte ubyteFromClampf(GLclampf c)
 {
-	return clampFloat(c) * ((1 << 8) - 1);
+	return c * ((1 << 8) - 1);
 }
 
 static inline GLubyte ubyteFromClampx(GLclampx c)
 {
-	return c >> 24;
+	return ubyteFromClampf(floatFromFixed(c));
 }
 
 static inline GLint intFromFloat(GLfloat f)
@@ -87,6 +87,46 @@ static inline GLint intFromFloat(GLfloat f)
 static inline GLint intFromFixed(GLfixed x)
 {
 	return x >> 16;
+}
+
+static inline GLint intFromClampf(GLclampf c)
+{
+	return (c * (0xffffffff) - 1) / 2;
+}
+
+static inline GLint intFromClampx(GLclampx c)
+{
+	return intFromClampf(floatFromFixed(c));
+}
+
+static inline GLfixed fixedFromFloat(GLfloat f)
+{
+	return f * (1 << 16);
+}
+
+static inline GLfixed fixedFromInt(GLint i)
+{
+	return i << 16;
+}
+
+static inline GLfixed fixedFromBool(GLboolean b)
+{
+	return (!!b) << 16;
+}
+
+static inline GLboolean boolFromFloat(GLfloat f)
+{
+	return f != 0;
+}
+
+static inline GLboolean boolFromFixed(GLfixed x)
+{
+	return !!x;
+}
+
+static inline GLboolean boolFromInt(GLint i)
+{
+	return !!i;
 }
 
 typedef unsigned char FGLubyte;

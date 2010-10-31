@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <cutils/log.h>
 #include <GLES/gl.h>
+#include <GLES/glext.h>
 #include "state.h"
 #include "types.h"
 #include "fglobjectmanager.h"
@@ -43,18 +44,11 @@ static char const * const gVendorString     = "GLES6410";
 static char const * const gRendererString   = "S3C6410 FIMG-3DSE";
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
 static char const * const gExtensionsString =
-	"GL_OES_byte_coordinates "
-	"GL_OES_fixed_point "
-	"GL_OES_single_precision "
 #if 0
 	"GL_OES_read_format "                   // TODO
 	"GL_OES_compressed_paletted_texture "   // TODO
-	"GL_OES_draw_texture "                  // TODO
 	"GL_OES_matrix_get "                    // TODO
 	"GL_OES_query_matrix "                  // TODO
-#endif
-	"GL_OES_point_size_array "
-#if 0
 	"GL_OES_point_sprite "                  // TODO
 	"GL_OES_EGL_image "                     // TODO
 	"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
@@ -63,7 +57,28 @@ static char const * const gExtensionsString =
 	"GL_ANDROID_user_clip_plane "           // TODO
 	"GL_ANDROID_vertex_buffer_object "      // TODO
 	"GL_ANDROID_generate_mipmap "           // TODO
+	"GL_ARB_texture_env_combine "		// TODO
+	"GL_ARB_texture_env_crossbar "		// TODO
+	"GL_ARB_texture_env_dot3 "		// TODO
+	"GL_ARB_texture_mirrored_repeat "	// TODO
+	"GL_ARB_vertex_buffer_object "		// TODO
+	"GL_ATI_texture_compression_atitc "	// TODO
+	"GL_EXT_blend_equation_separate "	// TODO
+	"GL_EXT_blend_func_separate "		// TODO
+	"GL_EXT_blend_minmax "			// TODO
+	"GL_EXT_blend_subtract "		// TODO
+	"GL_EXT_stencil_wrap "			// TODO
+	"GL_OES_fixed_point "			// TODO
+	"GL_OES_matrix_palette "		// TODO
+	"GL_OES_vertex_buffer_object "		// TODO
+	"GL_QUALCOMM_vertex_buffer_object "	// TODO
+	"GL_QUALCOMM_direct_texture"		// TODO
 #endif
+	"GL_OES_byte_coordinates "
+	"GL_OES_fixed_point "
+	"GL_OES_single_precision "
+	"GL_OES_draw_texture "
+	"GL_OES_point_size_array "
 ;
 
 // ----------------------------------------------------------------------------
@@ -192,7 +207,8 @@ FGLvec4f FGLContext::defaultVertex[4 + FGL_MAX_TEXTURE_UNITS] = {
 	{ 0.0f, 0.0f, 0.0f, 1.0f },
 };
 
-GL_API void GL_APIENTRY glColor4f (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)
+GL_API void GL_APIENTRY glColor4f (GLfloat red, GLfloat green,
+						GLfloat blue, GLfloat alpha)
 {
 	FGLContext *ctx = getContext();
 
@@ -202,14 +218,18 @@ GL_API void GL_APIENTRY glColor4f (GLfloat red, GLfloat green, GLfloat blue, GLf
 	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_ALPHA]	= alpha;
 }
 
-GL_API void GL_APIENTRY glColor4ub (GLubyte red, GLubyte green, GLubyte blue, GLubyte alpha)
+GL_API void GL_APIENTRY glColor4ub (GLubyte red, GLubyte green,
+						GLubyte blue, GLubyte alpha)
 {
-	glColor4f(floatFromUByte(red), floatFromUByte(green), floatFromUByte(blue), floatFromUByte(alpha));
+	glColor4f(clampfFromUByte(red), clampfFromUByte(green),
+				clampfFromUByte(blue), clampfFromUByte(alpha));
 }
 
-GL_API void GL_APIENTRY glColor4x (GLfixed red, GLfixed green, GLfixed blue, GLfixed alpha)
+GL_API void GL_APIENTRY glColor4x (GLfixed red, GLfixed green,
+						GLfixed blue, GLfixed alpha)
 {
-	glColor4f(floatFromFixed(red), floatFromFixed(green), floatFromFixed(blue), floatFromFixed(alpha));
+	glColor4f(floatFromFixed(red), floatFromFixed(green),
+				floatFromFixed(blue), floatFromFixed(alpha));
 }
 
 GL_API void GL_APIENTRY glNormal3f (GLfloat nx, GLfloat ny, GLfloat nz)
@@ -416,6 +436,14 @@ GL_API void GL_APIENTRY glBufferSubData (GLenum target, GLintptr offset,
 	}
 
 	memcpy((uint8_t *)buf->memory + offset, data, size);
+}
+
+GL_API GLboolean GL_APIENTRY glIsBuffer (GLuint buffer)
+{
+	if (buffer == 0 || !fglBufferObjects.isValid(buffer))
+		return GL_FALSE;
+
+	return GL_TRUE;
 }
 
 /*
@@ -656,6 +684,12 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type,
 				size, fglType, stride, fglStride, pointer);
 }
 
+static void fglEnableClientState(FGLContext *ctx, GLint idx)
+{
+	ctx->array[idx].enabled = GL_TRUE;
+	fimgSetAttribute(ctx->fimg, idx, ctx->array[idx].type, ctx->array[idx].size);
+}
+
 GL_API void GL_APIENTRY glEnableClientState (GLenum array)
 {
 	FGLContext *ctx = getContext();
@@ -682,13 +716,18 @@ GL_API void GL_APIENTRY glEnableClientState (GLenum array)
 		return;
 	}
 
-	ctx->array[idx].enabled = GL_TRUE;
-	fimgSetAttribute(ctx->fimg, idx, ctx->array[idx].type, ctx->array[idx].size);
+	fglEnableClientState(ctx, idx);
 }
 
 static const GLint fglDefaultAttribSize[4 + FGL_MAX_TEXTURE_UNITS] = {
 	4, 3, 4, 1, 4, 4
 };
+
+static void fglDisableClientState(FGLContext *ctx, GLint idx)
+{
+	ctx->array[idx].enabled = GL_FALSE;
+	fimgSetAttribute(ctx->fimg, idx, FGHI_ATTRIB_DT_FLOAT, fglDefaultAttribSize[idx]);
+}
 
 GL_API void GL_APIENTRY glDisableClientState (GLenum array)
 {
@@ -716,8 +755,7 @@ GL_API void GL_APIENTRY glDisableClientState (GLenum array)
 		return;
 	}
 
-	ctx->array[idx].enabled = GL_FALSE;
-	fimgSetAttribute(ctx->fimg, idx, FGHI_ATTRIB_DT_FLOAT, fglDefaultAttribSize[idx]);
+	fglDisableClientState(ctx, idx);
 }
 
 GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture)
@@ -773,23 +811,31 @@ static inline GLint fglModeFromModeEnum(GLenum mode)
 
 static inline void fglSetupMatrices(FGLContext *ctx)
 {
-	if (ctx->matrix.dirty[FGL_MATRIX_MODELVIEW] || ctx->matrix.dirty[FGL_MATRIX_PROJECTION])
+	if (ctx->matrix.dirty[FGL_MATRIX_MODELVIEW]
+				|| ctx->matrix.dirty[FGL_MATRIX_PROJECTION])
 	{
-		FGLmatrix matrix = ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
-		matrix.multiply(ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top());
-		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TRANSFORM, matrix.data);
-		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_LIGHTING, ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().data);
+		FGLmatrix *matrix;
+		/* Calculate and load transformation matrix */
+		matrix = &ctx->matrix.transformMatrix;
+		*matrix = ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
+		matrix->multiply(ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top());
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TRANSFORM, matrix->data);
+		/* Load lighting matrix */
+		matrix = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top();
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_LIGHTING, matrix->data);
+		/* Mark transformation matrices as clean */
 		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW] = GL_FALSE;
 		ctx->matrix.dirty[FGL_MATRIX_PROJECTION] = GL_FALSE;
 		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_FALSE;
 	}
-
+	/* Load texture coordinate matrices */
 	int i = FGL_MAX_TEXTURE_UNITS;
 	while(i--) {
 		if(!ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)])
 			continue;
 
-		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(i), ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top().data);
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(i),
+			ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top().data);
 		ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)] = GL_FALSE;
 	}
 }
@@ -801,9 +847,11 @@ static inline void fglSetupTextures(FGLContext *ctx)
 		FGLTexture *obj = ctx->texture[i].getTexture();
 
 		if(enabled && obj->surface.isValid() && obj->isComplete()) {
+			/* Texture is ready */
 			fimgCompatSetupTexture(ctx->fimg, obj->fimg, i);
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 		} else {
+			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
 		}
 	}
@@ -889,7 +937,8 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 #endif
 }
 
-GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices)
+GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
+							const GLvoid *indices)
 {
 	uint32_t fglMode;
 	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
@@ -1179,7 +1228,8 @@ GL_API void GL_APIENTRY glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat 
 
 GL_API void GL_APIENTRY glRotatex (GLfixed angle, GLfixed x, GLfixed y, GLfixed z)
 {
-	glRotatef(floatFromFixed(angle), floatFromFixed(x), floatFromFixed(y), floatFromFixed(z));
+	glRotatef(floatFromFixed(angle), floatFromFixed(x),
+		  floatFromFixed(y), floatFromFixed(z));
 }
 
 GL_API void GL_APIENTRY glTranslatef (GLfloat x, GLfloat y, GLfloat z)
@@ -1238,7 +1288,8 @@ GL_API void GL_APIENTRY glScalex (GLfixed x, GLfixed y, GLfixed z)
 	glScalef(floatFromFixed(x), floatFromFixed(y), floatFromFixed(z));
 }
 
-GL_API void GL_APIENTRY glFrustumf (GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
+GL_API void GL_APIENTRY glFrustumf (GLfloat left, GLfloat right,
+		GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
 {
 	if(zNear <= 0 || zFar <= 0 || left == right || bottom == top || zNear == zFar) {
 		setError(GL_INVALID_VALUE);
@@ -1266,12 +1317,16 @@ GL_API void GL_APIENTRY glFrustumf (GLfloat left, GLfloat right, GLfloat bottom,
 	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
-GL_API void GL_APIENTRY glFrustumx (GLfixed left, GLfixed right, GLfixed bottom, GLfixed top, GLfixed zNear, GLfixed zFar)
+GL_API void GL_APIENTRY glFrustumx (GLfixed left, GLfixed right,
+		GLfixed bottom, GLfixed top, GLfixed zNear, GLfixed zFar)
 {
-	glFrustumf(floatFromFixed(left), floatFromFixed(right), floatFromFixed(bottom), floatFromFixed(top), floatFromFixed(zNear), floatFromFixed(zFar));
+	glFrustumf(floatFromFixed(left), floatFromFixed(right),
+		   floatFromFixed(bottom), floatFromFixed(top),
+		   floatFromFixed(zNear), floatFromFixed(zFar));
 }
 
-GL_API void GL_APIENTRY glOrthof (GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
+GL_API void GL_APIENTRY glOrthof (GLfloat left, GLfloat right,
+		GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
 {
 	if(left == right || bottom == top || zNear == zFar) {
 		setError(GL_INVALID_VALUE);
@@ -1301,7 +1356,9 @@ GL_API void GL_APIENTRY glOrthof (GLfloat left, GLfloat right, GLfloat bottom, G
 
 GL_API void GL_APIENTRY glOrthox (GLfixed left, GLfixed right, GLfixed bottom, GLfixed top, GLfixed zNear, GLfixed zFar)
 {
-	glOrthof(floatFromFixed(left), floatFromFixed(right), floatFromFixed(bottom), floatFromFixed(top), floatFromFixed(zNear), floatFromFixed(zFar));
+	glOrthof(floatFromFixed(left), floatFromFixed(right),
+		 floatFromFixed(bottom), floatFromFixed(top),
+		 floatFromFixed(zNear), floatFromFixed(zFar));
 }
 
 GL_API void GL_APIENTRY glActiveTexture (GLenum texture)
@@ -1569,8 +1626,10 @@ GL_API void GL_APIENTRY glStencilOp (GLenum fail, GLenum zfail, GLenum zpass)
 
 	FGLContext *ctx = getContext();
 
-	fimgSetFrontStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
-	fimgSetBackStencilOp(ctx->fimg, (fimgTestAction)fglFail, (fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
+	fimgSetFrontStencilOp(ctx->fimg, (fimgTestAction)fglFail,
+			(fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
+	fimgSetBackStencilOp(ctx->fimg, (fimgTestAction)fglFail,
+			(fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
 }
 
 GL_API void GL_APIENTRY glDepthFunc (GLenum func)
@@ -2155,8 +2214,15 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+
 	unsigned width = obj->surface.width >> level;
+	if (!width)
+		width = 1;
+
 	unsigned height = obj->surface.height >> level;
+	if (!height)
+		height = 1;
+
 	size_t size = width*height*obj->bpp;
 
 	memcpy((uint8_t *)obj->surface.vaddr + offset, pixels, size);
@@ -2166,8 +2232,15 @@ static void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+
 	unsigned width = obj->surface.width >> level;
+	if (!width)
+		width = 1;
+
 	unsigned height = obj->surface.height >> level;
+	if (!height)
+		height = 1;
+
 	size_t line = width*obj->bpp;
 	size_t stride = (line + alignment - 1) & ~(alignment - 1);
 	const uint8_t *src8 = (const uint8_t *)pixels;
@@ -2195,8 +2268,14 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+
 	unsigned width = obj->surface.width >> level;
+	if (!width)
+		width = 1;
+
 	unsigned height = obj->surface.height >> level;
+	if (!height)
+		height = 1;
 
 	switch (obj->format) {
 	case GL_RGB: {
@@ -2255,19 +2334,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		return;
 	}
 
-	// Check if width is a power of two
-	GLsizei tmp;
-
-	for (tmp = 1; 2*tmp <= width; tmp = 2*tmp);
-	if (tmp != width) {
-		setError(GL_INVALID_VALUE);
-		return;
-	}
-
-	// Check if height is a power of two
-	for (tmp = 1; 2*tmp <= height; tmp = 2*tmp);
-	if (tmp != height) {
-		setError(GL_INVALID_VALUE);
+	if ((GLenum)internalformat != format) {
+		setError(GL_INVALID_OPERATION);
 		return;
 	}
 
@@ -2275,8 +2343,24 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	FGLTexture *obj =
 		ctx->texture[ctx->activeTexture].getTexture();
 
+	if (!width || !height) {
+		// Null texture specified
+		obj->levels &= ~(1 << level);
+		return;
+	}
+
 	// Specifying mipmaps
 	if (level > 0) {
+		GLint mipmapW, mipmapH;
+
+		mipmapW = obj->surface.width >> level;
+		if (!mipmapW)
+			mipmapW = 1;
+
+		mipmapH = obj->surface.height >> level;
+		if (!mipmapH)
+			mipmapH = 1;
+
 		if (!obj->surface.isValid()) {
 			// Mipmaps can be specified only if the texture exists
 			setError(GL_INVALID_OPERATION);
@@ -2284,19 +2368,16 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		}
 
 		// Check dimensions
-		if ((obj->surface.width >> level) != width) {
-			setError(GL_INVALID_VALUE);
-			return;
-		}
-
-		if ((obj->surface.height >> level) != height) {
+		if (mipmapW != width || mipmapH != height) {
+			// Invalid size
 			setError(GL_INVALID_VALUE);
 			return;
 		}
 
 		// Check format
 		if (obj->format != format || obj->type != type) {
-			setError(GL_INVALID_VALUE);
+			// Must be the same format as level 0
+			setError(GL_INVALID_ENUM);
 			return;
 		}
 
@@ -2313,7 +2394,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 						       ctx->unpackAlignment);
 			}
 
-			obj->levels |= 1 << level;
+			obj->levels |= (1 << level);
 
 			fglFlushPmemSurface(&obj->surface);
 		}
@@ -2322,6 +2403,22 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 
 	// level == 0
+
+	// Check if width is a power of two
+	GLsizei tmp;
+
+	for (tmp = 1; 2*tmp <= width; tmp = 2*tmp) ;
+	if (tmp != width) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	// Check if height is a power of two
+	for (tmp = 1; 2*tmp <= height; tmp = 2*tmp) ;
+	if (tmp != height) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
 
 	// Get format information
 	unsigned bpp;
@@ -2359,7 +2456,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 							obj->surface.paddr);
 		fimgSetTex2DSize(obj->fimg, width, height);
 
-		obj->levels = 1;
+		obj->levels = (1 << 0);
 	}
 
 	// Copy the image (with conversion if needed)
@@ -2382,39 +2479,184 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 }
 
+static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
+			const GLvoid *pixels, unsigned alignment,
+			unsigned x, unsigned y, unsigned w, unsigned h)
+{
+	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+
+	unsigned width = obj->surface.width >> level;
+	if (!width)
+		width = 1;
+	unsigned height = obj->surface.height >> level;
+	if (!height)
+		height = 1;
+
+	size_t line = w*obj->bpp;
+	size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
+	size_t dstStride = width*obj->bpp;
+	size_t xoffset = x*obj->bpp;
+	size_t yoffset = (height - y - h)*dstStride;
+	const uint8_t *src8 = (const uint8_t *)pixels;
+	uint8_t *dst8 = (uint8_t *)obj->surface.vaddr
+						+ offset + yoffset + xoffset;
+	do {
+		memcpy(dst8, src8, line);
+		src8 += srcStride;
+		dst8 += dstStride;
+	} while (--h);
+}
+
+static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
+			const GLvoid *pixels, unsigned alignment,
+			unsigned x, unsigned y, unsigned w, unsigned h)
+{
+	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+
+	unsigned width = obj->surface.width >> level;
+	if (!width)
+		width = 1;
+
+	unsigned height = obj->surface.height >> level;
+	if (!height)
+		height = 1;
+
+	switch (obj->format) {
+	case GL_RGB: {
+		size_t line = 3*w;
+		size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
+		size_t dstStride = 4*width;
+		size_t xOffset = 4*x;
+		size_t yOffset = (height - y - h)*dstStride;
+		size_t srcPad = srcStride - line;
+		size_t dstPad = width - w;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr
+						+ offset + yOffset + xOffset);
+		uint8_t r, g, b;
+		do {
+			unsigned x = w;
+			do {
+				r = *(src8++);
+				g = *(src8++);
+				b = *(src8++);
+				*(dst32++) = fglPackRGBA8888(r, g, b, 255);
+			} while (--x);
+			src8 += srcPad;
+			dst32 += dstPad;
+		} while (--h);
+		break;
+	}
+	case GL_LUMINANCE: {
+		size_t line = w;
+		size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
+		size_t dstStride = 2*width;
+		size_t xOffset = 2*x;
+		size_t yOffset = (height - y - h)*dstStride;
+		size_t srcPad = srcStride - line;
+		size_t dstPad = width - w;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface.vaddr
+						+ offset + yOffset + xOffset);
+		do {
+			unsigned x = w;
+			do {
+				*(dst16++) = fglPackLA88(*(src8++), 255);
+			} while (--x);
+			src8 += srcPad;
+			dst16 += dstPad;
+		} while (--h);
+		break;
+	}
+	default:
+		LOGW("Unsupported texture conversion %d", obj->format);
+		return;
+	}
+}
+
 GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		GLint xoffset, GLint yoffset, GLsizei width, GLsizei height,
 		GLenum format, GLenum type, const GLvoid *pixels)
 {
+	FGLContext *ctx = getContext();
+	FGLTexture *obj =
+		ctx->texture[ctx->activeTexture].getTexture();
 
+	if (!obj->surface.isValid()) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	if (level > obj->maxLevel) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	GLint mipmapW, mipmapH;
+
+	mipmapW = obj->surface.width >> level;
+	if (!mipmapW)
+		mipmapW = 1;
+
+	mipmapH = obj->surface.height >> level;
+	if (!mipmapH)
+		mipmapH = 1;
+
+	if (!xoffset && !yoffset && mipmapW == width && mipmapH == height) {
+		glTexImage2D(target, level, format, width, height,
+						0, format, type, pixels);
+		return;
+	}
+
+	if (format != obj->format || type != obj->type) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if (xoffset < 0 || yoffset < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	if (xoffset + width > mipmapW || yoffset + height > mipmapH) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	if (obj->convert)
+		fglConvertTexturePartial(obj, level, pixels,
+			ctx->unpackAlignment, xoffset, yoffset, width, height);
+	else
+		fglLoadTexturePartial(obj, level, pixels,
+			ctx->unpackAlignment, xoffset, yoffset, width, height);
 }
 
 GL_API void GL_APIENTRY glCompressedTexImage2D (GLenum target, GLint level,
 		GLenum internalformat, GLsizei width, GLsizei height,
 		GLint border, GLsizei imageSize, const GLvoid *data)
 {
-
+	FUNC_UNIMPLEMENTED;
 }
 
 GL_API void GL_APIENTRY glCompressedTexSubImage2D (GLenum target, GLint level,
 		GLint xoffset, GLint yoffset, GLsizei width, GLsizei height,
 		GLenum format, GLsizei imageSize, const GLvoid *data)
 {
-
+	FUNC_UNIMPLEMENTED;
 }
 
 GL_API void GL_APIENTRY glCopyTexImage2D (GLenum target, GLint level,
 		GLenum internalformat, GLint x, GLint y, GLsizei width,
 		GLsizei height, GLint border)
 {
-
+	FUNC_UNIMPLEMENTED;
 }
 
 GL_API void GL_APIENTRY glCopyTexSubImage2D (GLenum target, GLint level,
 		GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width,
 		GLsizei height)
 {
-
+	FUNC_UNIMPLEMENTED;
 }
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)
@@ -2510,30 +2752,51 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
+		LOGE("Invalid enum value %08x.", pname);
 	}
 }
 
-GL_API void GL_APIENTRY glTexParameteriv (GLenum target, GLenum pname, const GLint *params)
+GL_API void GL_APIENTRY glTexParameteriv (GLenum target, GLenum pname,
+							const GLint *params)
 {
-	glTexParameteri(target, pname, *params);
+	if(target != GL_TEXTURE_2D) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+	FGLTexture *obj =
+		ctx->texture[ctx->activeTexture].getTexture();
+
+	switch (pname) {
+	case GL_TEXTURE_CROP_RECT_OES:
+		memcpy(obj->cropRect, params, 4*sizeof(GLint));
+		break;
+	default:
+		glTexParameteri(target, pname, *params);
+	}
 }
 
-GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname, GLfloat param)
+GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname,
+								GLfloat param)
 {
 	glTexParameteri(target, pname, (GLint)(param));
 }
 
-GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname, const GLfloat *params)
+GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname,
+							const GLfloat *params)
 {
 	glTexParameteri(target, pname, (GLint)(*params));
 }
 
-GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname, GLfixed param)
+GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname,
+								GLfixed param)
 {
 	glTexParameteri(target, pname, param);
 }
 
-GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname, const GLfixed *params)
+GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname,
+							const GLfixed *params)
 {
 	glTexParameteri(target, pname, *params);
 }
@@ -2552,22 +2815,28 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_TEXTURE_ENV_MODE:
 		switch (param) {
 		case GL_REPLACE:
-			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_REPLACE);
+			fimgCompatSetTextureFunc(ctx->fimg,
+						unit, FGFP_TEXFUNC_REPLACE);
 			break;
 		case GL_MODULATE:
-			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_MODULATE);
+			fimgCompatSetTextureFunc(ctx->fimg,
+						unit, FGFP_TEXFUNC_MODULATE);
 			break;
 		case GL_DECAL:
-			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_DECAL);
+			fimgCompatSetTextureFunc(ctx->fimg,
+						unit, FGFP_TEXFUNC_DECAL);
 			break;
 		case GL_BLEND:
-			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_BLEND);
+			fimgCompatSetTextureFunc(ctx->fimg,
+						unit, FGFP_TEXFUNC_BLEND);
 			break;
 		case GL_ADD:
-			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_ADD);
+			fimgCompatSetTextureFunc(ctx->fimg,
+						unit, FGFP_TEXFUNC_ADD);
 			break;
 		case GL_COMBINE:
- 			fimgCompatSetTextureFunc(ctx->fimg, unit, FGFP_TEXFUNC_COMBINE);
+ 			fimgCompatSetTextureFunc(ctx->fimg,
+						unit, FGFP_TEXFUNC_COMBINE);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2576,28 +2845,36 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_COMBINE_RGB:
 		switch (param) {
 		case GL_REPLACE:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_REPLACE);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_REPLACE);
 			break;
 		case GL_MODULATE:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_MODULATE);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_MODULATE);
 			break;
 		case GL_ADD:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_ADD);
 			break;
 		case GL_ADD_SIGNED:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD_SIGNED);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_ADD_SIGNED);
 			break;
 		case GL_INTERPOLATE:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_INTERPOLATE);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_INTERPOLATE);
 			break;
 		case GL_SUBTRACT:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_SUBTRACT);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_SUBTRACT);
 			break;
 		case GL_DOT3_RGB:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_DOT3_RGB);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_DOT3_RGB);
 			break;
 		case GL_DOT3_RGBA:
-			fimgCompatSetColorCombiner(ctx->fimg, unit, FGFP_COMBFUNC_DOT3_RGBA);
+			fimgCompatSetColorCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_DOT3_RGBA);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2606,22 +2883,28 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_COMBINE_ALPHA:
 		switch (param) {
 		case GL_REPLACE:
-			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_REPLACE);
+			fimgCompatSetAlphaCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_REPLACE);
 			break;
 		case GL_MODULATE:
-			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_MODULATE);
+			fimgCompatSetAlphaCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_MODULATE);
 			break;
 		case GL_ADD:
-			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD);
+			fimgCompatSetAlphaCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_ADD);
 			break;
 		case GL_ADD_SIGNED:
-			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_ADD_SIGNED);
+			fimgCompatSetAlphaCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_ADD_SIGNED);
 			break;
 		case GL_INTERPOLATE:
-			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_INTERPOLATE);
+			fimgCompatSetAlphaCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_INTERPOLATE);
 			break;
 		case GL_SUBTRACT:
-			fimgCompatSetAlphaCombiner(ctx->fimg, unit, FGFP_COMBFUNC_SUBTRACT);
+			fimgCompatSetAlphaCombiner(ctx->fimg,
+						unit, FGFP_COMBFUNC_SUBTRACT);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2632,14 +2915,14 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 			setError(GL_INVALID_VALUE);
 			return;
 		}
-		fimgCompatSetColorScale(ctx->fimg, unit, floatFromInt(param));
+		fimgCompatSetColorScale(ctx->fimg, unit, param);
 		break;
 	case GL_ALPHA_SCALE:
 		if (param != 1 && param != 2 && param != 4) {
 			setError(GL_INVALID_VALUE);
 			return;
 		}
-		fimgCompatSetAlphaScale(ctx->fimg, unit, floatFromInt(param));
+		fimgCompatSetAlphaScale(ctx->fimg, unit, param);
 		break;
 	case GL_SRC0_RGB:
 		switch (param) {
@@ -2688,16 +2971,20 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_SRC0_ALPHA:
 		switch (param) {
 		case GL_TEXTURE:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_TEX);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_TEX);
 			break;
 		case GL_CONSTANT:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_CONST);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_CONST);
 			break;
 		case GL_PRIMARY_COLOR:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_COL);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_COL);
 			break;
 		case GL_PREVIOUS:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 0, FGFP_COMBARG_PREV);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 0, FGFP_COMBARG_PREV);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2720,16 +3007,20 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_SRC1_RGB:
 		switch (param) {
 		case GL_TEXTURE:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_TEX);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_TEX);
 			break;
 		case GL_CONSTANT:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_CONST);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_CONST);
 			break;
 		case GL_PRIMARY_COLOR:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_COL);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_COL);
 			break;
 		case GL_PREVIOUS:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_PREV);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_PREV);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2760,16 +3051,20 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_SRC1_ALPHA:
 		switch (param) {
 		case GL_TEXTURE:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_TEX);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_TEX);
 			break;
 		case GL_CONSTANT:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_CONST);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_CONST);
 			break;
 		case GL_PRIMARY_COLOR:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_COL);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_COL);
 			break;
 		case GL_PREVIOUS:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 1, FGFP_COMBARG_PREV);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 1, FGFP_COMBARG_PREV);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2792,16 +3087,20 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_SRC2_RGB:
 		switch (param) {
 		case GL_TEXTURE:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_TEX);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_TEX);
 			break;
 		case GL_CONSTANT:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_CONST);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_CONST);
 			break;
 		case GL_PRIMARY_COLOR:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_COL);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_COL);
 			break;
 		case GL_PREVIOUS:
-			fimgCompatSetColorCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_PREV);
+			fimgCompatSetColorCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_PREV);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2832,16 +3131,20 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_SRC2_ALPHA:
 		switch (param) {
 		case GL_TEXTURE:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_TEX);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_TEX);
 			break;
 		case GL_CONSTANT:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_CONST);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_CONST);
 			break;
 		case GL_PRIMARY_COLOR:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_COL);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_COL);
 			break;
 		case GL_PREVIOUS:
-			fimgCompatSetAlphaCombineArgSrc(ctx->fimg, unit, 2, FGFP_COMBARG_PREV);
+			fimgCompatSetAlphaCombineArgSrc(ctx->fimg,
+						unit, 2, FGFP_COMBARG_PREV);
 			break;
 		default:
 			setError(GL_INVALID_ENUM);
@@ -2866,7 +3169,8 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	}
 }
 
-GL_API void GL_APIENTRY glTexEnvfv (GLenum target, GLenum pname, const GLfloat *params)
+GL_API void GL_APIENTRY glTexEnvfv (GLenum target, GLenum pname,
+							const GLfloat *params)
 {
 	if (target != GL_TEXTURE_ENV) {
 		setError(GL_INVALID_ENUM);
@@ -2928,14 +3232,14 @@ GL_API void GL_APIENTRY glTexEnvx (GLenum target, GLenum pname, GLfixed param)
 
 	switch (pname) {
 	case GL_RGB_SCALE:
-		if (param != 1.0 && param != 2.0 && param != 4.0) {
+		if (param != (1 << 16) && param != (2 << 16) && param != (4 << 16)) {
 			setError(GL_INVALID_VALUE);
 			return;
 		}
 		fimgCompatSetColorScale(ctx->fimg, unit, floatFromFixed(param));
 		break;
 	case GL_ALPHA_SCALE:
-		if (param != 1.0 && param != 2.0 && param != 4.0) {
+		if (param != (1 << 16) && param != (2 << 16) && param != (4 << 16)) {
 			setError(GL_INVALID_VALUE);
 			return;
 		}
@@ -2946,7 +3250,8 @@ GL_API void GL_APIENTRY glTexEnvx (GLenum target, GLenum pname, GLfixed param)
 	}
 }
 
-GL_API void GL_APIENTRY glTexEnviv (GLenum target, GLenum pname, const GLint *params)
+GL_API void GL_APIENTRY glTexEnviv (GLenum target, GLenum pname,
+							const GLint *params)
 {
 	if (target != GL_TEXTURE_ENV) {
 		setError(GL_INVALID_ENUM);
@@ -2959,15 +3264,16 @@ GL_API void GL_APIENTRY glTexEnviv (GLenum target, GLenum pname, const GLint *pa
 	switch (pname) {
 	case GL_TEXTURE_ENV_COLOR:
 		fimgCompatSetEnvColor(ctx->fimg, unit,
-			floatFromInt(params[0]), floatFromInt(params[1]),
-			floatFromInt(params[2]), floatFromInt(params[3]));
+			clampfFromInt(params[0]), clampfFromInt(params[1]),
+			clampfFromInt(params[2]), clampfFromInt(params[3]));
 		break;
 	default:
-		glTexEnvf(target, pname, floatFromInt(*params));
+		glTexEnvi(target, pname, *params);
 	}
 }
 
-GL_API void GL_APIENTRY glTexEnvxv (GLenum target, GLenum pname, const GLfixed *params)
+GL_API void GL_APIENTRY glTexEnvxv (GLenum target, GLenum pname,
+							const GLfixed *params)
 {
 	if (target != GL_TEXTURE_ENV) {
 		setError(GL_INVALID_ENUM);
@@ -2986,6 +3292,284 @@ GL_API void GL_APIENTRY glTexEnvxv (GLenum target, GLenum pname, const GLfixed *
 	default:
 		glTexEnvx(target, pname, *params);
 	}
+}
+
+GL_API void GL_APIENTRY glGetTexEnvfv (GLenum env, GLenum pname, GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetTexEnviv (GLenum env, GLenum pname, GLint *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetTexEnvxv (GLenum env, GLenum pname, GLfixed *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetTexParameterfv (GLenum target, GLenum pname,
+								GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetTexParameteriv (GLenum target, GLenum pname,
+								GLint *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetTexParameterxv (GLenum target, GLenum pname,
+								GLfixed *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API GLboolean GL_APIENTRY glIsTexture (GLuint texture)
+{
+	if (texture == 0 || !fglTextureObjects.isValid(texture))
+		return GL_FALSE;
+
+	return GL_TRUE;
+}
+
+GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
+{
+	FGLContext *ctx = getContext();
+
+	switch (pname) {
+	case GL_UNPACK_ALIGNMENT:
+		switch (param) {
+		case 1:
+		case 2:
+		case 4:
+		case 8:
+			ctx->unpackAlignment = param;
+			break;
+		default:
+			setError(GL_INVALID_VALUE);
+		}
+		break;
+	case GL_PACK_ALIGNMENT:
+		switch (param) {
+		case 1:
+		case 2:
+		case 4:
+		case 8:
+			ctx->packAlignment = param;
+			break;
+		default:
+			setError(GL_INVALID_VALUE);
+		}
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+}
+
+/**
+	Draw texture
+*/
+
+static void DUMP_VERTICES(const GLfloat *v, GLint comp, GLint num)
+{
+	do {
+		fprintf(stderr, "(  ");
+		for (int i = 0; i < comp; i++)
+			fprintf(stderr, "%f  ", *(v++));
+		fprintf(stderr, ")\n");
+	} while(--num);
+}
+
+GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat width, GLfloat height)
+{
+	FGLContext *ctx = getContext();
+	GLboolean arrayEnabled[4 + FGL_MAX_TEXTURE_UNITS];
+	GLfloat vertices[3*4];
+	GLfloat texcoords[2][2*4];
+
+	// Save current state and prepare to drawing
+
+	GLfloat viewportX = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
+	GLfloat viewportY = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_Y);
+	GLfloat viewportW = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_W);
+	GLfloat viewportH = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
+	GLfloat zNear = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_NEAR);
+	GLfloat zFar = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
+
+	fimgSetDepthRange(ctx->fimg, -1.0f, 1.0f);
+	//fimgSetViewportParams(ctx->fimg, -1.0f, -1.0f, 2.0f, 2.0f);
+
+	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {
+		arrayEnabled[i] = ctx->array[i].enabled;
+		fglDisableClientState(ctx, i);
+	}
+
+	/* TODO: Replace this with dedicated shader or conditional operation */
+	FGLmatrix *matrix = &ctx->matrix.transformMatrix;
+	matrix->identity();
+
+	fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TRANSFORM, matrix->data);
+	fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_LIGHTING, matrix->data);
+	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW] = 1;
+	fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(0), matrix->data);
+	ctx->matrix.dirty[FGL_MATRIX_TEXTURE(0)] = 1;
+	fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(1), matrix->data);
+	ctx->matrix.dirty[FGL_MATRIX_TEXTURE(1)] = 1;
+
+	// fimgCompatLightingEnable(ctx->fimg, 0);
+	/* End of TODO */
+
+	float zD;
+
+	if (z <= 0)
+		zD = zNear;
+	else if (z >= 1)
+		zD = zFar;
+	else
+		zD = zNear + z*(zFar - zNear);
+
+	GLfloat oX = viewportX + viewportW / 2;
+	GLfloat oY = viewportY + viewportH / 2;
+	GLfloat invViewportW = 2.0f / viewportW;
+	GLfloat invViewportH = 2.0f / viewportH;
+
+	// bottom-left
+	vertices[0] = (x - oX)*invViewportW;
+	vertices[1] = (y - oY)*invViewportH;
+	vertices[2] = zD;
+	// bottom-right
+	vertices[3] = (x + width - oX)*invViewportW;
+	vertices[4] = vertices[1];
+	vertices[5] = zD;
+	// top-left
+	vertices[6] = vertices[0];
+	vertices[7] = (y + height - oY)*invViewportH;
+	vertices[8] = zD;
+	// top-right
+	vertices[9] = vertices[3];
+	vertices[10] = vertices[7];
+	vertices[11] = zD;
+
+	/*
+	vertices[0] = x;
+	vertices[1] = y;
+	vertices[2] = zD;
+	vertices[3] = x + width;
+	vertices[4] = y;
+	vertices[5] = zD;
+	vertices[6] = x;
+	vertices[7] = y + height;
+	vertices[8] = zD;
+	vertices[9] = x + width;
+	vertices[10] = y + height;
+	vertices[11] = zD;
+	*/
+
+	// Proceed with drawing
+
+	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
+
+	arrays[FGL_ARRAY_VERTEX].pointer	= vertices;
+	arrays[FGL_ARRAY_VERTEX].stride		= 12;
+	arrays[FGL_ARRAY_VERTEX].width		= 12;
+	fimgSetAttribute(ctx->fimg, FGL_ARRAY_VERTEX, FGHI_ATTRIB_DT_FLOAT, 3);
+
+	for (int i = FGL_ARRAY_NORMAL; i < FGL_ARRAY_TEXTURE; i++) {
+		arrays[i].pointer	= &ctx->vertex[i];
+		arrays[i].stride	= 0;
+		arrays[i].width		= 16;
+	}
+
+	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
+		FGLTexture *obj = ctx->texture[i].getTexture();
+		if (obj->surface.isValid()) {
+			texcoords[i][0]	= obj->cropRect[0];
+			texcoords[i][1] = obj->cropRect[1] + obj->cropRect[3];
+			texcoords[i][2] = obj->cropRect[0] + obj->cropRect[2];
+			texcoords[i][3] = obj->cropRect[1] + obj->cropRect[3];
+			texcoords[i][4] = obj->cropRect[0];
+			texcoords[i][5] = obj->cropRect[1];
+			texcoords[i][6] = obj->cropRect[0] + obj->cropRect[2];
+			texcoords[i][7] = obj->cropRect[1];
+			arrays[FGL_ARRAY_TEXTURE(i)].stride = 8;
+			fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_NON_PARAM);
+		} else {
+			texcoords[i][0] = 0;
+			texcoords[i][1] = 0;
+			arrays[FGL_ARRAY_TEXTURE(i)].stride = 0;
+		}
+		arrays[FGL_ARRAY_TEXTURE(i)].pointer	= texcoords[i];
+		arrays[FGL_ARRAY_TEXTURE(i)].width	= 8;
+		fimgSetAttribute(ctx->fimg, FGL_ARRAY_TEXTURE(i), FGHI_ATTRIB_DT_FLOAT, 2);
+	}
+
+	fglSetupTextures(ctx);
+
+	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
+
+#ifndef FIMG_USE_VERTEX_BUFFER
+	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_STRIP, arrays, 0, 4);
+#else
+	fimgDrawArraysBuffered(ctx->fimg, FGPE_TRIANGLE_STRIP, arrays, 0, 4);
+#endif
+	// Restore previous state
+
+	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {
+		if (arrayEnabled[i])
+			fglEnableClientState(ctx, i);
+		else
+			fglDisableClientState(ctx, i);
+	}
+
+	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
+		FGLTexture *obj = ctx->texture[i].getTexture();
+		if (obj->surface.isValid())
+			fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_PARAM);
+	}
+
+	fimgSetDepthRange(ctx->fimg, zNear, zFar);
+	//fimgSetViewportParams(ctx->fimg, viewportX, viewportY, viewportW, viewportH);
+}
+
+GL_API void GL_APIENTRY glDrawTexsOES (GLshort x, GLshort y, GLshort z, GLshort width, GLshort height)
+{
+	glDrawTexfOES(x, y, z, width, height);
+}
+
+GL_API void GL_APIENTRY glDrawTexiOES (GLint x, GLint y, GLint z, GLint width, GLint height)
+{
+	glDrawTexfOES(x, y, z, width, height);
+}
+
+GL_API void GL_APIENTRY glDrawTexxOES (GLfixed x, GLfixed y, GLfixed z, GLfixed width, GLfixed height)
+{
+	glDrawTexfOES(floatFromFixed(x), floatFromFixed(y), floatFromFixed(z),
+		      floatFromFixed(width), floatFromFixed(height));
+}
+
+GL_API void GL_APIENTRY glDrawTexsvOES (const GLshort *coords)
+{
+	glDrawTexfOES(coords[0], coords[1], coords[2], coords[3], coords[4]);
+}
+
+GL_API void GL_APIENTRY glDrawTexivOES (const GLint *coords)
+{
+	glDrawTexfOES(coords[0], coords[1], coords[2], coords[3], coords[4]);
+}
+
+GL_API void GL_APIENTRY glDrawTexxvOES (const GLfixed *coords)
+{
+	glDrawTexfOES(floatFromFixed(coords[0]), floatFromFixed(coords[1]),
+		      floatFromFixed(coords[2]), floatFromFixed(coords[3]),
+		      floatFromFixed(coords[4]));
+}
+
+GL_API void GL_APIENTRY glDrawTexfvOES (const GLfloat *coords)
+{
+	glDrawTexfOES(coords[0], coords[1], coords[2], coords[3], coords[4]);
 }
 
 /**
@@ -3091,7 +3675,9 @@ GL_API GLboolean GL_APIENTRY glIsEnabled (GLenum cap)
 	Reading pixels
 */
 
-GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels)
+GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
+				GLsizei width, GLsizei height, GLenum format,
+				GLenum type, GLvoid *pixels)
 {
 	FGLContext *ctx = getContext();
 	FGLSurface *draw = &ctx->surface.draw;
@@ -3121,7 +3707,8 @@ static void *fillSingle16(void *buf, uint16_t val, size_t cnt)
 	return buf16;
 }
 
-static void *fillSingle16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
+static void *fillSingle16masked(void *buf, uint16_t val,
+						uint16_t mask, size_t cnt)
 {
 	uint16_t *buf16 = (uint16_t *)buf;
 	uint16_t tmp;
@@ -3306,7 +3893,8 @@ static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
 		fillSingle16masked(buf16, val, mask, cnt % 8);
 }
 
-static inline uint32_t getFillColor(FGLContext *ctx, uint32_t *mask, bool *is32bpp)
+static inline uint32_t getFillColor(FGLContext *ctx,
+						uint32_t *mask, bool *is32bpp)
 {
 	uint8_t r8, g8, b8, a8;
 	uint32_t val = 0;
@@ -3413,7 +4001,8 @@ static inline uint32_t getFillColor(FGLContext *ctx, uint32_t *mask, bool *is32b
 	}
 }
 
-static inline uint32_t getFillDepth(FGLContext *ctx, uint32_t *mask, GLbitfield mode)
+static inline uint32_t getFillDepth(FGLContext *ctx,
+					uint32_t *mask, GLbitfield mode)
 {
 	uint32_t mval = 0xffffffff;
 	uint32_t val = 0;
@@ -3449,8 +4038,8 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 	lineByLine &= ctx->perFragment.scissor.enabled == true;
 
 	if (mode & GL_COLOR_BUFFER_BIT) {
-		bool is32bpp;
-		uint32_t mask;
+		bool is32bpp = false;
+		uint32_t mask = 0;
 		uint32_t color = getFillColor(ctx, &mask, &is32bpp);
 
 		if (lineByLine) {
@@ -3631,7 +4220,7 @@ GL_API void GL_APIENTRY glClearStencil (GLint s)
 
 GL_API void GL_APIENTRY glFlush (void)
 {
-	// TODO
+	FUNC_UNIMPLEMENTED;
 }
 
 GL_API void GL_APIENTRY glFinish (void)
@@ -3669,67 +4258,77 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 	switch (pname) {
 	case GL_ARRAY_BUFFER_BINDING:
 		if (ctx->arrayBuffer.isBound())
-			params[0] = ctx->arrayBuffer.getName();
+			params[0] = !!ctx->arrayBuffer.getName();
 		else
 			params[0] = 0;
 		break;
 	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
 		if (ctx->elementArrayBuffer.isBound())
-			params[0] = ctx->elementArrayBuffer.getName();
+			params[0] = !!ctx->elementArrayBuffer.getName();
 		else
 			params[0] = 0;
 		break;
 	case GL_VIEWPORT:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_Y);
-		params[2] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_W);
-		params[3] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
+		params[0] = fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_X) != 0;
+		params[1] = fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_Y) != 0;
+		params[2] = fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_W) != 0;
+		params[3] = fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_H) != 0;
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_NEAR);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
+		params[0] = fimgGetPrimitiveStateF(ctx->fimg,
+						   FIMG_DEPTH_RANGE_NEAR) != 0;
+		params[1] = fimgGetPrimitiveStateF(ctx->fimg,
+						   FIMG_DEPTH_RANGE_FAR) != 0;
 		break;
 	case GL_POINT_SIZE:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+							FIMG_POINT_SIZE) != 0;
 		break;
 	case GL_LINE_WIDTH:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_LINE_WIDTH);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+							FIMG_LINE_WIDTH) != 0;
 		break;
 	case GL_CULL_FACE_MODE:
 		switch (fimgGetRasterizerState(ctx->fimg, FIMG_CULL_FACE_MODE)) {
 		case FGRA_BFCULL_FACE_FRONT:
-			params[0] = GL_FRONT;
+			params[0] = !!GL_FRONT;
 			break;
 		case FGRA_BFCULL_FACE_BACK:
-			params[0] = GL_BACK;
+			params[0] = !!GL_BACK;
 			break;
 		case FGRA_BFCULL_FACE_BOTH:
-			params[0] = GL_FRONT_AND_BACK;
+			params[0] = !!GL_FRONT_AND_BACK;
 			break;
 		}
 		break;
 	case GL_FRONT_FACE:
 		if (fimgGetRasterizerState(ctx->fimg, FIMG_FRONT_FACE))
-			params[0] = GL_CW;
+			params[0] = !!GL_CW;
 		else
-			params[0] = GL_CCW;
+			params[0] = !!GL_CCW;
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_FACTOR);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_FACTOR) != 0;
 		break;
 	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_UNITS);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_UNITS) != 0;
 		break;
 	case GL_TEXTURE_BINDING_2D: {
 		FGLTextureObjectBinding *b =
 				&ctx->texture[ctx->activeTexture].binding;
 		if (b->isBound())
-			params[0] = b->getName();
+			params[0] = !!b->getName();
 		else
-			params[0] = 0.0f;
+			params[0] = 0;
 		break; }
 	case GL_ACTIVE_TEXTURE:
-		params[0] = ctx->activeTexture;
+		params[0] = !!ctx->activeTexture;
 		break;
 	case GL_COLOR_WRITEMASK:
 		params[0] = ctx->perFragment.mask.red;
@@ -3741,7 +4340,7 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		params[0] = ctx->perFragment.mask.depth;
 		break;
 	case GL_STENCIL_WRITEMASK :
-		params[0] = ctx->perFragment.mask.stencil;
+		params[0] = !!ctx->perFragment.mask.stencil;
 		break;
 #if 0
 	case GL_STENCIL_BACK_WRITEMASK :
@@ -3749,120 +4348,126 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		break;
 #endif
 	case GL_COLOR_CLEAR_VALUE :
-		params[0] = ctx->clear.red;
-		params[1] = ctx->clear.green;
-		params[2] = ctx->clear.blue;
-		params[3] = ctx->clear.alpha;
+		params[0] = ctx->clear.red != 0;
+		params[1] = ctx->clear.green != 0;
+		params[2] = ctx->clear.blue != 0;
+		params[3] = ctx->clear.alpha != 0;
 		break;
 	case GL_DEPTH_CLEAR_VALUE :
-		params[0] = ctx->clear.depth;
+		params[0] = ctx->clear.depth != 0;
 		break;
 	case GL_STENCIL_CLEAR_VALUE:
-		params[0] = ctx->clear.stencil;
+		params[0] = !!ctx->clear.stencil;
 		break;
 	case GL_SCISSOR_BOX:
-		params[0] = ctx->perFragment.scissor.left;
-		params[1] = ctx->perFragment.scissor.top;
-		params[2] = ctx->perFragment.scissor.width;
-		params[3] = ctx->perFragment.scissor.height;
+		params[0] = ctx->perFragment.scissor.left != 0;
+		params[1] = ctx->perFragment.scissor.top != 0;
+		params[2] = ctx->perFragment.scissor.width != 0;
+		params[3] = ctx->perFragment.scissor.height != 0;
 		break;
 	case GL_STENCIL_FUNC:
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_FUNC)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_FUNC)) {
 		case FGPF_STENCIL_MODE_NEVER:
-			params[0] = GL_NEVER;
+			params[0] = !!GL_NEVER;
 			break;
 		case FGPF_STENCIL_MODE_ALWAYS:
-			params[0] = GL_ALWAYS;
+			params[0] = !!GL_ALWAYS;
 			break;
 		case FGPF_STENCIL_MODE_GREATER:
-			params[0] = GL_GREATER;
+			params[0] = !!GL_GREATER;
 			break;
 		case FGPF_STENCIL_MODE_GEQUAL:
-			params[0] = GL_GEQUAL;
+			params[0] = !!GL_GEQUAL;
 			break;
 		case FGPF_STENCIL_MODE_EQUAL:
-			params[0] = GL_EQUAL;
+			params[0] = !!GL_EQUAL;
 			break;
 		case FGPF_STENCIL_MODE_LESS:
-			params[0] = GL_LESS;
+			params[0] = !!GL_LESS;
 			break;
 		case FGPF_STENCIL_MODE_LEQUAL:
-			params[0] = GL_LEQUAL;
+			params[0] = !!GL_LEQUAL;
 			break;
 		case FGPF_STENCIL_MODE_NOTEQUAL:
-			params[0] = GL_NOTEQUAL;
+			params[0] = !!GL_NOTEQUAL;
 			break;
 		}
 		break;
 	case GL_STENCIL_VALUE_MASK:
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_MASK);
+		params[0] = !!fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_MASK);
 		break;
 	case GL_STENCIL_REF :
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_REF);
+		params[0] = !!fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_REF);
 		break;
 	case GL_STENCIL_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_SFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_SFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
-			params[0] = GL_KEEP;
+			params[0] = !!GL_KEEP;
 			break;
 		case FGPF_TEST_ACTION_ZERO:
-			params[0] = GL_ZERO;
+			params[0] = !!GL_ZERO;
 			break;
 		case FGPF_TEST_ACTION_REPLACE:
-			params[0] = GL_REPLACE;
+			params[0] = !!GL_REPLACE;
 			break;
 		case FGPF_TEST_ACTION_INCR:
-			params[0] = GL_INCR;
+			params[0] = !!GL_INCR;
 			break;
 		case FGPF_TEST_ACTION_DECR:
-			params[0] = GL_DECR;
+			params[0] = !!GL_DECR;
 			break;
 		case FGPF_TEST_ACTION_INVERT:
-			params[0] = GL_INVERT;
+			params[0] = !!GL_INVERT;
 			break;
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
-			params[0] = GL_KEEP;
+			params[0] = !!GL_KEEP;
 			break;
 		case FGPF_TEST_ACTION_ZERO:
-			params[0] = GL_ZERO;
+			params[0] = !!GL_ZERO;
 			break;
 		case FGPF_TEST_ACTION_REPLACE:
-			params[0] = GL_REPLACE;
+			params[0] = !!GL_REPLACE;
 			break;
 		case FGPF_TEST_ACTION_INCR:
-			params[0] = GL_INCR;
+			params[0] = !!GL_INCR;
 			break;
 		case FGPF_TEST_ACTION_DECR:
-			params[0] = GL_DECR;
+			params[0] = !!GL_DECR;
 			break;
 		case FGPF_TEST_ACTION_INVERT:
-			params[0] = GL_INVERT;
+			params[0] = !!GL_INVERT;
 			break;
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_PASS :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPPASS)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPPASS)) {
 		case FGPF_TEST_ACTION_KEEP:
-			params[0] = GL_KEEP;
+			params[0] = !!GL_KEEP;
 			break;
 		case FGPF_TEST_ACTION_ZERO:
-			params[0] = GL_ZERO;
+			params[0] = !!GL_ZERO;
 			break;
 		case FGPF_TEST_ACTION_REPLACE:
-			params[0] = GL_REPLACE;
+			params[0] = !!GL_REPLACE;
 			break;
 		case FGPF_TEST_ACTION_INCR:
-			params[0] = GL_INCR;
+			params[0] = !!GL_INCR;
 			break;
 		case FGPF_TEST_ACTION_DECR:
-			params[0] = GL_DECR;
+			params[0] = !!GL_DECR;
 			break;
 		case FGPF_TEST_ACTION_INVERT:
-			params[0] = GL_INVERT;
+			params[0] = !!GL_INVERT;
 			break;
 		}
 		break;
@@ -3889,28 +4494,28 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 	case GL_DEPTH_FUNC:
 		switch (fimgGetFragmentState(ctx->fimg, FIMG_DEPTH_FUNC)) {
 		case FGPF_TEST_MODE_NEVER:
-			params[0] = GL_NEVER;
+			params[0] = !!GL_NEVER;
 			break;
 		case FGPF_TEST_MODE_ALWAYS:
-			params[0] = GL_ALWAYS;
+			params[0] = !!GL_ALWAYS;
 			break;
 		case FGPF_TEST_MODE_GREATER:
-			params[0] = GL_GREATER;
+			params[0] = !!GL_GREATER;
 			break;
 		case FGPF_TEST_MODE_GEQUAL:
-			params[0] = GL_GEQUAL;
+			params[0] = !!GL_GEQUAL;
 			break;
 		case FGPF_TEST_MODE_EQUAL:
-			params[0] = GL_EQUAL;
+			params[0] = !!GL_EQUAL;
 			break;
 		case FGPF_TEST_MODE_LESS:
-			params[0] = GL_LESS;
+			params[0] = !!GL_LESS;
 			break;
 		case FGPF_TEST_MODE_LEQUAL:
-			params[0] = GL_LEQUAL;
+			params[0] = !!GL_LEQUAL;
 			break;
 		case FGPF_TEST_MODE_NOTEQUAL:
-			params[0] = GL_NOTEQUAL;
+			params[0] = !!GL_NOTEQUAL;
 			break;
 		}
 		break;
@@ -3941,20 +4546,20 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		break;
 #endif
 	case GL_UNPACK_ALIGNMENT:
-		params[0] = ctx->unpackAlignment;
+		params[0] = !!ctx->unpackAlignment;
 		break;
 	case GL_PACK_ALIGNMENT:
-		params[0] = ctx->packAlignment;
+		params[0] = !!ctx->packAlignment;
 		break;
 	case GL_SUBPIXEL_BITS:
-		params[0] = FGL_MAX_SUBPIXEL_BITS;
+		params[0] = !!FGL_MAX_SUBPIXEL_BITS;
 		break;
 	case GL_MAX_TEXTURE_SIZE:
-		params[0] = FGL_MAX_TEXTURE_SIZE;
+		params[0] = !!FGL_MAX_TEXTURE_SIZE;
 		break;
 	case GL_MAX_VIEWPORT_DIMS:
-		params[0] = FGL_MAX_VIEWPORT_DIMS;
-		params[1] = FGL_MAX_VIEWPORT_DIMS;
+		params[0] = !!FGL_MAX_VIEWPORT_DIMS;
+		params[1] = !!FGL_MAX_VIEWPORT_DIMS;
 		break;
 #if 0
 	case GL_ALIASED_POINT_SIZE_RANGE:
@@ -3977,23 +4582,23 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		params[0] = 0;
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = GL_PALETTE4_RGB8_OES;
-		params[1] = GL_PALETTE4_RGBA8_OES;
-		params[2] = GL_PALETTE4_R5_G6_B5_OES;
-		params[3] = GL_PALETTE4_RGBA4_OES;
-		params[4] = GL_PALETTE4_RGB5_A1_OES;
-		params[5] = GL_PALETTE8_RGB8_OES;
-		params[6] = GL_PALETTE8_RGBA8_OES;
-		params[7] = GL_PALETTE8_R5_G6_B5_OES;
-		params[8] = GL_PALETTE8_RGBA4_OES;
-		params[9] = GL_PALETTE8_RGB5_A1_OES;
+		params[0] = !!GL_PALETTE4_RGB8_OES;
+		params[1] = !!GL_PALETTE4_RGBA8_OES;
+		params[2] = !!GL_PALETTE4_R5_G6_B5_OES;
+		params[3] = !!GL_PALETTE4_RGBA4_OES;
+		params[4] = !!GL_PALETTE4_RGB5_A1_OES;
+		params[5] = !!GL_PALETTE8_RGB8_OES;
+		params[6] = !!GL_PALETTE8_RGBA8_OES;
+		params[7] = !!GL_PALETTE8_R5_G6_B5_OES;
+		params[8] = !!GL_PALETTE8_RGBA4_OES;
+		params[9] = !!GL_PALETTE8_RGB5_A1_OES;
 #if 0
 		params[10] = GL_RGB_S3TC_OES;
 		params[11] = GL_RGBA_S3TC_OES;
 #endif
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = 10;
+		params[0] = !!10;
 		break;
 #if 0
 	case GL_MAX_RENDERBUFFER_SIZE :
@@ -4001,22 +4606,22 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		break;
 #endif
 	case GL_RED_BITS :
-		params[0] = 8;
+		params[0] = !!8;
 		break;
 	case GL_GREEN_BITS:
-		params[0] = 8;
+		params[0] = !!8;
 		break;
 	case GL_BLUE_BITS :
-		params[0] = 8;
+		params[0] = !!8;
 		break;
 	case GL_ALPHA_BITS :
-		params[0] = 8;
+		params[0] = !!8;
 		break;
 	case GL_DEPTH_BITS :
-		params[0] = 24;
+		params[0] = !!24;
 		break;
 	case GL_STENCIL_BITS:
-		params[0] = 8;
+		params[0] = !!8;
 		break;
 #if 0
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE:
@@ -4059,31 +4664,39 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 	switch (pname) {
 	case GL_ARRAY_BUFFER_BINDING:
 		if (ctx->arrayBuffer.isBound())
-			params[0] = ctx->arrayBuffer.getName();
+			params[0] = fixedFromInt(ctx->arrayBuffer.getName());
 		else
-			params[0] = 0;
+			params[0] = fixedFromInt(0);
 		break;
 	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
 		if (ctx->elementArrayBuffer.isBound())
-			params[0] = ctx->elementArrayBuffer.getName();
+			params[0] = fixedFromInt(ctx->elementArrayBuffer.getName());
 		else
-			params[0] = 0;
+			params[0] = fixedFromInt(0);
 		break;
 	case GL_VIEWPORT:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_Y);
-		params[2] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_W);
-		params[3] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
+		params[0] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_X));
+		params[1] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_Y));
+		params[2] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_W));
+		params[3] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_VIEWPORT_H));
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_NEAR);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
+		params[0] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_DEPTH_RANGE_NEAR));
+		params[1] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_DEPTH_RANGE_FAR));
 		break;
 	case GL_POINT_SIZE:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);
+		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
+							FIMG_POINT_SIZE));
 		break;
 	case GL_LINE_WIDTH:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_LINE_WIDTH);
+		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
+							FIMG_LINE_WIDTH));
 		break;
 	case GL_CULL_FACE_MODE:
 		switch (fimgGetRasterizerState(ctx->fimg, FIMG_CULL_FACE_MODE)) {
@@ -4105,33 +4718,35 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 			params[0] = GL_CCW;
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_FACTOR);
+		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_FACTOR));
 		break;
 	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_UNITS);
+		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_UNITS));
 		break;
 	case GL_TEXTURE_BINDING_2D: {
 		FGLTextureObjectBinding *b =
 				&ctx->texture[ctx->activeTexture].binding;
 		if (b->isBound())
-			params[0] = b->getName();
+			params[0] = fixedFromInt(b->getName());
 		else
-			params[0] = 0.0f;
+			params[0] = fixedFromInt(0);
 		break; }
 	case GL_ACTIVE_TEXTURE:
-		params[0] = ctx->activeTexture;
+		params[0] = fixedFromInt(ctx->activeTexture);
 		break;
 	case GL_COLOR_WRITEMASK:
-		params[0] = ctx->perFragment.mask.red;
-		params[1] = ctx->perFragment.mask.green;
-		params[2] = ctx->perFragment.mask.blue;
-		params[3] = ctx->perFragment.mask.alpha;
+		params[0] = fixedFromBool(ctx->perFragment.mask.red);
+		params[1] = fixedFromBool(ctx->perFragment.mask.green);
+		params[2] = fixedFromBool(ctx->perFragment.mask.blue);
+		params[3] = fixedFromBool(ctx->perFragment.mask.alpha);
 		break;
 	case GL_DEPTH_WRITEMASK:
-		params[0] = ctx->perFragment.mask.depth;
+		params[0] = fixedFromBool(ctx->perFragment.mask.depth);
 		break;
 	case GL_STENCIL_WRITEMASK :
-		params[0] = ctx->perFragment.mask.stencil;
+		params[0] = fixedFromInt(ctx->perFragment.mask.stencil);
 		break;
 #if 0
 	case GL_STENCIL_BACK_WRITEMASK :
@@ -4139,25 +4754,26 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		break;
 #endif
 	case GL_COLOR_CLEAR_VALUE :
-		params[0] = ctx->clear.red;
-		params[1] = ctx->clear.green;
-		params[2] = ctx->clear.blue;
-		params[3] = ctx->clear.alpha;
+		params[0] = fixedFromFloat(ctx->clear.red);
+		params[1] = fixedFromFloat(ctx->clear.green);
+		params[2] = fixedFromFloat(ctx->clear.blue);
+		params[3] = fixedFromFloat(ctx->clear.alpha);
 		break;
 	case GL_DEPTH_CLEAR_VALUE :
-		params[0] = ctx->clear.depth;
+		params[0] = fixedFromFloat(ctx->clear.depth);
 		break;
 	case GL_STENCIL_CLEAR_VALUE:
-		params[0] = ctx->clear.stencil;
+		params[0] = fixedFromInt(ctx->clear.stencil);
 		break;
 	case GL_SCISSOR_BOX:
-		params[0] = ctx->perFragment.scissor.left;
-		params[1] = ctx->perFragment.scissor.top;
-		params[2] = ctx->perFragment.scissor.width;
-		params[3] = ctx->perFragment.scissor.height;
+		params[0] = fixedFromInt(ctx->perFragment.scissor.left);
+		params[1] = fixedFromInt(ctx->perFragment.scissor.top);
+		params[2] = fixedFromInt(ctx->perFragment.scissor.width);
+		params[3] = fixedFromInt(ctx->perFragment.scissor.height);
 		break;
 	case GL_STENCIL_FUNC:
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_FUNC)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_FUNC)) {
 		case FGPF_STENCIL_MODE_NEVER:
 			params[0] = GL_NEVER;
 			break;
@@ -4185,13 +4801,16 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		}
 		break;
 	case GL_STENCIL_VALUE_MASK:
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_MASK);
+		params[0] = fixedFromInt(fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_MASK));
 		break;
 	case GL_STENCIL_REF :
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_REF);
+		params[0] = fixedFromInt(fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_REF));
 		break;
 	case GL_STENCIL_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_SFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_SFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -4213,7 +4832,8 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -4235,7 +4855,8 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_PASS :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPPASS)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPPASS)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -4331,20 +4952,20 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		break;
 #endif
 	case GL_UNPACK_ALIGNMENT:
-		params[0] = ctx->unpackAlignment;
+		params[0] = fixedFromInt(ctx->unpackAlignment);
 		break;
 	case GL_PACK_ALIGNMENT:
-		params[0] = ctx->packAlignment;
+		params[0] = fixedFromInt(ctx->packAlignment);
 		break;
 	case GL_SUBPIXEL_BITS:
-		params[0] = FGL_MAX_SUBPIXEL_BITS;
+		params[0] = fixedFromInt(FGL_MAX_SUBPIXEL_BITS);
 		break;
 	case GL_MAX_TEXTURE_SIZE:
-		params[0] = FGL_MAX_TEXTURE_SIZE;
+		params[0] = fixedFromInt(FGL_MAX_TEXTURE_SIZE);
 		break;
 	case GL_MAX_VIEWPORT_DIMS:
-		params[0] = FGL_MAX_VIEWPORT_DIMS;
-		params[1] = FGL_MAX_VIEWPORT_DIMS;
+		params[0] = fixedFromInt(FGL_MAX_VIEWPORT_DIMS);
+		params[1] = fixedFromInt(FGL_MAX_VIEWPORT_DIMS);
 		break;
 #if 0
 	case GL_ALIASED_POINT_SIZE_RANGE:
@@ -4361,10 +4982,10 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		break;
 #endif
 	case GL_SAMPLE_BUFFERS :
-		params[0] = 0;
+		params[0] = fixedFromInt(0);
 		break;
 	case GL_SAMPLES :
-		params[0] = 0;
+		params[0] = fixedFromInt(0);
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS :
 		params[0] = GL_PALETTE4_RGB8_OES;
@@ -4383,7 +5004,7 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 #endif
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = 10;
+		params[0] = fixedFromInt(10);
 		break;
 #if 0
 	case GL_MAX_RENDERBUFFER_SIZE :
@@ -4391,22 +5012,22 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		break;
 #endif
 	case GL_RED_BITS :
-		params[0] = 8;
+		params[0] = fixedFromInt(8);
 		break;
 	case GL_GREEN_BITS:
-		params[0] = 8;
+		params[0] = fixedFromInt(8);
 		break;
 	case GL_BLUE_BITS :
-		params[0] = 8;
+		params[0] = fixedFromInt(8);
 		break;
 	case GL_ALPHA_BITS :
-		params[0] = 8;
+		params[0] = fixedFromInt(8);
 		break;
 	case GL_DEPTH_BITS :
-		params[0] = 24;
+		params[0] = fixedFromInt(24);
 		break;
 	case GL_STENCIL_BITS:
-		params[0] = 8;
+		params[0] = fixedFromInt(8);
 		break;
 #if 0
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE:
@@ -4435,7 +5056,7 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 	case GL_ALPHA_TEST_EXP:
 #endif
 	case GL_COLOR_LOGIC_OP:
-		params[0] = glIsEnabled(pname);
+		params[0] = fixedFromBool(glIsEnabled(pname));
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -4466,8 +5087,10 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[3] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_NEAR);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
+		params[0] = intFromClampf(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_DEPTH_RANGE_NEAR));
+		params[1] = intFromClampf(fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_DEPTH_RANGE_FAR));
 		break;
 	case GL_POINT_SIZE:
 		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);
@@ -4495,10 +5118,12 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 			params[0] = GL_CCW;
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_FACTOR);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_FACTOR);
 		break;
 	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_UNITS);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_UNITS);
 		break;
 	case GL_TEXTURE_BINDING_2D: {
 		FGLTextureObjectBinding *b =
@@ -4529,13 +5154,13 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		break;
 #endif
 	case GL_COLOR_CLEAR_VALUE :
-		params[0] = ctx->clear.red;
-		params[1] = ctx->clear.green;
-		params[2] = ctx->clear.blue;
-		params[3] = ctx->clear.alpha;
+		params[0] = intFromClampf(ctx->clear.red);
+		params[1] = intFromClampf(ctx->clear.green);
+		params[2] = intFromClampf(ctx->clear.blue);
+		params[3] = intFromClampf(ctx->clear.alpha);
 		break;
 	case GL_DEPTH_CLEAR_VALUE :
-		params[0] = ctx->clear.depth;
+		params[0] = intFromClampf(ctx->clear.depth);
 		break;
 	case GL_STENCIL_CLEAR_VALUE:
 		params[0] = ctx->clear.stencil;
@@ -4547,7 +5172,8 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[3] = ctx->perFragment.scissor.height;
 		break;
 	case GL_STENCIL_FUNC:
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_FUNC)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_FUNC)) {
 		case FGPF_STENCIL_MODE_NEVER:
 			params[0] = GL_NEVER;
 			break;
@@ -4575,13 +5201,16 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		}
 		break;
 	case GL_STENCIL_VALUE_MASK:
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_MASK);
+		params[0] = fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_MASK);
 		break;
 	case GL_STENCIL_REF :
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_REF);
+		params[0] = fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_REF);
 		break;
 	case GL_STENCIL_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_SFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_SFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -4603,7 +5232,8 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -4625,7 +5255,8 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_PASS :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPPASS)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPPASS)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -4856,8 +5487,10 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[3] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_NEAR);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
+		params[0] = fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_DEPTH_RANGE_NEAR);
+		params[1] = fimgGetPrimitiveStateF(ctx->fimg,
+							FIMG_DEPTH_RANGE_FAR);
 		break;
 	case GL_POINT_SIZE:
 		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);
@@ -4866,7 +5499,8 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_LINE_WIDTH);
 		break;
 	case GL_CULL_FACE_MODE:
-		switch (fimgGetRasterizerState(ctx->fimg, FIMG_CULL_FACE_MODE)) {
+		switch (fimgGetRasterizerState(ctx->fimg,
+							FIMG_CULL_FACE_MODE)) {
 		case FGRA_BFCULL_FACE_FRONT:
 			params[0] = GL_FRONT;
 			break;
@@ -4885,10 +5519,12 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 			params[0] = GL_CCW;
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_FACTOR);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_FACTOR);
 		break;
 	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_OFFSET_UNITS);
+		params[0] = fimgGetRasterizerStateF(ctx->fimg,
+						FIMG_DEPTH_OFFSET_UNITS);
 		break;
 	case GL_TEXTURE_BINDING_2D: {
 		FGLTextureObjectBinding *b =
@@ -4937,7 +5573,8 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[3] = ctx->perFragment.scissor.height;
 		break;
 	case GL_STENCIL_FUNC:
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_FUNC)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_FUNC)) {
 		case FGPF_STENCIL_MODE_NEVER:
 			params[0] = GL_NEVER;
 			break;
@@ -4965,13 +5602,16 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		}
 		break;
 	case GL_STENCIL_VALUE_MASK:
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_MASK);
+		params[0] = fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_MASK);
 		break;
 	case GL_STENCIL_REF :
-		params[0] = fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_REF);
+		params[0] = fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_REF);
 		break;
 	case GL_STENCIL_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_SFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_SFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -4993,7 +5633,8 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPFAIL)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPFAIL)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -5015,7 +5656,8 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		}
 		break;
 	case GL_STENCIL_PASS_DEPTH_PASS :
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_FRONT_STENCIL_DPPASS)) {
+		switch (fimgGetFragmentState(ctx->fimg,
+						FIMG_FRONT_STENCIL_DPPASS)) {
 		case FGPF_TEST_ACTION_KEEP:
 			params[0] = GL_KEEP;
 			break;
@@ -5222,6 +5864,234 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 	}
 }
 
+GL_API void GL_APIENTRY glGetPointerv (GLenum pname, void **params)
+{
+	FGLContext *ctx = getContext();
+
+	switch (pname) {
+	case GL_VERTEX_ARRAY_POINTER:
+		params[0] = (void *)ctx->array[FGL_ARRAY_VERTEX].pointer;
+		break;
+	case GL_NORMAL_ARRAY_POINTER:
+		params[0] = (void *)ctx->array[FGL_ARRAY_NORMAL].pointer;
+		break;
+	case GL_COLOR_ARRAY_POINTER:
+		params[0] = (void *)ctx->array[FGL_ARRAY_COLOR].pointer;
+		break;
+	case GL_TEXTURE_COORD_ARRAY_POINTER: {
+		GLint unit = ctx->clientActiveTexture;
+		params[0] = (void *)ctx->array[FGL_ARRAY_TEXTURE(unit)].pointer;
+		break; }
+	case GL_POINT_SIZE_ARRAY_POINTER_OES:
+		params[0] = (void *)ctx->array[FGL_ARRAY_POINT_SIZE].pointer;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+}
+
+/**
+	Stubs
+*/
+
+GL_API void GL_APIENTRY glClipPlanef (GLenum plane, const GLfloat *equation)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glClipPlanex (GLenum plane, const GLfixed *equation)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green,
+						GLboolean blue, GLboolean alpha)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glDepthMask (GLboolean flag)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glFogf (GLenum pname, GLfloat param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glFogfv (GLenum pname, const GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glFogx (GLenum pname, GLfixed param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glFogxv (GLenum pname, const GLfixed *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetBufferParameteriv (GLenum target,
+						GLenum pname, GLint *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetClipPlanef (GLenum pname, GLfloat eqn[4])
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetClipPlanex (GLenum pname, GLfixed eqn[4])
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetLightfv (GLenum light, GLenum pname,
+							GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetMaterialfv (GLenum face, GLenum pname,
+							GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glHint (GLenum target, GLenum mode)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightModelf (GLenum pname, GLfloat param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightModelfv (GLenum pname, const GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightModelx (GLenum pname, GLfixed param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightModelxv (GLenum pname, const GLfixed *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightf (GLenum light, GLenum pname, GLfloat param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightfv (GLenum light, GLenum pname,
+							const GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightx (GLenum light, GLenum pname, GLfixed param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLightxv (GLenum light, GLenum pname,
+							const GLfixed *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLineWidth (GLfloat width)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glLineWidthx (GLfixed width)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glMaterialf (GLenum face, GLenum pname, GLfloat param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glMaterialfv (GLenum face, GLenum pname,
+							const GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glMaterialx (GLenum face, GLenum pname, GLfixed param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glMaterialxv (GLenum face, GLenum pname,
+							const GLfixed *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPointParameterf (GLenum pname, GLfloat param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPointParameterfv (GLenum pname, const GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPointParameterx (GLenum pname, GLfixed param)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPointParameterxv (GLenum pname, const GLfixed *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPointSize (GLfloat size)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPointSizex (GLfixed size)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPolygonOffset (GLfloat factor, GLfloat units)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glShadeModel (GLenum mode)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glStencilMask (GLuint mask)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
 /**
 	Context management
 */
@@ -5242,7 +6112,8 @@ FGLContext *fglCreateContext(void)
 	}
 
 	for(int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++)
-		fimgSetAttribute(ctx->fimg, i, FGHI_ATTRIB_DT_FLOAT, fglDefaultAttribSize[i]);
+		fimgSetAttribute(ctx->fimg, i, FGHI_ATTRIB_DT_FLOAT,
+						fglDefaultAttribSize[i]);
 
 	return ctx;
 }

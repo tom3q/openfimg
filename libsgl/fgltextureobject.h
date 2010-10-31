@@ -39,6 +39,7 @@ struct FGLTexture {
 	GLenum		tWrap;
 	GLboolean	genMipmap;
 	GLboolean	useMipmap;
+	GLint		cropRect[4];
 	/* HW state */
 	fimgTexture	*fimg;
 	uint32_t	fglFormat;
@@ -77,7 +78,7 @@ struct FGLTexture {
 	inline bool isComplete(void)
 	{
 		if (!useMipmap)
-			return true;
+			return levels & 1;
 
 		return levels == ((1 << (maxLevel + 1)) - 1);
 	}

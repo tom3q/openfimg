@@ -38,6 +38,12 @@
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
 
+#define FUNC_UNIMPLEMENTED \
+	LOGW("Application called unimplemented function: %s", __func__)
+
+#undef NELEM
+#define NELEM(x) (sizeof(x)/sizeof(*(x)))
+
 template<typename T>
 static inline T max(T a, T b)
 {

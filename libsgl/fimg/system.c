@@ -130,7 +130,7 @@ fimgContext *fimgCreateContext(void)
 void fimgDestroyContext(fimgContext *ctx)
 {
 	fimgDeviceClose(ctx);
-	free(ctx->queue);
+	free(ctx->queueStart);
 	free(ctx);
 }
 
@@ -151,6 +151,7 @@ void fimgRestoreContext(fimgContext *ctx)
 //	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
 	fimgRestoreFragmentState(ctx);
 #ifdef FIMG_FIXED_PIPELINE
+//	fprintf(stderr, "fimg: Restoring compat state\n"); fflush(stderr);
 	fimgRestoreCompatState(ctx);
 #endif
 

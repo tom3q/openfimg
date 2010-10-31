@@ -96,8 +96,7 @@ typedef union {
  *****************************************************************************/
 void fimgLoadMatrix(fimgContext *ctx, uint32_t matrix, const float *pfData)
 {
-	const uint32_t *data = (const uint32_t *)pfData;
-	memcpy(&ctx->compat.matrix[16*matrix], data, 64);
+	ctx->compat.matrix[matrix] = pfData;
 	ctx->compat.matrixDirty[matrix] = 1;
 }
 
@@ -313,7 +312,7 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 
 	addr += loadShaderBlock(&vertexHeader, addr);
 
-	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++) {
+	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
 		if (!texture->enabled)
 			continue;
 
@@ -609,10 +608,10 @@ void fimgCompatFlush(fimgContext *ctx)
 	setVertexShaderAttribCount(ctx, ctx->numAttribs);
 
 	for (i = 0; i < 2 + FIMG_NUM_TEXTURE_UNITS; i++) {
-		if (!ctx->compat.matrixDirty[i])
+		if (!ctx->compat.matrixDirty[i] || ctx->compat.matrix == NULL)
 			continue;
 
-		loadVSMatrix(ctx, &ctx->compat.matrix[16*i], 4*i);
+		loadVSMatrix(ctx, ctx->compat.matrix[i], 4*i);
 		ctx->compat.matrixDirty[i] = 0;
 	}
 

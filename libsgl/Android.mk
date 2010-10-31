@@ -27,7 +27,7 @@ LOCAL_SRC_FILES:= \
 LOCAL_CFLAGS += -DLOG_TAG=\"libsgl\"
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
 #LOCAL_CFLAGS += -fvisibility=hidden
-LOCAL_CFLAGS += -O2 -march=armv6zk -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp
+LOCAL_CFLAGS += -O2 -march=armv6zk -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp -Wall
 
 LOCAL_SHARED_LIBRARIES := libcutils libhardware libutils libpixelflinger libETC1
 LOCAL_STATIC_LIBRARIES := libfimg

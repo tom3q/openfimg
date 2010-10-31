@@ -88,12 +88,18 @@ public:
 	FGLObject(unsigned int id) :
 		list(NULL), name(id), object() {};
 
+	~FGLObject()
+	{
+		unbindAll();
+	}
+
 	inline void unbindAll(void)
 	{
 		FGLObjectBinding<T> *b = list;
 
 		while(b) {
 			b->object = NULL;
+			b = b->next;
 		}
 
 		list = NULL;

@@ -467,7 +467,7 @@ typedef struct {
 	uint32_t pshaderEnd;
 	fimgTextureCompat texture[FIMG_NUM_TEXTURE_UNITS];
 	int matrixDirty[2 + FIMG_NUM_TEXTURE_UNITS];
-	float matrix[4*16];
+	const float *matrix[2 + FIMG_NUM_TEXTURE_UNITS];
 	/* More to come */
 } fimgCompatContext;
 

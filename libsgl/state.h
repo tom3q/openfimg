@@ -101,6 +101,7 @@ enum {
 struct FGLMatrixState {
 	FGLstack<FGLmatrix> stack[3 + FGL_MAX_TEXTURE_UNITS];
 	GLboolean dirty[3 + FGL_MAX_TEXTURE_UNITS];
+	FGLmatrix transformMatrix;
 	GLint activeMatrix;
 
 	static unsigned int stackSizes[3 + FGL_MAX_TEXTURE_UNITS];
