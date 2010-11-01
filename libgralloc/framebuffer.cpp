@@ -182,7 +182,7 @@ static int fb_compositionComplete(struct framebuffer_device_t* dev)
 {
 	DEBUG_ENTER();
 	// TODO: Properly implement composition complete callback
-	//glFinish();
+	glFinish();
 
 	DEBUG_LEAVE();
 	return 0;

@@ -20,15 +20,15 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
-LOCAL_SHARED_LIBRARIES := liblog libcutils
+LOCAL_SHARED_LIBRARIES := liblog libcutils libGLESv1_CM
 
 LOCAL_SRC_FILES := 	\
 	allocator.cpp 	\
 	gralloc.cpp 	\
 	framebuffer.cpp \
 	mapper.cpp
-	
+
 LOCAL_MODULE := gralloc.GT-I5700
 LOCAL_ARM_MODE := arm
-LOCAL_CFLAGS += -DLOG_TAG=\"gralloc\" -march=armv6zk -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp -O2
+LOCAL_CFLAGS += -DLOG_TAG=\"gralloc\" -march=armv6zk -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp -O2 -Wall
 include $(BUILD_SHARED_LIBRARY)
