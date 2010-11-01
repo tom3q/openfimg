@@ -145,9 +145,10 @@ typedef enum {
 
 /* Functions */
 void fimgSetVertexContext(fimgContext *ctx, unsigned int type);
+void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib);
 void fimgSetViewportParams(fimgContext *ctx,
 			   float x0, float y0,
-			   float px, float py);
+			   float px, float py, float H);
 void fimgSetDepthRange(fimgContext *ctx,
 		       float n, float f);
 

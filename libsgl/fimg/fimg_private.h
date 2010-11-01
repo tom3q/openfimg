@@ -27,6 +27,9 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "fimg.h"
+#include <cutils/log.h>
+
+#define TRACE(a)	LOGD(#a); a
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
@@ -392,6 +395,7 @@ typedef struct {
 	float halfPY;
 	float halfDistance;
 	float center;
+	float height;
 } fimgPrimitiveContext;
 
 void fimgCreatePrimitiveContext(fimgContext *ctx);

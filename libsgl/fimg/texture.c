@@ -84,7 +84,7 @@ fimgTexture *fimgCreateTexture(void)
 
 	texture->control.useMipmap = FGTU_TSTA_MIPMAP_LINEAR;
 	texture->control.magFilter = FGTU_TSTA_FILTER_LINEAR;
-	texture->control.alphaFmt = FGTU_TSTA_AFORMAT_RGBA;
+	texture->control.alphaFmt = FGTU_TSTA_AFORMAT_ARGB;
 	texture->control.type = FGTU_TSTA_TYPE_2D;
 
 	return texture;

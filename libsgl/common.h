@@ -41,6 +41,28 @@
 #define FUNC_UNIMPLEMENTED \
 	LOGW("Application called unimplemented function: %s", __func__)
 
+//#define TRACE_FUNCTIONS
+#ifdef TRACE_FUNCTIONS
+class FunctionTracer {
+	const char *name;
+public:
+	inline FunctionTracer(const char *n)
+	: name(n)
+	{
+		LOGD("Entering %s.", name);
+	}
+
+	inline ~FunctionTracer()
+	{
+		LOGD("Leaving %s.", name);
+	}
+};
+
+#define FUNCTION_TRACER	FunctionTracer __ft(__func__)
+#else
+#define FUNCTION_TRACER
+#endif
+
 #undef NELEM
 #define NELEM(x) (sizeof(x)/sizeof(*(x)))
 

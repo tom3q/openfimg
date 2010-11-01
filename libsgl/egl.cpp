@@ -67,15 +67,11 @@
 using namespace android;
 
 static char const * const gVendorString     = "GLES6410";
-static char const * const gVersionString    = "1.4 S3C6410 Android 0.0.1";
+static char const * const gVersionString    = "1.4 S3C6410 Android 0.1";
 static char const * const gClientApisString = "OpenGL_ES";
 static char const * const gExtensionsString =
-#if 0
-	"EGL_KHR_image "
 	"EGL_KHR_image_base "
-	"EGL_KHR_image_pixmap "
 	"EGL_ANDROID_image_native_buffer "
-#endif
 	"EGL_ANDROID_swap_rectangle "
 	"EGL_ANDROID_get_render_buffer"
 ;
@@ -1106,7 +1102,7 @@ EGLBoolean FGLWindowSurface::connect()
 {
 	// we're intending to do hardware rendering
 	native_window_set_usage(nativeWindow,
-		GRALLOC_USAGE_SW_READ_RARELY | GRALLOC_USAGE_SW_WRITE_NEVER | GRALLOC_USAGE_HW_RENDER);
+		GRALLOC_USAGE_SW_READ_RARELY | GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER);
 
 	// dequeue a buffer
 	if (nativeWindow->dequeueBuffer(nativeWindow, &buffer) != FGL_NO_ERROR) {
@@ -1135,7 +1131,7 @@ EGLBoolean FGLWindowSurface::connect()
 	nativeWindow->lockBuffer(nativeWindow, buffer);
 	// pin the buffer down
 	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY |
-		GRALLOC_USAGE_SW_WRITE_NEVER | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
+		GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
 		LOGE("connect() failed to lock buffer %p (%ux%u)",
 			buffer, buffer->width, buffer->height);
 		setError(EGL_BAD_ACCESS);
@@ -1207,11 +1203,11 @@ void FGLWindowSurface::copyBlt(
 	android_native_buffer_t* src, void const* src_vaddr,
 	const Region& clip)
 {
-	// FIXME: use copybit if possible
 	// NOTE: dst and src must be the same format
 
 	FGLint err = FGL_NO_ERROR;
 
+#if 0
 	copybit_device_t* const copybit = blitengine;
 	if (copybit)  {
 		copybit_image_t simg;
@@ -1237,6 +1233,7 @@ void FGLWindowSurface::copyBlt(
 		else
 			return;
 	}
+#endif
 
 	Region::const_iterator cur = clip.begin();
 	Region::const_iterator end = clip.end();
@@ -1286,16 +1283,16 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	if (!dirtyRegion.isEmpty()) {
 		dirtyRegion.andSelf(Rect(buffer->width, buffer->height));
 		if (previousBuffer) {
-		Region copyBack(Region::subtract(oldDirtyRegion, dirtyRegion));
-		if (!copyBack.isEmpty()) {
-			void* prevBits;
-			if (lock(previousBuffer, GRALLOC_USAGE_SW_READ_OFTEN,
-			&prevBits) == FGL_NO_ERROR) {
-				// copy from previousBuffer to buffer
-				copyBlt(buffer, bits, previousBuffer, prevBits, copyBack);
-				unlock(previousBuffer);
+			Region copyBack(Region::subtract(oldDirtyRegion, dirtyRegion));
+			if (!copyBack.isEmpty()) {
+				void* prevBits;
+				if (lock(previousBuffer, GRALLOC_USAGE_SW_READ_OFTEN,
+				&prevBits) == FGL_NO_ERROR) {
+					// copy from previousBuffer to buffer
+					copyBlt(buffer, bits, previousBuffer, prevBits, copyBack);
+					unlock(previousBuffer);
+				}
 			}
-		}
 		}
 		oldDirtyRegion = dirtyRegion;
 	}
@@ -1341,7 +1338,7 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 
 	// finally pin the buffer down
 	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY |
-		GRALLOC_USAGE_SW_WRITE_NEVER | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
+		GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
 		LOGE("eglSwapBuffers() failed to lock buffer %p (%ux%u)",
 			buffer, buffer->width, buffer->height);
 		setError(EGL_BAD_ACCESS);
@@ -1995,8 +1992,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 	return EGL_TRUE;
 }
 
-extern void fglRestoreGLState(void);
-
 static int fglMakeCurrent(FGLContext* gl)
 {
 	FGLContext* current = getGlThreadSpecific();
@@ -2228,7 +2223,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 
 EGLAPI EGLBoolean EGLAPIENTRY eglWaitGL(void)
 {
-	FUNC_UNIMPLEMENTED;
+	glFinish();
 	return EGL_TRUE;
 }
 
@@ -2336,6 +2331,78 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 	return d->getRenderBuffer();
 }
 
+EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
+        EGLClientBuffer buffer, const EGLint *attrib_list)
+{
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_NO_IMAGE_KHR;
+	}
+
+	if (ctx != EGL_NO_CONTEXT) {
+		setError(EGL_BAD_CONTEXT);
+		return EGL_NO_IMAGE_KHR;
+	}
+
+	if (target != EGL_NATIVE_BUFFER_ANDROID) {
+		setError(EGL_BAD_PARAMETER);
+		return EGL_NO_IMAGE_KHR;
+	}
+
+	android_native_buffer_t* native_buffer = (android_native_buffer_t*)buffer;
+
+	if (native_buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC) {
+		setError(EGL_BAD_PARAMETER);
+		return EGL_NO_IMAGE_KHR;
+	}
+
+	if (native_buffer->common.version != sizeof(android_native_buffer_t)) {
+		setError(EGL_BAD_PARAMETER);
+		return EGL_NO_IMAGE_KHR;
+	}
+
+	switch (native_buffer->format) {
+		case HAL_PIXEL_FORMAT_RGBA_8888:
+		case HAL_PIXEL_FORMAT_RGBX_8888:
+		case HAL_PIXEL_FORMAT_RGB_888:
+		case HAL_PIXEL_FORMAT_RGB_565:
+		case HAL_PIXEL_FORMAT_BGRA_8888:
+		case HAL_PIXEL_FORMAT_RGBA_5551:
+		case HAL_PIXEL_FORMAT_RGBA_4444:
+			break;
+		default:
+			setError(EGL_BAD_PARAMETER);
+			return EGL_NO_IMAGE_KHR;
+	}
+
+	native_buffer->common.incRef(&native_buffer->common);
+	return (EGLImageKHR)native_buffer;
+}
+
+EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
+{
+	if (!isDisplayValid(dpy)) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_FALSE;
+	}
+
+	android_native_buffer_t* native_buffer = (android_native_buffer_t*)img;
+
+	if (native_buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC) {
+		setError(EGL_BAD_PARAMETER);
+		return EGL_FALSE;
+	}
+
+	if (native_buffer->common.version != sizeof(android_native_buffer_t)) {
+		setError(EGL_BAD_PARAMETER);
+		return EGL_FALSE;
+	}
+
+	native_buffer->common.decRef(&native_buffer->common);
+
+	return EGL_TRUE;
+}
+
 struct extention_map_t {
     const char * const name;
     __eglMustCastToProperFunctionPointerType address;
@@ -2380,12 +2447,10 @@ static const extention_map_t gExtentionMap[] = {
 		(__eglMustCastToProperFunctionPointerType)&glDeleteBuffers },
 	{ "glGenBuffers",
 		(__eglMustCastToProperFunctionPointerType)&glGenBuffers },
-#if 0
 	{ "eglCreateImageKHR",
 		(__eglMustCastToProperFunctionPointerType)&eglCreateImageKHR },
 	{ "eglDestroyImageKHR",
 		(__eglMustCastToProperFunctionPointerType)&eglDestroyImageKHR },
-#endif
 	{ "eglSetSwapRectangleANDROID",
 		(__eglMustCastToProperFunctionPointerType)&eglSetSwapRectangleANDROID },
 	{ "eglGetRenderBufferANDROID",

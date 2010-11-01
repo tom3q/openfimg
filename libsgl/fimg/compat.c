@@ -608,7 +608,7 @@ void fimgCompatFlush(fimgContext *ctx)
 	setVertexShaderAttribCount(ctx, ctx->numAttribs);
 
 	for (i = 0; i < 2 + FIMG_NUM_TEXTURE_UNITS; i++) {
-		if (!ctx->compat.matrixDirty[i] || ctx->compat.matrix == NULL)
+		if (!ctx->compat.matrixDirty[i] || ctx->compat.matrix[i] == NULL)
 			continue;
 
 		loadVSMatrix(ctx, ctx->compat.matrix[i], 4*i);
@@ -624,6 +624,9 @@ void fimgCompatFlush(fimgContext *ctx)
 	setPixelShaderAttribCount(ctx, 8);
 
 	for (i = 0; i < FIMG_NUM_TEXTURE_UNITS; i++) {
+		if (ctx->compat.texture[i].texture == NULL)
+			continue;
+
 		if (!ctx->compat.texture[i].enabled)
 			continue;
 

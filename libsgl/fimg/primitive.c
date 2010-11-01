@@ -53,6 +53,14 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
 }
 
+void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib)
+{
+	ctx->primitive.vctx.flatShadeEn  = !!en;
+	ctx->primitive.vctx.flatShadeSel = (1 << attrib);
+}
+
+#define FIMG_YFLIP
+
 /*****************************************************************************
  * FUNCTIONS:	fimgSetViewportParams
  * SYNOPSIS:	This function specifies the viewport parameters.
@@ -62,21 +70,30 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
  *		[IN] px, py: width and height of viewport in terms of pixel
  *		[IN] H: height of window in terms of pixel
  *****************************************************************************/
-void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float py)
+void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float py, float H)
 {
 	// local variable declaration
 	float half_px = px * 0.5f;
+#ifdef FIMG_YFLIP
+	float half_py = -py * 0.5f;
+#else
 	float half_py = py * 0.5f;
+#endif
 
 	// ox: x-coordinate of viewport center
 	float ox = x0 + half_px;
 	// oy: y-coordindate of viewport center
+#ifdef FIMG_YFLIP
+	float oy = (H - y0) + half_py;
+#else
 	float oy = y0 + half_py;
+#endif
 
 	ctx->primitive.ox = ox;
 	ctx->primitive.oy = oy;
 	ctx->primitive.halfPX = half_px;
 	ctx->primitive.halfPY = half_py;
+	ctx->primitive.height = H;
 
 	fimgQueueF(ctx, ox, FGPE_VIEWPORT_OX);
 	fimgQueueF(ctx, oy, FGPE_VIEWPORT_OY);
@@ -126,11 +143,19 @@ float fimgGetPrimitiveStateF(fimgContext *ctx, unsigned int name)
 	case FIMG_VIEWPORT_X:
 		return ctx->primitive.ox - ctx->primitive.halfPX;
 	case FIMG_VIEWPORT_Y:
+#ifdef FIMG_YFLIP
+		return ctx->primitive.height - ctx->primitive.oy + ctx->primitive.halfPY;
+#else
 		return ctx->primitive.oy - ctx->primitive.halfPY;
+#endif
 	case FIMG_VIEWPORT_W:
 		return 2*ctx->primitive.halfPX;
 	case FIMG_VIEWPORT_H:
+#ifdef FIMG_YFLIP
+		return -2*ctx->primitive.halfPY;
+#else
 		return 2*ctx->primitive.halfPY;
+#endif
 	case FIMG_DEPTH_RANGE_NEAR:
 		return ctx->primitive.center - ctx->primitive.halfDistance;
 	case FIMG_DEPTH_RANGE_FAR:

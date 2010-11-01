@@ -33,6 +33,7 @@
 #include "fimg/fimg.h"
 #include "s3c_g2d.h"
 
+#define TRACE_FUNCTIONS
 //#define GLES_DEBUG
 #define GLES_ERR_DEBUG
 
@@ -50,9 +51,9 @@ static char const * const gExtensionsString =
 	"GL_OES_matrix_get "                    // TODO
 	"GL_OES_query_matrix "                  // TODO
 	"GL_OES_point_sprite "                  // TODO
-	"GL_OES_EGL_image "                     // TODO
+	"GL_OES_EGL_image "                     // TODO IMPORTANT
 	"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
-	"GL_ARB_texture_compression "           // TODO
+	"GL_ARB_texture_compression "           // TODO IMPORTANT
 	"GL_ARB_texture_non_power_of_two "      // TODO
 	"GL_ANDROID_user_clip_plane "           // TODO
 	"GL_ANDROID_vertex_buffer_object "      // TODO
@@ -68,7 +69,6 @@ static char const * const gExtensionsString =
 	"GL_EXT_blend_minmax "			// TODO
 	"GL_EXT_blend_subtract "		// TODO
 	"GL_EXT_stencil_wrap "			// TODO
-	"GL_OES_fixed_point "			// TODO
 	"GL_OES_matrix_palette "		// TODO
 	"GL_OES_vertex_buffer_object "		// TODO
 	"GL_QUALCOMM_vertex_buffer_object "	// TODO
@@ -776,37 +776,18 @@ GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture)
 	Drawing
 */
 
-static inline GLint fglModeFromModeEnum(GLenum mode)
+GL_API void GL_APIENTRY glShadeModel (GLenum mode)
 {
-	GLint fglMode;
+	FGLContext *ctx = getContext();
 
 	switch (mode) {
-	case GL_POINTS:
-		fglMode = FGPE_POINTS;
+	case GL_SMOOTH:
+		fimgSetShadingMode(ctx->fimg, 0, FGL_ARRAY_COLOR);
 		break;
-	case GL_LINE_STRIP:
-		fglMode = FGPE_LINE_STRIP;
+	case GL_FLAT:
+		fimgSetShadingMode(ctx->fimg, 0, FGL_ARRAY_COLOR);
 		break;
-	case GL_LINE_LOOP:
-		fglMode = FGPE_LINE_LOOP;
-		break;
-	case GL_LINES:
-		fglMode = FGPE_LINES;
-		break;
-	case GL_TRIANGLE_STRIP:
-		fglMode = FGPE_TRIANGLE_STRIP;
-		break;
-	case GL_TRIANGLE_FAN:
-		fglMode = FGPE_TRIANGLE_FAN;
-		break;
-	case GL_TRIANGLES:
-		fglMode = FGPE_TRIANGLES;
-		break;
-	default:
-		return -1;
 	}
-
-	return fglMode;
 }
 
 static inline void fglSetupMatrices(FGLContext *ctx)
@@ -1060,7 +1041,7 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 
 	FGLContext *ctx = getContext();
 
-	fimgSetViewportParams(ctx->fimg, x, y, width, height);
+	fimgSetViewportParams(ctx->fimg, x, y, width, height, ctx->surface.draw.height);
 }
 
 /**
@@ -1945,6 +1926,7 @@ static int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *con
 
 static void fglGenerateMipmapsSW(FGLTexture *obj)
 {
+ FUNCTION_TRACER;
 	int level = 0;
 
 	int w = obj->surface.width;
@@ -2092,6 +2074,7 @@ static void fglGenerateMipmapsSW(FGLTexture *obj)
 
 static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 {
+ FUNCTION_TRACER;
 	int fd;
 	struct s3c_g2d_req req;
 
@@ -2154,6 +2137,7 @@ static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 
 static void fglGenerateMipmaps(FGLTexture *obj)
 {
+ FUNCTION_TRACER;
 	/* Handle cases supported by G2D hardware */
 	switch (obj->fglFormat) {
 	case FGTU_TSTA_TEXTURE_FORMAT_565:
@@ -2213,6 +2197,7 @@ static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
+ FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->surface.width >> level;
@@ -2231,6 +2216,7 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 static void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
+ FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->surface.width >> level;
@@ -2267,6 +2253,7 @@ static inline uint16_t fglPackLA88(uint8_t l, uint8_t a)
 static void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
+ FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->surface.width >> level;
@@ -2318,6 +2305,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	GLint internalformat, GLsizei width, GLsizei height, GLint border,
 	GLenum format, GLenum type, const GLvoid *pixels)
 {
+ FUNCTION_TRACER;
 	// Check conditions required by specification
 	if (target != GL_TEXTURE_2D) {
 		setError(GL_INVALID_ENUM);
@@ -2483,6 +2471,7 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
+ FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->surface.width >> level;
@@ -2511,6 +2500,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
+ FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->surface.width >> level;
@@ -2578,6 +2568,7 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		GLint xoffset, GLint yoffset, GLsizei width, GLsizei height,
 		GLenum format, GLenum type, const GLvoid *pixels)
 {
+ FUNCTION_TRACER;
 	FGLContext *ctx = getContext();
 	FGLTexture *obj =
 		ctx->texture[ctx->activeTexture].getTexture();
@@ -2629,6 +2620,8 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	else
 		fglLoadTexturePartial(obj, level, pixels,
 			ctx->unpackAlignment, xoffset, yoffset, width, height);
+
+	fglFlushPmemSurface(&obj->surface);
 }
 
 GL_API void GL_APIENTRY glCompressedTexImage2D (GLenum target, GLint level,
@@ -3373,22 +3366,12 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
 	Draw texture
 */
 
-static void DUMP_VERTICES(const GLfloat *v, GLint comp, GLint num)
-{
-	do {
-		fprintf(stderr, "(  ");
-		for (int i = 0; i < comp; i++)
-			fprintf(stderr, "%f  ", *(v++));
-		fprintf(stderr, ")\n");
-	} while(--num);
-}
-
 GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat width, GLfloat height)
 {
 	FGLContext *ctx = getContext();
 	GLboolean arrayEnabled[4 + FGL_MAX_TEXTURE_UNITS];
 	GLfloat vertices[3*4];
-	GLfloat texcoords[2][2*4];
+	GLint texcoords[2][2*4];
 
 	// Save current state and prepare to drawing
 
@@ -3399,8 +3382,8 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	GLfloat zNear = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_NEAR);
 	GLfloat zFar = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
 
-	fimgSetDepthRange(ctx->fimg, -1.0f, 1.0f);
-	//fimgSetViewportParams(ctx->fimg, -1.0f, -1.0f, 2.0f, 2.0f);
+	fimgSetDepthRange(ctx->fimg, 0.0f, 1.0f);
+	fimgSetViewportParams(ctx->fimg, x, y, width, height, ctx->surface.draw.height);
 
 	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {
 		arrayEnabled[i] = ctx->array[i].enabled;
@@ -3431,42 +3414,18 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	else
 		zD = zNear + z*(zFar - zNear);
 
-	GLfloat oX = viewportX + viewportW / 2;
-	GLfloat oY = viewportY + viewportH / 2;
-	GLfloat invViewportW = 2.0f / viewportW;
-	GLfloat invViewportH = 2.0f / viewportH;
-
-	// bottom-left
-	vertices[0] = (x - oX)*invViewportW;
-	vertices[1] = (y - oY)*invViewportH;
+	vertices[0] = -1.0f;
+	vertices[1] = 1.0f;
 	vertices[2] = zD;
-	// bottom-right
-	vertices[3] = (x + width - oX)*invViewportW;
-	vertices[4] = vertices[1];
+	vertices[3] = 1.0f;
+	vertices[4] = 1.0f;
 	vertices[5] = zD;
-	// top-left
-	vertices[6] = vertices[0];
-	vertices[7] = (y + height - oY)*invViewportH;
+	vertices[6] = 1.0f;
+	vertices[7] = -1.0f;
 	vertices[8] = zD;
-	// top-right
-	vertices[9] = vertices[3];
-	vertices[10] = vertices[7];
+	vertices[9] = -1.0f;
+	vertices[10] = -1.0f;
 	vertices[11] = zD;
-
-	/*
-	vertices[0] = x;
-	vertices[1] = y;
-	vertices[2] = zD;
-	vertices[3] = x + width;
-	vertices[4] = y;
-	vertices[5] = zD;
-	vertices[6] = x;
-	vertices[7] = y + height;
-	vertices[8] = zD;
-	vertices[9] = x + width;
-	vertices[10] = y + height;
-	vertices[11] = zD;
-	*/
 
 	// Proceed with drawing
 
@@ -3486,16 +3445,16 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
 		FGLTexture *obj = ctx->texture[i].getTexture();
 		if (obj->surface.isValid()) {
+			unsigned height = obj->surface.height;
 			texcoords[i][0]	= obj->cropRect[0];
-			texcoords[i][1] = obj->cropRect[1] + obj->cropRect[3];
+			texcoords[i][1] = height - obj->cropRect[1];
 			texcoords[i][2] = obj->cropRect[0] + obj->cropRect[2];
-			texcoords[i][3] = obj->cropRect[1] + obj->cropRect[3];
-			texcoords[i][4] = obj->cropRect[0];
-			texcoords[i][5] = obj->cropRect[1];
-			texcoords[i][6] = obj->cropRect[0] + obj->cropRect[2];
-			texcoords[i][7] = obj->cropRect[1];
+			texcoords[i][3] = texcoords[i][1];
+			texcoords[i][4] = texcoords[i][2];
+			texcoords[i][5] = height - (obj->cropRect[1] + obj->cropRect[3]);
+			texcoords[i][6] = texcoords[i][0];
+			texcoords[i][7] = texcoords[i][5];
 			arrays[FGL_ARRAY_TEXTURE(i)].stride = 8;
-			fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_NON_PARAM);
 		} else {
 			texcoords[i][0] = 0;
 			texcoords[i][1] = 0;
@@ -3503,7 +3462,8 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 		}
 		arrays[FGL_ARRAY_TEXTURE(i)].pointer	= texcoords[i];
 		arrays[FGL_ARRAY_TEXTURE(i)].width	= 8;
-		fimgSetAttribute(ctx->fimg, FGL_ARRAY_TEXTURE(i), FGHI_ATTRIB_DT_FLOAT, 2);
+		fimgSetAttribute(ctx->fimg, FGL_ARRAY_TEXTURE(i), FGHI_ATTRIB_DT_INT, 2);
+		fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_NON_PARAM);
 	}
 
 	fglSetupTextures(ctx);
@@ -3511,9 +3471,9 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
 
 #ifndef FIMG_USE_VERTEX_BUFFER
-	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_STRIP, arrays, 0, 4);
+	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_FAN, arrays, 0, 4);
 #else
-	fimgDrawArraysBuffered(ctx->fimg, FGPE_TRIANGLE_STRIP, arrays, 0, 4);
+	fimgDrawArraysBuffered(ctx->fimg, FGPE_TRIANGLE_FAN, arrays, 0, 4);
 #endif
 	// Restore previous state
 
@@ -3526,12 +3486,11 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
 		FGLTexture *obj = ctx->texture[i].getTexture();
-		if (obj->surface.isValid())
-			fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_PARAM);
+		fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_PARAM);
 	}
 
 	fimgSetDepthRange(ctx->fimg, zNear, zFar);
-	//fimgSetViewportParams(ctx->fimg, viewportX, viewportY, viewportW, viewportH);
+	fimgSetViewportParams(ctx->fimg, viewportX, viewportY, viewportW, viewportH, ctx->surface.draw.height);
 }
 
 GL_API void GL_APIENTRY glDrawTexsOES (GLshort x, GLshort y, GLshort z, GLshort width, GLshort height)
@@ -4023,6 +3982,7 @@ static inline uint32_t getFillDepth(FGLContext *ctx,
 
 static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
+	FUNCTION_TRACER;
 	FGLSurface *draw = &ctx->surface.draw;
 	uint32_t stride = draw->width;
 	bool lineByLine = false;
@@ -6078,11 +6038,6 @@ GL_API void GL_APIENTRY glPolygonOffset (GLfloat factor, GLfloat units)
 }
 
 GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glShadeModel (GLenum mode)
 {
 	FUNC_UNIMPLEMENTED;
 }
