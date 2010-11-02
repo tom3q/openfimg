@@ -34,7 +34,7 @@
 #include "s3c_g2d.h"
 
 #define TRACE_FUNCTIONS
-//#define GLES_DEBUG
+#define GLES_DEBUG
 #define GLES_ERR_DEBUG
 
 /**
@@ -54,7 +54,6 @@ static char const * const gExtensionsString =
 	"GL_OES_EGL_image "                     // TODO IMPORTANT
 	"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
 	"GL_ARB_texture_compression "           // TODO IMPORTANT
-	"GL_ARB_texture_non_power_of_two "      // TODO
 	"GL_ANDROID_user_clip_plane "           // TODO
 	"GL_ANDROID_vertex_buffer_object "      // TODO
 	"GL_ANDROID_generate_mipmap "           // TODO
@@ -77,8 +76,11 @@ static char const * const gExtensionsString =
 	"GL_OES_byte_coordinates "
 	"GL_OES_fixed_point "
 	"GL_OES_single_precision "
-	"GL_OES_draw_texture "
 	"GL_OES_point_size_array "
+#ifdef FGL_NPOT_TEXTURES
+	"GL_ARB_texture_non_power_of_two "
+#endif
+	"GL_OES_draw_texture"
 ;
 
 // ----------------------------------------------------------------------------
@@ -2392,6 +2394,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 	// level == 0
 
+#ifndef FGL_NPOT_TEXTURES
 	// Check if width is a power of two
 	GLsizei tmp;
 
@@ -2407,6 +2410,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		setError(GL_INVALID_VALUE);
 		return;
 	}
+#endif
 
 	// Get format information
 	unsigned bpp;
@@ -2593,6 +2597,9 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	if (!mipmapH)
 		mipmapH = 1;
 
+	//LOGD("glTexSubImage2D: x = %d, y = %d, w = %d, h = %d",
+	//				xoffset, yoffset, width, height);
+
 	if (!xoffset && !yoffset && mipmapW == width && mipmapH == height) {
 		glTexImage2D(target, level, format, width, height,
 						0, format, type, pixels);
@@ -2613,6 +2620,9 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		setError(GL_INVALID_VALUE);
 		return;
 	}
+
+	if (!pixels)
+		return;
 
 	if (obj->convert)
 		fglConvertTexturePartial(obj, level, pixels,
@@ -3373,6 +3383,9 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	GLfloat vertices[3*4];
 	GLint texcoords[2][2*4];
 
+	//LOGD("glDrawTexfOES: x = %f, y = %f, z = %f, w = %f, h = %f",
+	//					x, y, z, width, height);
+
 	// Save current state and prepare to drawing
 
 	GLfloat viewportX = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
@@ -3445,6 +3458,9 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
 		FGLTexture *obj = ctx->texture[i].getTexture();
 		if (obj->surface.isValid()) {
+			//LOGD("glDrawTexfOES: Texture %d (%d, %d, %d, %d)", i,
+			//		obj->cropRect[0], obj->cropRect[1],
+			//		obj->cropRect[2], obj->cropRect[3]);
 			unsigned height = obj->surface.height;
 			texcoords[i][0]	= obj->cropRect[0];
 			texcoords[i][1] = height - obj->cropRect[1];
@@ -5420,6 +5436,7 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
+		LOGD("Invalid enum: %d", pname);
 	}
 }
 
