@@ -37,4 +37,7 @@
 /* Use fixed pipeline emulation */
 #define FIMG_FIXED_PIPELINE
 
+/* Flip the Y axis */
+#define FIMG_COORD_FLIP_Y
+
 #endif /* _FIMG_CONFIG_H_ */

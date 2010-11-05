@@ -59,8 +59,6 @@ void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib)
 	ctx->primitive.vctx.flatShadeSel = (1 << attrib);
 }
 
-#define FIMG_YFLIP
-
 /*****************************************************************************
  * FUNCTIONS:	fimgSetViewportParams
  * SYNOPSIS:	This function specifies the viewport parameters.
@@ -74,7 +72,7 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 {
 	// local variable declaration
 	float half_px = px * 0.5f;
-#ifdef FIMG_YFLIP
+#ifdef FIMG_COORD_FLIP_Y
 	float half_py = -py * 0.5f;
 #else
 	float half_py = py * 0.5f;
@@ -83,7 +81,7 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 	// ox: x-coordinate of viewport center
 	float ox = x0 + half_px;
 	// oy: y-coordindate of viewport center
-#ifdef FIMG_YFLIP
+#ifdef FIMG_COORD_FLIP_Y
 	float oy = (H - y0) + half_py;
 #else
 	float oy = y0 + half_py;
@@ -143,7 +141,7 @@ float fimgGetPrimitiveStateF(fimgContext *ctx, unsigned int name)
 	case FIMG_VIEWPORT_X:
 		return ctx->primitive.ox - ctx->primitive.halfPX;
 	case FIMG_VIEWPORT_Y:
-#ifdef FIMG_YFLIP
+#ifdef FIMG_COORD_FLIP_Y
 		return ctx->primitive.height - ctx->primitive.oy + ctx->primitive.halfPY;
 #else
 		return ctx->primitive.oy - ctx->primitive.halfPY;
@@ -151,7 +149,7 @@ float fimgGetPrimitiveStateF(fimgContext *ctx, unsigned int name)
 	case FIMG_VIEWPORT_W:
 		return 2*ctx->primitive.halfPX;
 	case FIMG_VIEWPORT_H:
-#ifdef FIMG_YFLIP
+#ifdef FIMG_COORD_FLIP_Y
 		return -2*ctx->primitive.halfPY;
 #else
 		return 2*ctx->primitive.halfPY;

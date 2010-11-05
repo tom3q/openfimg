@@ -149,8 +149,7 @@ void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib);
 void fimgSetViewportParams(fimgContext *ctx,
 			   float x0, float y0,
 			   float px, float py, float H);
-void fimgSetDepthRange(fimgContext *ctx,
-		       float n, float f);
+void fimgSetDepthRange(fimgContext *ctx, float n, float f);
 
 enum {
 	FIMG_VIEWPORT_X,

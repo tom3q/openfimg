@@ -1036,12 +1036,26 @@ GL_API void GL_APIENTRY glDepthRangex (GLclampx zNear, GLclampx zFar)
 
 GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei height)
 {
+// Allow negative width and height (for coordinate flipping)
+/*
 	if(width < 0 || height < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
-
+*/
 	FGLContext *ctx = getContext();
+
+	// Clamp the width
+	if (x > FGL_MAX_VIEWPORT_DIMS)
+		x = FGL_MAX_VIEWPORT_DIMS;
+	if (x < -FGL_MAX_VIEWPORT_DIMS)
+		x = -FGL_MAX_VIEWPORT_DIMS;
+
+	// Clamp the height
+	if (y > FGL_MAX_VIEWPORT_DIMS);
+		y = FGL_MAX_VIEWPORT_DIMS;
+	if (y < -FGL_MAX_VIEWPORT_DIMS);
+		y = FGL_MAX_VIEWPORT_DIMS;
 
 	fimgSetViewportParams(ctx->fimg, x, y, width, height, ctx->surface.draw.height);
 }
