@@ -1207,7 +1207,6 @@ void FGLWindowSurface::copyBlt(
 
 	FGLint err = FGL_NO_ERROR;
 
-#if 0
 	copybit_device_t* const copybit = blitengine;
 	if (copybit)  {
 		copybit_image_t simg;
@@ -1233,7 +1232,6 @@ void FGLWindowSurface::copyBlt(
 		else
 			return;
 	}
-#endif
 
 	Region::const_iterator cur = clip.begin();
 	Region::const_iterator end = clip.end();
@@ -2252,13 +2250,18 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 		return EGL_FALSE;
 	}
 
+	if (d->ctx != EGL_NO_CONTEXT) {
+		FGLContext* c = (FGLContext*)d->ctx;
+		if (c == getGlThreadSpecific())
+			glFinish();
+	}
+
 	// post the surface
 	d->swapBuffers();
 
 	// if it's bound to a context, update the buffer
 	if (d->ctx != EGL_NO_CONTEXT) {
 		FGLContext* c = (FGLContext*)d->ctx;
-
 		d->bindDrawSurface(c);
 		// if this surface is also the read surface of the context
 		// it is bound to, make sure to update the read buffer as well.
