@@ -33,8 +33,8 @@
 #include "fimg/fimg.h"
 #include "s3c_g2d.h"
 
-#define TRACE_FUNCTIONS
-#define GLES_DEBUG
+//#define TRACE_FUNCTIONS
+//#define GLES_DEBUG
 #define GLES_ERR_DEBUG
 
 /**
@@ -1052,10 +1052,10 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 		x = -FGL_MAX_VIEWPORT_DIMS;
 
 	// Clamp the height
-	if (y > FGL_MAX_VIEWPORT_DIMS);
+	if (y > FGL_MAX_VIEWPORT_DIMS)
 		y = FGL_MAX_VIEWPORT_DIMS;
-	if (y < -FGL_MAX_VIEWPORT_DIMS);
-		y = FGL_MAX_VIEWPORT_DIMS;
+	if (y < -FGL_MAX_VIEWPORT_DIMS)
+		y = -FGL_MAX_VIEWPORT_DIMS;
 
 	fimgSetViewportParams(ctx->fimg, x, y, width, height, ctx->surface.draw.height);
 }
@@ -1480,7 +1480,9 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 	ctx->perFragment.scissor.width	= width;
 	ctx->perFragment.scissor.height	= height;
 
-	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
+	GLint yFlipped = ctx->surface.draw.height - y;
+
+	fimgSetScissorParams(ctx->fimg, x + width, x, yFlipped, yFlipped - height);
 }
 
 static inline void fglAlphaFunc (GLenum func, GLubyte ref)
@@ -2248,11 +2250,11 @@ static void fglLoadTexture(FGLTexture *obj, unsigned level,
 	const uint8_t *src8 = (const uint8_t *)pixels;
 	uint8_t *dst8 = (uint8_t *)obj->surface.vaddr + offset;
 
-	for(unsigned i = 0; i < height; i++) {
+	do {
 		memcpy(dst8, src8, line);
 		src8 += stride;
 		dst8 += line;
-	}
+	} while(--height);
 }
 
 static inline uint32_t fglPackRGBA8888(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -2288,15 +2290,16 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		const uint8_t *src8 = (const uint8_t *)pixels;
 		uint8_t r, g, b;
 		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr + offset);
-		for (unsigned y = 0; y < height; y++) {
-			for (unsigned x = 0; x < width; x++) {
+		do {
+			unsigned x = width;
+			do {
 				r = *(src8++);
 				g = *(src8++);
 				b = *(src8++);
 				*(dst32++) = fglPackRGBA8888(r, g, b, 255);
-			}
+			} while(--x);
 			src8 += padding;
-		}
+		} while (--height);
 		break;
 	}
 	case GL_LUMINANCE: {
@@ -2304,11 +2307,13 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		size_t padding = stride - width;
 		const uint8_t *src8 = (const uint8_t *)pixels;
 		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface.vaddr + offset);
-		for (unsigned y = 0; y < height; y++) {
-			for (unsigned x = 0; x < width; x++)
+		do {
+			unsigned x = width;
+			do {
 				*(dst16++) = fglPackLA88(*(src8++), 255);
+			} while (--x);
 			src8 += padding;
-		}
+		} while (--height);
 		break;
 	}
 	default:
@@ -2503,7 +2508,7 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 	size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
 	size_t dstStride = width*obj->bpp;
 	size_t xoffset = x*obj->bpp;
-	size_t yoffset = (height - y - h)*dstStride;
+	size_t yoffset = y*dstStride;
 	const uint8_t *src8 = (const uint8_t *)pixels;
 	uint8_t *dst8 = (uint8_t *)obj->surface.vaddr
 						+ offset + yoffset + xoffset;
@@ -2535,7 +2540,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
 		size_t dstStride = 4*width;
 		size_t xOffset = 4*x;
-		size_t yOffset = (height - y - h)*dstStride;
+		size_t yOffset = y*dstStride;
 		size_t srcPad = srcStride - line;
 		size_t dstPad = width - w;
 		const uint8_t *src8 = (const uint8_t *)pixels;
@@ -2560,7 +2565,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
 		size_t dstStride = 2*width;
 		size_t xOffset = 2*x;
-		size_t yOffset = (height - y - h)*dstStride;
+		size_t yOffset = y*dstStride;
 		size_t srcPad = srcStride - line;
 		size_t dstPad = width - w;
 		const uint8_t *src8 = (const uint8_t *)pixels;
