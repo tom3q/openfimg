@@ -61,6 +61,7 @@
 
 /* Registers */
 #define G3D_FGGB_PIPESTAT_REG		(0x00)
+#define G3D_FGGB_CACHECTL_REG		(0x04)
 #define G3D_FGGB_RESET_REG		(0x08)
 #define G3D_FGGB_INTPENDING_REG		(0x40)
 #define G3D_FGGB_INTMASK_REG		(0x44)
@@ -69,6 +70,8 @@
 
 /* Valid bits of FGGB_PIPESTAT */
 #define G3D_FGGB_PIPESTAT_MSK	(0x0005171f)
+#define G3D_FGGB_FLUSH_MSK	(0x00000033)
+#define G3D_FGGB_INVAL_MSK	(0x00001300)
 
 struct g3d_context;
 
@@ -136,6 +139,63 @@ static inline void g3d_soft_reset(struct g3d_drvdata *data)
 	g3d_write(data, 1, G3D_FGGB_RESET_REG);
 	udelay(1);
 	g3d_write(data, 0, G3D_FGGB_RESET_REG);
+}
+
+static inline int g3d_flush(struct g3d_drvdata *data, unsigned int mask)
+{
+	int ret = 0;
+
+	if((g3d_read(data, G3D_FGGB_PIPESTAT_REG) & mask) == 0)
+		return 0;
+
+	/* Setup the interrupt */
+	data->mask = mask;
+	init_completion(&data->completion);
+	g3d_write(data, 0, G3D_FGGB_PIPEMASK_REG);
+	g3d_write(data, 0, G3D_FGGB_PIPETGTSTATE_REG);
+	g3d_write(data, mask, G3D_FGGB_PIPEMASK_REG);
+	g3d_write(data, 1, G3D_FGGB_INTMASK_REG);
+
+	/* Check if the condition isn't already met */
+	if((g3d_read(data, G3D_FGGB_PIPESTAT_REG) & mask) == 0) {
+		/* Disable the interrupt */
+		g3d_write(data, 0, G3D_FGGB_INTMASK_REG);
+		return 0;
+	}
+
+	if(!wait_for_completion_interruptible_timeout(&data->completion,
+							G3D_TIMEOUT)) {
+		ERR("Timeout while waiting for interrupt, resetting\n");
+		g3d_soft_reset(data);
+		ret = -EFAULT;
+	}
+
+	/* Disable the interrupt */
+	g3d_write(data, 0, G3D_FGGB_INTMASK_REG);
+
+	return ret;
+}
+
+static inline void g3d_flush_caches(struct g3d_drvdata *data)
+{
+	int timeout = 1000000000;
+	g3d_write(data, G3D_FGGB_FLUSH_MSK, G3D_FGGB_CACHECTL_REG);
+
+	do {
+		if(!g3d_read(data, G3D_FGGB_CACHECTL_REG))
+			break;
+	} while (--timeout);
+}
+
+static inline void g3d_invalidate_caches(struct g3d_drvdata *data)
+{
+	int timeout = 1000000000;
+	g3d_write(data, G3D_FGGB_INVAL_MSK, G3D_FGGB_CACHECTL_REG);
+
+	do {
+		if(!g3d_read(data, G3D_FGGB_CACHECTL_REG))
+			break;
+	} while (--timeout);
 }
 
 /*
@@ -206,6 +266,9 @@ static inline void g3d_power_down(struct g3d_drvdata *data)
 		return;
 
 	INFO("Requesting power down.\n");
+
+	g3d_flush(data, G3D_FGGB_PIPESTAT_MSK);
+	g3d_flush_caches(data);
 	g3d_do_power_down(data);
 	data->state = 0;
 }
@@ -233,26 +296,29 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file,
 	int ret = 0;
 
 	switch(cmd) {
+	/* Prepare and lock the hardware */
 	case S3C_G3D_LOCK:
-	{
-		int restore;
 		mutex_lock(&data->mutex);
-		restore = (data->owner != ctx);
 		DBG("Hardware lock acquired by %p\n", ctx);
 #ifdef USE_G3D_DOMAIN_GATING
-		hrtimer_cancel(&data->timer);
-		ret = g3d_power_up(data);
-		if (ret < 0) {
-			ERR("Timeout while waiting for G3D power up\n");
-			ret = -EFAULT;
-			mutex_unlock(&data->mutex);
-			break;
+		if(!hrtimer_cancel(&data->timer)) {
+			ret = g3d_power_up(data);
+			if (ret < 0) {
+				ERR("Timeout while waiting for G3D power up\n");
+				mutex_unlock(&data->mutex);
+				return -EFAULT;
+			}
 		}
 #endif /* USE_G3D_DOMAIN_GATING */
-		data->owner = ctx;
-		ret |= restore;
-		break;
-	}
+		if (data->owner != ctx) {
+			ret |= 1;
+			g3d_flush(data, G3D_FGGB_PIPESTAT_MSK);
+			g3d_flush_caches(data);
+			g3d_invalidate_caches(data);
+			data->owner = ctx;
+		}
+		return ret;
+	/* Unlock the hardware and start idle timer */
 	case S3C_G3D_UNLOCK:
 #ifdef USE_G3D_DOMAIN_GATING
 		hrtimer_start(&data->timer, ktime_set(G3D_IDLE_TIME_SECS, 0),
@@ -260,47 +326,17 @@ static int s3c_g3d_ioctl(struct inode *inode, struct file *file,
 #endif /* USE_G3D_DOMAIN_GATING */
 		mutex_unlock(&data->mutex);
 		DBG("Hardware lock released by %p\n", ctx);
-		break;
+		return 0;
+	/* Wait for the hardware to finish its work */
 	case S3C_G3D_FLUSH:
-	{
-		uint32_t mask = arg & G3D_FGGB_PIPESTAT_MSK;
-
 		if(!mutex_is_locked(&data->mutex) || data->owner != ctx) {
 			ERR("Tried to flush the hardware without locking\n");
 			return -EINVAL;
 		}
-
-		/* Setup the interrupt */
-		data->mask = mask;
-		init_completion(&data->completion);
-		g3d_write(data, 0, G3D_FGGB_PIPEMASK_REG);
-		g3d_write(data, 0, G3D_FGGB_PIPETGTSTATE_REG);
-		g3d_write(data, mask, G3D_FGGB_PIPEMASK_REG);
-		g3d_write(data, 1, G3D_FGGB_INTMASK_REG);
-
-		/* Check if the condition isn't already met */
-		if((g3d_read(data, G3D_FGGB_PIPESTAT_REG) & mask) == 0) {
-			/* Disable the interrupt */
-			g3d_write(data, 0, G3D_FGGB_INTMASK_REG);
-			break;
-		}
-
-		if(!wait_for_completion_interruptible_timeout(&data->completion,
-								G3D_TIMEOUT)) {
-			ERR("Timeout while waiting for interrupt, resetting\n");
-			g3d_soft_reset(data);
-			ret = -EFAULT;
-		}
-
-		/* Disable the interrupt */
-		g3d_write(data, 0, G3D_FGGB_INTMASK_REG);
-		break;
-	}
+		return g3d_flush(data, arg & G3D_FGGB_PIPESTAT_MSK);
 	default:
-		ret = -EINVAL;
+		return -EINVAL;
 	}
-
-	return ret;
 }
 
 static int s3c_g3d_open(struct inode *inode, struct file *file)
@@ -339,7 +375,6 @@ static int s3c_g3d_release(struct inode *inode, struct file *file)
 
 int s3c_g3d_mmap(struct file* file, struct vm_area_struct *vma)
 {
-	struct g3d_context *ctx = file->private_data;
 	unsigned long pfn;
 	size_t size = vma->vm_end - vma->vm_start;
 
@@ -505,6 +540,8 @@ static int s3c_g3d_remove(struct platform_device *pdev)
 	if(!hrtimer_cancel(&data->timer))
 		g3d_power_down(data);
 #else
+	g3d_flush(data, G3D_FGGB_PIPESTAT_MSK);
+	g3d_flush_caches(data);
 	g3d_do_power_down(data);
 #endif
 
@@ -522,10 +559,13 @@ static int s3c_g3d_remove(struct platform_device *pdev)
 static int s3c_g3d_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct g3d_drvdata *data = dev_get_drvdata(&pdev->dev);
+
 #ifdef USE_G3D_DOMAIN_GATING
 	if(!hrtimer_cancel(&data->timer))
 		g3d_power_down(data);
 #else
+	g3d_flush(data, G3D_FGGB_PIPESTAT_MSK);
+	g3d_flush_caches(data);
 	g3d_do_power_down(data);
 #endif
 	return 0;
