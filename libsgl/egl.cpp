@@ -293,7 +293,7 @@ struct FGLConfigMatcher {
 #define FGL_MAX_VIEWPORT_PIXELS		(FGL_MAX_VIEWPORT_DIMS*FGL_MAX_VIEWPORT_DIMS)
 
 static FGLConfigPair const baseConfigAttributes[] = {
-	{ EGL_CONFIG_CAVEAT,              0                                 },
+	{ EGL_CONFIG_CAVEAT,              EGL_NONE                          },
 	{ EGL_LEVEL,                      0                                 },
 	{ EGL_MAX_PBUFFER_HEIGHT,         FGL_MAX_VIEWPORT_DIMS             },
 	{ EGL_MAX_PBUFFER_PIXELS,         FGL_MAX_VIEWPORT_PIXELS           },
@@ -329,8 +329,8 @@ static FGLConfigPair const configAttributes0[] = {
 	{ EGL_GREEN_SIZE,       6 },
 	{ EGL_RED_SIZE,         5 },
 	{ EGL_DEPTH_SIZE,       0 },
-	{ EGL_CONFIG_ID,        0 },
 	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_CONFIG_ID,        0 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -341,8 +341,8 @@ static FGLConfigPair const configAttributes1[] = {
 	{ EGL_GREEN_SIZE,       6 },
 	{ EGL_RED_SIZE,         5 },
 	{ EGL_DEPTH_SIZE,      24 },
-	{ EGL_CONFIG_ID,        1 },
 	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_CONFIG_ID,        1 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -354,8 +354,8 @@ static FGLConfigPair const configAttributes2[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,       0 },
-	{ EGL_CONFIG_ID,        2 },
 	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_CONFIG_ID,        2 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -366,8 +366,8 @@ static FGLConfigPair const configAttributes3[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,      24 },
-	{ EGL_CONFIG_ID,        3 },
 	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_CONFIG_ID,        3 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -379,8 +379,8 @@ static FGLConfigPair const configAttributes4[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,       0 },
-	{ EGL_CONFIG_ID,        4 },
 	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_CONFIG_ID,        4 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -391,8 +391,8 @@ static FGLConfigPair const configAttributes5[] = {
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,      24 },
-	{ EGL_CONFIG_ID,        5 },
 	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_CONFIG_ID,        5 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -459,7 +459,7 @@ static FGLint getConfigFormatInfo(EGLint configID,
 		break;
 	case 1:
 		*pixelFormat = FGPF_COLOR_MODE_565;
-		*depthFormat = 1;
+		*depthFormat = (8 << 8) | 24;
 		break;
 	case 2:
 		*pixelFormat = FGPF_COLOR_MODE_0888;
@@ -467,7 +467,7 @@ static FGLint getConfigFormatInfo(EGLint configID,
 		break;
 	case 3:
 		*pixelFormat = FGPF_COLOR_MODE_0888;
-		*depthFormat = 1;
+		*depthFormat = (8 << 8) | 24;
 		break;
 	case 4:
 		*pixelFormat = FGPF_COLOR_MODE_8888;
@@ -475,7 +475,7 @@ static FGLint getConfigFormatInfo(EGLint configID,
 		break;
 	case 5:
 		*pixelFormat = FGPF_COLOR_MODE_8888;
-		*depthFormat = 1;
+		*depthFormat = (8 << 8) | 24;
 		break;
 	default:
 		return NAME_NOT_FOUND;
@@ -571,14 +571,14 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
 		return EGL_FALSE;
 	}
 
-	if(unlikely(num_config == NULL)) {
+	if(unlikely(!num_config)) {
 		setError(EGL_BAD_PARAMETER);
 		return EGL_FALSE;
 	}
 
-	EGLint num = NELEM(gConfigs) - 1;
+	EGLint num = NELEM(gConfigs);
 
-	if(configs == NULL) {
+	if(!configs) {
 		*num_config = num;
 		return EGL_TRUE;
 	}
@@ -619,8 +619,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 			for (int i=0 ; possibleMatch && i<numConfigs ; i++) {
 				if (!(possibleMatch & (1<<i)))
 					continue;
-				if (isAttributeMatching(i, attr, val) == 0)
+				if (isAttributeMatching(i, attr, val) == 0) {
 					possibleMatch &= ~(1<<i);
+					LOGD("Attribute %d unmatched for config %d", attr, i);
+				}
 			}
 		}
 	}
@@ -642,6 +644,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 					defaultConfigAttributes[j].value) == 0)
 				{
 					possibleMatch &= ~(1<<i);
+					LOGD("Attribute %d unmatched for config %d", defaultConfigAttributes[j].key, i);
 				}
 			}
 		}

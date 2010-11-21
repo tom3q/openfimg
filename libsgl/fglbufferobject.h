@@ -40,12 +40,12 @@ struct FGLBuffer {
 	{
 		memory = malloc(s);
 
-		if (unlikely(memory != NULL)) {
+		if (likely(memory != 0)) {
 			size = s;
-			return -1;
+			return 0;
 		}
 
-		return 0;
+		return -1;
 	}
 
 	void destroy()

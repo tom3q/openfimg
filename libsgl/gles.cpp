@@ -3606,6 +3606,16 @@ static inline void fglSet(GLenum cap, bool state)
 	case GL_COLOR_LOGIC_OP:
 		fimgSetLogicalOpEnable(ctx->fimg, state);
 		break;
+	case GL_LIGHTING:
+	case GL_LIGHT0:
+	case GL_LIGHT1:
+	case GL_LIGHT2:
+	case GL_LIGHT3:
+	case GL_LIGHT4:
+	case GL_LIGHT5:
+	case GL_LIGHT6:
+	case GL_LIGHT7:
+		break;
 	default:
 		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);
 		//setError(GL_INVALID_ENUM);
@@ -4570,6 +4580,12 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		params[0] = MAX_ELEMENTS_VERTICES;
 		break;
 #endif
+	case GL_MAX_TEXTURE_UNITS:
+		params[0] = !!FGL_MAX_TEXTURE_UNITS;
+		break;
+	case GL_MAX_LIGHTS:
+		params[0] = !!FGL_MAX_LIGHTS;
+		break;
 	case GL_SAMPLE_BUFFERS :
 		params[0] = 0;
 		break;
@@ -4976,6 +4992,12 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		params[0] = MAX_ELEMENTS_VERTICES;
 		break;
 #endif
+	case GL_MAX_TEXTURE_UNITS:
+		params[0] = fixedFromInt(FGL_MAX_TEXTURE_UNITS);
+		break;
+	case GL_MAX_LIGHTS:
+		params[0] = fixedFromInt(FGL_MAX_LIGHTS);
+		break;
 	case GL_SAMPLE_BUFFERS :
 		params[0] = fixedFromInt(0);
 		break;
@@ -5376,6 +5398,12 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[0] = MAX_ELEMENTS_VERTICES;
 		break;
 #endif
+	case GL_MAX_TEXTURE_UNITS:
+		params[0] = FGL_MAX_TEXTURE_UNITS;
+		break;
+	case GL_MAX_LIGHTS:
+		params[0] = FGL_MAX_LIGHTS;
+		break;
 	case GL_SAMPLE_BUFFERS :
 		params[0] = 0;
 		break;
@@ -5419,10 +5447,16 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[0] = 8;
 		break;
 	case GL_DEPTH_BITS :
-		params[0] = 24;
+		params[0] = ctx->surface.depth.format & 0xff;
 		break;
 	case GL_STENCIL_BITS:
-		params[0] = 8;
+		params[0] = ctx->surface.depth.format >> 8;
+		break;
+	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
+		params[0] = 0;
+		break;
+	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
+		params[0] = 0;
 		break;
 #if 0
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE:
@@ -5778,6 +5812,12 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[0] = MAX_ELEMENTS_VERTICES;
 		break;
 #endif
+	case GL_MAX_TEXTURE_UNITS:
+		params[0] = FGL_MAX_TEXTURE_UNITS;
+		break;
+	case GL_MAX_LIGHTS:
+		params[0] = FGL_MAX_LIGHTS;
+		break;
 	case GL_SAMPLE_BUFFERS :
 		params[0] = 0;
 		break;

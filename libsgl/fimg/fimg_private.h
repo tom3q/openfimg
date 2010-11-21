@@ -608,9 +608,9 @@ static inline void fimgGetHardware(fimgContext *ctx)
 
 	if(unlikely((ret = fimgAcquireHardwareLock(ctx)) != 0)) {
 		if(likely(ret > 0)) {
-			fimgFlush(ctx);
+			//fimgFlush(ctx);
 			fimgRestoreContext(ctx);
-			fimgInvalidateFlushCache(ctx, 1, 1, 0, 0);
+			//fimgInvalidateFlushCache(ctx, 1, 1, 0, 0);
 			return;
 		} else {
 			fprintf(stderr, "FIMG: Could not acquire hardware lock");
