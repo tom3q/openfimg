@@ -51,7 +51,9 @@ static char const * const gExtensionsString =
 	"GL_OES_matrix_get "                    // TODO
 	"GL_OES_query_matrix "                  // TODO
 	"GL_OES_point_sprite "                  // TODO
-	"GL_OES_EGL_image "                     // TODO IMPORTANT
+//#endif
+	"GL_OES_EGL_image "
+//#if 0
 	"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
 	"GL_ARB_texture_compression "           // TODO IMPORTANT
 	"GL_ANDROID_user_clip_plane "           // TODO
@@ -344,7 +346,6 @@ GL_API void GL_APIENTRY glBindBuffer (GLenum target, GLuint buffer)
 	}
 
 	if(buffer == 0) {
-		FGLContext *ctx = getContext();
 		if(binding->isBound())
 			binding->unbind();
 		return;
@@ -833,6 +834,7 @@ static inline void fglSetupTextures(FGLContext *ctx)
 			/* Texture is ready */
 			fimgCompatSetupTexture(ctx->fimg, obj->fimg, i);
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
+			ctx->busyTexture[i] = obj;
 		} else {
 			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
@@ -1907,8 +1909,8 @@ static int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *con
 	case GL_UNSIGNED_BYTE:
 		switch (format) {
 		case GL_RGB: // Needs conversion
+		case GL_RGBA: // Needs conversion
 			*conv = 1;
-		case GL_RGBA:
 			*bpp = 4;
 			return FGTU_TSTA_TEXTURE_FORMAT_8888;
 		case GL_ALPHA:
@@ -2288,15 +2290,30 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		size_t stride = (line + alignment - 1) & ~(alignment - 1);
 		size_t padding = stride - line;
 		const uint8_t *src8 = (const uint8_t *)pixels;
-		uint8_t r, g, b;
 		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr + offset);
 		do {
 			unsigned x = width;
 			do {
-				r = *(src8++);
-				g = *(src8++);
-				b = *(src8++);
-				*(dst32++) = fglPackRGBA8888(r, g, b, 255);
+				*(dst32++) = fglPackRGBA8888(src8[0],
+							src8[1], src8[2], 255);
+				src8 += 3;
+			} while(--x);
+			src8 += padding;
+		} while (--height);
+		break;
+	}
+	case GL_RGBA: {
+		size_t line = 4*width;
+		size_t stride = (line + alignment - 1) & ~(alignment - 1);
+		size_t padding = stride - line;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr + offset);
+		do {
+			unsigned x = width;
+			do {
+				*(dst32++) = fglPackRGBA8888(src8[0],
+						src8[1], src8[2], src8[3]);
+				src8 += 4;
 			} while(--x);
 			src8 += padding;
 		} while (--height);
@@ -2319,6 +2336,16 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 	default:
 		LOGW("Unsupported texture conversion %d", obj->format);
 		return;
+	}
+}
+
+static inline void fglWaitForTexture(FGLContext *ctx, FGLTexture *tex)
+{
+	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i) {
+		if (ctx->busyTexture[i] == tex) {
+			glFlush();
+			break;
+		}
 	}
 }
 
@@ -2392,6 +2419,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 		// Copy the image (with conversion if needed)
 		if (pixels != NULL) {
+			fglWaitForTexture(ctx, obj);
+
 			if (obj->convert) {
 				fglConvertTexture(obj, level, pixels,
 							ctx->unpackAlignment);
@@ -2439,6 +2468,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		setError(GL_INVALID_VALUE);
 		return;
 	}
+
+	fglWaitForTexture(ctx, obj);
 
 	// Level 0 with different size or bpp means dropping whole texture
 	if (width != obj->surface.width || height != obj->surface.height || bpp != obj->bpp)
@@ -2546,14 +2577,35 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		const uint8_t *src8 = (const uint8_t *)pixels;
 		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr
 						+ offset + yOffset + xOffset);
-		uint8_t r, g, b;
 		do {
 			unsigned x = w;
 			do {
-				r = *(src8++);
-				g = *(src8++);
-				b = *(src8++);
-				*(dst32++) = fglPackRGBA8888(r, g, b, 255);
+				*(dst32++) = fglPackRGBA8888(src8[0],
+						src8[1], src8[2], 255);
+				src8 += 3;
+			} while (--x);
+			src8 += srcPad;
+			dst32 += dstPad;
+		} while (--h);
+		break;
+	}
+	case GL_RGBA: {
+		size_t line = 3*w;
+		size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
+		size_t dstStride = 4*width;
+		size_t xOffset = 4*x;
+		size_t yOffset = y*dstStride;
+		size_t srcPad = srcStride - line;
+		size_t dstPad = width - w;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr
+						+ offset + yOffset + xOffset);
+		do {
+			unsigned x = w;
+			do {
+				*(dst32++) = fglPackRGBA8888(src8[0],
+						src8[1], src8[2], src8[3]);
+				src8 += 4;
 			} while (--x);
 			src8 += srcPad;
 			dst32 += dstPad;
@@ -2643,6 +2695,8 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	if (!pixels)
 		return;
 
+	fglWaitForTexture(ctx, obj);
+
 	if (obj->convert)
 		fglConvertTexturePartial(obj, level, pixels,
 			ctx->unpackAlignment, xoffset, yoffset, width, height);
@@ -2680,6 +2734,18 @@ GL_API void GL_APIENTRY glCopyTexSubImage2D (GLenum target, GLint level,
 {
 	FUNC_UNIMPLEMENTED;
 }
+
+#if 0
+GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageOES image)
+{
+	
+}
+
+GL_API void GL_APIENTRY glEGLImageTargetRenderbufferStorageOES (GLenum target, GLeglImageOES image)
+{
+	FUNC_UNIMPLEMENTED;
+}
+#endif
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)
 {
@@ -4225,7 +4291,7 @@ GL_API void GL_APIENTRY glClearStencil (GLint s)
 
 GL_API void GL_APIENTRY glFlush (void)
 {
-	FUNC_UNIMPLEMENTED;
+	//FUNC_UNIMPLEMENTED;
 }
 
 GL_API void GL_APIENTRY glFinish (void)
@@ -4233,6 +4299,9 @@ GL_API void GL_APIENTRY glFinish (void)
 	FGLContext *ctx = getContext();
 
 	fimgFinish(ctx->fimg);
+
+	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i)
+		ctx->busyTexture[i] = 0;
 }
 
 /**

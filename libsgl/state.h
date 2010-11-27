@@ -220,6 +220,7 @@ struct FGLContext {
 	FGLBufferObjectBinding elementArrayBuffer;
 	FGLPerFragmentState perFragment;
 	FGLClearState clear;
+	FGLTexture *busyTexture[FGL_MAX_TEXTURE_UNITS];
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;
@@ -232,6 +233,8 @@ struct FGLContext {
 		unpackAlignment(4), packAlignment(4), egl(), surface()
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
+		for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i)
+			busyTexture[i] = 0;
 	}
 };
 
