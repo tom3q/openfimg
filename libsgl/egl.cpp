@@ -801,6 +801,7 @@ void fglDestroyPmemSurface(FGLSurface *s)
 	s->vaddr = 0;
 }
 
+/* TODO: Abstract buffers with objects and reference them with pointers */
 void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf)
 {
 	fimgSetFrameBufWidth(gl->fimg, cbuf->stride);
@@ -809,6 +810,7 @@ void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf)
 	gl->surface.draw = *cbuf;
 }
 
+/* TODO: Abstract buffers with objects and reference them with pointers */
 void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf)
 {
 	if(zbuf->format) {
@@ -824,43 +826,46 @@ void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf)
 	gl->surface.depth = *zbuf;
 }
 
+/* TODO: Abstract buffers with objects and reference them with pointers */
 void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
 {
-//	gl->readPlane = *rbuf;
 	gl->surface.read = *rbuf;
 }
 
 struct FGLRenderSurface
 {
 	enum {
-		PAGE_FLIP = 0x00000001,
+		TERMINATED = 0x80000000,
 		MAGIC     = 0x31415265
 	};
 
-	uint32_t            magic;
-	EGLDisplay          dpy;
-	EGLConfig           config;
-	EGLContext          ctx;
+	uint32_t	magic;
+	uint32_t	flags;
+	EGLDisplay	dpy;
+	EGLConfig	config;
+	EGLContext	ctx;
 
 	FGLRenderSurface(EGLDisplay dpy, EGLConfig config, int32_t depthFormat);
-	virtual     ~FGLRenderSurface();
-	            bool    isValid() const;
-	virtual     bool    initCheck() const = 0;
+	virtual 		~FGLRenderSurface();
+		bool		isValid() const;
+		void		terminate();
+		bool		isTerminated() const;
+	virtual bool		initCheck() const = 0;
 
-	virtual     EGLBoolean  bindDrawSurface(FGLContext* gl) = 0;
-	virtual     EGLBoolean  bindReadSurface(FGLContext* gl) = 0;
-	virtual     EGLBoolean  connect() { return EGL_TRUE; }
-	virtual     void        disconnect() {}
-	virtual     EGLint      getWidth() const = 0;
-	virtual     EGLint      getHeight() const = 0;
+	virtual EGLBoolean	bindDrawSurface(FGLContext* gl) = 0;
+	virtual EGLBoolean	bindReadSurface(FGLContext* gl) = 0;
+	virtual EGLBoolean	connect() { return EGL_TRUE; }
+	virtual void		disconnect() {}
+	virtual EGLint		getWidth() const = 0;
+	virtual EGLint		getHeight() const = 0;
 
-	virtual     EGLint      getHorizontalResolution() const;
-	virtual     EGLint      getVerticalResolution() const;
-	virtual     EGLint      getRefreshRate() const;
-	virtual     EGLint      getSwapBehavior() const;
-	virtual     EGLBoolean  swapBuffers();
-	virtual     EGLBoolean  setSwapRectangle(EGLint l, EGLint t, EGLint w, EGLint h);
-	virtual     EGLClientBuffer getRenderBuffer() const;
+	virtual EGLint		getHorizontalResolution() const;
+	virtual EGLint		getVerticalResolution() const;
+	virtual EGLint		getRefreshRate() const;
+	virtual EGLint		getSwapBehavior() const;
+	virtual EGLBoolean	swapBuffers();
+	virtual EGLBoolean	setSwapRectangle(EGLint l, EGLint t, EGLint w, EGLint h);
+	virtual EGLClientBuffer	getRenderBuffer() const;
 protected:
 	FGLSurface              depth;
 };
@@ -868,7 +873,7 @@ protected:
 FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
 	EGLConfig config,
 	int32_t depthFormat)
-: magic(MAGIC), dpy(dpy), config(config), ctx(0)
+: magic(MAGIC), flags(0), dpy(dpy), config(config), ctx(0)
 {
 	depth.vaddr = 0;
 	depth.format = depthFormat;
@@ -884,6 +889,14 @@ FGLRenderSurface::~FGLRenderSurface()
 bool FGLRenderSurface::isValid() const {
 	LOGE_IF(magic != MAGIC, "invalid EGLSurface (%p)", this);
 	return magic == MAGIC;
+}
+
+void FGLRenderSurface::terminate() {
+	flags |= TERMINATED;
+}
+
+bool FGLRenderSurface::isTerminated() const {
+	return flags & TERMINATED;
 }
 
 EGLBoolean FGLRenderSurface::swapBuffers() {
@@ -1441,18 +1454,6 @@ EGLBoolean FGLWindowSurface::bindDrawSurface(FGLContext* gl)
 	fglSetColorBuffer(gl, &buffer);
 	fglSetDepthBuffer(gl, &depth);
 
-#if 0
-	gl->copybits.drawSurfaceBuffer = 0;
-	if (gl->copybits.blitEngine != NULL) {
-		if (supportedCopybitsDestinationFormat(buffer.format)) {
-		buffer_handle_t handle = this->buffer->handle;
-		if (handle != NULL) {
-			gl->copybits.drawSurfaceBuffer = this->buffer;
-		}
-		}
-	}
-#endif
-
 	return EGL_TRUE;
 }
 
@@ -1463,7 +1464,7 @@ EGLBoolean FGLWindowSurface::bindReadSurface(FGLContext* gl)
 	buffer.width   = this->buffer->width;
 	buffer.height  = this->buffer->height;
 	buffer.stride  = this->buffer->stride;
-	buffer.vaddr   = (FGLubyte*)bits; // FIXME: hopefully is is LOCKED!!!
+	buffer.vaddr   = (FGLubyte*)bits; // FIXME: hopefully it is LOCKED!!!
 	buffer.paddr   = 0;
 	buffer.size    = 0;
 	buffer.format  = this->format;
@@ -1505,7 +1506,8 @@ EGLint FGLWindowSurface::getSwapBehavior() const
 }
 
 // ----------------------------------------------------------------------------
-
+#if 0
+/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
 struct FGLPixmapSurface : public FGLRenderSurface
 {
 	FGLPixmapSurface(
@@ -1530,6 +1532,8 @@ FGLPixmapSurface::FGLPixmapSurface(EGLDisplay dpy,
 	egl_native_pixmap_t const * pixmap)
 	: FGLRenderSurface(dpy, config, depthFormat), nativePixmap(*pixmap)
 {
+	FUNC_UNIMPLEMENTED;
+
 	if (depthFormat) {
 		depth.width   = pixmap->width;
 		depth.height  = pixmap->height;
@@ -1545,13 +1549,14 @@ EGLBoolean FGLPixmapSurface::bindDrawSurface(FGLContext* gl)
 {
 	FGLSurface buffer;
 
+	FUNC_UNIMPLEMENTED;
+
 	buffer.width   = nativePixmap.width;
 	buffer.height  = nativePixmap.height;
 	buffer.stride  = nativePixmap.stride;
 	buffer.vaddr   = nativePixmap.data;
-/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
 	buffer.paddr   = 0;
-/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
+
 	buffer.format  = nativePixmap.format;
 
 	fglSetColorBuffer(gl, &buffer);
@@ -1563,6 +1568,8 @@ EGLBoolean FGLPixmapSurface::bindDrawSurface(FGLContext* gl)
 EGLBoolean FGLPixmapSurface::bindReadSurface(FGLContext* gl)
 {
 	FGLSurface buffer;
+
+	FUNC_UNIMPLEMENTED;
 
 	buffer.width   = nativePixmap.width;
 	buffer.height  = nativePixmap.height;
@@ -1576,7 +1583,8 @@ EGLBoolean FGLPixmapSurface::bindReadSurface(FGLContext* gl)
 
 	return EGL_TRUE;
 }
-
+/* FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME */
+#endif
 // ----------------------------------------------------------------------------
 
 struct FGLPbufferSurface : public FGLRenderSurface
@@ -1795,8 +1803,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 
 		if (fglSurface->ctx) {
 			// FIXME: this surface is current check what the spec says
-			fglSurface->disconnect();
-			fglSurface->ctx = 0;
+			fglSurface->terminate();
+			//fglSurface->disconnect();
+			//fglSurface->ctx = 0;
+			return EGL_TRUE;
 		}
 
 		delete fglSurface;
@@ -1985,10 +1995,23 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 		return EGL_FALSE;
 	}
 
-	if (c->egl.flags & FGL_IS_CURRENT)
+	if (getGlThreadSpecific() == c) {
+		FGLRenderSurface *s( static_cast<FGLRenderSurface*>(c->egl.draw) );
+		glFinish();
+		if(s->isTerminated()) {
+			s->disconnect();
+			s->ctx = 0;
+			delete s;
+		}
 		setGlThreadSpecific(0);
+		fglDestroyContext(c);
+		return EGL_TRUE;
+	}
 
-	fglDestroyContext(c);
+	if (c->egl.flags & FGL_IS_CURRENT)
+		c->egl.flags |= FGL_TERMINATE;
+	else
+		fglDestroyContext(c);
 
 	return EGL_TRUE;
 }
@@ -2006,9 +2029,18 @@ static int fglMakeCurrent(FGLContext* gl)
 			}
 		} else {
 			if (current) {
+				FGLRenderSurface *s(static_cast<FGLRenderSurface*>(current->egl.draw));
 				// mark the current context as not current, and flush
 				glFinish();
 				current->egl.flags &= ~FGL_IS_CURRENT;
+				if (current->egl.flags & FGL_TERMINATE) {
+					if(s->isTerminated()) {
+						s->disconnect();
+						s->ctx = 0;
+						delete s;
+					}
+					fglDestroyContext(current);
+				}
 			}
 			// The context is not current, make it current!
 			setGlThreadSpecific(gl);
@@ -2016,9 +2048,18 @@ static int fglMakeCurrent(FGLContext* gl)
 		}
 	} else {
 		if (current) {
+			FGLRenderSurface *s(static_cast<FGLRenderSurface*>(current->egl.draw));
 			// mark the current context as not current, and flush
 			glFinish();
 			current->egl.flags &= ~FGL_IS_CURRENT;
+			if (current->egl.flags & FGL_TERMINATE) {
+				if(s->isTerminated()) {
+					s->disconnect();
+					s->ctx = 0;
+					delete s;
+				}
+				fglDestroyContext(current);
+			}
 		}
 		// this thread has no context attached to it
 		setGlThreadSpecific(0);

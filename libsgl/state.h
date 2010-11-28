@@ -125,6 +125,7 @@ struct FGLMatrixState {
 #define FGL_IS_CURRENT		0x00010000
 #define FGL_NEVER_CURRENT	0x00020000
 #define FGL_NEEDS_RESTORE	0x00100000
+#define FGL_TERMINATE		0x80000000
 
 struct FGLEGLState {
 	EGLint flags;
