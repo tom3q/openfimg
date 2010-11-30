@@ -164,13 +164,13 @@ struct FGLTextureState {
 
 struct FGLScissorState {
 	GLint left;
-	GLint top;
+	GLint bottom;
 	GLint width;
 	GLint height;
 	GLboolean enabled;
 
 	FGLScissorState() :
-		left(0), top(0), width(2048), height(2048), enabled(GL_FALSE) {};
+		left(0), bottom(0), width(2048), height(2048), enabled(GL_FALSE) {};
 };
 
 struct FGLMaskState {

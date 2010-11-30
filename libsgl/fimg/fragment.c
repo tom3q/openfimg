@@ -52,6 +52,11 @@ void fimgSetScissorParams(fimgContext *ctx,
 			  unsigned int xMax, unsigned int xMin,
 			  unsigned int yMax, unsigned int yMin)
 {
+#ifdef FIMG_COORD_FLIP_Y
+	unsigned int tmp = ctx->fbHeight - yMax;
+	yMax = ctx->fbHeight - yMin;
+	yMin = tmp;
+#endif
 	ctx->fragment.scY.max = yMax;
 	ctx->fragment.scY.min = yMin;
 	fimgQueue(ctx, ctx->fragment.scY.val, FGPF_SCISSOR_Y);
@@ -447,13 +452,16 @@ void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr)
 }
 
 /*****************************************************************************
-* FUNCTIONS:	fimgSetFrameBufWidth
-* SYNOPSIS:	frame buffer width
-* PARAMETERS:	[IN] width - specifies the value used for frame buffer width.
+* FUNCTIONS:	fimgSetFrameBufSize
+* SYNOPSIS:	sert frame buffer width and height
+* PARAMETERS:	[IN] width - specifies the value used for frame buffer width
+*		[IN] height -specifies the value used for frame buffer height
 *****************************************************************************/
-void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width)
+void fimgSetFrameBufSize(fimgContext *ctx,
+				unsigned int width, unsigned int height)
 {
 	ctx->fragment.bufWidth = width;
+	ctx->fbHeight = height;
 	fimgQueue(ctx, width, FGPF_FBW);
 }
 

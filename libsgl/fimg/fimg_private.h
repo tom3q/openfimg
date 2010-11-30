@@ -395,7 +395,6 @@ typedef struct {
 	float halfPY;
 	float halfDistance;
 	float center;
-	float height;
 } fimgPrimitiveContext;
 
 void fimgCreatePrimitiveContext(fimgContext *ctx);
@@ -502,6 +501,7 @@ struct _fimgContext {
 	fimgClearContext clear;
 	/* Shared context */
 	unsigned int numAttribs;
+	unsigned int fbHeight;
 	/* Register queue */
 	unsigned int *queueStart;
 	unsigned int *queue;

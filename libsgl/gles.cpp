@@ -1059,7 +1059,7 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 	if (y < -FGL_MAX_VIEWPORT_DIMS)
 		y = -FGL_MAX_VIEWPORT_DIMS;
 
-	fimgSetViewportParams(ctx->fimg, x, y, width, height, ctx->surface.draw.height);
+	fimgSetViewportParams(ctx->fimg, x, y, width, height);
 }
 
 /**
@@ -1478,13 +1478,13 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 	FGLContext *ctx = getContext();
 
 	ctx->perFragment.scissor.left	= x;
-	ctx->perFragment.scissor.top	= y;
+	ctx->perFragment.scissor.bottom	= y;
 	ctx->perFragment.scissor.width	= width;
 	ctx->perFragment.scissor.height	= height;
 
 	GLint yFlipped = ctx->surface.draw.height - y;
 
-	fimgSetScissorParams(ctx->fimg, x + width, x, yFlipped, yFlipped - height);
+	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
 }
 
 static inline void fglAlphaFunc (GLenum func, GLubyte ref)
@@ -3481,7 +3481,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	GLfloat zFar = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
 
 	fimgSetDepthRange(ctx->fimg, 0.0f, 1.0f);
-	fimgSetViewportParams(ctx->fimg, x, y, width, height, ctx->surface.draw.height);
+	fimgSetViewportParams(ctx->fimg, x, y, width, height);
 
 	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {
 		arrayEnabled[i] = ctx->array[i].enabled;
@@ -3591,7 +3591,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	}
 
 	fimgSetDepthRange(ctx->fimg, zNear, zFar);
-	fimgSetViewportParams(ctx->fimg, viewportX, viewportY, viewportW, viewportH, ctx->surface.draw.height);
+	fimgSetViewportParams(ctx->fimg, viewportX, viewportY, viewportW, viewportH);
 }
 
 GL_API void GL_APIENTRY glDrawTexsOES (GLshort x, GLshort y, GLshort z, GLshort width, GLshort height)
@@ -4095,18 +4095,19 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
 	FUNCTION_TRACER;
 	FGLSurface *draw = &ctx->surface.draw;
-	uint32_t stride = draw->width;
+	uint32_t stride = draw->stride;
 	bool lineByLine = false;
-	int32_t l, t, w, h;
+	int32_t l, b, t, w, h;
 
 	l = max(ctx->perFragment.scissor.left, 0);
-	t = max(ctx->perFragment.scissor.top, 0);
+	b = max(ctx->perFragment.scissor.bottom, 0);
 	w = min(ctx->perFragment.scissor.width, draw->width);
 	h = min(ctx->perFragment.scissor.height, draw->height);
+	t = draw->width - b - h;
 
-	lineByLine |= l > 0;
-	lineByLine |= w < draw->width;
-	lineByLine &= ctx->perFragment.scissor.enabled == true;
+	lineByLine |= (l > 0);
+	lineByLine |= (w < draw->width);
+	lineByLine &= (ctx->perFragment.scissor.enabled == GL_TRUE);
 
 	if (mode & GL_COLOR_BUFFER_BIT) {
 		bool is32bpp = false;
@@ -4435,7 +4436,7 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		break;
 	case GL_SCISSOR_BOX:
 		params[0] = ctx->perFragment.scissor.left != 0;
-		params[1] = ctx->perFragment.scissor.top != 0;
+		params[1] = ctx->perFragment.scissor.bottom != 0;
 		params[2] = ctx->perFragment.scissor.width != 0;
 		params[3] = ctx->perFragment.scissor.height != 0;
 		break;
@@ -4847,7 +4848,7 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		break;
 	case GL_SCISSOR_BOX:
 		params[0] = fixedFromInt(ctx->perFragment.scissor.left);
-		params[1] = fixedFromInt(ctx->perFragment.scissor.top);
+		params[1] = fixedFromInt(ctx->perFragment.scissor.bottom);
 		params[2] = fixedFromInt(ctx->perFragment.scissor.width);
 		params[3] = fixedFromInt(ctx->perFragment.scissor.height);
 		break;
@@ -5253,7 +5254,7 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		break;
 	case GL_SCISSOR_BOX:
 		params[0] = ctx->perFragment.scissor.left;
-		params[1] = ctx->perFragment.scissor.top;
+		params[1] = ctx->perFragment.scissor.bottom;
 		params[2] = ctx->perFragment.scissor.width;
 		params[3] = ctx->perFragment.scissor.height;
 		break;
@@ -5667,7 +5668,7 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		break;
 	case GL_SCISSOR_BOX:
 		params[0] = ctx->perFragment.scissor.left;
-		params[1] = ctx->perFragment.scissor.top;
+		params[1] = ctx->perFragment.scissor.bottom;
 		params[2] = ctx->perFragment.scissor.width;
 		params[3] = ctx->perFragment.scissor.height;
 		break;

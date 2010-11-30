@@ -68,7 +68,7 @@ void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib)
  *		[IN] px, py: width and height of viewport in terms of pixel
  *		[IN] H: height of window in terms of pixel
  *****************************************************************************/
-void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float py, float H)
+void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float py)
 {
 	// local variable declaration
 	float half_px = px * 0.5f;
@@ -82,7 +82,7 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 	float ox = x0 + half_px;
 	// oy: y-coordindate of viewport center
 #ifdef FIMG_COORD_FLIP_Y
-	float oy = (H - y0) + half_py;
+	float oy = (ctx->fbHeight - y0) + half_py;
 #else
 	float oy = y0 + half_py;
 #endif
@@ -91,7 +91,6 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 	ctx->primitive.oy = oy;
 	ctx->primitive.halfPX = half_px;
 	ctx->primitive.halfPY = half_py;
-	ctx->primitive.height = H;
 
 	fimgQueueF(ctx, ox, FGPE_VIEWPORT_OX);
 	fimgQueueF(ctx, oy, FGPE_VIEWPORT_OY);
@@ -142,7 +141,7 @@ float fimgGetPrimitiveStateF(fimgContext *ctx, unsigned int name)
 		return ctx->primitive.ox - ctx->primitive.halfPX;
 	case FIMG_VIEWPORT_Y:
 #ifdef FIMG_COORD_FLIP_Y
-		return ctx->primitive.height - ctx->primitive.oy + ctx->primitive.halfPY;
+		return ctx->fbHeight - ctx->primitive.oy + ctx->primitive.halfPY;
 #else
 		return ctx->primitive.oy - ctx->primitive.halfPY;
 #endif

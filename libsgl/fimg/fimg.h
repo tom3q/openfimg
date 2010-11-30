@@ -146,9 +146,8 @@ typedef enum {
 /* Functions */
 void fimgSetVertexContext(fimgContext *ctx, unsigned int type);
 void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib);
-void fimgSetViewportParams(fimgContext *ctx,
-			   float x0, float y0,
-			   float px, float py, float H);
+void fimgSetViewportParams(fimgContext *ctx, float x0, float y0,
+							float px, float py);
 void fimgSetDepthRange(fimgContext *ctx, float n, float f);
 
 enum {
@@ -545,7 +544,8 @@ void fimgSetFrameBufParams(fimgContext *ctx,
 			   unsigned int constAlpha, fimgColorMode format);
 void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
-void fimgSetFrameBufWidth(fimgContext *ctx, unsigned int width);
+void fimgSetFrameBufSize(fimgContext *ctx,
+				unsigned int width, unsigned int height);
 
 enum {
 	FIMG_SCISSOR_TEST,
