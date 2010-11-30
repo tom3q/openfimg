@@ -621,7 +621,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 					continue;
 				if (isAttributeMatching(i, attr, val) == 0) {
 					possibleMatch &= ~(1<<i);
-					LOGD("Attribute %d unmatched for config %d", attr, i);
 				}
 			}
 		}
@@ -644,7 +643,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 					defaultConfigAttributes[j].value) == 0)
 				{
 					possibleMatch &= ~(1<<i);
-					LOGD("Attribute %d unmatched for config %d", defaultConfigAttributes[j].key, i);
 				}
 			}
 		}
@@ -804,7 +802,7 @@ void fglDestroyPmemSurface(FGLSurface *s)
 /* TODO: Abstract buffers with objects and reference them with pointers */
 void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf)
 {
-	fimgSetFrameBufWidth(gl->fimg, cbuf->stride);
+	fimgSetFrameBufSize(gl->fimg, cbuf->stride, cbuf->height);
 	fimgSetFrameBufParams(gl->fimg, 0, 0, 0, (fimgColorMode)cbuf->format);
 	fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
 	gl->surface.draw = *cbuf;
@@ -1002,47 +1000,47 @@ private:
 		const_iterator begin() const { return storage; }
 		const_iterator end() const { return storage+count; }
 		static Region subtract(const Rect& lhs, const Rect& rhs) {
-		Region reg;
-		Rect* storage = reg.storage;
-		if (!lhs.isEmpty()) {
-			if (lhs.top < rhs.top) { // top rect
-			storage->left   = lhs.left;
-			storage->top    = lhs.top;
-			storage->right  = lhs.right;
-			storage->bottom = rhs.top;
-			storage++;
+			Region reg;
+			Rect* storage = reg.storage;
+			if (!lhs.isEmpty()) {
+				if (lhs.top < rhs.top) { // top rect
+					storage->left   = lhs.left;
+					storage->top    = lhs.top;
+					storage->right  = lhs.right;
+					storage->bottom = rhs.top;
+					storage++;
+				}
+				const int32_t top = max(lhs.top, rhs.top);
+				const int32_t bot = min(lhs.bottom, rhs.bottom);
+				if (top < bot) {
+					if (lhs.left < rhs.left) { // left-side rect
+						storage->left   = lhs.left;
+						storage->top    = top;
+						storage->right  = rhs.left;
+						storage->bottom = bot;
+						storage++;
+					}
+					if (lhs.right > rhs.right) { // right-side rect
+						storage->left   = rhs.right;
+						storage->top    = top;
+						storage->right  = lhs.right;
+						storage->bottom = bot;
+						storage++;
+					}
+				}
+				if (lhs.bottom > rhs.bottom) { // bottom rect
+					storage->left   = lhs.left;
+					storage->top    = rhs.bottom;
+					storage->right  = lhs.right;
+					storage->bottom = lhs.bottom;
+					storage++;
+				}
+				reg.count = storage - reg.storage;
 			}
-			const int32_t top = max(lhs.top, rhs.top);
-			const int32_t bot = min(lhs.bottom, rhs.bottom);
-			if (top < bot) {
-			if (lhs.left < rhs.left) { // left-side rect
-				storage->left   = lhs.left;
-				storage->top    = top;
-				storage->right  = rhs.left;
-				storage->bottom = bot;
-				storage++;
-			}
-			if (lhs.right > rhs.right) { // right-side rect
-				storage->left   = rhs.right;
-				storage->top    = top;
-				storage->right  = lhs.right;
-				storage->bottom = bot;
-				storage++;
-			}
-			}
-			if (lhs.bottom > rhs.bottom) { // bottom rect
-			storage->left   = lhs.left;
-			storage->top    = rhs.bottom;
-			storage->right  = lhs.right;
-			storage->bottom = lhs.bottom;
-			storage++;
-			}
-			reg.count = storage - reg.storage;
-		}
-		return reg;
+			return reg;
 		}
 		bool isEmpty() const {
-		return count<=0;
+			return count<=0;
 		}
 	private:
 		Rect storage[4];
@@ -1089,9 +1087,9 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule);
 	module = reinterpret_cast<gralloc_module_t const*>(pModule);
 
-	if (hw_get_module(COPYBIT_HARDWARE_MODULE_ID, &pModule) == 0) {
-		copybit_open(pModule, &blitengine);
-	}
+	//if (hw_get_module(COPYBIT_HARDWARE_MODULE_ID, &pModule) == 0) {
+	//	copybit_open(pModule, &blitengine);
+	//}
 
 	// keep a reference on the window
 	nativeWindow->common.incRef(&nativeWindow->common);
@@ -1243,10 +1241,10 @@ void FGLWindowSurface::copyBlt(
 		region_iterator it(clip);
 
 		err = copybit->blit(copybit, &dimg, &simg, &it);
-		if (err != FGL_NO_ERROR)
-			LOGE("copybit failed (%s)", strerror(err));
-		else
+		if (err == FGL_NO_ERROR)
 			return;
+		
+		LOGE("copybit failed (%s)", strerror(err));
 	}
 
 	Region::const_iterator cur = clip.begin();
@@ -1294,6 +1292,7 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	* Handle eglSetSwapRectangleANDROID()
 	* We copyback from the front buffer
 	*/
+
 	if (!dirtyRegion.isEmpty()) {
 		dirtyRegion.andSelf(Rect(buffer->width, buffer->height));
 		if (previousBuffer) {
@@ -1398,25 +1397,25 @@ static inline unsigned long getFramebufferAddress(void)
 
 //	LOGD("getFramebufferAddress");
 
-	if (address == 0) {
-		int fb_fd = open(FB_DEVICE_NAME, O_RDWR, 0);
+	if (address != 0)
+		return address;
 
-		if (fb_fd == -1) {
-			LOGE("EGL: GetFramebufferAddress: cannot open fb");
-			return 0;
-		}
+	int fb_fd = open(FB_DEVICE_NAME, O_RDWR, 0);
 
-		fb_fix_screeninfo finfo;
-		if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
-			LOGE("EGL: Failed to get framebuffer address");
-			close(fb_fd);
-			return 0;
-		}
-		close(fb_fd);
-
-		address = finfo.smem_start;
+	if (fb_fd == -1) {
+		LOGE("EGL: GetFramebufferAddress: cannot open fb");
+		return 0;
 	}
 
+	fb_fix_screeninfo finfo;
+	if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
+		LOGE("EGL: Failed to get framebuffer address");
+		close(fb_fd);
+		return 0;
+	}
+	close(fb_fd);
+
+	address = finfo.smem_start;
 	return address;
 }
 
@@ -1432,12 +1431,12 @@ static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer
 
 	// this pointer came from pmem domain
 	pmem_region region;
-	if (ioctl(hnd->fd, PMEM_GET_PHYS, &region) < 0) {
-		LOGE("EGL: PMEM_GET_PHYS failed");
-		return 0;
-	}
+	if (ioctl(hnd->fd, PMEM_GET_PHYS, &region) >= 0)
+		return region.offset + hnd->offset;
 
-	return region.offset + hnd->offset;
+	// otherwise we failed
+	LOGE("EGL: fglGetBufferPhysicalAddress failed");
+	return 0;
 }
 
 EGLBoolean FGLWindowSurface::bindDrawSurface(FGLContext* gl)
@@ -2296,7 +2295,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
 	if (d->ctx != EGL_NO_CONTEXT) {
 		FGLContext* c = (FGLContext*)d->ctx;
-		if (c == getGlThreadSpecific())
+		if (c->egl.flags & FGL_IS_CURRENT)
 			glFinish();
 	}
 
