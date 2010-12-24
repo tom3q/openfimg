@@ -23,7 +23,7 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_SRC_FILES := copybit.cpp
 LOCAL_MODULE := copybit.GT-I5700
-LOCAL_C_INCLUDES += vendor/spica/GT-I5700/libgralloc
+LOCAL_C_INCLUDES += ../libgralloc ../modules/g2d
 LOCAL_ARM_MODE := arm
-LOCAL_CFLAGS += -DCOPYBIT_S3C6410=1 -march=armv6zk -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp -O2
+LOCAL_CFLAGS += -DCOPYBIT_S3C6410=1 -mcpu=arm1176jzf-s -mfpu=vfp -O2
 include $(BUILD_SHARED_LIBRARY)
