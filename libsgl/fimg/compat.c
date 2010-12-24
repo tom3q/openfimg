@@ -250,10 +250,18 @@ static uint32_t loadShaderBlock(const struct shaderBlock *blk,
 		printf("%p: %08x %08x %08x %08x\n", addr,
 					data[0], data[1], data[2], data[3]);
 #endif
+#if 0
+		asm ( 	"ldmia %0!, {r0-r3}"
+			"stmia %1!, {r0-r3}"
+			: "+r"(data), "+r"(addr)
+			:
+			: "r0", "r1", "r2", "r3");
+#else
 		*(addr++) = *(data++);
 		*(addr++) = *(data++);
 		*(addr++) = *(data++);
 		*(addr++) = *(data++);
+#endif
 	}
 
 	return 4*inst;
@@ -577,10 +585,18 @@ static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
 	const uint32_t *data = (const uint32_t *)pfData;
 	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
 						+ FGPS_CFLOAT_START + 16*slot);
+#if 0
+	asm ( 	"ldmia %0!, {r0-r3}"
+		"stmia %1!, {r0-r3}"
+		: "+r"(data), "+r"(reg)
+		:
+		: "r0", "r1", "r2", "r3");
+#else
 	*(reg++) = *(data++);
 	*(reg++) = *(data++);
 	*(reg++) = *(data++);
 	*(reg++) = *(data++);
+#endif
 }
 
 static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
@@ -590,10 +606,18 @@ static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
 						+ FGVS_CFLOAT_START + 16*slot);
 	for (i = 0; i < 4; i++) {
+#if 0
+		asm ( 	"ldmia %0!, {r0-r3}"
+			"stmia %1!, {r0-r3}"
+			: "+r"(data), "+r"(reg)
+			:
+			: "r0", "r1", "r2", "r3");
+#else
 		*(reg++) = *(data++);
 		*(reg++) = *(data++);
 		*(reg++) = *(data++);
 		*(reg++) = *(data++);
+#endif
 	}
 }
 

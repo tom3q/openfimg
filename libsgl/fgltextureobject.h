@@ -22,6 +22,7 @@
 #ifndef _LIBSGL_FGLTEXTUREOBJECT_
 #define _LIBSGL_FGLTEXTUREOBJECT_
 
+#include "eglMem.h"
 #include "fglobject.h"
 
 struct FGLTexture {

@@ -82,10 +82,4 @@ static inline T min(T a, T b)
 
 void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
 
-struct FGLSurface;
-
-void fglFlushPmemSurface(FGLSurface *s);
-int fglCreatePmemSurface(FGLSurface *s);
-void fglDestroyPmemSurface(FGLSurface *s);
-
 #endif // _LIBSGL_COMMON_H_

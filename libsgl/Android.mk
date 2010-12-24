@@ -20,8 +20,8 @@ LIBAGL_USE_GRALLOC_COPYBITS := 1
 LOCAL_ARM_MODE := arm
 
 LOCAL_SRC_FILES:= \
-	egl.cpp                     \
-	gles.cpp		            \
+	eglBase.cpp eglMem.cpp \
+	glesBase.cpp glesGet.cpp glesMatrix.cpp glesPixel.cpp glesTex.cpp \
 	fglmatrix.cpp
 
 LOCAL_CFLAGS += -DLOG_TAG=\"libsgl\"

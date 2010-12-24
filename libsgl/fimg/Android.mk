@@ -4,7 +4,7 @@ include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 
 LOCAL_ARM_MODE := arm
-LOCAL_CFLAGS += -Wall -O2 -mcpu=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp
+LOCAL_CFLAGS += -Wall -Wno-unused-parameter -O2 -mcpu=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp
 LOCAL_CFLAGS += -DLOG_TAG=\"libfimg\"
 
 LOCAL_SRC_FILES := \
