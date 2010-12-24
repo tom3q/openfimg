@@ -341,7 +341,8 @@ try_ashmem:
 				} else {
 					memset((char*)base + offset, 0, size);
 					// clean and invalidate the new allocation
-					cacheflush(intptr_t(base) + offset, size, 0);
+					cacheflush(intptr_t(base) + offset,
+						intptr_t(base) + offset + size, 0);
 				}
 				//LOGD_IF(!err, "allocating pmem size=%d, offset=%d", size, offset);
 			}
