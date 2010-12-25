@@ -17,7 +17,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */ 
+ */
 
 #include <cstdio>
 #include <cstdlib>
@@ -29,7 +29,7 @@
 #include <GLES/glext.h>
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
-#include "fimg/fimg.h"
+#include "libfimg/fimg.h"
 #include "s3c_g2d.h"
 
 /**

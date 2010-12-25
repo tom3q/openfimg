@@ -29,7 +29,7 @@
 #include <GLES/glext.h>
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
-#include "fimg/fimg.h"
+#include "libfimg/fimg.h"
 #include "s3c_g2d.h"
 
 /**

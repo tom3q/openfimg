@@ -29,7 +29,7 @@
 #include <GLES/glext.h>
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
-#include "fimg/fimg.h"
+#include "libfimg/fimg.h"
 #include "s3c_g2d.h"
 
 GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
@@ -609,4 +609,4 @@ GL_API void GL_APIENTRY glClearStencil (GLint s)
 #ifdef FGL_HARDWARE_CLEAR
 	fimgSetClearStencil(ctx->fimg, s);
 #endif
-} 
+}

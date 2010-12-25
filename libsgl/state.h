@@ -28,7 +28,7 @@
 
 #include "common.h"
 #include "types.h"
-#include "fimg/fimg.h"
+#include "libfimg/fimg.h"
 
 #include "fglsurface.h"
 #include "fglstack.h"

@@ -29,7 +29,7 @@
 #include <GLES/glext.h>
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
-#include "fimg/fimg.h"
+#include "libfimg/fimg.h"
 #include "s3c_g2d.h"
 
 /**
@@ -384,4 +384,4 @@ GL_API void GL_APIENTRY glPushMatrix (void)
 
 	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].push();
 }
- 
+

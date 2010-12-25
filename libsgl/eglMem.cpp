@@ -34,7 +34,7 @@
 #include "common.h"
 #include "types.h"
 #include "state.h"
-#include "fimg/fimg.h"
+#include "libfimg/fimg.h"
 
 /* HACK ALERT */
 #include "../../../../hardware/libhardware/modules/gralloc/gralloc_priv.h"

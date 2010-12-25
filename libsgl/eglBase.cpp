@@ -56,7 +56,7 @@
 #include "common.h"
 #include "types.h"
 #include "state.h"
-#include "fimg/fimg.h"
+#include "libfimg/fimg.h"
 #include "eglMem.h"
 
 #define FGL_EGL_MAJOR		1
