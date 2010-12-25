@@ -3,7 +3,7 @@ THIS_PATH := $(call my-dir)
 # LOCAL_PATH := $(THIS_PATH)
 # include $(CLEAR_VARS) 
 
-include $(call all-named-subdir-makefiles, fimg)
+include $(call all-named-subdir-makefiles, libfimg)
 
 #
 # Build the hardware OpenGL ES library
