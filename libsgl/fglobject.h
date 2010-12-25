@@ -122,7 +122,8 @@ public:
 
 	inline void bind(FGLObjectBinding<T> *b)
 	{
-		assert(!b->isBound());
+		if(b->isBound())
+			b->unbind();
 
 		b->next = list;
 		b->prev = NULL;

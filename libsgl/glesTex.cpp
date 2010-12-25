@@ -113,9 +113,6 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		fglTextureObjects[texture] = obj;
 	}
 
-	if(ctx->texture[ctx->activeTexture].binding.isBound())
-		ctx->texture[ctx->activeTexture].binding.unbind();
-
 	obj->bind(&ctx->texture[ctx->activeTexture].binding);
 }
 

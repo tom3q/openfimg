@@ -29,7 +29,7 @@ struct FGLBuffer {
 	int size;
 
 	FGLBuffer() :
-		memory(NULL), size(0) {};
+		memory(0), size(0) {};
 
 	~FGLBuffer()
 	{
@@ -38,7 +38,11 @@ struct FGLBuffer {
 
 	int create(int s)
 	{
-		memory = malloc(s);
+		if (size != s) {
+			if (size != 0)
+				free(memory);
+			memory = malloc(s);
+		}
 
 		if (likely(memory != 0)) {
 			size = s;
@@ -70,7 +74,7 @@ struct FGLBuffer {
 
 	inline bool isValid(void)
 	{
-		return size != 0;
+		return memory != 0;
 	}
 };
 

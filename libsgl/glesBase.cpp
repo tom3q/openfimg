@@ -227,9 +227,6 @@ GL_API void GL_APIENTRY glBindBuffer (GLenum target, GLuint buffer)
 		fglBufferObjects[buffer] = obj;
 	}
 
-	if(binding->isBound())
-		binding->unbind();
-
 	obj->bind(binding);
 }
 
@@ -264,7 +261,7 @@ GL_API void GL_APIENTRY glBufferData (GLenum target, GLsizeiptr size,
 		return;
 	}
 
-	if (data != NULL)
+	if (data != 0)
 		memcpy(buf->memory, data, size);
 }
 
