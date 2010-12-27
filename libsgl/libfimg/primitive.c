@@ -56,7 +56,7 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib)
 {
 	ctx->primitive.vctx.flatShadeEn  = !!en;
-	ctx->primitive.vctx.flatShadeSel = (1 << attrib);
+	ctx->primitive.vctx.flatShadeSel = (!!en << attrib);
 }
 
 /*****************************************************************************

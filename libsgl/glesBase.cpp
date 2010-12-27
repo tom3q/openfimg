@@ -646,7 +646,7 @@ GL_API void GL_APIENTRY glShadeModel (GLenum mode)
 		fimgSetShadingMode(ctx->fimg, 0, FGL_ARRAY_COLOR);
 		break;
 	case GL_FLAT:
-		fimgSetShadingMode(ctx->fimg, 0, FGL_ARRAY_COLOR);
+		fimgSetShadingMode(ctx->fimg, 1, FGL_ARRAY_COLOR);
 		break;
 	}
 }
