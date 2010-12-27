@@ -20,6 +20,7 @@ struct FGLmatrix {
 	void multiply(const GLfixed *m);
 	inline void multiply(FGLmatrix const &m) { multiply(m.data); };
 	void leftMultiply(FGLmatrix const &m);
+	void multiply(FGLmatrix const &a, FGLmatrix const &b);
 	void rotate(GLfloat angle, GLfloat x, GLfloat y, GLfloat z);
 	void translate(GLfloat x, GLfloat y, GLfloat z);
 	void inverseTranslate(GLfloat x, GLfloat y, GLfloat z);

@@ -654,32 +654,41 @@ GL_API void GL_APIENTRY glShadeModel (GLenum mode)
 static inline void fglSetupMatrices(FGLContext *ctx)
 {
 	if (ctx->matrix.dirty[FGL_MATRIX_MODELVIEW]
-				|| ctx->matrix.dirty[FGL_MATRIX_PROJECTION])
+		|| ctx->matrix.dirty[FGL_MATRIX_PROJECTION])
 	{
-		FGLmatrix *matrix;
 		/* Calculate and load transformation matrix */
-		matrix = &ctx->matrix.transformMatrix;
-		*matrix = ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
-		matrix->multiply(ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top());
-		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TRANSFORM, matrix->data);
+		FGLmatrix *proj, *modview, *transform;
+
+		transform = &ctx->matrix.transformMatrix;
+		proj = &ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
+		modview = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top();
+		transform->multiply(*proj, *modview);
+
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TRANSFORM, transform->data);
+
 		/* Load lighting matrix */
-		matrix = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top();
-		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_LIGHTING, matrix->data);
+		FGLmatrix *light;
+
+		light = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top();
+
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_LIGHTING, light->data);
+
 		/* Mark transformation matrices as clean */
 		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW] = GL_FALSE;
 		ctx->matrix.dirty[FGL_MATRIX_PROJECTION] = GL_FALSE;
 		ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_FALSE;
 	}
+
 	/* Load texture coordinate matrices */
-	int i = FGL_MAX_TEXTURE_UNITS;
-	while(i--) {
+	int i = FGL_MAX_TEXTURE_UNITS - 1;
+	do {
 		if(!ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)])
 			continue;
 
-		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(i),
-			ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top().data);
+		FGLmatrix *tex = &ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top();
+		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(i), tex->data);
 		ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)] = GL_FALSE;
-	}
+	} while (--i);
 }
 
 static inline void fglSetupTextures(FGLContext *ctx)

@@ -255,6 +255,16 @@ void FGLmatrix::leftMultiply(FGLmatrix const &m)
 	*this = temp;
 }
 
+void FGLmatrix::multiply(const FGLmatrix &a, const FGLmatrix &b)
+{
+	for(int i = 0; i < 4; ++i) {
+		(*this)[i][0] = a[0][0]*b[i][0] + a[1][0]*b[i][1] + a[2][0]*b[i][2] + a[3][0]*b[i][3];
+		(*this)[i][1] = a[0][1]*b[i][0] + a[1][1]*b[i][1] + a[2][1]*b[i][2] + a[3][1]*b[i][3];
+		(*this)[i][2] = a[0][2]*b[i][0] + a[1][2]*b[i][1] + a[2][2]*b[i][2] + a[3][2]*b[i][3];
+		(*this)[i][3] = a[0][3]*b[i][0] + a[1][3]*b[i][1] + a[2][3]*b[i][2] + a[3][3]*b[i][3];
+	}
+}
+
 void FGLmatrix::inverse(void)
 {
 	FGLmatrix mat;
@@ -404,6 +414,6 @@ void FGLmatrix::transpose(void)
 		mat[2][i] = (*this)[i][2];
 		mat[3][i] = (*this)[i][3];
 	}
-	
+
 	*this = mat;
 }
