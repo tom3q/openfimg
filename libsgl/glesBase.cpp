@@ -570,7 +570,7 @@ GL_API void GL_APIENTRY glEnableClientState (GLenum array)
 		idx = FGL_ARRAY_POINT_SIZE;
 		break;
 	case GL_TEXTURE_COORD_ARRAY:
-		idx = FGL_ARRAY_TEXTURE(ctx->activeTexture);
+		idx = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -609,7 +609,7 @@ GL_API void GL_APIENTRY glDisableClientState (GLenum array)
 		idx = FGL_ARRAY_POINT_SIZE;
 		break;
 	case GL_TEXTURE_COORD_ARRAY:
-		idx = FGL_ARRAY_TEXTURE(ctx->activeTexture);
+		idx = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
