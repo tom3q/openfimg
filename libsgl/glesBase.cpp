@@ -688,25 +688,26 @@ static inline void fglSetupMatrices(FGLContext *ctx)
 		FGLmatrix *tex = &ctx->matrix.stack[FGL_MATRIX_TEXTURE(i)].top();
 		fimgLoadMatrix(ctx->fimg, FGFP_MATRIX_TEXTURE(i), tex->data);
 		ctx->matrix.dirty[FGL_MATRIX_TEXTURE(i)] = GL_FALSE;
-	} while (--i);
+	} while (i--);
 }
 
 static inline void fglSetupTextures(FGLContext *ctx)
 {
-	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
+	int i = FGL_MAX_TEXTURE_UNITS - 1;
+	do {
 		bool enabled = ctx->texture[i].enabled;
-		FGLTexture *obj = ctx->texture[i].getTexture();
+		FGLTexture *tex = ctx->texture[i].getTexture();
 
-		if(enabled && obj->surface.isValid() && obj->isComplete()) {
+		if(enabled && tex->surface.isValid() && tex->isComplete()) {
 			/* Texture is ready */
-			fimgCompatSetupTexture(ctx->fimg, obj->fimg, i);
+			fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
-			ctx->busyTexture[i] = obj;
+			ctx->busyTexture[i] = tex;
 		} else {
 			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
 		}
-	}
+	} while (i--);
 }
 
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
