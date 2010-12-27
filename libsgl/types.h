@@ -61,12 +61,23 @@ static inline GLfloat floatFromFixed(GLfixed c)
 static inline GLclampf clampFloat(GLclampf f)
 {
 	if(f < 0)
-		return 0;
+		f = 0;
 
 	if(f > 1)
-		return 1;
+		f = 1;
 
 	return f;
+}
+
+static inline GLclampx clampFixed(GLclampx x)
+{
+	if(x < 0)
+		x = 0;
+
+	if(x > (1 << 16))
+		x = 1 << 16;
+
+	return x;
 }
 
 static inline GLubyte ubyteFromClampf(GLclampf c)

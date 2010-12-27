@@ -722,7 +722,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
 
-	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
+	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); ++i) {
 		if(ctx->array[i].enabled) {
 			arrays[i].pointer	= ctx->array[i].pointer;
 			arrays[i].stride	= ctx->array[i].stride;
@@ -774,8 +774,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	case GL_TRIANGLES:
 		if (count < 3)
 			return;
-		if (count % 3)
-			count -= count % 3;
+		count -= count % 3;
 		fglMode = FGPE_TRIANGLES;
 		break;
 	default:
@@ -800,7 +799,7 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	if(ctx->elementArrayBuffer.isBound())
 		indices = ctx->elementArrayBuffer.get()->getAddress(indices);
 
-	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); i++) {
+	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); ++i) {
 		if(ctx->array[i].enabled) {
 			arrays[i].pointer	= ctx->array[i].pointer;
 			arrays[i].stride	= ctx->array[i].stride;
@@ -852,8 +851,7 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	case GL_TRIANGLES:
 		if (count < 3)
 			return;
-		if (count % 3)
-			count -= count % 3;
+		count -= count % 3;
 		fglMode = FGPE_TRIANGLES;
 		break;
 	default:
@@ -969,18 +967,18 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	}
 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
-		FGLTexture *obj = ctx->texture[i].getTexture();
-		if (obj->surface.isValid()) {
+		FGLTexture *tex = ctx->texture[i].getTexture();
+		if (tex->surface.isValid()) {
 			//LOGD("glDrawTexfOES: Texture %d (%d, %d, %d, %d)", i,
 			//		obj->cropRect[0], obj->cropRect[1],
 			//		obj->cropRect[2], obj->cropRect[3]);
-			unsigned height = obj->surface.height;
-			texcoords[i][0]	= obj->cropRect[0];
-			texcoords[i][1] = height - obj->cropRect[1];
-			texcoords[i][2] = obj->cropRect[0] + obj->cropRect[2];
+			unsigned height = tex->surface.height;
+			texcoords[i][0]	= tex->cropRect[0];
+			texcoords[i][1] = height - tex->cropRect[1];
+			texcoords[i][2] = tex->cropRect[0] + tex->cropRect[2];
 			texcoords[i][3] = texcoords[i][1];
 			texcoords[i][4] = texcoords[i][2];
-			texcoords[i][5] = height - (obj->cropRect[1] + obj->cropRect[3]);
+			texcoords[i][5] = height - (tex->cropRect[1] + tex->cropRect[3]);
 			texcoords[i][6] = texcoords[i][0];
 			texcoords[i][7] = texcoords[i][5];
 			arrays[FGL_ARRAY_TEXTURE(i)].stride = 8;
@@ -992,7 +990,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 		arrays[FGL_ARRAY_TEXTURE(i)].pointer	= texcoords[i];
 		arrays[FGL_ARRAY_TEXTURE(i)].width	= 8;
 		fimgSetAttribute(ctx->fimg, FGL_ARRAY_TEXTURE(i), FGHI_ATTRIB_DT_INT, 2);
-		fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_NON_PARAM);
+		fimgSetTexCoordSys(tex->fimg, FGTU_TSTA_TEX_COOR_NON_PARAM);
 	}
 
 	fglSetupTextures(ctx);
@@ -1216,12 +1214,12 @@ static inline void fglAlphaFunc (GLenum func, GLubyte ref)
 
 GL_API void GL_APIENTRY glAlphaFunc (GLenum func, GLclampf ref)
 {
-	fglAlphaFunc(func, ubyteFromClampf(ref));
+	fglAlphaFunc(func, ubyteFromClampf(clampFloat(ref)));
 }
 
 GL_API void GL_APIENTRY glAlphaFuncx (GLenum func, GLclampx ref)
 {
-	fglAlphaFunc(func, ubyteFromClampx(ref));
+	fglAlphaFunc(func, ubyteFromClampx(clampFixed(ref)));
 }
 
 GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
