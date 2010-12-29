@@ -75,10 +75,12 @@ struct FGLArrayState {
 	GLint width;
 	GLint type;
 	GLint size;
+	FGLBuffer *buffer;
 
 	FGLArrayState() :
 		enabled(GL_FALSE), pointer(NULL), stride(0), width(4),
-		type(FGHI_ATTRIB_DT_FLOAT), size(FGHI_NUMCOMP(4)) {};
+		type(FGHI_ATTRIB_DT_FLOAT), size(FGHI_NUMCOMP(4)),
+		buffer(0) {};
 };
 
 struct FGLViewportState {

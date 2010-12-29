@@ -315,6 +315,12 @@ static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
 					GLint type, GLint stride, GLint width,
 					const GLvoid *pointer)
 {
+	FGLBuffer *buf = ctx->arrayBuffer.get();
+
+	if (buf)
+		pointer = buf->getAddress(pointer);
+
+	ctx->array[idx].buffer	= buf;
 	ctx->array[idx].size	= size;
 	ctx->array[idx].type	= type;
 	ctx->array[idx].stride	= (stride) ? stride : width;
@@ -369,9 +375,6 @@ GL_API void GL_APIENTRY glVertexPointer (GLint size, GLenum type,
 
 	FGLContext *ctx = getContext();
 
-	if(ctx->arrayBuffer.isBound())
-		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
-
 	fglSetupAttribute(ctx, FGL_ARRAY_VERTEX, size, fglType, stride,
 							fglStride, pointer);
 }
@@ -409,9 +412,6 @@ GL_API void GL_APIENTRY glNormalPointer (GLenum type, GLsizei stride,
 	}
 
 	FGLContext *ctx = getContext();
-
-	if(ctx->arrayBuffer.isBound())
-		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
 
 	fglSetupAttribute(ctx, FGL_ARRAY_NORMAL, 3, fglType, stride,
 							fglStride, pointer);
@@ -455,9 +455,6 @@ GL_API void GL_APIENTRY glColorPointer (GLint size, GLenum type,
 
 	FGLContext *ctx = getContext();
 
-	if(ctx->arrayBuffer.isBound())
-		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
-
 	fglSetupAttribute(ctx, FGL_ARRAY_COLOR, 4, fglType, stride,
 							fglStride, pointer);
 }
@@ -486,9 +483,6 @@ GL_API void GL_APIENTRY glPointSizePointerOES (GLenum type, GLsizei stride,
 	}
 
 	FGLContext *ctx = getContext();
-
-	if(ctx->arrayBuffer.isBound())
-		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
 
 	fglSetupAttribute(ctx, FGL_ARRAY_POINT_SIZE, 1, fglType, stride,
 							fglStride, pointer);
@@ -537,9 +531,6 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type,
 	}
 
 	FGLContext *ctx = getContext();
-
-	if(ctx->arrayBuffer.isBound())
-		pointer = ctx->arrayBuffer.get()->getAddress(pointer);
 
 	fglSetupAttribute(ctx, FGL_ARRAY_TEXTURE(ctx->clientActiveTexture),
 				size, fglType, stride, fglStride, pointer);

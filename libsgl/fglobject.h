@@ -41,7 +41,7 @@ class FGLObjectBinding {
 
 public:
 	FGLObjectBinding() :
-		object(NULL) {};
+		object(0) {};
 
 	inline bool isBound(void)
 	{
@@ -60,6 +60,9 @@ public:
 
 	inline T* get(void)
 	{
+		if (!object)
+			return 0;
+
 		return &object->object;
 	}
 

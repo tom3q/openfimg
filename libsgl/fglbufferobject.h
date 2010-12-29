@@ -64,12 +64,20 @@ struct FGLBuffer {
 	inline const GLvoid *getAddress(const GLvoid *offset)
 	{
 		if (unlikely(!isValid()))
-			return NULL;
+			return 0;
 
 		if (unlikely((int)offset >= size))
-			return NULL;
+			return 0;
 
 		return (const GLvoid *)((uint8_t *)memory + (int)offset);
+	}
+
+	inline const GLvoid *getOffset(const GLvoid *address)
+	{
+		if (unlikely(!isValid()))
+			return 0;
+
+		return (const GLvoid *)((uint8_t *)address - (uint8_t *)memory);
 	}
 
 	inline bool isValid(void)

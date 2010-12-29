@@ -1002,27 +1002,40 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 GL_API void GL_APIENTRY glGetPointerv (GLenum pname, void **params)
 {
 	FGLContext *ctx = getContext();
+	unsigned id;
 
 	switch (pname) {
 	case GL_VERTEX_ARRAY_POINTER:
-		params[0] = (void *)ctx->array[FGL_ARRAY_VERTEX].pointer;
+		id = FGL_ARRAY_VERTEX;
 		break;
 	case GL_NORMAL_ARRAY_POINTER:
-		params[0] = (void *)ctx->array[FGL_ARRAY_NORMAL].pointer;
+		id = FGL_ARRAY_NORMAL;
 		break;
 	case GL_COLOR_ARRAY_POINTER:
-		params[0] = (void *)ctx->array[FGL_ARRAY_COLOR].pointer;
+		id = FGL_ARRAY_COLOR;
 		break;
 	case GL_TEXTURE_COORD_ARRAY_POINTER: {
 		GLint unit = ctx->clientActiveTexture;
-		params[0] = (void *)ctx->array[FGL_ARRAY_TEXTURE(unit)].pointer;
+		id = FGL_ARRAY_TEXTURE(unit);
 		break; }
 	case GL_POINT_SIZE_ARRAY_POINTER_OES:
-		params[0] = (void *)ctx->array[FGL_ARRAY_POINT_SIZE].pointer;
+		id = FGL_ARRAY_POINT_SIZE;
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
+		return;
 	}
+
+	const GLvoid *ptr;
+	FGLBuffer *buf;
+
+	ptr = ctx->array[id].pointer;
+	buf = ctx->array[id].buffer;
+
+	if (buf)
+		ptr = buf->getOffset(ptr);
+
+	params[0] = (void *)ptr;
 }
 
 GL_API GLboolean GL_APIENTRY glIsEnabled (GLenum cap)
