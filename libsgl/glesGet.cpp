@@ -80,6 +80,23 @@ static char const * const gExtensionsString =
 	"GL_OES_draw_texture"
 ;
 
+static const GLint fglCompressedTextureFormats[] = {
+#if 0
+	GL_PALETTE4_RGB8_OES,
+	GL_PALETTE4_RGBA8_OES,
+	GL_PALETTE4_R5_G6_B5_OES,
+	GL_PALETTE4_RGBA4_OES,
+	GL_PALETTE4_RGB5_A1_OES,
+	GL_PALETTE8_RGB8_OES,
+	GL_PALETTE8_RGBA8_OES,
+	GL_PALETTE8_R5_G6_B5_OES,
+	GL_PALETTE8_RGBA4_OES,
+	GL_PALETTE8_RGB5_A1_OES,
+	GL_RGB_S3TC_OES,
+	GL_RGBA_S3TC_OES
+#endif
+};
+
 // ----------------------------------------------------------------------------
 
 /**
@@ -440,23 +457,11 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		params[0] = 0;
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = !!GL_PALETTE4_RGB8_OES;
-		params[1] = !!GL_PALETTE4_RGBA8_OES;
-		params[2] = !!GL_PALETTE4_R5_G6_B5_OES;
-		params[3] = !!GL_PALETTE4_RGBA4_OES;
-		params[4] = !!GL_PALETTE4_RGB5_A1_OES;
-		params[5] = !!GL_PALETTE8_RGB8_OES;
-		params[6] = !!GL_PALETTE8_RGBA8_OES;
-		params[7] = !!GL_PALETTE8_R5_G6_B5_OES;
-		params[8] = !!GL_PALETTE8_RGBA4_OES;
-		params[9] = !!GL_PALETTE8_RGB5_A1_OES;
-#if 0
-		params[10] = GL_RGB_S3TC_OES;
-		params[11] = GL_RGBA_S3TC_OES;
-#endif
+		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+			params[i] = !!fglCompressedTextureFormats[i];
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = !!10;
+		params[0] = !!NELEM(fglCompressedTextureFormats);
 		break;
 #if 0
 	case GL_MAX_RENDERBUFFER_SIZE :
@@ -852,23 +857,11 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		params[0] = fixedFromInt(0);
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = GL_PALETTE4_RGB8_OES;
-		params[1] = GL_PALETTE4_RGBA8_OES;
-		params[2] = GL_PALETTE4_R5_G6_B5_OES;
-		params[3] = GL_PALETTE4_RGBA4_OES;
-		params[4] = GL_PALETTE4_RGB5_A1_OES;
-		params[5] = GL_PALETTE8_RGB8_OES;
-		params[6] = GL_PALETTE8_RGBA8_OES;
-		params[7] = GL_PALETTE8_R5_G6_B5_OES;
-		params[8] = GL_PALETTE8_RGBA4_OES;
-		params[9] = GL_PALETTE8_RGB5_A1_OES;
-#if 0
-		params[10] = GL_RGB_S3TC_OES;
-		params[11] = GL_RGBA_S3TC_OES;
-#endif
+		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+			params[i] = fglCompressedTextureFormats[i];
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = fixedFromInt(10);
+		params[0] = NELEM(fglCompressedTextureFormats);
 		break;
 #if 0
 	case GL_MAX_RENDERBUFFER_SIZE :
@@ -1258,23 +1251,11 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[0] = 0;
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = GL_PALETTE4_RGB8_OES;
-		params[1] = GL_PALETTE4_RGBA8_OES;
-		params[2] = GL_PALETTE4_R5_G6_B5_OES;
-		params[3] = GL_PALETTE4_RGBA4_OES;
-		params[4] = GL_PALETTE4_RGB5_A1_OES;
-		params[5] = GL_PALETTE8_RGB8_OES;
-		params[6] = GL_PALETTE8_RGBA8_OES;
-		params[7] = GL_PALETTE8_R5_G6_B5_OES;
-		params[8] = GL_PALETTE8_RGBA4_OES;
-		params[9] = GL_PALETTE8_RGB5_A1_OES;
-#if 0
-		params[10] = GL_RGB_S3TC_OES;
-		params[11] = GL_RGBA_S3TC_OES;
-#endif
+		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+			params[i] = fglCompressedTextureFormats[i];
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = 10;
+		params[0] = NELEM(fglCompressedTextureFormats);
 		break;
 #if 0
 	case GL_MAX_RENDERBUFFER_SIZE :
@@ -1672,23 +1653,11 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[0] = 0;
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = GL_PALETTE4_RGB8_OES;
-		params[1] = GL_PALETTE4_RGBA8_OES;
-		params[2] = GL_PALETTE4_R5_G6_B5_OES;
-		params[3] = GL_PALETTE4_RGBA4_OES;
-		params[4] = GL_PALETTE4_RGB5_A1_OES;
-		params[5] = GL_PALETTE8_RGB8_OES;
-		params[6] = GL_PALETTE8_RGBA8_OES;
-		params[7] = GL_PALETTE8_R5_G6_B5_OES;
-		params[8] = GL_PALETTE8_RGBA4_OES;
-		params[9] = GL_PALETTE8_RGB5_A1_OES;
-#if 0
-		params[10] = GL_RGB_S3TC_OES;
-		params[11] = GL_RGBA_S3TC_OES;
-#endif
+		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+			params[i] = fglCompressedTextureFormats[i];
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = 10;
+		params[0] = NELEM(fglCompressedTextureFormats);
 		break;
 #if 0
 	case GL_MAX_RENDERBUFFER_SIZE :
