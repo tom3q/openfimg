@@ -114,19 +114,16 @@ GL_API void GL_APIENTRY glMultMatrixf (const GLfloat *m)
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
-	FGLmatrix mat;
-	mat.load(ctx->matrix.stack[idx].top());
-	mat.multiply(m);
-
-	ctx->matrix.stack[idx].top().load(mat);
+	FGLmatrix *mat = &ctx->matrix.stack[idx].top();
+	mat->multiply(m);
 	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
-	mat.inverse();
-
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
+	FGLmatrix *inv = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top();
+	inv->load(*mat);
+	inv->inverse();
 	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
@@ -138,19 +135,16 @@ GL_API void GL_APIENTRY glMultMatrixx (const GLfixed *m)
 	if(idx == FGL_MATRIX_TEXTURE)
 		idx = FGL_MATRIX_TEXTURE(ctx->activeTexture);
 
-	FGLmatrix mat;
-	mat.load(ctx->matrix.stack[idx].top());
-	mat.multiply(m);
-
-	ctx->matrix.stack[idx].top().load(mat);
+	FGLmatrix *mat = &ctx->matrix.stack[idx].top();
+	mat->multiply(m);
 	ctx->matrix.dirty[idx] = GL_TRUE;
 
 	if(idx != FGL_MATRIX_MODELVIEW)
 		return;
 
-	mat.inverse();
-
-	ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top().load(mat);
+	FGLmatrix *inv = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW_INVERSE].top();
+	inv->load(*mat);
+	inv->inverse();
 	ctx->matrix.dirty[FGL_MATRIX_MODELVIEW_INVERSE] = GL_TRUE;
 }
 
