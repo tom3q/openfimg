@@ -40,8 +40,8 @@ static char const * const gVendorString     = "GLES6410";
 static char const * const gRendererString   = "S3C6410 FIMG-3DSE";
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
 static char const * const gExtensionsString =
+	"GL_OES_read_format "
 #if 0
-	"GL_OES_read_format "                   // TODO
 	"GL_OES_compressed_paletted_texture "   // TODO
 	"GL_OES_matrix_get "                    // TODO
 	"GL_OES_query_matrix "                  // TODO
@@ -97,6 +97,51 @@ static const GLint fglCompressedTextureFormats[] = {
 #endif
 };
 
+const FGLColorConfigDesc fglColorConfigs[] = {
+	/* [FGPF_COLOR_MODE_555] */
+	{
+		5, 5, 5, 0,
+		GL_RGB,
+		GL_UNSIGNED_SHORT_5_5_5_1,
+		2
+	},
+	/* [FGPF_COLOR_MODE_565] */
+	{
+		5, 6, 5, 0,
+		GL_RGB,
+		GL_UNSIGNED_SHORT_5_6_5,
+		2
+	},
+	/* [FGPF_COLOR_MODE_4444] */
+	{
+		4, 4, 4, 4,
+		GL_RGBA,
+		GL_UNSIGNED_SHORT_4_4_4_4,
+		2
+	},
+	/* [FGPF_COLOR_MODE_1555] */
+	{
+		5, 5, 5, 1,
+		GL_RGBA,
+		GL_UNSIGNED_SHORT_5_5_5_1,
+		2
+	},
+	/* [FGPF_COLOR_MODE_0888] */
+	{
+		8, 8, 8, 0,
+		GL_RGBA,
+		GL_UNSIGNED_BYTE,
+		4
+	},
+	/* [FGPF_COLOR_MODE_8888] */
+	{
+		8, 8, 8, 8,
+		GL_RGBA,
+		GL_UNSIGNED_BYTE,
+		4
+	}
+};
+
 // ----------------------------------------------------------------------------
 
 /**
@@ -126,16 +171,14 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 
 	switch (pname) {
 	case GL_ARRAY_BUFFER_BINDING:
+		params[0] = 0;
 		if (ctx->arrayBuffer.isBound())
 			params[0] = ctx->arrayBuffer.getName();
-		else
-			params[0] = 0;
 		break;
 	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
+		params[0] = 0;
 		if (ctx->elementArrayBuffer.isBound())
 			params[0] = ctx->elementArrayBuffer.getName();
-		else
-			params[0] = 0;
 		break;
 	case GL_VIEWPORT:
 		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
@@ -463,16 +506,16 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		break;
 #endif
 	case GL_RED_BITS :
-		params[0] = 8;
+		params[0] = fglColorConfigs[ctx->surface.draw.format].red;
 		break;
 	case GL_GREEN_BITS:
-		params[0] = 8;
+		params[0] = fglColorConfigs[ctx->surface.draw.format].green;
 		break;
 	case GL_BLUE_BITS :
-		params[0] = 8;
+		params[0] = fglColorConfigs[ctx->surface.draw.format].blue;
 		break;
 	case GL_ALPHA_BITS :
-		params[0] = 8;
+		params[0] = fglColorConfigs[ctx->surface.draw.format].alpha;
 		break;
 	case GL_DEPTH_BITS :
 		params[0] = ctx->surface.depth.format & 0xff;
@@ -481,10 +524,10 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[0] = ctx->surface.depth.format >> 8;
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-		params[0] = 0;
+		params[0] = fglColorConfigs[ctx->surface.draw.format].readType;
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-		params[0] = 0;
+		params[0] = fglColorConfigs[ctx->surface.draw.format].readFormat;
 		break;
 #if 0
 	case GL_ALPHA_TEST_FUNC_EXP:

@@ -120,4 +120,16 @@ static inline void setError(GLenum error)
 		errorCode = error;
 }
 
+struct FGLColorConfigDesc {
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+	uint8_t alpha;
+	GLenum readType;
+	GLenum readFormat;
+	GLint pixelSize;
+};
+
+extern const FGLColorConfigDesc fglColorConfigs[];
+
 #endif
