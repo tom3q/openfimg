@@ -672,8 +672,12 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask)
 	if (mask & GL_STENCIL_BUFFER_BIT)
 		mode |= FGFP_CLEAR_STENCIL;
 
+	/* Clear the buffers in hardware */
 	fimgClear(ctx->fimg, mode);
 #else
+	/* Make sure the hardware isn't rendering */
+	glFlush();
+	/* Clear the buffers in software */
 	fglClear(ctx, mask);
 #endif
 }
