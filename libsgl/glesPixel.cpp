@@ -70,6 +70,45 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
 	Reading pixels
 */
 
+static inline void fallbackCopy(uint8_t *dst, const uint8_t *src, unsigned len)
+{
+	while (len--)
+		*dst++ = *src++;
+}
+
+static inline void burstCopy16(void *dst, const void *src, unsigned len)
+{
+	const uint8_t *s = (const uint8_t *)src;
+	uint8_t *d = (uint8_t *)dst;
+	unsigned srcAlign = (4 - (unsigned)src % 4) % 4;
+	unsigned dstAlign = (4 - (unsigned)dst % 4) % 4;
+
+	if (srcAlign != dstAlign)
+		return fallbackCopy(d, s, len);
+
+	if (srcAlign >= len)
+		return fallbackCopy(d, s, len);
+
+	if (srcAlign) {
+		fallbackCopy(d, s, srcAlign);
+		s += srcAlign;
+		d += srcAlign;
+		len -= srcAlign;
+	}
+
+	while (len >= 16) {
+		asm(	"ldmia %0!, {r0-r3}\n"
+			"stmia %1!, {r0-r3}\n"
+			: "=r"(s), "=r"(d)
+			: "0"(s), "1"(d)
+			: "r0", "r1", "r2", "r3");
+		len -= 16;
+	}
+
+	if (len)
+		fallbackCopy(d, s, len);
+}
+
 GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 				GLsizei width, GLsizei height, GLenum format,
 				GLenum type, GLvoid *pixels)
@@ -77,14 +116,92 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 	FGLContext *ctx = getContext();
 	FGLSurface *draw = &ctx->surface.draw;
 
-	if(!format && !type) {
-		if(!x && !y && width == draw->width && height == draw->height) {
-			if(draw->vaddr) {
-				fglFlushPmemSurface(draw);
-				memcpy(pixels, draw->vaddr, draw->size);
-			}
-		}
+	if (!draw->vaddr) {
+		setError(GL_INVALID_OPERATION);
+		return;
 	}
+
+	if (width <= 0 || height <= 0 || x < 0 || y < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	if (x >= draw->width || y >= draw->height)
+		// Nothing to copy
+		return;
+
+	fglFlushPmemSurface(draw);
+
+	unsigned srcBpp = fglColorConfigs[draw->format].pixelSize;
+	unsigned alignment = ctx->packAlignment;
+
+	if (format == fglColorConfigs[draw->format].readFormat
+		&& type == fglColorConfigs[draw->format].readType)
+	{
+		// No format conversion needed
+		unsigned srcStride = srcBpp * draw->width;
+		unsigned yOffset = (draw->height - y - 1) * srcStride;
+		const uint8_t *src = (const uint8_t *)draw->vaddr + yOffset;
+
+		unsigned dstStride = (srcBpp*width + alignment - 1) & ~(alignment - 1);
+		uint8_t *dst = (uint8_t *)pixels;
+
+		if (y + height > draw->height)
+			height = draw->height - y;
+
+		if (!x && width == draw->width) {
+			// Copy whole lines line-by-line
+			if (srcStride < 32) {
+				do {
+					fallbackCopy(dst, src, srcStride);
+					dst += dstStride;
+					src -= srcStride;
+				} while (--height);
+			} else {
+				do {
+					burstCopy16(dst, src, srcStride);
+					dst += dstStride;
+					src -= srcStride;
+				} while (--height);
+			}
+
+			// We are done
+			return;
+		}
+
+		// Copy line parts line-by-line
+		if (x + width > draw->width)
+			width = draw->width - x;
+
+		unsigned xOffset = srcBpp * x;
+		unsigned srcWidth = srcBpp * width;
+
+		if (srcWidth < 32) {
+			do {
+				fallbackCopy(dst, src + xOffset, srcWidth);
+				dst += dstStride;
+				src -= srcStride;
+			} while (--height);
+		} else {
+			do {
+				burstCopy16(dst, src + xOffset, srcWidth);
+				dst += dstStride;
+				src -= srcStride;
+			} while (--height);
+		}
+
+		// We are done
+		return;
+	}
+
+	if (format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
+		// Convert to GL_RGBA and GL_UNSIGNED_BYTE
+		LOGD("glReadPixels: Format conversion unimplemented yet.");
+		// We are done
+		return;
+	}
+
+	setError(GL_INVALID_ENUM);
 }
 
 /**
