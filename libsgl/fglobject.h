@@ -50,6 +50,9 @@ public:
 
 	inline void unbind(void)
 	{
+		if (!object)
+			return;
+
 		object->unbind(this);
 	}
 
@@ -110,7 +113,8 @@ public:
 
 	inline void unbind(FGLObjectBinding<T> *b)
 	{
-		assert(isBound(b));
+		if (!isBound(b))
+			return;
 
 		if (b->next)
 			b->next->prev = b->prev;

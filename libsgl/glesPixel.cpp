@@ -70,13 +70,13 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
 	Reading pixels
 */
 
-static inline void fallbackCopy(uint8_t *dst, const uint8_t *src, unsigned len)
+static void fallbackCopy(uint8_t *dst, const uint8_t *src, unsigned len)
 {
 	while (len--)
 		*dst++ = *src++;
 }
 
-static inline void burstCopy16(void *dst, const void *src, unsigned len)
+static void burstCopy16(void *dst, const void *src, unsigned len)
 {
 	const uint8_t *s = (const uint8_t *)src;
 	uint8_t *d = (uint8_t *)dst;
@@ -314,7 +314,7 @@ static void fill32(void *buf, uint32_t val, size_t cnt)
 	if (align) {
 		align = 16 - align;
 		align /= 4;
-		if (align > cnt) {
+		if (align >= cnt) {
 			fillSingle32(buf32, val, cnt);
 			return;
 		}
@@ -340,7 +340,7 @@ static void fill32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
 	if (align) {
 		align = 16 - align;
 		align /= 4;
-		if (align > cnt) {
+		if (align >= cnt) {
 			fillSingle32masked(buf32, val, mask, cnt);
 			return;
 		}
@@ -363,7 +363,7 @@ static void fill16(void *buf, uint16_t val, size_t cnt)
 	if (align) {
 		align = 16 - align;
 		align /= 2;
-		if (align > cnt) {
+		if (align >= cnt) {
 			fillSingle16(buf16, val, cnt);
 			return;
 		}
@@ -389,7 +389,7 @@ static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
 	if (align) {
 		align = 16 - align;
 		align /= 2;
-		if (align > cnt) {
+		if (align >= cnt) {
 			fillSingle16masked(buf16, val, mask, cnt);
 			return;
 		}
@@ -541,15 +541,32 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 	bool lineByLine = false;
 	int32_t l, b, t, w, h;
 
-	l = max(ctx->perFragment.scissor.left, 0);
-	b = max(ctx->perFragment.scissor.bottom, 0);
-	w = min(ctx->perFragment.scissor.width, draw->width);
-	h = min(ctx->perFragment.scissor.height, draw->height);
-	t = draw->width - b - h;
+	l = 0;
+	b = 0;
+	w = draw->width;
+	h = draw->height;
+	if (ctx->perFragment.scissor.enabled) {
+		if (ctx->perFragment.scissor.left > 0)
+			l = ctx->perFragment.scissor.left;
+		if (ctx->perFragment.scissor.bottom > 0)
+			b = ctx->perFragment.scissor.bottom;
+		if (ctx->perFragment.scissor.left + ctx->perFragment.scissor.width <= draw->width)
+			w = ctx->perFragment.scissor.left + ctx->perFragment.scissor.width - l;
+		else
+			w = draw->width - l;
+		if (ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height <= draw->height)
+			h = ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height - b;
+		else
+			h = draw->height - b;
+	}
+	t = draw->height - b - h;
 
-	lineByLine |= (l > 0);
+	if (!h || !w)
+		return;
+
+	//lineByLine |= (l > 0);
 	lineByLine |= (w < draw->width);
-	lineByLine &= (ctx->perFragment.scissor.enabled == GL_TRUE);
+	//lineByLine &= (ctx->perFragment.scissor.enabled == GL_TRUE);
 
 	if (mode & GL_COLOR_BUFFER_BIT) {
 		bool is32bpp = false;
@@ -561,33 +578,33 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 				uint16_t *buf16 = (uint16_t *)draw->vaddr;
 				buf16 += t * stride;
 				if (mask & 0xffff) {
-					while (h--) {
+					do {
 						uint16_t *line = buf16 + l;
 						fill16masked(line, color, ~mask, w);
 						buf16 += stride;
-					}
+					} while (--h);
 				} else {
-					while (h--) {
+					do {
 						uint16_t *line = buf16 + l;
 						fill16(line, color, w);
 						buf16 += stride;
-					}
+					} while (--h);
 				}
 			} else {
 				uint32_t *buf32 = (uint32_t *)draw->vaddr;
 				buf32 += t * stride;
 				if (mask) {
-					while (h--) {
+					do {
 						uint32_t *line = buf32 + l;
 						fill32masked(line, color, ~mask, w);
 						buf32 += stride;
-					}
+					} while (--h);
 				} else {
-					while (h--) {
+					do {
 						uint32_t *line = buf32 + l;
 						fill32(line, color, w);
 						buf32 += stride;
-					}
+					} while (--h);
 				}
 			}
 		} else {
@@ -595,16 +612,16 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 				uint16_t *buf16 = (uint16_t *)draw->vaddr;
 				buf16 += t * stride;
 				if (mask & 0xffff)
-					fill16masked(buf16, color, ~mask, w*h);
+					fill16masked(buf16, color, ~mask, stride*h);
 				else
-					fill16(buf16, color, w*h);
+					fill16(buf16, color, stride*h);
 			} else {
 				uint32_t *buf32 = (uint32_t *)draw->vaddr;
 				buf32 += t * stride;
 				if (mask)
-					fill32masked(buf32, color, ~mask, w*h);
+					fill32masked(buf32, color, ~mask, stride*h);
 				else
-					fill32(buf32, color, w*h);
+					fill32(buf32, color, stride*h);
 			}
 		}
 
@@ -623,25 +640,25 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 			uint32_t *buf32 = (uint32_t *)depth->vaddr;
 			buf32 += t * stride;
 			if (mask) {
-				while (h--) {
+				do {
 					uint32_t *line = buf32 + l;
 					fill32masked(line, val, ~mask, w);
 					buf32 += stride;
-				}
+				} while (--h);
 			} else {
-				while (h--) {
+				do {
 					uint32_t *line = buf32 + l;
 					fill32(line, val, w);
 					buf32 += stride;
-				}
+				} while (--h);
 			}
 		} else {
 			uint32_t *buf32 = (uint32_t *)depth->vaddr;
 			buf32 += t * stride;
 			if (mask)
-				fill32masked(buf32, val, ~mask, w*h);
+				fill32masked(buf32, val, ~mask, stride*h);
 			else
-				fill32(buf32, val, w*h);
+				fill32(buf32, val, stride*h);
 		}
 
 		fglFlushPmemSurface(depth);

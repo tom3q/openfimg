@@ -207,8 +207,7 @@ GL_API void GL_APIENTRY glBindBuffer (GLenum target, GLuint buffer)
 	}
 
 	if(buffer == 0) {
-		if(binding->isBound())
-			binding->unbind();
+		binding->unbind();
 		return;
 	}
 

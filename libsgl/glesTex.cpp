@@ -91,8 +91,7 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 
 	if(texture == 0) {
 		FGLContext *ctx = getContext();
-		if(ctx->texture[ctx->activeTexture].binding.isBound())
-			ctx->texture[ctx->activeTexture].binding.unbind();
+		ctx->texture[ctx->activeTexture].binding.unbind();
 		return;
 	}
 
@@ -407,6 +406,9 @@ static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 		fimgSetTexMipmapOffset(obj->fimg, lvl, offset);
 		offset += size;
 
+		if(lvl == FGL_MAX_MIPMAP_LEVEL)
+			break;
+
 		check /= 2;
 		if(check == 0)
 			break;
@@ -422,7 +424,7 @@ static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 			size /= 2;
 			height /= 2;
 		}
-	} while (lvl < FGL_MAX_MIPMAP_LEVEL);
+	} while (1);
 
 	obj->maxLevel = lvl;
 	return offset;
