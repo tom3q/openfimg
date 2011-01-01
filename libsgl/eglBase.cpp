@@ -1161,7 +1161,7 @@ void FGLWindowSurface::copyBlt(
 		err = copybit->blit(copybit, &dimg, &simg, &it);
 		if (err == FGL_NO_ERROR)
 			return;
-		
+
 		LOGE("copybit failed (%s)", strerror(err));
 	}
 
@@ -1848,18 +1848,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 		return EGL_FALSE;
 	}
 
-	if (getGlThreadSpecific() == c) {
-		FGLRenderSurface *s( static_cast<FGLRenderSurface*>(c->egl.draw) );
-		glFinish();
-		if(s->isTerminated()) {
-			s->disconnect();
-			s->ctx = 0;
-			delete s;
-		}
-		setGlThreadSpecific(0);
-		fglDestroyContext(c);
-		return EGL_TRUE;
-	}
+	if (getGlThreadSpecific() == c)
+		eglMakeCurrent(dpy, EGL_NO_SURFACE,
+					EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
 	if (c->egl.flags & FGL_IS_CURRENT)
 		c->egl.flags |= FGL_TERMINATE;
