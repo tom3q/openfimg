@@ -27,6 +27,7 @@ class FGLObjectManager {
 	/* Array of pointers addressed by used names */
 	FGLObject<T>	guard;
 	FGLObject<T>	**pool;
+	void		**owners;
 	/* Stack of unused names */
 	unsigned	*unused;
 	unsigned	write;
@@ -42,14 +43,24 @@ public:
 		if (pool == NULL)
 			return;
 
-		unused = new unsigned[size];
-		if (unused == NULL)
+		owners = new void*[size];
+		if (owners == NULL) {
+			delete[] pool;
 			return;
+		}
+
+		unused = new unsigned[size];
+		if (unused == NULL) {
+			delete[] owners;
+			delete[] pool;
+			return;
+		}
 
 		write = size;
 
 		for(unsigned i = 0; i < size; i++) {
 			pool[i] = &guard;
+			owners[i] = 0;
 			unused[i] = i + 1;
 		}
 
@@ -58,25 +69,46 @@ public:
 
 	~FGLObjectManager()
 	{
+		delete[] owners;
 		delete[] unused;
 		delete[] pool;
 	}
 
-	inline int get(void)
+	inline int get(void *owner)
 	{
 		if(write == 0)
 			/* Out of names */
 			return -1;
 
-		write--;
+		--write;
+		owners[write] = owner;
 		return unused[write];
+	}
+
+	inline void *getOwner(unsigned name)
+	{
+		return owners[name - 1];
 	}
 
 	inline void put(unsigned name)
 	{
 		pool[name - 1] = &guard;
+		owners[name - 1] = 0;
 		unused[write] = name;
-		write++;
+		++write;
+	}
+
+	inline void clean(void *owner)
+	{
+		for(unsigned i = 0; i < size; i++) {
+			if (owners[i] != owner)
+				continue;
+			if (pool[i]) {
+				pool[i]->unbindAll();
+				delete pool[i];
+			}
+			put(i + 1);
+		}
 	}
 
 	inline const FGLObject<T>* &operator[](unsigned name) const

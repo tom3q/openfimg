@@ -144,24 +144,28 @@ FGLObjectManager<FGLBuffer, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
 
 GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
 {
-	int name;
-
 	if(n <= 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
 
-	while(n--) {
-		name = fglBufferObjects.get();
+	int name;
+	GLsizei i = n;
+	GLuint *cur = buffers;
+	FGLContext *ctx = getContext();
+
+	do {
+		name = fglBufferObjects.get(ctx);
 		if(name < 0) {
+			glDeleteBuffers(n - i - 1, buffers);
 			setError(GL_OUT_OF_MEMORY);
 			return;
 		}
 		fglBufferObjects[name] = NULL;
 		LOGD("Allocated buffer %d", name);
-		*buffers = name;
-		buffers++;
-	}
+		*cur = name;
+		cur++;
+	} while (--i);
 }
 
 GL_API void GL_APIENTRY glDeleteBuffers (GLsizei n, const GLuint *buffers)
@@ -1801,6 +1805,8 @@ FGLContext *fglCreateContext(void)
 
 void fglDestroyContext(FGLContext *ctx)
 {
+	fglBufferObjects.clean(ctx);
+	fglCleanTextureObjects(ctx);
 	fimgDestroyContext(ctx->fimg);
 	delete ctx;
 }

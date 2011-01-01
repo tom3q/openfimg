@@ -131,5 +131,6 @@ struct FGLColorConfigDesc {
 };
 
 extern const FGLColorConfigDesc fglColorConfigs[];
+extern void fglCleanTextureObjects(FGLContext *ctx);
 
 #endif
