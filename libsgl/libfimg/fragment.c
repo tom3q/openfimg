@@ -370,10 +370,10 @@ void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
 *****************************************************************************/
 void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a)
 {
-	ctx->fragment.mask.r = r;
-	ctx->fragment.mask.g = g;
-	ctx->fragment.mask.b = b;
-	ctx->fragment.mask.a = a;
+	ctx->fragment.mask.r = !r;
+	ctx->fragment.mask.g = !g;
+	ctx->fragment.mask.b = !b;
+	ctx->fragment.mask.a = !a;
 	fimgQueue(ctx, ctx->fragment.mask.val, FGPF_CBMSK);
 }
 

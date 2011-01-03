@@ -1597,12 +1597,24 @@ GL_API void GL_APIENTRY glClipPlanex (GLenum plane, const GLfixed *equation)
 GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green,
 						GLboolean blue, GLboolean alpha)
 {
-	FUNC_UNIMPLEMENTED;
+	FGLContext *ctx = getContext();
+
+	ctx->perFragment.mask.red = red;
+	ctx->perFragment.mask.green = green;
+	ctx->perFragment.mask.blue = blue;
+	ctx->perFragment.mask.alpha = alpha;
+
+	fimgSetColorBufWriteMask(ctx->fimg, red, green, blue, alpha);
 }
 
 GL_API void GL_APIENTRY glDepthMask (GLboolean flag)
 {
-	FUNC_UNIMPLEMENTED;
+	FGLContext *ctx = getContext();
+
+	ctx->perFragment.mask.depth = flag;
+
+	if (ctx->surface.depth.isValid())
+		fimgSetZBufWriteMask(ctx->fimg, flag);
 }
 
 GL_API void GL_APIENTRY glFogf (GLenum pname, GLfloat param)
@@ -1774,7 +1786,14 @@ GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
 
 GL_API void GL_APIENTRY glStencilMask (GLuint mask)
 {
-	FUNC_UNIMPLEMENTED;
+	FGLContext *ctx = getContext();
+
+	ctx->perFragment.mask.stencil = mask & 0xff;
+
+	if (ctx->surface.depth.isValid()) {
+		fimgSetStencilBufWriteMask(ctx->fimg, 0, mask & 0xff);
+		fimgSetStencilBufWriteMask(ctx->fimg, 1, mask & 0xff);
+	}
 }
 
 /**
