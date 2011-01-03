@@ -70,6 +70,138 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
 	Reading pixels
 */
 
+static inline void unpackPixel555(uint8_t *dst, uint16_t src)
+{
+	dst[0] = (src & 0x7c00) >> 7;
+	dst[1] = (src & 0x03e0) >> 2;
+	dst[2] = (src & 0x001f) << 3;
+	dst[3] = 0xff;
+}
+
+static void convertToUByteRGBA555(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	unsigned alignment = ctx->packAlignment;
+	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
+	unsigned srcStride = 2*draw->stride;
+	unsigned xOffset = 2*x;
+	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned srcPad = srcStride - 2*width;
+
+	src += yOffset + xOffset;
+	dst += height*dstStride;
+	do {
+		unsigned w = width;
+		uint8_t *line = dst;
+		do {
+			unpackPixel555(line, *src++);
+			line += 4;
+		} while (--w);
+		src += srcPad;
+		dst -= dstStride;
+	} while (--height);
+}
+
+static inline void unpackPixel565(uint8_t *dst, uint16_t src)
+{
+	dst[0] = (src & 0xf800) >> 8;
+	dst[1] = (src & 0x07e0) >> 3;
+	dst[2] = (src & 0x001f) << 3;
+	dst[3] = 0xff;
+}
+
+static void convertToUByteRGBA565(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	unsigned alignment = ctx->packAlignment;
+	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
+	unsigned srcStride = 2*draw->stride;
+	unsigned xOffset = 2*x;
+	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned srcPad = srcStride - 2*width;
+
+	src += yOffset + xOffset;
+	dst += height*dstStride;
+	do {
+		unsigned w = width;
+		uint8_t *line = dst;
+		do {
+			unpackPixel565(line, *src++);
+			line += 4;
+		} while (--w);
+		src += srcPad;
+		dst -= dstStride;
+	} while (--height);
+}
+
+static inline void unpackPixel4444(uint8_t *dst, uint16_t src)
+{
+	dst[0] = (src & 0x0f00) >> 4;
+	dst[1] = (src & 0x00f0) >> 0;
+	dst[2] = (src & 0x000f) << 4;
+	dst[3] = (src & 0xf000) >> 8;
+}
+
+static void convertToUByteRGBA4444(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	unsigned alignment = ctx->packAlignment;
+	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
+	unsigned srcStride = 2*draw->stride;
+	unsigned xOffset = 2*x;
+	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned srcPad = srcStride - 2*width;
+
+	src += yOffset + xOffset;
+	dst += height*dstStride;
+	do {
+		unsigned w = width;
+		uint8_t *line = dst;
+		do {
+			unpackPixel4444(line, *src++);
+			line += 4;
+		} while (--w);
+		src += srcPad;
+		dst -= dstStride;
+	} while (--height);
+}
+
+static inline void unpackPixel1555(uint8_t *dst, uint16_t src)
+{
+	dst[0] = (src & 0x7c00) >> 7;
+	dst[1] = (src & 0x03e0) >> 2;
+	dst[2] = (src & 0x001f) << 3;
+	dst[3] = (src & 0x8000) ? 0xff : 0x00;
+}
+
+static void convertToUByteRGBA1555(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	unsigned alignment = ctx->packAlignment;
+	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
+	unsigned srcStride = 2*draw->stride;
+	unsigned xOffset = 2*x;
+	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned srcPad = srcStride - 2*width;
+
+	src += yOffset + xOffset;
+	dst += height*dstStride;
+	do {
+		unsigned w = width;
+		uint8_t *line = dst;
+		do {
+			unpackPixel1555(line, *src++);
+			line += 4;
+		} while (--w);
+		src += srcPad;
+		dst -= dstStride;
+	} while (--height);
+}
+
 static void fallbackCopy(uint8_t *dst, const uint8_t *src, unsigned len)
 {
 	while (len--)
@@ -133,13 +265,13 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 	fglFlushPmemSurface(draw);
 
 	unsigned srcBpp = fglColorConfigs[draw->format].pixelSize;
+	unsigned srcStride = srcBpp * draw->stride;
 	unsigned alignment = ctx->packAlignment;
 
 	if (format == fglColorConfigs[draw->format].readFormat
 		&& type == fglColorConfigs[draw->format].readType)
 	{
 		// No format conversion needed
-		unsigned srcStride = srcBpp * draw->width;
 		unsigned yOffset = (draw->height - y - 1) * srcStride;
 		const uint8_t *src = (const uint8_t *)draw->vaddr + yOffset;
 
@@ -196,7 +328,24 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 
 	if (format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
 		// Convert to GL_RGBA and GL_UNSIGNED_BYTE
-		LOGD("glReadPixels: Format conversion unimplemented yet.");
+		switch (draw->format) {
+		case FGPF_COLOR_MODE_555:
+			convertToUByteRGBA555(ctx, draw, (uint8_t *)pixels,
+							x, y, width, height);
+			break;
+		case FGPF_COLOR_MODE_565:
+			convertToUByteRGBA565(ctx, draw, (uint8_t *)pixels,
+							x, y, width, height);
+			break;
+		case FGPF_COLOR_MODE_4444:
+			convertToUByteRGBA4444(ctx, draw, (uint8_t *)pixels,
+							x, y, width, height);
+			break;
+		case FGPF_COLOR_MODE_1555:
+			convertToUByteRGBA1555(ctx, draw, (uint8_t *)pixels,
+							x, y, width, height);
+			break;
+		}
 		// We are done
 		return;
 	}
