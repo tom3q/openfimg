@@ -492,7 +492,7 @@ static inline uint32_t fglPackRGBA8888(uint8_t r, uint8_t g, uint8_t b, uint8_t 
 
 static inline uint16_t fglPackLA88(uint8_t l, uint8_t a)
 {
-	return (a << 8) | l;
+	return (l << 8) | a;
 }
 
 static void fglConvertTexture(FGLTexture *obj, unsigned level,
@@ -815,7 +815,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		break;
 	}
 	case GL_RGBA: {
-		size_t line = 3*w;
+		size_t line = 4*w;
 		size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
 		size_t dstStride = 4*width;
 		size_t xOffset = 4*x;
