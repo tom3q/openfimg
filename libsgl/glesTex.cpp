@@ -658,8 +658,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 			}
 
 			obj->levels |= (1 << level);
-
-			fglFlushPmemSurface(&obj->surface);
+			obj->dirty = true;
 		}
 
 		return;
@@ -724,6 +723,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		fimgSetTex2DSize(obj->fimg, width, height);
 
 		obj->levels = (1 << 0);
+		obj->dirty = true;
 	}
 
 	// Copy the image (with conversion if needed)
@@ -742,7 +742,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		if (obj->genMipmap)
 			fglGenerateMipmaps(obj);
 
-		fglFlushPmemSurface(&obj->surface);
+		obj->dirty = true;
 	}
 }
 
@@ -929,7 +929,7 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		fglLoadTexturePartial(obj, level, pixels,
 			ctx->unpackAlignment, xoffset, yoffset, width, height);
 
-	fglFlushPmemSurface(&obj->surface);
+	obj->dirty = true;
 }
 
 GL_API void GL_APIENTRY glCompressedTexImage2D (GLenum target, GLint level,

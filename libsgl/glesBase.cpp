@@ -687,21 +687,30 @@ static inline void fglSetupMatrices(FGLContext *ctx)
 
 static inline void fglSetupTextures(FGLContext *ctx)
 {
+	bool flush = false;
 	int i = FGL_MAX_TEXTURE_UNITS - 1;
+
 	do {
 		bool enabled = ctx->texture[i].enabled;
 		FGLTexture *tex = ctx->texture[i].getTexture();
 
 		if(enabled && tex->surface.isValid() && tex->isComplete()) {
 			/* Texture is ready */
+			if (tex->dirty)
+				fglFlushPmemSurface(&tex->surface);
 			fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 			ctx->busyTexture[i] = tex;
+			flush = true;
+			tex->dirty = 0;
 		} else {
 			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
 		}
 	} while (i--);
+
+	if (flush)
+		fimgInvalidateFlushCache(ctx->fimg, 0, 1, 0, 0);
 }
 
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
