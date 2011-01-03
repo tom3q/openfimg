@@ -23,6 +23,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
+#include <errno.h>
 
 #include "eglMem.h"
 
@@ -69,19 +70,19 @@ int fglCreatePmemSurface(FGLSurface *s)
 	// create a buffer file (cached)
 	fd = open("/dev/pmem_gpu1", O_RDWR, 0);
 	if(fd < 0) {
-		LOGE("EGL: Could not open PMEM device");
+		LOGE("EGL: Could not open PMEM device (%s)", strerror(errno));
 		goto err_open;
 	}
 
 	// allocate and map the memory
 	if ((vaddr = mmap(NULL, size, PROT_WRITE | PROT_READ,
 				MAP_SHARED, fd, NULL)) == MAP_FAILED) {
-		LOGE("EGL: PMEM buffer allocation failed");
+		LOGE("EGL: PMEM buffer allocation failed (%s)", strerror(errno));
 		goto err_mmap;
 	}
 
 	if (ioctl(fd, PMEM_GET_PHYS, &region) < 0) {
-		LOGE("EGL: PMEM_GET_PHYS failed");
+		LOGE("EGL: PMEM_GET_PHYS failed (%s)", strerror(errno));
 		goto err_phys;
 	}
 
