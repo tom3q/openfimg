@@ -41,7 +41,10 @@
 #define unlikely(x)     __builtin_expect((x),0)
 
 #define FUNC_UNIMPLEMENTED \
-	LOGW("Application called unimplemented function: %s", __func__)
+	static int flag = 0; \
+	if (!flag) \
+		LOGW("Application called unimplemented function: %s", __func__); \
+	flag = 1
 
 //#define TRACE_FUNCTIONS
 #ifdef TRACE_FUNCTIONS
