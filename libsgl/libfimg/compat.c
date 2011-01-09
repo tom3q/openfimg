@@ -609,8 +609,8 @@ static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 #if 0
 		asm ( 	"ldmia %0!, {r0-r3}"
 			"stmia %1!, {r0-r3}"
-			: "+r"(data), "+r"(reg)
-			:
+			: "r"(data), "r"(reg)
+			: "0"(data), "1"(reg)
 			: "r0", "r1", "r2", "r3");
 #else
 		*(reg++) = *(data++);
