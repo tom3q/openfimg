@@ -132,7 +132,7 @@ void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 		"stmia %0!, {r0-r3}\n\t"
 		"subs %2, %2, $1\n\t"
 		"bne 1b\n\t"
-		: "r"(reg), "r"(data)
+		: "=r"(reg), "=r"(data)
 		: "0"(reg), "1"(data), "r"(count / 4)
 		: "r0", "r1", "r2", "r3"
 	);
