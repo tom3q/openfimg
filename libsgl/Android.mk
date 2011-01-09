@@ -58,7 +58,7 @@ endif
 #    LOCAL_SHARED_LIBRARIES += libui
 #endif
 
-
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/egl
 LOCAL_MODULE:= libGLES_fimg
 
