@@ -279,6 +279,10 @@ struct FGLConfigMatcher {
 	{
 		return (confValue & reqValue) == reqValue;
 	}
+	static bool ignore(GLint reqValue, GLint confValue)
+	{
+		return true;
+	}
 };
 
 /*
@@ -296,9 +300,9 @@ static FGLConfigPair const baseConfigAttributes[] = {
 	{ EGL_MAX_PBUFFER_HEIGHT,         FGL_MAX_VIEWPORT_DIMS             },
 	{ EGL_MAX_PBUFFER_PIXELS,         FGL_MAX_VIEWPORT_PIXELS           },
 	{ EGL_MAX_PBUFFER_WIDTH,          FGL_MAX_VIEWPORT_DIMS             },
-	{ EGL_NATIVE_RENDERABLE,          EGL_FALSE                         },
+	{ EGL_NATIVE_RENDERABLE,          EGL_TRUE                          },
 	{ EGL_NATIVE_VISUAL_ID,           0                                 },
-	{ EGL_NATIVE_VISUAL_TYPE,         0                                 },
+	{ EGL_NATIVE_VISUAL_TYPE,         GGL_PIXEL_FORMAT_RGB_565          },
 	{ EGL_SAMPLES,                    0                                 },
 	{ EGL_SAMPLE_BUFFERS,             0                                 },
 	{ EGL_TRANSPARENT_TYPE,           EGL_NONE                          },
@@ -329,6 +333,7 @@ static FGLConfigPair const configAttributes0[] = {
 	{ EGL_DEPTH_SIZE,       0 },
 	{ EGL_STENCIL_SIZE,     0 },
 	{ EGL_CONFIG_ID,        0 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -341,6 +346,7 @@ static FGLConfigPair const configAttributes1[] = {
 	{ EGL_DEPTH_SIZE,      24 },
 	{ EGL_STENCIL_SIZE,     8 },
 	{ EGL_CONFIG_ID,        1 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -354,6 +360,7 @@ static FGLConfigPair const configAttributes2[] = {
 	{ EGL_DEPTH_SIZE,       0 },
 	{ EGL_STENCIL_SIZE,     0 },
 	{ EGL_CONFIG_ID,        2 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -366,6 +373,7 @@ static FGLConfigPair const configAttributes3[] = {
 	{ EGL_DEPTH_SIZE,      24 },
 	{ EGL_STENCIL_SIZE,     8 },
 	{ EGL_CONFIG_ID,        3 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -379,6 +387,7 @@ static FGLConfigPair const configAttributes4[] = {
 	{ EGL_DEPTH_SIZE,       0 },
 	{ EGL_STENCIL_SIZE,     0 },
 	{ EGL_CONFIG_ID,        4 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -391,6 +400,7 @@ static FGLConfigPair const configAttributes5[] = {
 	{ EGL_DEPTH_SIZE,      24 },
 	{ EGL_STENCIL_SIZE,     8 },
 	{ EGL_CONFIG_ID,        5 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
@@ -414,11 +424,11 @@ static FGLConfigMatcher const gConfigManagement[] = {
 	{ EGL_CONFIG_CAVEAT,              FGLConfigMatcher::exact   },
 	{ EGL_CONFIG_ID,                  FGLConfigMatcher::exact   },
 	{ EGL_LEVEL,                      FGLConfigMatcher::exact   },
-	{ EGL_MAX_PBUFFER_HEIGHT,         FGLConfigMatcher::exact   },
-	{ EGL_MAX_PBUFFER_PIXELS,         FGLConfigMatcher::exact   },
-	{ EGL_MAX_PBUFFER_WIDTH,          FGLConfigMatcher::exact   },
+	{ EGL_MAX_PBUFFER_HEIGHT,         FGLConfigMatcher::ignore   },
+	{ EGL_MAX_PBUFFER_PIXELS,         FGLConfigMatcher::ignore   },
+	{ EGL_MAX_PBUFFER_WIDTH,          FGLConfigMatcher::ignore   },
 	{ EGL_NATIVE_RENDERABLE,          FGLConfigMatcher::exact   },
-	{ EGL_NATIVE_VISUAL_ID,           FGLConfigMatcher::exact   },
+	{ EGL_NATIVE_VISUAL_ID,           FGLConfigMatcher::ignore   },
 	{ EGL_NATIVE_VISUAL_TYPE,         FGLConfigMatcher::exact   },
 	{ EGL_SAMPLES,                    FGLConfigMatcher::exact   },
 	{ EGL_SAMPLE_BUFFERS,             FGLConfigMatcher::exact   },
@@ -601,9 +611,19 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 		return EGL_FALSE;
 	}
 
-	if (unlikely(num_config == NULL)) {
+	if (unlikely(!num_config)) {
 		setError(EGL_BAD_PARAMETER);
 		return EGL_FALSE;
+	}
+
+	if (unlikely(attrib_list==0)) {
+		/*
+		* A NULL attrib_list should be treated as though it was an empty
+		* one (terminated with EGL_NONE) as defined in
+		* section 3.4.1 "Querying Configurations" in the EGL specification.
+		*/
+		static const EGLint dummy = EGL_NONE;
+		attrib_list = &dummy;
 	}
 
 	int numAttributes = 0;
@@ -2255,7 +2275,7 @@ EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
 	switch (native_buffer->format) {
 		case HAL_PIXEL_FORMAT_RGBA_8888:
 		case HAL_PIXEL_FORMAT_RGBX_8888:
-		case HAL_PIXEL_FORMAT_RGB_888:
+		//case HAL_PIXEL_FORMAT_RGB_888:
 		case HAL_PIXEL_FORMAT_RGB_565:
 		case HAL_PIXEL_FORMAT_BGRA_8888:
 		case HAL_PIXEL_FORMAT_RGBA_5551:
