@@ -40,20 +40,8 @@ static char const * const gVendorString     = "GLES6410";
 static char const * const gRendererString   = "S3C6410 FIMG-3DSE";
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
 static char const * const gExtensionsString =
-	"GL_OES_read_format "
 #if 0
-	"GL_OES_compressed_paletted_texture "   // TODO
-	"GL_OES_matrix_get "                    // TODO
-	"GL_OES_query_matrix "                  // TODO
 	"GL_OES_point_sprite "                  // TODO
-//#endif
-	"GL_OES_EGL_image "
-//#if 0
-	"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
-	"GL_ARB_texture_compression "           // TODO IMPORTANT
-	"GL_ANDROID_user_clip_plane "           // TODO
-	"GL_ANDROID_vertex_buffer_object "      // TODO
-	"GL_ANDROID_generate_mipmap "           // TODO
 	"GL_ARB_texture_env_combine "		// TODO
 	"GL_ARB_texture_env_crossbar "		// TODO
 	"GL_ARB_texture_env_dot3 "		// TODO
@@ -68,16 +56,26 @@ static char const * const gExtensionsString =
 	"GL_OES_matrix_palette "		// TODO
 	"GL_OES_vertex_buffer_object "		// TODO
 	"GL_QUALCOMM_vertex_buffer_object "	// TODO
-	"GL_QUALCOMM_direct_texture"		// TODO
+	"GL_QUALCOMM_direct_texture "		// TODO
 #endif
 	"GL_OES_byte_coordinates "
 	"GL_OES_fixed_point "
 	"GL_OES_single_precision "
-	"GL_OES_point_size_array "
+	"GL_OES_read_format "
+	//"GL_OES_compressed_paletted_texture "   // TODO
+	"GL_OES_draw_texture "
+	//"GL_OES_matrix_get "                    // TODO
+	//"GL_OES_query_matrix "                  // TODO
+	"GL_OES_EGL_image "
+	//"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
+	//"GL_ARB_texture_compression "           // TODO IMPORTANT
 #ifdef FGL_NPOT_TEXTURES
 	"GL_ARB_texture_non_power_of_two "
 #endif
-	"GL_OES_draw_texture"
+	//"GL_ANDROID_user_clip_plane "           // TODO
+	//"GL_ANDROID_vertex_buffer_object "      // TODO
+	//"GL_ANDROID_generate_mipmap "           // TODO
+	"GL_OES_point_size_array"
 ;
 
 static const GLint fglCompressedTextureFormats[] = {

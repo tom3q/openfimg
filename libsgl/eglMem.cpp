@@ -48,7 +48,7 @@ void fglFlushPmemSurface(FGLSurface *s)
 {
 	struct pmem_region region;
 
-	if (!s->isPMEM())
+	if (!s->isFlushable())
 		return;
 
 	region.offset = 0;
@@ -56,6 +56,26 @@ void fglFlushPmemSurface(FGLSurface *s)
 
 	if (ioctl(s->fd, PMEM_CACHE_FLUSH, &region) != 0)
 		LOGW("Could not flush PMEM surface %d", s->fd);
+}
+
+int fglCreatePmemSurface(FGLSurface *s, android_native_buffer_t* buffer)
+{
+	if (buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC)
+		return -1;
+
+	if (buffer->common.version != sizeof(android_native_buffer_t))
+		return -1;
+
+	const private_handle_t* hnd =
+			static_cast<const private_handle_t*>(buffer->handle);
+
+	s->fd = hnd->fd;
+	s->vaddr = (void *)-1; /* HACK: May lead to crashes */
+	s->paddr = fglGetBufferPhysicalAddress(buffer);
+	s->size = hnd->size;
+	s->internal = false;
+
+	return 0;
 }
 
 int fglCreatePmemSurface(FGLSurface *s)
@@ -93,6 +113,7 @@ int fglCreatePmemSurface(FGLSurface *s)
 	s->fd = fd;
 	s->vaddr = vaddr;
 	s->paddr = region.offset;
+	s->internal = true;
 	LOGD("Created PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
 				fd, vaddr, (unsigned int)region.offset);
 
@@ -110,7 +131,7 @@ err_open:
 
 void fglDestroyPmemSurface(FGLSurface *s)
 {
-	if(!s->isPMEM())
+	if (!s->isDestructible())
 		return;
 
 	munmap(s->vaddr, s->size);

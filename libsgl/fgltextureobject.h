@@ -41,6 +41,7 @@ struct FGLTexture {
 	GLboolean	genMipmap;
 	GLboolean	useMipmap;
 	GLint		cropRect[4];
+	void*		eglImage;
 	/* HW state */
 	fimgTexture	*fimg;
 	uint32_t	fglFormat;
@@ -53,8 +54,8 @@ struct FGLTexture {
 		surface(), compressed(0), levels(0), maxLevel(0), format(GL_RGB),
 		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
 		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
-		genMipmap(0), useMipmap(GL_TRUE), fimg(NULL), valid(false),
-		dirty(false)
+		genMipmap(0), useMipmap(GL_TRUE), eglImage(0),
+		fimg(NULL), valid(false), dirty(false)
 	{
 		fimg = fimgCreateTexture();
 		if(fimg == NULL)

@@ -33,9 +33,10 @@ struct FGLSurface {
 	void		*vaddr;	// pointer to the bits
 	unsigned long	paddr;	// physical address
 	FGLint		format;	// pixel format
+	bool		internal;
 
 	FGLSurface() :
-		fd(-1), vaddr(NULL) {};
+		fd(-1), vaddr(NULL), internal(false) {};
 
 	inline bool isValid(void)
 	{
@@ -44,7 +45,17 @@ struct FGLSurface {
 
 	inline bool isPMEM(void)
 	{
+		return internal;
+	}
+
+	inline bool isFlushable(void)
+	{
 		return fd != -1;
+	}
+
+	inline bool isDestructible(void)
+	{
+		return internal;
 	}
 };
 

@@ -724,6 +724,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 		obj->levels = (1 << 0);
 		obj->dirty = true;
+		obj->eglImage = 0;
 	}
 
 	// Copy the image (with conversion if needed)
@@ -960,12 +961,107 @@ GL_API void GL_APIENTRY glCopyTexSubImage2D (GLenum target, GLint level,
 	FUNC_UNIMPLEMENTED;
 }
 
-#if 0
 GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageOES image)
 {
+	if (unlikely(target != GL_TEXTURE_2D)) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
 
+	if (unlikely(!image)) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	android_native_buffer_t* native_buffer = (android_native_buffer_t*)image;
+
+	if (native_buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC) {
+		setError(GL_INVALID_VALUE);
+	}
+
+	if (native_buffer->common.version != sizeof(android_native_buffer_t)) {
+		setError(GL_INVALID_VALUE);
+	}
+
+	FGLContext *ctx = getContext();
+	FGLTexture *tex =
+		ctx->texture[ctx->activeTexture].getTexture();
+
+	fglDestroyPmemSurface(&tex->surface);
+
+	GLint format, type, fglFormat, bpp;
+
+	switch (native_buffer->format) {
+	case HAL_PIXEL_FORMAT_RGBA_8888:
+		format = GL_BGRA_EXT;
+		type = GL_UNSIGNED_BYTE;
+		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
+		bpp = 4;
+		break;
+	case HAL_PIXEL_FORMAT_RGBX_8888:
+		format = GL_BGRA_EXT;
+		type = GL_UNSIGNED_BYTE;
+		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
+		bpp = 4;
+		break;
+/*
+	case HAL_PIXEL_FORMAT_RGB_888:
+		format = GL_BGRA_EXT;
+		type = GL_UNSIGNED_BYTE;
+		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
+		break;
+*/
+	case HAL_PIXEL_FORMAT_RGB_565:
+		format = GL_RGB;
+		type = GL_UNSIGNED_SHORT_5_6_5;
+		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_565;
+		bpp = 2;
+		break;
+	case HAL_PIXEL_FORMAT_BGRA_8888:
+		format = GL_RGBA;
+		type = GL_UNSIGNED_BYTE;
+		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
+		bpp = 4;
+		break;
+	case HAL_PIXEL_FORMAT_RGBA_5551:
+		format = GL_RGBA;
+		type = GL_UNSIGNED_SHORT_5_5_5_1;
+		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_1555;
+		bpp = 2;
+		break;
+	case HAL_PIXEL_FORMAT_RGBA_4444:
+		format = GL_RGBA;
+		type = GL_UNSIGNED_SHORT_4_4_4_4;
+		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_4444;
+		bpp = 2;
+		break;
+	default:
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	tex->eglImage	= image;
+	tex->format	= format;
+	tex->type	= type;
+	tex->fglFormat	= fglFormat;
+	tex->bpp	= bpp;
+	tex->convert	= 0;
+	tex->maxLevel	= 0;
+	tex->levels	= (1 << 0);
+	tex->dirty	= true;
+
+	// Setup the surface
+	tex->surface.width	= native_buffer->width;
+	tex->surface.height	= native_buffer->height;
+	fglCreatePmemSurface(&tex->surface, native_buffer);
+
+	// Setup fimgTexture
+	fimgInitTexture(tex->fimg, tex->fglFormat, tex->maxLevel,
+						tex->surface.paddr);
+	fimgSetTex2DSize(tex->fimg, native_buffer->width, native_buffer->height);
 }
 
+#if 0
 GL_API void GL_APIENTRY glEGLImageTargetRenderbufferStorageOES (GLenum target, GLeglImageOES image)
 {
 	FUNC_UNIMPLEMENTED;
