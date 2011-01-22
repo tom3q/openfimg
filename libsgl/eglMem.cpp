@@ -189,3 +189,47 @@ unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer)
 	LOGE("EGL: fglGetBufferPhysicalAddress failed");
 	return 0;
 }
+
+#if 0
+/*
+ * NEW SURFACE SUBSYSTEM
+ */
+
+class FGLSurface {
+	unsigned long	phys;
+	void		*virt;
+	unsigned long	size;
+public:
+			FGLSurface();
+	virtual		~FGLSurface();
+
+	virtual void	flush(void) = 0;
+	virtual void	lock(void) = 0;
+	virtual void	unlock(void) = 0;
+};
+
+class FGLLocalSurface : public FGLSurface {
+	int		fd;
+public:
+			FGLLocalSurface(unsigned long size);
+	virtual		~FGLLocalSurface();
+
+	virtual void	flush(void);
+};
+
+class FGLNativeSurface : public FGLSurface {
+	android_native_buffer_t *buffer;
+public:
+			FGLNativeSurface(android_native_buffer_t *buf);
+	virtual		~FGLNativeSurface();
+};
+
+class FGLImageSurface : public FGLSurface {
+	EGLImageKHR	image;
+public:
+			FGLImageSurface(EGLImageKHR img);
+	virtual		~FGLImageSurface();
+
+	virtual void	flush(void);
+};
+#endif
