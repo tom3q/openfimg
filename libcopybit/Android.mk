@@ -23,6 +23,7 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_SHARED_LIBRARIES := liblog
 LOCAL_SRC_FILES := copybit.cpp
 LOCAL_MODULE := copybit.GT-I5700
+LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES += ../libgralloc ../modules/g2d
 LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS += -DCOPYBIT_S3C6410=1 -mcpu=arm1176jzf-s -mfpu=vfp -O2
