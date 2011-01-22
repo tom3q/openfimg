@@ -63,6 +63,7 @@
 #define G3D_FGGB_PIPESTAT_REG		(0x00)
 #define G3D_FGGB_CACHECTL_REG		(0x04)
 #define G3D_FGGB_RESET_REG		(0x08)
+#define G3D_FGGB_VERSION		(0x10)
 #define G3D_FGGB_INTPENDING_REG		(0x40)
 #define G3D_FGGB_INTMASK_REG		(0x44)
 #define G3D_FGGB_PIPEMASK_REG		(0x48)
@@ -248,7 +249,7 @@ static inline void g3d_do_power_down(struct g3d_drvdata *data)
 static inline int g3d_power_up(struct g3d_drvdata *data)
 {
 	int ret;
-	
+
 	if (data->state)
 		return 0;
 
@@ -425,6 +426,7 @@ int s3c_g3d_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct g3d_drvdata *data;
 	int ret;
+	uint32_t version;
 
 	data = kmalloc(sizeof(struct g3d_drvdata), GFP_KERNEL);
 	if(data == NULL) {
@@ -493,6 +495,11 @@ int s3c_g3d_probe(struct platform_device *pdev)
 		ret = -EFAULT;
 		goto err_pm;
 	}
+
+	version = g3d_read(data, G3D_FGGB_VERSION);
+	INFO("detected FIMG-3DSE version %d.%d.%d\n", version >> 24,
+				(version >> 16) & 0xff, (version >> 8) & 0xff);
+
 #ifdef USE_G3D_DOMAIN_GATING
 	hrtimer_start(&data->timer, ktime_set(G3D_IDLE_TIME_SECS, 0),
 							HRTIMER_MODE_REL);
@@ -503,8 +510,8 @@ int s3c_g3d_probe(struct platform_device *pdev)
 
 	ret = misc_register(&s3c_g3d_dev);
 	if (ret < 0) {
-		printk (KERN_ERR "cannot register miscdev on minor=%d (%d)\n",
-				G3D_MINOR, ret);
+		ERR("could not register miscdev on minor=%d (%d)\n",
+							G3D_MINOR, ret);
 		goto err_misc_register;
 	}
 
@@ -561,7 +568,7 @@ static int s3c_g3d_suspend(struct platform_device *pdev, pm_message_t state)
 	struct g3d_drvdata *data = dev_get_drvdata(&pdev->dev);
 
 #ifdef USE_G3D_DOMAIN_GATING
-	if(!hrtimer_cancel(&data->timer))
+	if(hrtimer_cancel(&data->timer))
 		g3d_power_down(data);
 #else
 	g3d_flush(data, G3D_FGGB_PIPESTAT_MSK);
