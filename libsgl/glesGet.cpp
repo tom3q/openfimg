@@ -504,28 +504,28 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		break;
 #endif
 	case GL_RED_BITS :
-		params[0] = fglColorConfigs[ctx->surface.draw.format].red;
+		params[0] = fglColorConfigs[ctx->surface.format].red;
 		break;
 	case GL_GREEN_BITS:
-		params[0] = fglColorConfigs[ctx->surface.draw.format].green;
+		params[0] = fglColorConfigs[ctx->surface.format].green;
 		break;
 	case GL_BLUE_BITS :
-		params[0] = fglColorConfigs[ctx->surface.draw.format].blue;
+		params[0] = fglColorConfigs[ctx->surface.format].blue;
 		break;
 	case GL_ALPHA_BITS :
-		params[0] = fglColorConfigs[ctx->surface.draw.format].alpha;
+		params[0] = fglColorConfigs[ctx->surface.format].alpha;
 		break;
 	case GL_DEPTH_BITS :
-		params[0] = ctx->surface.depth.format & 0xff;
+		params[0] = ctx->surface.depthFormat & 0xff;
 		break;
 	case GL_STENCIL_BITS:
-		params[0] = ctx->surface.depth.format >> 8;
+		params[0] = ctx->surface.depthFormat >> 8;
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-		params[0] = fglColorConfigs[ctx->surface.draw.format].readType;
+		params[0] = fglColorConfigs[ctx->surface.format].readType;
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-		params[0] = fglColorConfigs[ctx->surface.draw.format].readFormat;
+		params[0] = fglColorConfigs[ctx->surface.format].readFormat;
 		break;
 #if 0
 	case GL_ALPHA_TEST_FUNC_EXP:

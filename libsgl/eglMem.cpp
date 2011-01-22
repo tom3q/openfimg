@@ -40,106 +40,11 @@
 /* HACK ALERT */
 #include "../../../../hardware/libhardware/modules/gralloc/gralloc_priv.h"
 
+using namespace android;
+
 /**
 	Surfaces
 */
-
-void fglFlushPmemSurface(FGLSurface *s)
-{
-	struct pmem_region region;
-
-	if (!s->isFlushable())
-		return;
-
-	region.offset = 0;
-	region.len = s->size;
-
-	if (ioctl(s->fd, PMEM_CACHE_FLUSH, &region) != 0)
-		LOGW("Could not flush PMEM surface %d", s->fd);
-}
-
-int fglCreatePmemSurface(FGLSurface *s, android_native_buffer_t* buffer)
-{
-	if (buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC)
-		return -1;
-
-	if (buffer->common.version != sizeof(android_native_buffer_t))
-		return -1;
-
-	const private_handle_t* hnd =
-			static_cast<const private_handle_t*>(buffer->handle);
-
-	s->fd = hnd->fd;
-	s->vaddr = (void *)-1; /* HACK: May lead to crashes */
-	s->paddr = fglGetBufferPhysicalAddress(buffer);
-	s->size = hnd->size;
-	s->internal = false;
-
-	return 0;
-}
-
-int fglCreatePmemSurface(FGLSurface *s)
-{
-	int err = 0, fd;
-	void *vaddr;
-	size_t size;
-	pmem_region region;
-
-	size = s->size;
-
-	// create a buffer file (cached)
-	fd = open("/dev/pmem_gpu1", O_RDWR, 0);
-	if(fd < 0) {
-		LOGE("EGL: Could not open PMEM device (%s)", strerror(errno));
-		goto err_open;
-	}
-
-	// allocate and map the memory
-	if ((vaddr = mmap(NULL, size, PROT_WRITE | PROT_READ,
-				MAP_SHARED, fd, NULL)) == MAP_FAILED) {
-		LOGE("EGL: PMEM buffer allocation failed (%s)", strerror(errno));
-		goto err_mmap;
-	}
-
-	if (ioctl(fd, PMEM_GET_PHYS, &region) < 0) {
-		LOGE("EGL: PMEM_GET_PHYS failed (%s)", strerror(errno));
-		goto err_phys;
-	}
-
-	/* Clear the buffer (NOTE: Is it needed?) */
-	memset((char*)vaddr, 0, size);
-
-	/* Setup surface struct */
-	s->fd = fd;
-	s->vaddr = vaddr;
-	s->paddr = region.offset;
-	s->internal = true;
-	LOGD("Created PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
-				fd, vaddr, (unsigned int)region.offset);
-
-	fglFlushPmemSurface(s);
-
-	return 0;
-
-err_phys:
-	munmap(vaddr, size);
-err_mmap:
-	close(fd);
-err_open:
-	return err;
-}
-
-void fglDestroyPmemSurface(FGLSurface *s)
-{
-	if (!s->isDestructible())
-		return;
-
-	munmap(s->vaddr, s->size);
-	close(s->fd);
-	LOGD("Destroyed PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
-				s->fd, s->vaddr, (unsigned int)s->paddr);
-	s->vaddr = 0;
-}
 
 #define FB_DEVICE_NAME "/dev/graphics/fb0"
 static inline unsigned long getFramebufferAddress(void)
@@ -190,46 +95,181 @@ unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer)
 	return 0;
 }
 
-#if 0
 /*
  * NEW SURFACE SUBSYSTEM
  */
 
-class FGLSurface {
-	unsigned long	phys;
-	void		*virt;
-	unsigned long	size;
-public:
-			FGLSurface();
-	virtual		~FGLSurface();
+FGLLocalSurface::FGLLocalSurface(unsigned long size)
+	: fd(-1)
+{
+	int fd;
+	void *vaddr;
+	pmem_region region;
 
-	virtual void	flush(void) = 0;
-	virtual void	lock(void) = 0;
-	virtual void	unlock(void) = 0;
-};
+	// create a buffer file (cached)
+	fd = open("/dev/pmem_gpu1", O_RDWR, 0);
+	if(fd < 0) {
+		LOGE("EGL: Could not open PMEM device (%s)", strerror(errno));
+		return;
+	}
 
-class FGLLocalSurface : public FGLSurface {
-	int		fd;
-public:
-			FGLLocalSurface(unsigned long size);
-	virtual		~FGLLocalSurface();
+	// allocate and map the memory
+	if ((vaddr = mmap(NULL, size, PROT_WRITE | PROT_READ,
+				MAP_SHARED, fd, NULL)) == MAP_FAILED) {
+		LOGE("EGL: PMEM buffer allocation failed (%s)", strerror(errno));
+		goto err_mmap;
+	}
 
-	virtual void	flush(void);
-};
+	if (ioctl(fd, PMEM_GET_PHYS, &region) < 0) {
+		LOGE("EGL: PMEM_GET_PHYS failed (%s)", strerror(errno));
+		goto err_phys;
+	}
 
-class FGLNativeSurface : public FGLSurface {
-	android_native_buffer_t *buffer;
-public:
-			FGLNativeSurface(android_native_buffer_t *buf);
-	virtual		~FGLNativeSurface();
-};
+	/* Clear the buffer (NOTE: Is it needed?) */
+	memset((char*)vaddr, 0, size);
 
-class FGLImageSurface : public FGLSurface {
-	EGLImageKHR	image;
-public:
-			FGLImageSurface(EGLImageKHR img);
-	virtual		~FGLImageSurface();
+	/* Setup surface struct */
+	this->size	= size;
+	this->fd	= fd;
+	this->vaddr	= vaddr;
+	this->paddr	= region.offset;
 
-	virtual void	flush(void);
-};
-#endif
+	LOGD("Created PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
+				fd, vaddr, (unsigned int)region.offset);
+
+	flush();
+
+	return;
+
+err_phys:
+	munmap(vaddr, size);
+err_mmap:
+	close(fd);
+}
+
+FGLLocalSurface::~FGLLocalSurface()
+{
+	if (!isValid())
+		return;
+
+	munmap(vaddr, size);
+	close(fd);
+
+	LOGD("Destroyed PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
+				fd, vaddr, (unsigned int)paddr);
+}
+
+int FGLLocalSurface::lock(int usage)
+{
+	return 0;
+}
+
+int FGLLocalSurface::unlock(void)
+{
+	return 0;
+}
+
+void FGLLocalSurface::flush(void)
+{
+	struct pmem_region region;
+
+	region.offset = 0;
+	region.len = size;
+
+	if (ioctl(fd, PMEM_CACHE_FLUSH, &region) != 0)
+		LOGW("Could not flush PMEM surface %d", fd);
+}
+
+FGLExternalSurface::FGLExternalSurface(void *v, unsigned long p)
+{
+	vaddr = v;
+	paddr = p;
+}
+
+FGLExternalSurface::~FGLExternalSurface()
+{
+
+}
+
+int FGLExternalSurface::lock(int usage)
+{
+	return 0;
+}
+
+int FGLExternalSurface::unlock(void)
+{
+	return 0;
+}
+
+void FGLExternalSurface::flush(void)
+{
+
+}
+
+FGLImageSurface::FGLImageSurface(EGLImageKHR img)
+	: image(0)
+{
+	android_native_buffer_t *buffer = (android_native_buffer_t *)img;
+
+	if (buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC)
+		return;
+
+	if (buffer->common.version != sizeof(android_native_buffer_t))
+		return;
+
+	const private_handle_t* hnd =
+			static_cast<const private_handle_t*>(buffer->handle);
+
+	hw_module_t const* pModule;
+	if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule))
+		return;
+
+	module = reinterpret_cast<gralloc_module_t const*>(pModule);
+
+	vaddr = 0; /* Needs locking */
+	paddr = fglGetBufferPhysicalAddress(buffer);
+	size = hnd->size;;
+	image = img;
+}
+
+FGLImageSurface::~FGLImageSurface()
+{
+
+}
+
+int FGLImageSurface::lock(int usage)
+{
+	android_native_buffer_t *buf = (android_native_buffer_t *)image;
+	int err;
+
+	if (sw_gralloc_handle_t::validate(buf->handle) < 0) {
+		err = module->lock(module, buf->handle,
+			usage, 0, 0, buf->width, buf->height, &vaddr);
+	} else {
+		sw_gralloc_handle_t const* hnd =
+			reinterpret_cast<sw_gralloc_handle_t const*>(buf->handle);
+		vaddr = (void*)hnd->base;
+		err = FGL_NO_ERROR;
+	}
+
+	return err;
+}
+
+int FGLImageSurface::unlock(void)
+{
+	int err = 0;
+	android_native_buffer_t *buf = (android_native_buffer_t *)image;
+
+	if (!buf)
+		return BAD_VALUE;
+
+	if (sw_gralloc_handle_t::validate(buf->handle) < 0)
+		err = module->unlock(module, buf->handle);
+
+	return err;
+}
+
+void FGLImageSurface::flush(void)
+{
+
+}

@@ -171,16 +171,16 @@ static void fglGenerateMipmapsSW(FGLTexture *obj)
  FUNCTION_TRACER;
 	int level = 0;
 
-	int w = obj->surface.width;
-	int h = obj->surface.height;
+	int w = obj->width;
+	int h = obj->height;
 	if ((w&h) == 1)
 		return;
 
 	w = (w>>1) ? : 1;
 	h = (h>>1) ? : 1;
 
-	void *curLevel = obj->surface.vaddr;
-	void *nextLevel = (uint8_t *)obj->surface.vaddr
+	void *curLevel = obj->surface->vaddr;
+	void *nextLevel = (uint8_t *)obj->surface->vaddr
 				+ fimgGetTexMipmapOffset(obj->fimg, 1);
 
 	while(true) {
@@ -309,7 +309,7 @@ static void fglGenerateMipmapsSW(FGLTexture *obj)
 		h = (h>>1) ? : 1;
 
 		curLevel = nextLevel;
-		nextLevel = (uint8_t *)obj->surface.vaddr
+		nextLevel = (uint8_t *)obj->surface->vaddr
 				+ fimgGetTexMipmapOffset(obj->fimg, level + 1);
 	}
 }
@@ -321,18 +321,18 @@ static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 	struct s3c_g2d_req req;
 
 	// Setup source image (level 0 image)
-	req.src.base	= obj->surface.paddr;
+	req.src.base	= obj->surface->paddr;
 	req.src.offs	= 0;
-	req.src.w	= obj->surface.width;
-	req.src.h	= obj->surface.height;
+	req.src.w	= obj->width;
+	req.src.h	= obj->height;
 	req.src.l	= 0;
 	req.src.t	= 0;
-	req.src.r	= obj->surface.width - 1;
-	req.src.b	= obj->surface.height - 1;
+	req.src.r	= obj->width - 1;
+	req.src.b	= obj->height - 1;
 	req.src.fmt	= format;
 
 	// Setup destination image template for generated mipmaps
-	req.dst.base	= obj->surface.paddr;
+	req.dst.base	= obj->surface->paddr;
 	req.dst.l	= 0;
 	req.dst.t	= 0;
 	req.dst.fmt	= format;
@@ -349,8 +349,8 @@ static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 		return -1;
 	}
 
-	unsigned width = obj->surface.width;
-	unsigned height = obj->surface.height;
+	unsigned width = obj->width;
+	unsigned height = obj->height;
 
 	for (int lvl = 1; lvl <= obj->maxLevel; lvl++) {
 		if (width > 1)
@@ -445,17 +445,17 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
  FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
-	unsigned width = obj->surface.width >> level;
+	unsigned width = obj->width >> level;
 	if (!width)
 		width = 1;
 
-	unsigned height = obj->surface.height >> level;
+	unsigned height = obj->height >> level;
 	if (!height)
 		height = 1;
 
 	size_t size = width*height*obj->bpp;
 
-	memcpy((uint8_t *)obj->surface.vaddr + offset, pixels, size);
+	memcpy((uint8_t *)obj->surface->vaddr + offset, pixels, size);
 }
 
 static void fglLoadTexture(FGLTexture *obj, unsigned level,
@@ -464,18 +464,18 @@ static void fglLoadTexture(FGLTexture *obj, unsigned level,
  FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
-	unsigned width = obj->surface.width >> level;
+	unsigned width = obj->width >> level;
 	if (!width)
 		width = 1;
 
-	unsigned height = obj->surface.height >> level;
+	unsigned height = obj->height >> level;
 	if (!height)
 		height = 1;
 
 	size_t line = width*obj->bpp;
 	size_t stride = (line + alignment - 1) & ~(alignment - 1);
 	const uint8_t *src8 = (const uint8_t *)pixels;
-	uint8_t *dst8 = (uint8_t *)obj->surface.vaddr + offset;
+	uint8_t *dst8 = (uint8_t *)obj->surface->vaddr + offset;
 
 	do {
 		memcpy(dst8, src8, line);
@@ -501,11 +501,11 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
  FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
-	unsigned width = obj->surface.width >> level;
+	unsigned width = obj->width >> level;
 	if (!width)
 		width = 1;
 
-	unsigned height = obj->surface.height >> level;
+	unsigned height = obj->height >> level;
 	if (!height)
 		height = 1;
 
@@ -515,7 +515,7 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		size_t stride = (line + alignment - 1) & ~(alignment - 1);
 		size_t padding = stride - line;
 		const uint8_t *src8 = (const uint8_t *)pixels;
-		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr + offset);
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface->vaddr + offset);
 		do {
 			unsigned x = width;
 			do {
@@ -532,7 +532,7 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		size_t stride = (line + alignment - 1) & ~(alignment - 1);
 		size_t padding = stride - line;
 		const uint8_t *src8 = (const uint8_t *)pixels;
-		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr + offset);
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface->vaddr + offset);
 		do {
 			unsigned x = width;
 			do {
@@ -548,7 +548,7 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		size_t stride = (width + alignment - 1) & ~(alignment - 1);
 		size_t padding = stride - width;
 		const uint8_t *src8 = (const uint8_t *)pixels;
-		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface.vaddr + offset);
+		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface->vaddr + offset);
 		do {
 			unsigned x = width;
 			do {
@@ -614,15 +614,15 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	if (level > 0) {
 		GLint mipmapW, mipmapH;
 
-		mipmapW = obj->surface.width >> level;
+		mipmapW = obj->width >> level;
 		if (!mipmapW)
 			mipmapW = 1;
 
-		mipmapH = obj->surface.height >> level;
+		mipmapH = obj->height >> level;
 		if (!mipmapH)
 			mipmapH = 1;
 
-		if (!obj->surface.isValid()) {
+		if (!obj->surface) {
 			// Mipmaps can be specified only if the texture exists
 			setError(GL_INVALID_OPERATION);
 			return;
@@ -696,11 +696,15 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	fglWaitForTexture(ctx, obj);
 
 	// Level 0 with different size or bpp means dropping whole texture
-	if (width != obj->surface.width || height != obj->surface.height || bpp != obj->bpp)
-		fglDestroyPmemSurface(&obj->surface);
+	if (width != obj->width || height != obj->height || bpp != obj->bpp) {
+		delete obj->surface;
+		obj->surface = 0;
+	}
 
 	// (Re)allocate the texture
-	if (!obj->surface.isValid()) {
+	if (!obj->surface) {
+		obj->width = width;
+		obj->height = height;
 		obj->format = format;
 		obj->type = type;
 		obj->fglFormat = fglFormat;
@@ -708,18 +712,19 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->convert = convert;
 
 		// Calculate mipmaps
-		obj->surface.size = fglCalculateMipmaps(obj, width, height, bpp);
+		unsigned size = fglCalculateMipmaps(obj, width, height, bpp);
 
-		// Setup the surface
-		obj->surface.width = width;
-		obj->surface.height = height;
-		if(fglCreatePmemSurface(&obj->surface)) {
+		// Setup surface
+		obj->surface = new FGLLocalSurface(size);
+		if(!obj->surface || !obj->surface->isValid()) {
+			delete obj->surface;
+			obj->surface = 0;
 			setError(GL_OUT_OF_MEMORY);
 			return;
 		}
 
 		fimgInitTexture(obj->fimg, obj->fglFormat, obj->maxLevel,
-							obj->surface.paddr);
+							obj->surface->paddr);
 		fimgSetTex2DSize(obj->fimg, width, height);
 
 		obj->levels = (1 << 0);
@@ -754,10 +759,10 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
  FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
-	unsigned width = obj->surface.width >> level;
+	unsigned width = obj->width >> level;
 	if (!width)
 		width = 1;
-	unsigned height = obj->surface.height >> level;
+	unsigned height = obj->height >> level;
 	if (!height)
 		height = 1;
 
@@ -767,7 +772,7 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 	size_t xoffset = x*obj->bpp;
 	size_t yoffset = y*dstStride;
 	const uint8_t *src8 = (const uint8_t *)pixels;
-	uint8_t *dst8 = (uint8_t *)obj->surface.vaddr
+	uint8_t *dst8 = (uint8_t *)obj->surface->vaddr
 						+ offset + yoffset + xoffset;
 	do {
 		memcpy(dst8, src8, line);
@@ -783,11 +788,11 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
  FUNCTION_TRACER;
 	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
 
-	unsigned width = obj->surface.width >> level;
+	unsigned width = obj->width >> level;
 	if (!width)
 		width = 1;
 
-	unsigned height = obj->surface.height >> level;
+	unsigned height = obj->height >> level;
 	if (!height)
 		height = 1;
 
@@ -801,7 +806,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		size_t srcPad = srcStride - line;
 		size_t dstPad = width - w;
 		const uint8_t *src8 = (const uint8_t *)pixels;
-		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface->vaddr
 						+ offset + yOffset + xOffset);
 		do {
 			unsigned x = w;
@@ -824,7 +829,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		size_t srcPad = srcStride - line;
 		size_t dstPad = width - w;
 		const uint8_t *src8 = (const uint8_t *)pixels;
-		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface.vaddr
+		uint32_t *dst32 = (uint32_t *)((uint8_t *)obj->surface->vaddr
 						+ offset + yOffset + xOffset);
 		do {
 			unsigned x = w;
@@ -847,7 +852,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		size_t srcPad = srcStride - line;
 		size_t dstPad = width - w;
 		const uint8_t *src8 = (const uint8_t *)pixels;
-		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface.vaddr
+		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface->vaddr
 						+ offset + yOffset + xOffset);
 		do {
 			unsigned x = w;
@@ -874,7 +879,7 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	FGLTexture *obj =
 		ctx->texture[ctx->activeTexture].getTexture();
 
-	if (!obj->surface.isValid()) {
+	if (!obj->surface) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -886,11 +891,11 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 
 	GLint mipmapW, mipmapH;
 
-	mipmapW = obj->surface.width >> level;
+	mipmapW = obj->width >> level;
 	if (!mipmapW)
 		mipmapW = 1;
 
-	mipmapH = obj->surface.height >> level;
+	mipmapH = obj->height >> level;
 	if (!mipmapH)
 		mipmapH = 1;
 
@@ -987,7 +992,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 	FGLTexture *tex =
 		ctx->texture[ctx->activeTexture].getTexture();
 
-	fglDestroyPmemSurface(&tex->surface);
+	delete tex->surface;
 
 	GLint format, type, fglFormat, bpp;
 
@@ -1040,6 +1045,14 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 		return;
 	}
 
+	tex->surface = new FGLImageSurface(image);
+	if (!tex->surface || !tex->surface->isValid()) {
+		delete tex->surface;
+		tex->surface = 0;
+		setError(GL_OUT_OF_MEMORY);
+		return;
+	}
+
 	tex->eglImage	= image;
 	tex->format	= format;
 	tex->type	= type;
@@ -1049,15 +1062,12 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 	tex->maxLevel	= 0;
 	tex->levels	= (1 << 0);
 	tex->dirty	= true;
-
-	// Setup the surface
-	tex->surface.width	= native_buffer->width;
-	tex->surface.height	= native_buffer->height;
-	fglCreatePmemSurface(&tex->surface, native_buffer);
+	tex->width	= native_buffer->width;
+	tex->height	= native_buffer->height;
 
 	// Setup fimgTexture
 	fimgInitTexture(tex->fimg, tex->fglFormat, tex->maxLevel,
-						tex->surface.paddr);
+						tex->surface->paddr);
 	fimgSetTex2DSize(tex->fimg, native_buffer->width, native_buffer->height);
 }
 

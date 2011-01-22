@@ -737,35 +737,41 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 	return getConfigAttrib(dpy, config, attribute, value);
 }
 
-/* TODO: Abstract buffers with objects and reference them with pointers */
-void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf)
+void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
+		unsigned int height, unsigned int stride, unsigned int format)
 {
-	fimgSetFrameBufSize(gl->fimg, cbuf->stride, cbuf->height);
-	fimgSetFrameBufParams(gl->fimg, 0, 0, 0, (fimgColorMode)cbuf->format);
+	fimgSetFrameBufSize(gl->fimg, stride, height);
+	fimgSetFrameBufParams(gl->fimg, 0, 0, 0, (fimgColorMode)format);
 	fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
-	gl->surface.draw = *cbuf;
+	gl->surface.draw = cbuf;
+	gl->surface.width = width;
+	gl->surface.stride = stride;
+	gl->surface.height = height;
+	gl->surface.format = format;
 }
 
-/* TODO: Abstract buffers with objects and reference them with pointers */
-void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf)
+void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf, unsigned int format)
 {
-	if(zbuf->format) {
+	if(zbuf) {
 		fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
 		fimgSetZBufWriteMask(gl->fimg, 1);
 		fimgSetStencilBufWriteMask(gl->fimg, 0, 0xFF);
-		fimgSetStencilBufWriteMask(gl->fimg, 1, 0x00);
-	} else {
-		fimgSetZBufWriteMask(gl->fimg, 0);
-		fimgSetStencilBufWriteMask(gl->fimg, 0, 0x00);
-		fimgSetStencilBufWriteMask(gl->fimg, 1, 0x00);
+		fimgSetStencilBufWriteMask(gl->fimg, 1, 0xFF);
+		gl->surface.depth = zbuf;
+		gl->surface.depthFormat = format;
+		return;
 	}
-	gl->surface.depth = *zbuf;
+
+	fimgSetZBufWriteMask(gl->fimg, 0);
+	fimgSetStencilBufWriteMask(gl->fimg, 0, 0x00);
+	fimgSetStencilBufWriteMask(gl->fimg, 1, 0x00);
+	gl->surface.depth = 0;
+	gl->surface.depthFormat = 0;
 }
 
-/* TODO: Abstract buffers with objects and reference them with pointers */
 void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
 {
-	gl->surface.read = *rbuf;
+	gl->surface.read = rbuf;
 }
 
 struct FGLRenderSurface
@@ -781,7 +787,8 @@ struct FGLRenderSurface
 	EGLConfig	config;
 	EGLContext	ctx;
 
-	FGLRenderSurface(EGLDisplay dpy, EGLConfig config, int32_t depthFormat);
+	FGLRenderSurface(EGLDisplay dpy, EGLConfig config, int32_t pixelFormat,
+							int32_t depthFormat);
 	virtual 		~FGLRenderSurface();
 		bool		isValid() const;
 		void		terminate();
@@ -803,23 +810,27 @@ struct FGLRenderSurface
 	virtual EGLBoolean	setSwapRectangle(EGLint l, EGLint t, EGLint w, EGLint h);
 	virtual EGLClientBuffer	getRenderBuffer() const;
 protected:
-	FGLSurface              depth;
+	FGLSurface		*color;
+	FGLSurface              *depth;
+	int32_t			depthFormat;
+	int			width;
+	int			stride;
+	int			height;
+	int32_t			format;
 };
 
 FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
-	EGLConfig config,
-	int32_t depthFormat)
-: magic(MAGIC), flags(0), dpy(dpy), config(config), ctx(0)
+	EGLConfig config, int32_t pixelFormat, int32_t depthFormat) :
+magic(MAGIC), flags(0), dpy(dpy), config(config), ctx(0), color(0), depth(0),
+depthFormat(depthFormat), format(pixelFormat)
 {
-	depth.vaddr = 0;
-	depth.format = depthFormat;
 }
 
 FGLRenderSurface::~FGLRenderSurface()
 {
 	magic = 0;
-	if(depth.vaddr)
-		fglDestroyPmemSurface(&depth);
+	delete depth;
+	delete color;
 }
 
 bool FGLRenderSurface::isValid() const {
@@ -895,15 +906,12 @@ struct FGLWindowSurface : public FGLRenderSurface
 private:
 	FGLint lock(android_native_buffer_t* buf, int usage, void** vaddr);
 	FGLint unlock(android_native_buffer_t* buf);
-	android_native_window_t*   nativeWindow;
-	android_native_buffer_t*   buffer;
-	android_native_buffer_t*   previousBuffer;
-	gralloc_module_t const*    module;
-	copybit_device_t*          blitengine;
-	int width;
-	int height;
-	void* bits;
-	int32_t format;
+	android_native_window_t*	nativeWindow;
+	android_native_buffer_t*	buffer;
+	android_native_buffer_t*	previousBuffer;
+	gralloc_module_t const*		module;
+	copybit_device_t*		blitengine;
+	void*			 	bits;
 
 	struct Rect {
 		inline Rect() { };
@@ -1017,9 +1025,9 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	int32_t depthFormat,
 	android_native_window_t* window,
 	int32_t pixelFormat)
-	: FGLRenderSurface(dpy, config, depthFormat),
+	: FGLRenderSurface(dpy, config, pixelFormat, depthFormat),
 	nativeWindow(window), buffer(0), previousBuffer(0), module(0),
-	blitengine(0), bits(NULL), format(pixelFormat)
+	blitengine(0), bits(0)
 {
 	hw_module_t const* pModule;
 	hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule);
@@ -1065,12 +1073,12 @@ EGLBoolean FGLWindowSurface::connect()
 	// allocate a corresponding depth-buffer
 	width = buffer->width;
 	height = buffer->height;
-	if (depth.format) {
-		depth.width   = width;
-		depth.height  = height;
-		depth.stride  = depth.width; // use the width here
-		depth.size    = depth.stride*depth.height*4;
-		if (fglCreatePmemSurface(&depth) != 0) {
+	stride = buffer->stride;
+	if (depthFormat) {
+		unsigned int size = stride * height * 4;
+
+		depth = new FGLLocalSurface(size);
+		if (!depth || !depth->isValid()) {
 			setError(EGL_BAD_ALLOC);
 			return EGL_FALSE;
 		}
@@ -1081,6 +1089,7 @@ EGLBoolean FGLWindowSurface::connect()
 
 	// Lock the buffer
 	nativeWindow->lockBuffer(nativeWindow, buffer);
+
 	// pin the buffer down
 	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY |
 		GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
@@ -1088,23 +1097,32 @@ EGLBoolean FGLWindowSurface::connect()
 			buffer, buffer->width, buffer->height);
 		setError(EGL_BAD_ACCESS);
 		return EGL_FALSE;
-		// FIXME: we should make sure we're not accessing the buffer anymore
+		// FIXME:
 	}
+
+	delete color;
+	color = new FGLExternalSurface(bits, fglGetBufferPhysicalAddress(buffer));
+
 	return EGL_TRUE;
 }
 
 void FGLWindowSurface::disconnect()
 {
+	delete color;
+	color = 0;
+
 	if (buffer && bits) {
 		bits = NULL;
 		unlock(buffer);
 	}
-	// enqueue the last frame
-	nativeWindow->queueBuffer(nativeWindow, buffer);
+
 	if (buffer) {
+		// enqueue the last frame
+		nativeWindow->queueBuffer(nativeWindow, buffer);
 		buffer->common.decRef(&buffer->common);
 		buffer = 0;
 	}
+
 	if (previousBuffer) {
 		previousBuffer->common.decRef(&previousBuffer->common);
 		previousBuffer = 0;
@@ -1266,22 +1284,27 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	nativeWindow->lockBuffer(nativeWindow, buffer);
 
 	// reallocate the depth-buffer if needed
-	if ((width != buffer->width) || (height != buffer->height)) {
+	if ((width != buffer->width) || (height != buffer->height)
+		|| (stride != buffer->stride))
+	{
 		// TODO: we probably should reset the swap rect here
 		// if the window size has changed
 		width = buffer->width;
 		height = buffer->height;
-		if (depth.vaddr) {
-			fglDestroyPmemSurface(&depth);
-			depth.width   = width;
-			depth.height  = height;
-			depth.stride  = buffer->stride;
-			depth.size    = depth.stride*depth.height*4;
-			if (fglCreatePmemSurface(&depth)) {
+		stride = buffer->stride;
+
+		if (depthFormat) {
+			unsigned int size = stride * height * 4;
+
+			delete depth;
+
+			depth = new FGLLocalSurface(size);
+			if (!depth || !depth->isValid()) {
 				setError(EGL_BAD_ALLOC);
 				return EGL_FALSE;
 			}
 		}
+
 		fglSetClipper(0, 0, width, height);
 	}
 
@@ -1297,6 +1320,9 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 		return EGL_FALSE;
 		// FIXME: we should make sure we're not accessing the buffer anymore
 	}
+
+	delete color;
+	color = new FGLExternalSurface(bits, fglGetBufferPhysicalAddress(buffer));
 
 	return EGL_TRUE;
 }
@@ -1315,34 +1341,15 @@ EGLClientBuffer FGLWindowSurface::getRenderBuffer() const
 
 EGLBoolean FGLWindowSurface::bindDrawSurface(FGLContext* gl)
 {
-	FGLSurface buffer;
-
-	buffer.width   = this->buffer->width;
-	buffer.height  = this->buffer->height;
-	buffer.stride  = this->buffer->stride;
-	buffer.vaddr   = (FGLubyte*)bits;
-	buffer.paddr   = fglGetBufferPhysicalAddress(this->buffer);
-	buffer.format  = this->format;
-
-	fglSetColorBuffer(gl, &buffer);
-	fglSetDepthBuffer(gl, &depth);
+	fglSetColorBuffer(gl, color, width, height, stride, format);
+	fglSetDepthBuffer(gl, depth, depthFormat);
 
 	return EGL_TRUE;
 }
 
 EGLBoolean FGLWindowSurface::bindReadSurface(FGLContext* gl)
 {
-	FGLSurface buffer;
-
-	buffer.width   = this->buffer->width;
-	buffer.height  = this->buffer->height;
-	buffer.stride  = this->buffer->stride;
-	buffer.vaddr   = (FGLubyte*)bits; // FIXME: hopefully it is LOCKED!!!
-	buffer.paddr   = 0;
-	buffer.size    = 0;
-	buffer.format  = this->format;
-
-	fglSetReadBuffer(gl, &buffer);
+	fglSetReadBuffer(gl, color);
 
 	return EGL_TRUE;
 }
@@ -1470,59 +1477,57 @@ struct FGLPbufferSurface : public FGLRenderSurface
 
 	virtual     bool        initCheck() const
 	{
-		return pbuffer.vaddr && (!depth.format || depth.vaddr);
+		return color && color->isValid() && (!depth || depth->isValid());
 	}
 	virtual     EGLBoolean  bindDrawSurface(FGLContext* gl);
 	virtual     EGLBoolean  bindReadSurface(FGLContext* gl);
-	virtual     EGLint      getWidth() const    { return pbuffer.width;  }
-	virtual     EGLint      getHeight() const   { return pbuffer.height; }
-	private:
-	FGLSurface  pbuffer;
+	virtual     EGLint      getWidth() const    { return width;  }
+	virtual     EGLint      getHeight() const   { return height; }
 };
 
 FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 	EGLConfig config, int32_t depthFormat,
 	int32_t w, int32_t h, int32_t f)
-: FGLRenderSurface(dpy, config, depthFormat)
+: FGLRenderSurface(dpy, config, f, depthFormat)
 {
-	pbuffer.width   = w;
-	pbuffer.height  = h;
-	pbuffer.stride  = w;
-	pbuffer.size    = w * h * bppFromFormat(f);
-	pbuffer.format  = f;
-	if (fglCreatePmemSurface(&pbuffer)) {
+	unsigned int size = w * h * bppFromFormat(f);
+
+	color = new FGLLocalSurface(size);
+	if (!color || !color->isValid()) {
 		setError(EGL_BAD_ALLOC);
 		return;
 	}
 
+	width   = w;
+	height  = h;
+	stride  = w;
+
 	if (depthFormat) {
-		depth.width   = pbuffer.width;
-		depth.height  = pbuffer.height;
-		depth.stride  = depth.width; // use the width here
-		depth.size    = depth.stride*depth.height*4;
-		if (fglCreatePmemSurface(&depth)) {
+		size = w * h * 4;
+
+		depth = new FGLLocalSurface(size);
+		if (!depth || !depth->isValid()) {
 			setError(EGL_BAD_ALLOC);
 			return;
 		}
 	}
 }
 
-FGLPbufferSurface::~FGLPbufferSurface() {
-	if(pbuffer.vaddr)
-		fglDestroyPmemSurface(&pbuffer);
+FGLPbufferSurface::~FGLPbufferSurface()
+{
 }
 
 EGLBoolean FGLPbufferSurface::bindDrawSurface(FGLContext* gl)
 {
-	fglSetColorBuffer(gl, &pbuffer);
-	fglSetDepthBuffer(gl, &depth);
+	fglSetColorBuffer(gl, color, width, height, stride, format);
+	fglSetDepthBuffer(gl, depth, depthFormat);
 
 	return EGL_TRUE;
 }
 
 EGLBoolean FGLPbufferSurface::bindReadSurface(FGLContext* gl)
 {
-	fglSetReadBuffer(gl, &pbuffer);
+	fglSetReadBuffer(gl, color);
 
 	return EGL_TRUE;
 }

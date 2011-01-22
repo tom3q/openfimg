@@ -78,15 +78,15 @@ static inline void unpackPixel555(uint8_t *dst, uint16_t src)
 	dst[3] = 0xff;
 }
 
-static void convertToUByteRGBA555(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+static void convertToUByteRGBA555(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*draw->stride;
+	unsigned srcStride = 2*ctx->surface.stride;
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -111,15 +111,15 @@ static inline void unpackPixel565(uint8_t *dst, uint16_t src)
 	dst[3] = 0xff;
 }
 
-static void convertToUByteRGBA565(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+static void convertToUByteRGBA565(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*draw->stride;
+	unsigned srcStride = 2*ctx->surface.stride;
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -144,15 +144,15 @@ static inline void unpackPixel4444(uint8_t *dst, uint16_t src)
 	dst[3] = (src & 0xf000) >> 8;
 }
 
-static void convertToUByteRGBA4444(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+static void convertToUByteRGBA4444(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*draw->stride;
+	unsigned srcStride = 2*ctx->surface.stride;
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -177,15 +177,15 @@ static inline void unpackPixel1555(uint8_t *dst, uint16_t src)
 	dst[3] = (src & 0x8000) ? 0xff : 0x00;
 }
 
-static void convertToUByteRGBA1555(FGLContext *ctx, FGLSurface *draw, uint8_t *dst,
+static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)draw->vaddr;
+	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*draw->stride;
+	unsigned srcStride = 2*ctx->surface.stride;
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(draw->height - y - height);
+	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -246,9 +246,9 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 				GLenum type, GLvoid *pixels)
 {
 	FGLContext *ctx = getContext();
-	FGLSurface *draw = &ctx->surface.draw;
+	FGLSurface *draw = ctx->surface.draw;
 
-	if (!draw->vaddr) {
+	if (!draw || !draw->vaddr) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -258,30 +258,30 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		return;
 	}
 
-	if (x >= draw->width || y >= draw->height)
+	if (x >= ctx->surface.width || y >= ctx->surface.height)
 		// Nothing to copy
 		return;
 
-	fglFlushPmemSurface(draw);
+	draw->flush();
 
-	unsigned srcBpp = fglColorConfigs[draw->format].pixelSize;
-	unsigned srcStride = srcBpp * draw->stride;
+	unsigned srcBpp = fglColorConfigs[ctx->surface.format].pixelSize;
+	unsigned srcStride = srcBpp * ctx->surface.stride;
 	unsigned alignment = ctx->packAlignment;
 
-	if (format == fglColorConfigs[draw->format].readFormat
-		&& type == fglColorConfigs[draw->format].readType)
+	if (format == fglColorConfigs[ctx->surface.format].readFormat
+		&& type == fglColorConfigs[ctx->surface.format].readType)
 	{
 		// No format conversion needed
-		unsigned yOffset = (draw->height - y - 1) * srcStride;
+		unsigned yOffset = (ctx->surface.height - y - 1) * srcStride;
 		const uint8_t *src = (const uint8_t *)draw->vaddr + yOffset;
 
 		unsigned dstStride = (srcBpp*width + alignment - 1) & ~(alignment - 1);
 		uint8_t *dst = (uint8_t *)pixels;
 
-		if (y + height > draw->height)
-			height = draw->height - y;
+		if (y + height > ctx->surface.height)
+			height = ctx->surface.height - y;
 
-		if (!x && width == draw->width) {
+		if (!x && width == ctx->surface.width) {
 			// Copy whole lines line-by-line
 			if (srcStride < 32) {
 				do {
@@ -302,8 +302,8 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		}
 
 		// Copy line parts line-by-line
-		if (x + width > draw->width)
-			width = draw->width - x;
+		if (x + width > ctx->surface.width)
+			width = ctx->surface.width - x;
 
 		unsigned xOffset = srcBpp * x;
 		unsigned srcWidth = srcBpp * width;
@@ -328,21 +328,21 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 
 	if (format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
 		// Convert to GL_RGBA and GL_UNSIGNED_BYTE
-		switch (draw->format) {
+		switch (ctx->surface.format) {
 		case FGPF_COLOR_MODE_555:
-			convertToUByteRGBA555(ctx, draw, (uint8_t *)pixels,
+			convertToUByteRGBA555(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
 		case FGPF_COLOR_MODE_565:
-			convertToUByteRGBA565(ctx, draw, (uint8_t *)pixels,
+			convertToUByteRGBA565(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
 		case FGPF_COLOR_MODE_4444:
-			convertToUByteRGBA4444(ctx, draw, (uint8_t *)pixels,
+			convertToUByteRGBA4444(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
 		case FGPF_COLOR_MODE_1555:
-			convertToUByteRGBA1555(ctx, draw, (uint8_t *)pixels,
+			convertToUByteRGBA1555(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
 		}
@@ -566,7 +566,7 @@ static inline uint32_t getFillColor(FGLContext *ctx,
 	b8 = ubyteFromClampf(ctx->clear.blue);
 	a8 = ubyteFromClampf(ctx->clear.alpha);
 
-	switch (ctx->surface.draw.format) {
+	switch (ctx->surface.format) {
 	case FGPF_COLOR_MODE_555:
 		val |= ((r8 & 0xf8) << 7);
 		if (ctx->perFragment.mask.red)
@@ -685,36 +685,36 @@ static inline uint32_t getFillDepth(FGLContext *ctx,
 static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
 	FUNCTION_TRACER;
-	FGLSurface *draw = &ctx->surface.draw;
-	uint32_t stride = draw->stride;
+	FGLSurface *draw = ctx->surface.draw;
+	uint32_t stride = ctx->surface.stride;
 	bool lineByLine = false;
 	int32_t l, b, t, w, h;
 
 	l = 0;
 	b = 0;
-	w = draw->width;
-	h = draw->height;
+	w = ctx->surface.width;
+	h = ctx->surface.height;
 	if (ctx->perFragment.scissor.enabled) {
 		if (ctx->perFragment.scissor.left > 0)
 			l = ctx->perFragment.scissor.left;
 		if (ctx->perFragment.scissor.bottom > 0)
 			b = ctx->perFragment.scissor.bottom;
-		if (ctx->perFragment.scissor.left + ctx->perFragment.scissor.width <= draw->width)
+		if (ctx->perFragment.scissor.left + ctx->perFragment.scissor.width <= ctx->surface.width)
 			w = ctx->perFragment.scissor.left + ctx->perFragment.scissor.width - l;
 		else
-			w = draw->width - l;
-		if (ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height <= draw->height)
+			w = ctx->surface.width - l;
+		if (ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height <= ctx->surface.height)
 			h = ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height - b;
 		else
-			h = draw->height - b;
+			h = ctx->surface.height - b;
 	}
-	t = draw->height - b - h;
+	t = ctx->surface.height - b - h;
 
 	if (!h || !w)
 		return;
 
 	//lineByLine |= (l > 0);
-	lineByLine |= (w < draw->width);
+	lineByLine |= (w < ctx->surface.width);
 	//lineByLine &= (ctx->perFragment.scissor.enabled == GL_TRUE);
 
 	if (mode & GL_COLOR_BUFFER_BIT) {
@@ -774,12 +774,12 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 			}
 		}
 
-		fglFlushPmemSurface(draw);
+		draw->flush();
 	}
 
 	if (mode & (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)) {
-		FGLSurface *depth = &ctx->surface.depth;
-		if (!depth->format)
+		FGLSurface *depth = ctx->surface.depth;
+		if (!ctx->surface.depthFormat)
 			return;
 
 		uint32_t mask;
@@ -810,7 +810,7 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 				fill32(buf32, val, stride*h);
 		}
 
-		fglFlushPmemSurface(depth);
+		depth->flush();
 	}
 }
 

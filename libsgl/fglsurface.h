@@ -22,41 +22,71 @@
 #ifndef _LIBSGL_FGLSURFACE_
 #define _LIBSGL_FGLSURFACE_
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <errno.h>
+
+#include "eglMem.h"
+#include <private/ui/sw_gralloc_handle.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include "types.h"
 
-struct FGLSurface {
-	int		fd;	// buffer descriptor
-	FGLint		width;	// width in pixels
-	FGLint		height;	// height in pixels
-	FGLuint		stride;	// stride in pixels
-	FGLuint		size;
-	void		*vaddr;	// pointer to the bits
-	unsigned long	paddr;	// physical address
-	FGLint		format;	// pixel format
-	bool		internal;
+class FGLSurface {
+public:
+	unsigned long	paddr;
+	void		*vaddr;
+	unsigned long	size;
 
-	FGLSurface() :
-		fd(-1), vaddr(NULL), internal(false) {};
+			FGLSurface() {};
+	virtual		~FGLSurface() {};
 
-	inline bool isValid(void)
-	{
-		return vaddr != NULL;
-	}
+	virtual void	flush(void) = 0;
+	virtual int	lock(int usage = 0) = 0;
+	virtual int	unlock(void) = 0;
 
-	inline bool isPMEM(void)
-	{
-		return internal;
-	}
+	virtual bool	isValid(void) = 0;
+};
 
-	inline bool isFlushable(void)
-	{
-		return fd != -1;
-	}
+class FGLLocalSurface : public FGLSurface {
+	int		fd;
+public:
+			FGLLocalSurface(unsigned long size);
+	virtual		~FGLLocalSurface();
 
-	inline bool isDestructible(void)
-	{
-		return internal;
-	}
+	virtual void	flush(void);
+	virtual int	lock(int usage = 0);
+	virtual int	unlock(void);
+
+	virtual bool	isValid(void) { return fd != -1; };
+};
+
+class FGLExternalSurface : public FGLSurface {
+public:
+			FGLExternalSurface(void *v, unsigned long p);
+	virtual		~FGLExternalSurface();
+
+	virtual void	flush(void);
+	virtual int	lock(int usage = 0);
+	virtual int	unlock(void);
+
+	virtual bool	isValid(void) { return true; };
+};
+
+class FGLImageSurface : public FGLSurface {
+	gralloc_module_t const* module;
+	EGLImageKHR	image;
+public:
+			FGLImageSurface(EGLImageKHR img);
+	virtual		~FGLImageSurface();
+
+	virtual void	flush(void);
+	virtual int	lock(int usage = 0);
+	virtual int	unlock(void);
+
+	virtual bool	isValid(void) { return image != 0; };
 };
 
 #endif

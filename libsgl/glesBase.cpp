@@ -694,10 +694,10 @@ static inline void fglSetupTextures(FGLContext *ctx)
 		bool enabled = ctx->texture[i].enabled;
 		FGLTexture *tex = ctx->texture[i].getTexture();
 
-		if(enabled && tex->surface.isValid() && tex->isComplete()) {
+		if(enabled && tex->surface && tex->isComplete()) {
 			/* Texture is ready */
 			if (tex->dirty)
-				fglFlushPmemSurface(&tex->surface);
+				tex->surface->flush();
 			fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 			ctx->busyTexture[i] = tex;
@@ -971,11 +971,11 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
 		FGLTexture *tex = ctx->texture[i].getTexture();
-		if (tex->surface.isValid()) {
+		if (tex->surface) {
 			//LOGD("glDrawTexfOES: Texture %d (%d, %d, %d, %d)", i,
 			//		obj->cropRect[0], obj->cropRect[1],
 			//		obj->cropRect[2], obj->cropRect[3]);
-			unsigned height = tex->surface.height;
+			unsigned height = tex->height;
 			texcoords[i][0]	= tex->cropRect[0];
 			texcoords[i][1] = height - tex->cropRect[1];
 			texcoords[i][2] = tex->cropRect[0] + tex->cropRect[2];
@@ -1622,7 +1622,7 @@ GL_API void GL_APIENTRY glDepthMask (GLboolean flag)
 
 	ctx->perFragment.mask.depth = flag;
 
-	if (ctx->surface.depth.isValid())
+	if (ctx->surface.depth)
 		fimgSetZBufWriteMask(ctx->fimg, flag);
 }
 
@@ -1799,7 +1799,7 @@ GL_API void GL_APIENTRY glStencilMask (GLuint mask)
 
 	ctx->perFragment.mask.stencil = mask & 0xff;
 
-	if (ctx->surface.depth.isValid()) {
+	if (ctx->surface.depth) {
 		fimgSetStencilBufWriteMask(ctx->fimg, 0, mask & 0xff);
 		fimgSetStencilBufWriteMask(ctx->fimg, 1, mask & 0xff);
 	}

@@ -142,9 +142,16 @@ struct FGLEGLState {
 };
 
 struct FGLSurfaceState {
-	FGLSurface draw;
-	FGLSurface read;
-	FGLSurface depth;
+	FGLSurface *draw;
+	FGLSurface *read;
+	FGLSurface *depth;
+	GLint width;
+	GLint stride;
+	GLint height;
+	unsigned int format;
+	unsigned int depthFormat;
+
+	FGLSurfaceState() : draw(0), read(0), depth(0) {};
 };
 
 struct FGLTextureState {

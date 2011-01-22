@@ -27,8 +27,10 @@
 
 struct FGLTexture {
 	/* Memory surface */
-	FGLSurface	surface;
+	FGLSurface	*surface;
 	/* GL state */
+	GLint		width;
+	GLint		height;
 	GLboolean	compressed;
 	GLint		levels;
 	GLint		maxLevel;
@@ -51,7 +53,7 @@ struct FGLTexture {
 	bool		dirty;
 
 	FGLTexture() :
-		surface(), compressed(0), levels(0), maxLevel(0), format(GL_RGB),
+		surface(0), compressed(0), levels(0), maxLevel(0), format(GL_RGB),
 		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
 		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
 		genMipmap(0), useMipmap(GL_TRUE), eglImage(0),
@@ -69,7 +71,7 @@ struct FGLTexture {
 		if(!isValid())
 			return;
 
-		fglDestroyPmemSurface(&surface);
+		delete surface;
 
 		fimgDestroyTexture(fimg);
 	}
