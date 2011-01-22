@@ -1,0 +1,14 @@
+libcopybit:
+	Copybit library for Android
+
+libgralloc:
+	Gralloc library for Android
+
+libsgl:
+	OpenGL ES library for Android
+
+modules:
+	Kernel modules
+
+patches:
+	Kernel patches
