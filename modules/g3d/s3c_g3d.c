@@ -45,7 +45,7 @@
 #include "s3c_g3d.h"
 
 #ifdef CONFIG_S3C64XX_DOMAIN_GATING
-#define USE_G3D_DOMAIN_GATING
+//#define USE_G3D_DOMAIN_GATING
 #endif
 
 /* Driver information */
