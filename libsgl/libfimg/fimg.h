@@ -391,7 +391,8 @@ void fimgCompatSetColorScale(fimgContext *ctx, unsigned unit, float scale);
 void fimgCompatSetAlphaScale(fimgContext *ctx, unsigned unit, float scale);
 void fimgCompatSetEnvColor(fimgContext *ctx, unsigned unit,
 					float r, float g, float b, float a);
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, unsigned unit);
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
+						uint32_t unit, int swap);
 
 #endif
 

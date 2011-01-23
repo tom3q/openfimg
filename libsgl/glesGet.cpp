@@ -67,6 +67,7 @@ static char const * const gExtensionsString =
 	//"GL_OES_matrix_get "                    // TODO
 	//"GL_OES_query_matrix "                  // TODO
 	"GL_OES_EGL_image "
+	"GL_EXT_texture_format_BGRA8888 "
 	//"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
 	//"GL_ARB_texture_compression "           // TODO IMPORTANT
 #ifdef FGL_NPOT_TEXTURES

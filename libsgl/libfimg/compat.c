@@ -533,9 +533,11 @@ void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
 	ctx->compat.texture[unit].dirty = 1;
 }
 
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
+						uint32_t unit, int swap)
 {
 	ctx->compat.texture[unit].texture = tex;
+	ctx->compat.texture[unit].swap = swap;
 }
 
 void fimgCreateCompatContext(fimgContext *ctx)
@@ -568,6 +570,8 @@ void fimgCreateCompatContext(fimgContext *ctx)
 		texture->scale[1] = 1.0;
 		texture->scale[2] = 1.0;
 		texture->scale[3] = 1.0;
+
+		texture->swap = 0;
 	}
 
 	ctx->compat.vsDirty = 1;
@@ -578,6 +582,16 @@ void fimgCreateCompatContext(fimgContext *ctx)
 
 #define FGFP_TEXENV(unit)	(4 + 2*(unit))
 #define FGFP_COMBSCALE(unit)	(5 + 2*(unit))
+
+static void setPSConstBool(fimgContext *ctx, int val, uint32_t slot)
+{
+	uint32_t reg;
+
+	reg = fimgRead(ctx, FGPS_CBOOL_START);
+	reg &= ~(!val << slot);
+	reg |= !!val << slot;
+	fimgWrite(ctx, reg, FGPS_CBOOL_START);
+}
 
 static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
 								uint32_t slot)
@@ -655,6 +669,7 @@ void fimgCompatFlush(fimgContext *ctx)
 			continue;
 
 		fimgSetupTexture(ctx, ctx->compat.texture[i].texture, i);
+		setPSConstBool(ctx, ctx->compat.texture[i].swap, i);
 
 		if (!ctx->compat.texture[i].dirty)
 			continue;

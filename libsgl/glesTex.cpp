@@ -124,15 +124,20 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 	obj->bind(&ctx->texture[ctx->activeTexture].binding);
 }
 
-static int fglGetFormatInfo(GLenum format, GLenum type, unsigned *bpp, bool *conv)
+static int fglGetFormatInfo(GLenum format, GLenum type,
+					unsigned *bpp, bool *conv, bool *swap)
 {
 	*conv = 0;
+	*swap = 0;
 	switch (type) {
 	case GL_UNSIGNED_BYTE:
 		switch (format) {
 		case GL_RGB: // Needs conversion
-		case GL_RGBA: // Needs conversion
 			*conv = 1;
+			*bpp = 4;
+			return FGTU_TSTA_TEXTURE_FORMAT_8888;
+		case GL_RGBA: // Needs swapping in pixel shader
+			*swap = 1;
 			*bpp = 4;
 			return FGTU_TSTA_TEXTURE_FORMAT_8888;
 		case GL_ALPHA:
@@ -687,7 +692,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	// Get format information
 	unsigned bpp;
 	bool convert;
-	int fglFormat = fglGetFormatInfo(format, type, &bpp, &convert);
+	bool swap;
+	int fglFormat = fglGetFormatInfo(format, type, &bpp, &convert, &swap);
 	if (fglFormat < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
@@ -710,6 +716,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->fglFormat = fglFormat;
 		obj->bpp = bpp;
 		obj->convert = convert;
+		obj->swap = swap;
 
 		// Calculate mipmaps
 		unsigned size = fglCalculateMipmaps(obj, width, height, bpp);
@@ -992,26 +999,26 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 	FGLTexture *tex =
 		ctx->texture[ctx->activeTexture].getTexture();
 
-	delete tex->surface;
-
-	GLint format, type, fglFormat, bpp;
+	GLint format, type, fglFormat, bpp, swap = 0;
 
 	switch (native_buffer->format) {
 	case HAL_PIXEL_FORMAT_RGBA_8888:
-		format = GL_BGRA_EXT;
+		format = GL_RGBA;
 		type = GL_UNSIGNED_BYTE;
 		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
 		bpp = 4;
+		swap = 1;
 		break;
 	case HAL_PIXEL_FORMAT_RGBX_8888:
-		format = GL_BGRA_EXT;
+		format = GL_RGBA;
 		type = GL_UNSIGNED_BYTE;
 		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
 		bpp = 4;
+		swap = 1;
 		break;
 /*
 	case HAL_PIXEL_FORMAT_RGB_888:
-		format = GL_BGRA_EXT;
+		format = GL_RGB;
 		type = GL_UNSIGNED_BYTE;
 		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
 		break;
@@ -1023,7 +1030,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 		bpp = 2;
 		break;
 	case HAL_PIXEL_FORMAT_BGRA_8888:
-		format = GL_RGBA;
+		format = GL_BGRA_EXT;
 		type = GL_UNSIGNED_BYTE;
 		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
 		bpp = 4;
@@ -1045,6 +1052,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 		return;
 	}
 
+	delete tex->surface;
 	tex->surface = new FGLImageSurface(image);
 	if (!tex->surface || !tex->surface->isValid()) {
 		delete tex->surface;
@@ -1062,13 +1070,14 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 	tex->maxLevel	= 0;
 	tex->levels	= (1 << 0);
 	tex->dirty	= true;
-	tex->width	= native_buffer->width;
+	tex->width	= native_buffer->stride;
 	tex->height	= native_buffer->height;
+	tex->swap	= swap;
 
 	// Setup fimgTexture
 	fimgInitTexture(tex->fimg, tex->fglFormat, tex->maxLevel,
 						tex->surface->paddr);
-	fimgSetTex2DSize(tex->fimg, native_buffer->width, native_buffer->height);
+	fimgSetTex2DSize(tex->fimg, native_buffer->stride, native_buffer->height);
 }
 
 #if 0

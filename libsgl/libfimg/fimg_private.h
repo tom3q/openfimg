@@ -461,6 +461,7 @@ typedef struct {
 	float env[4];
 	float scale[4];
 	fimgTexture *texture;
+	int swap;
 } fimgTextureCompat;
 
 typedef struct {
