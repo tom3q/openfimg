@@ -999,7 +999,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 	FGLTexture *tex =
 		ctx->texture[ctx->activeTexture].getTexture();
 
-	GLint format, type, fglFormat, bpp, swap = 0;
+	GLint format, type, fglFormat, bpp, swap = 0, argb = 0;
 
 	switch (native_buffer->format) {
 	case HAL_PIXEL_FORMAT_RGBA_8888:
@@ -1034,6 +1034,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 		type = GL_UNSIGNED_BYTE;
 		fglFormat = FGTU_TSTA_TEXTURE_FORMAT_8888;
 		bpp = 4;
+		argb = 1;
 		break;
 	case HAL_PIXEL_FORMAT_RGBA_5551:
 		format = GL_RGBA;
@@ -1075,7 +1076,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target, GLeglImageO
 	tex->swap	= swap;
 
 	// Setup fimgTexture
-	fimgInitTexture(tex->fimg, tex->fglFormat, tex->maxLevel,
+	fimgInitTexture(tex->fimg, (argb << 4) | tex->fglFormat, tex->maxLevel,
 						tex->surface->paddr);
 	fimgSetTex2DSize(tex->fimg, native_buffer->stride, native_buffer->height);
 }

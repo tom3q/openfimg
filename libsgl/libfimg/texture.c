@@ -98,7 +98,8 @@ void fimgDestroyTexture(fimgTexture *texture)
 void fimgInitTexture(fimgTexture *texture, unsigned int format,
 			unsigned int maxLevel, unsigned long addr)
 {
-	texture->control.textureFmt = format;
+	texture->control.textureFmt = format & 0xf;
+	texture->control.alphaFmt = !(format >> 4);
 	texture->maxLevel = maxLevel;
 	texture->baseAddr = addr;
 }
