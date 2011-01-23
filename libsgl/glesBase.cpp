@@ -1622,7 +1622,7 @@ GL_API void GL_APIENTRY glDepthMask (GLboolean flag)
 
 	ctx->perFragment.mask.depth = flag;
 
-	if (ctx->surface.depth)
+	if (ctx->surface.depthFormat & 0xff)
 		fimgSetZBufWriteMask(ctx->fimg, flag);
 }
 
@@ -1799,7 +1799,7 @@ GL_API void GL_APIENTRY glStencilMask (GLuint mask)
 
 	ctx->perFragment.mask.stencil = mask & 0xff;
 
-	if (ctx->surface.depth) {
+	if (ctx->surface.depthFormat >> 8) {
 		fimgSetStencilBufWriteMask(ctx->fimg, 0, mask & 0xff);
 		fimgSetStencilBufWriteMask(ctx->fimg, 1, mask & 0xff);
 	}

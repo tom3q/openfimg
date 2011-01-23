@@ -752,21 +752,15 @@ void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
 
 void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf, unsigned int format)
 {
-	if(zbuf) {
-		fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
-		fimgSetZBufWriteMask(gl->fimg, 1);
-		fimgSetStencilBufWriteMask(gl->fimg, 0, 0xFF);
-		fimgSetStencilBufWriteMask(gl->fimg, 1, 0xFF);
-		gl->surface.depth = zbuf;
-		gl->surface.depthFormat = format;
+	if (!zbuf || !format) {
+		gl->surface.depth = 0;
+		gl->surface.depthFormat = 0;
 		return;
 	}
 
-	fimgSetZBufWriteMask(gl->fimg, 0);
-	fimgSetStencilBufWriteMask(gl->fimg, 0, 0x00);
-	fimgSetStencilBufWriteMask(gl->fimg, 1, 0x00);
-	gl->surface.depth = 0;
-	gl->surface.depthFormat = 0;
+	fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
+	gl->surface.depth = zbuf;
+	gl->surface.depthFormat = format;
 }
 
 void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
@@ -2029,6 +2023,13 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 					w = d->getWidth();
 					h = d->getHeight();
 				}
+
+				uint32_t depth = (gl->surface.depthFormat & 0xff) ? 1 : 0;
+				uint32_t stencil = (gl->surface.depthFormat >> 8) ? 0xff : 0;
+
+				fimgSetZBufWriteMask(gl->fimg, depth);
+				fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);
+				fimgSetStencilBufWriteMask(gl->fimg, 1, stencil);
 
 				fglSetClipper(0, 0, w, h);
 				glViewport(0, 0, w, h);
