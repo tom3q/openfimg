@@ -895,10 +895,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	FGLContext *ctx = getContext();
 	GLboolean arrayEnabled[4 + FGL_MAX_TEXTURE_UNITS];
 	GLfloat vertices[3*4];
-	GLint texcoords[2][2*4];
-
-	//LOGD("glDrawTexfOES: x = %f, y = %f, z = %f, w = %f, h = %f",
-	//					x, y, z, width, height);
+	GLfloat texcoords[2][2*4];
 
 	// Save current state and prepare to drawing
 
@@ -910,7 +907,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	GLfloat zFar = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
 
 	fimgSetDepthRange(ctx->fimg, 0.0f, 1.0f);
-	fimgSetViewportParams(ctx->fimg, x, y, width, height);
+	fimgSetViewportParams(ctx->fimg, 0, 0, ctx->surface.width, ctx->surface.height);
 
 	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {
 		arrayEnabled[i] = ctx->array[i].enabled;
@@ -941,17 +938,19 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	else
 		zD = zNear + z*(zFar - zNear);
 
-	vertices[0] = -1.0f;
-	vertices[1] = 1.0f;
-	vertices[2] = zD;
-	vertices[3] = 1.0f;
-	vertices[4] = 1.0f;
-	vertices[5] = zD;
-	vertices[6] = 1.0f;
-	vertices[7] = -1.0f;
-	vertices[8] = zD;
-	vertices[9] = -1.0f;
-	vertices[10] = -1.0f;
+	float invWidth = 2.0f/ctx->surface.width;
+	float invHeight = 2.0f/ctx->surface.height;
+	vertices[ 0] = invWidth * x - 1;
+	vertices[ 1] = invHeight * (y + height) - 1;
+	vertices[ 2] = zD;
+	vertices[ 3] = invWidth * (x + width) - 1;
+	vertices[ 4] = vertices[ 1];
+	vertices[ 5] = zD;
+	vertices[ 6] = vertices[ 3];
+	vertices[ 7] = invHeight * y - 1;
+	vertices[ 8] = zD;
+	vertices[ 9] = vertices[ 0];
+	vertices[10] = vertices[ 7];
 	vertices[11] = zD;
 
 	// Proceed with drawing
@@ -971,17 +970,15 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
 		FGLTexture *tex = ctx->texture[i].getTexture();
-		if (tex->surface) {
-			//LOGD("glDrawTexfOES: Texture %d (%d, %d, %d, %d)", i,
-			//		obj->cropRect[0], obj->cropRect[1],
-			//		obj->cropRect[2], obj->cropRect[3]);
-			unsigned height = tex->height;
-			texcoords[i][0]	= tex->cropRect[0];
-			texcoords[i][1] = height - tex->cropRect[1];
-			texcoords[i][2] = tex->cropRect[0] + tex->cropRect[2];
+		if (ctx->texture[i].enabled && tex->surface) {
+			float invHeight = 1.0f/tex->height;
+			float invWidth = 1.0f/tex->width;
+			texcoords[i][0]	= invWidth*tex->cropRect[0];
+			texcoords[i][1] = 1 - invHeight*(tex->cropRect[1]);
+			texcoords[i][2] = invWidth*(tex->cropRect[0] + tex->cropRect[2]);
 			texcoords[i][3] = texcoords[i][1];
 			texcoords[i][4] = texcoords[i][2];
-			texcoords[i][5] = height - (tex->cropRect[1] + tex->cropRect[3]);
+			texcoords[i][5] = 1 - invHeight*(tex->cropRect[1] + tex->cropRect[3]);
 			texcoords[i][6] = texcoords[i][0];
 			texcoords[i][7] = texcoords[i][5];
 			arrays[FGL_ARRAY_TEXTURE(i)].stride = 8;
@@ -992,8 +989,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 		}
 		arrays[FGL_ARRAY_TEXTURE(i)].pointer	= texcoords[i];
 		arrays[FGL_ARRAY_TEXTURE(i)].width	= 8;
-		fimgSetAttribute(ctx->fimg, FGL_ARRAY_TEXTURE(i), FGHI_ATTRIB_DT_INT, 2);
-		fimgSetTexCoordSys(tex->fimg, FGTU_TSTA_TEX_COOR_NON_PARAM);
+		fimgSetAttribute(ctx->fimg, FGL_ARRAY_TEXTURE(i), FGHI_ATTRIB_DT_FLOAT, 2);
 	}
 
 	fglSetupTextures(ctx);
@@ -1012,11 +1008,6 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 			fglEnableClientState(ctx, i);
 		else
 			fglDisableClientState(ctx, i);
-	}
-
-	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
-		FGLTexture *obj = ctx->texture[i].getTexture();
-		fimgSetTexCoordSys(obj->fimg, FGTU_TSTA_TEX_COOR_PARAM);
 	}
 
 	fimgSetDepthRange(ctx->fimg, zNear, zFar);
