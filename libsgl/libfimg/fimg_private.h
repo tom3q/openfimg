@@ -633,4 +633,6 @@ static inline void fimgPutHardware(fimgContext *ctx)
 	fimgReleaseHardwareLock(ctx);
 }
 
+extern void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *func);
+
 #endif /* _FIMG_PRIVATE_H_ */

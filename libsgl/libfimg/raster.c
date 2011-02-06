@@ -115,6 +115,11 @@ void fimgSetFaceCullFront(fimgContext *ctx, int bCW)
  *****************************************************************************/
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 {
+#ifdef FIMG_COORD_FLIP_Y
+	unsigned int tmp = ctx->fbHeight - ymax;
+	ymax = ctx->fbHeight - ymin;
+	ymin = tmp;
+#endif
 	ctx->rasterizer.yClip.maxval = ymax;
 	ctx->rasterizer.yClip.minval = ymin;
 

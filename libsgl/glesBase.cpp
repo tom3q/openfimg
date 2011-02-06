@@ -788,7 +788,10 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 #ifndef FIMG_USE_VERTEX_BUFFER
 	fimgDrawArrays(ctx->fimg, fglMode, arrays, first, count);
 #else
-	fimgDrawArraysBuffered(ctx->fimg, fglMode, arrays, first, count);
+	if (count <= 24)
+		fimgDrawArraysBuffered(ctx->fimg, fglMode, arrays, first, count);
+	else
+		fimgDrawArrays(ctx->fimg, fglMode, arrays, first, count);
 #endif
 }
 
@@ -865,11 +868,15 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	switch (type) {
 	case GL_UNSIGNED_BYTE:
 #ifndef FIMG_USE_VERTEX_BUFFER
-		fimgDrawElementsUByteIdx(ctx->fimg, fglMode, arrays, count,
-						(const uint8_t *)indices);
+		fimgDrawElementsUByteIdx(ctx->fimg, fglMode, arrays,
+					count, (const uint8_t *)indices);
 #else
-		fimgDrawElementsBufferedUByteIdx(ctx->fimg, fglMode, arrays, count,
-						(const uint8_t *)indices);
+		if (count > 24)
+			fimgDrawElementsUByteIdx(ctx->fimg, fglMode, arrays,
+					count, (const uint8_t *)indices);
+		else
+			fimgDrawElementsBufferedUByteIdx(ctx->fimg, fglMode,
+				arrays, count, (const uint8_t *)indices);
 #endif
 		break;
 	case GL_UNSIGNED_SHORT:
@@ -877,8 +884,12 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 		fimgDrawElementsUShortIdx(ctx->fimg, fglMode, arrays, count,
 						(const uint16_t *)indices);
 #else
-		fimgDrawElementsBufferedUShortIdx(ctx->fimg, fglMode, arrays, count,
-						(const uint16_t *)indices);
+		if (count > 24)
+			fimgDrawElementsUShortIdx(ctx->fimg, fglMode, arrays,
+					count, (const uint16_t *)indices);
+		else
+			fimgDrawElementsBufferedUShortIdx(ctx->fimg, fglMode,
+				arrays, count, (const uint16_t *)indices);
 #endif
 		break;
 	default:
@@ -899,12 +910,12 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	// Save current state and prepare to drawing
 
-	GLfloat viewportX = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
-	GLfloat viewportY = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_Y);
-	GLfloat viewportW = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_W);
-	GLfloat viewportH = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
-	GLfloat zNear = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_NEAR);
-	GLfloat zFar = fimgGetRasterizerStateF(ctx->fimg, FIMG_DEPTH_RANGE_FAR);
+	GLint viewportX = ctx->viewport.x;
+	GLint viewportY = ctx->viewport.y;
+	GLsizei viewportW = ctx->viewport.width;
+	GLsizei viewportH = ctx->viewport.height;
+	GLfloat zNear = ctx->viewport.zNear;
+	GLfloat zFar = ctx->viewport.zFar;
 
 	fimgSetDepthRange(ctx->fimg, 0.0f, 1.0f);
 	fimgSetViewportParams(ctx->fimg, 0, 0, ctx->surface.width, ctx->surface.height);
@@ -1063,6 +1074,9 @@ GL_API void GL_APIENTRY glDepthRangef (GLclampf zNear, GLclampf zFar)
 	zNear	= clampFloat(zNear);
 	zFar	= clampFloat(zFar);
 
+	ctx->viewport.zNear = zNear;
+	ctx->viewport.zFar = zFar;
+
 	fimgSetDepthRange(ctx->fimg, zNear, zFar);
 }
 
@@ -1073,26 +1087,25 @@ GL_API void GL_APIENTRY glDepthRangex (GLclampx zNear, GLclampx zFar)
 
 GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei height)
 {
-// Allow negative width and height (for coordinate flipping)
-/*
 	if(width < 0 || height < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
-*/
+
 	FGLContext *ctx = getContext();
 
 	// Clamp the width
-	if (x > FGL_MAX_VIEWPORT_DIMS)
-		x = FGL_MAX_VIEWPORT_DIMS;
-	if (x < -FGL_MAX_VIEWPORT_DIMS)
-		x = -FGL_MAX_VIEWPORT_DIMS;
+	if (width > ctx->surface.width)
+		width = ctx->surface.width;
 
 	// Clamp the height
-	if (y > FGL_MAX_VIEWPORT_DIMS)
-		y = FGL_MAX_VIEWPORT_DIMS;
-	if (y < -FGL_MAX_VIEWPORT_DIMS)
-		y = -FGL_MAX_VIEWPORT_DIMS;
+	if (height > ctx->surface.height)
+		height = ctx->surface.height;
+
+	ctx->viewport.x = x;
+	ctx->viewport.y = y;
+	ctx->viewport.width = width;
+	ctx->viewport.height = height;
 
 	fimgSetViewportParams(ctx->fimg, x, y, width, height);
 }
@@ -1150,6 +1163,35 @@ GL_API void GL_APIENTRY glFrontFace (GLenum mode)
 	Per-fragment operations
 */
 
+static inline void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
+						GLsizei width, GLsizei height)
+{
+#if 0
+	unsigned int xmin = clamp(x, ctx->viewport.x,
+			ctx->viewport.x + ctx->viewport.width);
+	unsigned int xmax = clamp(x + width, ctx->viewport.x,
+			ctx->viewport.x + ctx->viewport.width);
+	unsigned int ymin = clamp(y, ctx->viewport.y,
+			ctx->viewport.y + ctx->viewport.height);
+	unsigned int ymax = clamp(y + height, ctx->viewport.y,
+			ctx->viewport.y + ctx->viewport.height);
+#elif 0
+	unsigned int xmin = x;
+	unsigned int xmax = x + width;
+	unsigned int ymin = y;
+	unsigned int ymax = y + height;
+#else
+	unsigned int xmin = clamp(x, 0, ctx->surface.width);
+	unsigned int xmax = clamp(x + width, 0, ctx->surface.width);
+	unsigned int ymin = clamp(y, 0, ctx->surface.height);
+	unsigned int ymax = clamp(y + height, 0, ctx->surface.height);
+#endif
+
+	fimgSetXClip(ctx->fimg, xmin, xmax);
+	fimgSetYClip(ctx->fimg, 0, ctx->surface.height);
+	fimgSetScissorParams(ctx->fimg, ctx->surface.width, 0, ymax, ymin);
+}
+
 GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei height)
 {
 	if(width < 0 || height < 0) {
@@ -1164,7 +1206,12 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 	ctx->perFragment.scissor.width	= width;
 	ctx->perFragment.scissor.height	= height;
 
+#if 0
 	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
+#else
+	if (ctx->perFragment.scissor.enabled)
+		fglSetScissor(ctx, x, y, width, height);
+#endif
 }
 
 static inline void fglAlphaFunc (GLenum func, GLubyte ref)
@@ -1421,7 +1468,10 @@ GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
 
 	FGLContext *ctx = getContext();
 
-	fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+	if (fglColorConfigs[ctx->surface.format].alpha)
+		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+	else
+		fimgSetBlendFuncNoAlpha(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
 }
 
 GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
@@ -1487,6 +1537,7 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 	fimgSetLogicalOpParams(ctx->fimg, fglOp, fglOp);
 }
 
+#if 0
 void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
 {
 	FGLContext *ctx = getContext();
@@ -1494,6 +1545,7 @@ void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
 	fimgSetXClip(ctx->fimg, left, right);
 	fimgSetYClip(ctx->fimg, top, bottom);
 }
+#endif
 
 /**
 	Enable/disable
@@ -1515,7 +1567,20 @@ static inline void fglSet(GLenum cap, bool state)
 		break;
 	case GL_SCISSOR_TEST:
 		ctx->perFragment.scissor.enabled = state;
+#if 1
+		if (state) {
+			fglSetScissor(ctx, ctx->perFragment.scissor.left,
+					ctx->perFragment.scissor.bottom,
+					ctx->perFragment.scissor.width,
+					ctx->perFragment.scissor.height);
+		} else {
+			fglSetScissor(ctx, 0, 0, ctx->surface.width,
+							ctx->surface.height);
+		}
 		fimgSetScissorEnable(ctx->fimg, state);
+#else
+		fimgSetScissorEnable(ctx->fimg, state);
+#endif
 		break;
 	case GL_ALPHA_TEST:
 		fimgSetAlphaEnable(ctx->fimg, state);

@@ -528,7 +528,7 @@ void fimgSetBlendEquation(fimgContext *ctx,
 void fimgSetBlendFunc(fimgContext *ctx,
 		      fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 		      fimgBlendFunction dstAlpha, fimgBlendFunction dstColor);
-void fimgSetBlendFuncRGB565(fimgContext *ctx,
+void fimgSetBlendFuncNoAlpha(fimgContext *ctx,
 			    fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 			    fimgBlendFunction dstAlpha, fimgBlendFunction dstColor);
 void fimgSetBlendEnable(fimgContext *ctx, int enable);

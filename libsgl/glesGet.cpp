@@ -180,16 +180,14 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 			params[0] = ctx->elementArrayBuffer.getName();
 		break;
 	case GL_VIEWPORT:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_Y);
-		params[2] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_W);
-		params[3] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
+		params[0] = ctx->viewport.x;
+		params[1] = ctx->viewport.y;
+		params[2] = ctx->viewport.width;
+		params[3] = ctx->viewport.height;
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = intFromClampf(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_DEPTH_RANGE_NEAR));
-		params[1] = intFromClampf(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_DEPTH_RANGE_FAR));
+		params[0] = ctx->viewport.zNear;
+		params[1] = ctx->viewport.zFar;
 		break;
 	case GL_POINT_SIZE:
 		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);
@@ -565,20 +563,14 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 
 	switch (pname) {
 	case GL_VIEWPORT:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_X) != 0;
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_Y) != 0;
-		params[2] = fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_W) != 0;
-		params[3] = fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_H) != 0;
+		params[0] = !!ctx->viewport.x;
+		params[1] = !!ctx->viewport.y;
+		params[2] = !!ctx->viewport.width;
+		params[3] = !!ctx->viewport.height;
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg,
-						   FIMG_DEPTH_RANGE_NEAR) != 0;
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg,
-						   FIMG_DEPTH_RANGE_FAR) != 0;
+		params[0] = !!ctx->viewport.zNear;
+		params[1] = !!ctx->viewport.zFar;
 		break;
 	case GL_POINT_SIZE:
 		params[0] = fimgGetRasterizerStateF(ctx->fimg,
@@ -728,20 +720,14 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 
 	switch (pname) {
 	case GL_VIEWPORT:
-		params[0] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_X));
-		params[1] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_Y));
-		params[2] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_W));
-		params[3] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_VIEWPORT_H));
+		params[0] = fixedFromInt(ctx->viewport.x);
+		params[1] = fixedFromInt(ctx->viewport.y);
+		params[2] = fixedFromInt(ctx->viewport.width);
+		params[3] = fixedFromInt(ctx->viewport.height);
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_DEPTH_RANGE_NEAR));
-		params[1] = fixedFromFloat(fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_DEPTH_RANGE_FAR));
+		params[0] = fixedFromFloat(ctx->viewport.zNear);
+		params[1] = fixedFromFloat(ctx->viewport.zFar);
 		break;
 	case GL_POINT_SIZE:
 		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
@@ -893,16 +879,14 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 
 	switch (pname) {
 	case GL_VIEWPORT:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_X);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_Y);
-		params[2] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_W);
-		params[3] = fimgGetPrimitiveStateF(ctx->fimg, FIMG_VIEWPORT_H);
+		params[0] = ctx->viewport.x;
+		params[1] = ctx->viewport.y;
+		params[2] = ctx->viewport.width;
+		params[3] = ctx->viewport.height;
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_DEPTH_RANGE_NEAR);
-		params[1] = fimgGetPrimitiveStateF(ctx->fimg,
-							FIMG_DEPTH_RANGE_FAR);
+		params[0] = ctx->viewport.zNear;
+		params[1] = ctx->viewport.zFar;
 		break;
 	case GL_POINT_SIZE:
 		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);

@@ -17,7 +17,8 @@ LOCAL_SRC_FILES := \
 	raster.c \
 	shaders.c \
 	system.c \
-	texture.c
-		
+	texture.c \
+	dump.c
+
 LOCAL_MODULE := libfimg
 include $(BUILD_STATIC_LIBRARY)
