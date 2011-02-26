@@ -65,7 +65,7 @@ public:
 
 class FGLExternalSurface : public FGLSurface {
 public:
-			FGLExternalSurface(void *v, unsigned long p);
+			FGLExternalSurface(void *v, unsigned long p, unsigned long s);
 	virtual		~FGLExternalSurface();
 
 	virtual void	flush(void);
