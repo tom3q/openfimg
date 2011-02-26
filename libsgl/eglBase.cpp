@@ -741,7 +741,7 @@ void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
 		unsigned int height, unsigned int stride, unsigned int format)
 {
 	fimgSetFrameBufSize(gl->fimg, stride, height);
-	fimgSetFrameBufParams(gl->fimg, 0, 0, 0, (fimgColorMode)format);
+	fimgSetFrameBufParams(gl->fimg, 1, 0, 255, (fimgColorMode)format);
 	fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
 	gl->surface.draw = cbuf;
 	gl->surface.width = width;
@@ -1194,7 +1194,7 @@ void FGLWindowSurface::copyBlt(
 	const Region& clip)
 {
 	// NOTE: dst and src must be the same format
-/*
+#if 0
 	FGLint err = FGL_NO_ERROR;
 
 	copybit_device_t* const copybit = blitengine;
@@ -1222,7 +1222,7 @@ void FGLWindowSurface::copyBlt(
 
 		LOGE("copybit failed (%s)", strerror(err));
 	}
-*/
+#endif
 	Region::const_iterator cur = clip.begin();
 	Region::const_iterator end = clip.end();
 
@@ -1329,8 +1329,9 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 				return EGL_FALSE;
 			}
 		}
-
+#if 0
 		fglSetClipper(0, 0, width, height);
+#endif
 	}
 
 	// keep a reference on the buffer
@@ -2049,6 +2050,20 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 			gl->egl.draw = draw;
 			gl->egl.read = read;
 
+			if (d) {
+				if (d->connect() == EGL_FALSE)
+					return EGL_FALSE;
+
+				d->ctx = ctx;
+				d->bindDrawSurface(gl);
+			}
+
+			if (r) {
+				// FIXME: lock/connect the read surface too
+				r->ctx = ctx;
+				r->bindReadSurface(gl);
+			}
+
 			if (gl->egl.flags & FGL_NEVER_CURRENT) {
 				gl->egl.flags &= ~FGL_NEVER_CURRENT;
 				GLint w = 0;
@@ -2065,24 +2080,12 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 				fimgSetZBufWriteMask(gl->fimg, depth);
 				fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);
 				fimgSetStencilBufWriteMask(gl->fimg, 1, stencil);
-
+#if 0
 				fglSetClipper(0, 0, w, h);
+#endif
 				glViewport(0, 0, w, h);
 				glScissor(0, 0, w, h);
-			}
-
-			if (d) {
-				if (d->connect() == EGL_FALSE)
-					return EGL_FALSE;
-
-				d->ctx = ctx;
-				d->bindDrawSurface(gl);
-			}
-
-			if (r) {
-				// FIXME: lock/connect the read surface too
-				r->ctx = ctx;
-				r->bindReadSurface(gl);
+				glDisable(GL_SCISSOR_TEST);
 			}
 		} else {
 			// if surfaces were bound to the context bound to this thread

@@ -228,6 +228,7 @@ struct FGLContext {
 	FGLuint packAlignment;
 	FGLBufferObjectBinding arrayBuffer;
 	FGLBufferObjectBinding elementArrayBuffer;
+	FGLViewportState viewport;
 	FGLPerFragmentState perFragment;
 	FGLClearState clear;
 	FGLTexture *busyTexture[FGL_MAX_TEXTURE_UNITS];

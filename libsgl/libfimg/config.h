@@ -40,4 +40,10 @@
 /* Flip the Y axis */
 #define FIMG_COORD_FLIP_Y
 
+/* Dump register state before sending draw request (for debugging) */
+//#define FIMG_DUMP_STATE_BEFORE_DRAW
+
+/* Enable clipper workaround */
+//#define FIMG_CLIPPER_WORKAROUND
+
 #endif /* _FIMG_CONFIG_H_ */

@@ -74,13 +74,27 @@ public:
 template<typename T>
 static inline T max(T a, T b)
 {
-	return (a > b) ? a : b;
+	if (b > a)
+		a = b;
+	return a;
 }
 
 template<typename T>
 static inline T min(T a, T b)
 {
-	return (a < b) ? a : b;
+	if (b < a)
+		a = b;
+	return a;
+}
+
+template<typename T>
+static inline T clamp(T v, T l, T h)
+{
+	if (v > h)
+		v = h;
+	if (v < l)
+		v = l;
+	return v;
 }
 
 void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);

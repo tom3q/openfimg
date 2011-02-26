@@ -196,6 +196,10 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 
 	fimgSetHostInterface(ctx, 0, 1);
 
+#ifdef FIMG_DUMP_STATE_BEFORE_DRAW
+	fimgDumpState(ctx, mode, count, __func__);
+#endif
+
 	// write the number of vertices
 	words[0] = count;
 	words[1] = 0xffffffff;
@@ -238,6 +242,10 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *ar
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
 
 	fimgSetHostInterface(ctx, 0, 1);
+
+#ifdef FIMG_DUMP_STATE_BEFORE_DRAW
+	fimgDumpState(ctx, mode, count, __func__);
+#endif
 
 	// write the number of vertices
 	words[0] = count;
@@ -282,6 +290,10 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *a
 
 	fimgSetHostInterface(ctx, 0, 1);
 
+#ifdef FIMG_DUMP_STATE_BEFORE_DRAW
+	fimgDumpState(ctx, mode, count, __func__);
+#endif
+
 	// write the number of vertices
 	words[0] = count;
 	words[1] = 0xffffffff;
@@ -298,8 +310,8 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *a
  * BUFFERED
  */
 
-#define FGHI_MAX_ATTRIBS		8
-#define FGHI_VERTICES_PER_VB_ATTRIB	16
+#define FGHI_MAX_ATTRIBS		10
+#define FGHI_VERTICES_PER_VB_ATTRIB	12
 #define FGHI_MAX_BYTES_PER_VERTEX	16
 #define FGHI_MAX_BYTES_PER_ATTRIB	(FGHI_VERTICES_PER_VB_ATTRIB)*(FGHI_MAX_BYTES_PER_VERTEX)
 #define FGHI_VBADDR_ATTRIB(attrib, buf)	((2*attrib + ((buf)&1))*(FGHI_MAX_BYTES_PER_ATTRIB))
@@ -357,11 +369,14 @@ static inline void fimgDrawAutoinc(fimgContext *ctx,
 	fimgWrite(ctx, first, FGHI_FIFO_ENTRY);
 }
 
+static inline void fimgSendIndexCount(fimgContext *ctx, uint32_t count)
+{
+	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
+}
+
 static inline void fimgSendIndices(fimgContext *ctx,
 					uint32_t first, uint32_t count)
 {
-	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
-
 	while (count--)
 		fimgWrite(ctx, first++, FGHI_FIFO_ENTRY);
 }
@@ -663,7 +678,10 @@ void fimgDrawArraysBuffered(fimgContext *ctx, unsigned int mode, fimgArray *arra
 	fimgArray *a;
 	uint32_t buf = 0;
 	unsigned int alignment;
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	int duplicate = 0, duplicate_last = 0;
+	int last = 0;
+#endif
 	// Get hardware lock
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
@@ -672,25 +690,49 @@ void fimgDrawArraysBuffered(fimgContext *ctx, unsigned int mode, fimgArray *arra
 	fimgSetVertexContext(ctx, mode);
 	fimgSetupAttributes(ctx, arrays);
 
+#ifdef FIMG_DUMP_STATE_BEFORE_DRAW
+	fimgDumpState(ctx, mode, count, __func__);
+#endif
+
+#ifndef FIMG_CLIPPER_WORKAROUND
 	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
 		fimgDrawArraysBufferedAutoinc(ctx, arrays, first, count);
 		fimgPutHardware(ctx);
 		return;
 	}
+#endif
+#ifdef FIMG_CLIPPER_WORKAROUND
+	if (mode == FGPE_TRIANGLE_FAN)
+		duplicate = 2;
 
+	if (mode == FGPE_TRIANGLE_STRIP)
+		duplicate_last = 1;
+#endif
 	fimgSetHostInterface(ctx, 1, 0);
 	fimgSetIndexOffset(ctx, 0);
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	fimgSendIndexCount(ctx, count + duplicate + duplicate_last);
+#else
+	fimgSendIndexCount(ctx, count);
+#endif
 	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
 
 	if (alignment) {
+#ifdef FIMG_CLIPPER_WORKAROUND
+		last = alignment - 1;
+#endif
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 			fimgSetAttribAddr(ctx, i, FGHI_VBADDR_ATTRIB(i, 0));
 			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
 			fimgLoadVertexBuffer(ctx, a, pos, alignment);
 			fimgPadVertexBuffer(ctx);
 		}
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+		while (duplicate) {
+			fimgSendIndices(ctx, 0, 1);
+			--duplicate;
+		}
+#endif
 		fimgSendIndices(ctx, 0, alignment);
 
 		count -= alignment;
@@ -701,17 +743,25 @@ void fimgDrawArraysBuffered(fimgContext *ctx, unsigned int mode, fimgArray *arra
 	}
 
 	while (count) {
+#ifdef FIMG_CLIPPER_WORKAROUND
+		last = FGHI_VERTICES_PER_VB_ATTRIB - 1;
+#endif
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
 			fimgLoadVertexBuffer(ctx, a, pos, FGHI_VERTICES_PER_VB_ATTRIB);
 			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgSelectiveFlush(ctx, 3);
+		fimgSelectiveFlush(ctx, 0x1d);
 
 		for (i = 0; i < ctx->numAttribs; i++)
 			fimgSetAttribAddr(ctx, i, FGHI_VBADDR_ATTRIB(i, buf));
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+		while (duplicate) {
+			fimgSendIndices(ctx, 0, 1);
+			--duplicate;
+		}
+#endif
 		fimgSendIndices(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		count -= FGHI_VERTICES_PER_VB_ATTRIB;
@@ -720,7 +770,10 @@ void fimgDrawArraysBuffered(fimgContext *ctx, unsigned int mode, fimgArray *arra
 		// Switch the buffer
 		buf ^= 1;
 	}
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	if (duplicate_last)
+		fimgSendIndices(ctx, last, 1);
+#endif
 	fimgPutHardware(ctx);
 }
 
@@ -976,7 +1029,10 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, unsigned int mode, fimgA
 	fimgArray *a;
 	uint32_t buf = 0;
 	unsigned int alignment;
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	int duplicate = 0, duplicate_last = 0;
+	int last = 0;
+#endif
 	// Flush the context
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
@@ -985,26 +1041,49 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, unsigned int mode, fimgA
 	fimgSetVertexContext(ctx, mode);
 	fimgSetupAttributes(ctx, arrays);
 
+#ifdef FIMG_DUMP_STATE_BEFORE_DRAW
+	fimgDumpState(ctx, mode, count, __func__);
+#endif
+#ifndef FIMG_CLIPPER_WORKAROUND
 	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
 		fimgDrawElementsBufferedAutoincUByteIdx(ctx, arrays,
 							count, indices);
 		fimgPutHardware(ctx);
 		return;
 	}
+#endif
+#ifdef FIMG_CLIPPER_WORKAROUND
+	if (mode == FGPE_TRIANGLE_FAN)
+		duplicate = 2;
 
+	if (mode == FGPE_TRIANGLE_STRIP)
+		duplicate_last = 1;
+#endif
 	fimgSetHostInterface(ctx, 1, 0);
 	fimgSetIndexOffset(ctx, 0);
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	fimgSendIndexCount(ctx, count + duplicate + duplicate_last);
+#else
+	fimgSendIndexCount(ctx, count);
+#endif
 	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
 
 	if (alignment) {
+#ifdef FIMG_CLIPPER_WORKAROUND
+		last = alignment - 1;
+#endif
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 			fimgSetAttribAddr(ctx, i, FGHI_VBADDR_ATTRIB(i, 0));
 			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
 			fimgLoadVertexBufferUByteIdx(ctx, a, indices, alignment);
 			fimgPadVertexBuffer(ctx);
 		}
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+		while (duplicate) {
+			fimgSendIndices(ctx, 0, 1);
+			--duplicate;
+		}
+#endif
 		fimgSendIndices(ctx, 0, alignment);
 
 		count -= alignment;
@@ -1015,17 +1094,25 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, unsigned int mode, fimgA
 	}
 
 	while (count) {
+#ifdef FIMG_CLIPPER_WORKAROUND
+		last = FGHI_VERTICES_PER_VB_ATTRIB - 1;
+#endif
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
 			fimgLoadVertexBufferUByteIdx(ctx, a, indices, FGHI_VERTICES_PER_VB_ATTRIB);
 			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgSelectiveFlush(ctx, 3);
+		fimgSelectiveFlush(ctx, 0x1d);
 
 		for (i = 0; i < ctx->numAttribs; i++)
 			fimgSetAttribAddr(ctx, i, FGHI_VBADDR_ATTRIB(i, buf));
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+		while (duplicate) {
+			fimgSendIndices(ctx, 0, 1);
+			--duplicate;
+		}
+#endif
 		fimgSendIndices(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		count -= FGHI_VERTICES_PER_VB_ATTRIB;
@@ -1034,7 +1121,10 @@ void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, unsigned int mode, fimgA
 		// Switch the buffer
 		buf ^= 1;
 	}
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	if (duplicate_last)
+		fimgSendIndices(ctx, last, 1);
+#endif
 	fimgPutHardware(ctx);
 }
 
@@ -1284,7 +1374,10 @@ void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, unsigned int mode, fimg
 	fimgArray *a;
 	uint32_t buf = 0;
 	unsigned int alignment;
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	int duplicate = 0, duplicate_last = 0;
+	int last = 0;
+#endif
 	// Flush the context
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
@@ -1293,26 +1386,49 @@ void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, unsigned int mode, fimg
 	fimgSetVertexContext(ctx, mode);
 	fimgSetupAttributes(ctx, arrays);
 
+#ifdef FIMG_DUMP_STATE_BEFORE_DRAW
+	fimgDumpState(ctx, mode, count, __func__);
+#endif
+#ifndef FIMG_CLIPPER_WORKAROUND
 	if (count <= 2*FGHI_VERTICES_PER_VB_ATTRIB) {
 		fimgDrawElementsBufferedAutoincUShortIdx(ctx, arrays,
 							count, indices);
 		fimgPutHardware(ctx);
 		return;
 	}
+#endif
+#ifdef FIMG_CLIPPER_WORKAROUND
+	if (mode == FGPE_TRIANGLE_FAN)
+		duplicate = 2;
 
+	if (mode == FGPE_TRIANGLE_STRIP)
+		duplicate_last = 1;
+#endif
 	fimgSetHostInterface(ctx, 1, 0);
 	fimgSetIndexOffset(ctx, 0);
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	fimgSendIndexCount(ctx, count + duplicate + duplicate_last);
+#else
+	fimgSendIndexCount(ctx, count);
+#endif
 	alignment = count % FGHI_VERTICES_PER_VB_ATTRIB;
 
 	if (alignment) {
+#ifdef FIMG_CLIPPER_WORKAROUND
+		last = alignment - 1;
+#endif
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 			fimgSetAttribAddr(ctx, i, FGHI_VBADDR_ATTRIB(i, 0));
 			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, 0));
 			fimgLoadVertexBufferUShortIdx(ctx, a, indices, alignment);
 			fimgPadVertexBuffer(ctx);
 		}
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+		while (duplicate) {
+			fimgSendIndices(ctx, 0, 1);
+			--duplicate;
+		}
+#endif
 		fimgSendIndices(ctx, 0, alignment);
 
 		count -= alignment;
@@ -1323,17 +1439,25 @@ void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, unsigned int mode, fimg
 	}
 
 	while (count) {
+#ifdef FIMG_CLIPPER_WORKAROUND
+		last = FGHI_VERTICES_PER_VB_ATTRIB - 1;
+#endif
 		for (a = arrays, i = 0; i < ctx->numAttribs; i++, a++) {
 			fimgSetVtxBufferAddr(ctx, FGHI_VBADDR_ATTRIB(i, buf));
 			fimgLoadVertexBufferUShortIdx(ctx, a, indices, FGHI_VERTICES_PER_VB_ATTRIB);
 			fimgPadVertexBuffer(ctx);
 		}
 
-		fimgSelectiveFlush(ctx, 3);
+		fimgSelectiveFlush(ctx, 0x1d);
 
 		for (i = 0; i < ctx->numAttribs; i++)
 			fimgSetAttribAddr(ctx, i, FGHI_VBADDR_ATTRIB(i, buf));
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+		while (duplicate) {
+			fimgSendIndices(ctx, 0, 1);
+			--duplicate;
+		}
+#endif
 		fimgSendIndices(ctx, 0, FGHI_VERTICES_PER_VB_ATTRIB);
 
 		count -= FGHI_VERTICES_PER_VB_ATTRIB;
@@ -1342,7 +1466,10 @@ void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, unsigned int mode, fimg
 		// Switch the buffer
 		buf ^= 1;
 	}
-
+#ifdef FIMG_CLIPPER_WORKAROUND
+	if (duplicate_last)
+		fimgSendIndices(ctx, last, 1);
+#endif
 	fimgPutHardware(ctx);
 }
 

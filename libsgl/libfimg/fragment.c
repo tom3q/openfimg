@@ -263,7 +263,7 @@ void fimgSetBlendFunc(fimgContext *ctx,
 *		[IN] dstAlpha - destination alpha blend function
 *		[IN] dstColor - destination color blend function
 *****************************************************************************/
-void fimgSetBlendFuncRGB565(fimgContext *ctx,
+void fimgSetBlendFuncNoAlpha(fimgContext *ctx,
 			    fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 			    fimgBlendFunction dstAlpha, fimgBlendFunction dstColor)
 {
