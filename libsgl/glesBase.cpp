@@ -702,7 +702,8 @@ static inline void fglSetupTextures(FGLContext *ctx)
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 			ctx->busyTexture[i] = tex;
 			flush = true;
-			tex->dirty = 0;
+			if (!tex->eglImage)
+				tex->dirty = 0;
 		} else {
 			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
@@ -1421,7 +1422,10 @@ GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
 
 	FGLContext *ctx = getContext();
 
-	fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+	if (ctx->surface.format == FGPF_COLOR_MODE_565)
+		fimgSetBlendFuncRGB565(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+	else
+		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
 }
 
 GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
@@ -1544,6 +1548,7 @@ static inline void fglSet(GLenum cap, bool state)
 	case GL_LIGHT5:
 	case GL_LIGHT6:
 	case GL_LIGHT7:
+	case GL_NORMALIZE:
 		break;
 	default:
 		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);
