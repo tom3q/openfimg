@@ -144,10 +144,8 @@ FGLObjectManager<FGLBuffer, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
 
 GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
 {
-	if(n <= 0) {
-		setError(GL_INVALID_VALUE);
+	if(n <= 0)
 		return;
-	}
 
 	int name;
 	GLsizei i = n;
@@ -157,7 +155,7 @@ GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
 	do {
 		name = fglBufferObjects.get(ctx);
 		if(name < 0) {
-			glDeleteBuffers(n - i - 1, buffers);
+			glDeleteBuffers(n - i, buffers);
 			setError(GL_OUT_OF_MEMORY);
 			return;
 		}
@@ -172,10 +170,8 @@ GL_API void GL_APIENTRY glDeleteBuffers (GLsizei n, const GLuint *buffers)
 {
 	unsigned name;
 
-	if(n <= 0) {
-		setError(GL_INVALID_VALUE);
+	if(n <= 0)
 		return;
-	}
 
 	while(n--) {
 		name = *buffers;

@@ -40,10 +40,8 @@ FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
 
 GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
 {
-	if(n <= 0) {
-		setError(GL_INVALID_VALUE);
+	if(n <= 0)
 		return;
-	}
 
 	int name;
 	GLsizei i = n;
@@ -53,7 +51,7 @@ GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
 	do {
 		name = fglTextureObjects.get(ctx);
 		if(name < 0) {
-			glDeleteTextures (n - i - 1, textures);
+			glDeleteTextures (n - i, textures);
 			setError(GL_OUT_OF_MEMORY);
 			return;
 		}
@@ -67,10 +65,8 @@ GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures)
 {
 	unsigned name;
 
-	if(n <= 0) {
-		setError(GL_INVALID_VALUE);
+	if(n <= 0)
 		return;
-	}
 
 	do {
 		name = *textures;
