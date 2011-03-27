@@ -909,23 +909,31 @@ private:
 
 	struct Rect {
 		inline Rect() { };
+
 		inline Rect(int32_t w, int32_t h)
 		: left(0), top(0), right(w), bottom(h) { }
+
 		inline Rect(int32_t l, int32_t t, int32_t r, int32_t b)
 		: left(l), top(t), right(r), bottom(b) { }
-		Rect& andSelf(const Rect& r) {
-		left   = max(left, r.left);
-		top    = max(top, r.top);
-		right  = min(right, r.right);
-		bottom = min(bottom, r.bottom);
-		return *this;
+
+		Rect& andSelf(const Rect& r)
+		{
+			left   = max(left, r.left);
+			top    = max(top, r.top);
+			right  = min(right, r.right);
+			bottom = min(bottom, r.bottom);
+			return *this;
 		}
-		bool isEmpty() const {
-		return (left>=right || top>=bottom);
+
+		bool isEmpty() const
+		{
+			return (left>=right || top>=bottom);
 		}
-		void dump(char const* what) {
-		LOGD("%s { %5d, %5d, w=%5d, h=%5d }",
-			what, left, top, right-left, bottom-top);
+
+		void dump(char const* what)
+		{
+			LOGD("%s { %5d, %5d, w=%5d, h=%5d }",
+				what, left, top, right-left, bottom-top);
 		}
 
 		int32_t left;
@@ -936,10 +944,14 @@ private:
 
 	struct Region {
 		inline Region() : count(0) { }
+
 		typedef Rect const* const_iterator;
+
 		const_iterator begin() const { return storage; }
 		const_iterator end() const { return storage+count; }
-		static Region subtract(const Rect& lhs, const Rect& rhs) {
+
+		static Region subtract(const Rect& lhs, const Rect& rhs)
+		{
 			Region reg;
 			Rect* storage = reg.storage;
 			if (!lhs.isEmpty()) {
@@ -979,7 +991,9 @@ private:
 			}
 			return reg;
 		}
-		bool isEmpty() const {
+
+		bool isEmpty() const
+		{
 			return count<=0;
 		}
 	private:
@@ -989,11 +1003,13 @@ private:
 
 	struct region_iterator : public copybit_region_t {
 		region_iterator(const Region& region)
-		: b(region.begin()), e(region.end()) {
+		: b(region.begin()), e(region.end())
+		{
 			this->next = iterate;
 		}
 	private:
-		static int iterate(copybit_region_t const * self, copybit_rect_t* rect) {
+		static int iterate(copybit_region_t const * self, copybit_rect_t* rect)
+		{
 			region_iterator const* me = static_cast<region_iterator const*>(self);
 			if (me->b != me->e) {
 				*reinterpret_cast<Rect*>(rect) = *me->b++;
@@ -1001,6 +1017,7 @@ private:
 			}
 			return 0;
 		}
+
 		mutable Region::const_iterator b;
 		Region::const_iterator const e;
 	};
@@ -1055,8 +1072,8 @@ FGLWindowSurface::~FGLWindowSurface()
 EGLBoolean FGLWindowSurface::connect()
 {
 	// we're intending to do hardware rendering
-	native_window_set_usage(nativeWindow,
-		GRALLOC_USAGE_SW_READ_RARELY | GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER);
+	native_window_set_usage(nativeWindow, GRALLOC_USAGE_SW_READ_RARELY
+		| GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER);
 
 	// dequeue a buffer
 	if (nativeWindow->dequeueBuffer(nativeWindow, &buffer) != FGL_NO_ERROR) {
@@ -1085,8 +1102,10 @@ EGLBoolean FGLWindowSurface::connect()
 	nativeWindow->lockBuffer(nativeWindow, buffer);
 
 	// pin the buffer down
-	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY |
-		GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
+	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY
+		| GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER,
+		&bits) != FGL_NO_ERROR)
+	{
 		LOGE("connect() failed to lock buffer %p (%ux%u)",
 			buffer, buffer->width, buffer->height);
 		setError(EGL_BAD_ACCESS);
@@ -1095,7 +1114,9 @@ EGLBoolean FGLWindowSurface::connect()
 	}
 
 	delete color;
-	color = new FGLExternalSurface(bits, fglGetBufferPhysicalAddress(buffer));
+	color = new FGLExternalSurface(bits,
+			fglGetBufferPhysicalAddress(buffer),
+			stride * height * bppFromFormat(format));
 
 	return EGL_TRUE;
 }
@@ -1104,6 +1125,11 @@ void FGLWindowSurface::disconnect()
 {
 	delete color;
 	color = 0;
+
+	if (depthFormat) {
+		delete depth;
+		depth = 0;
+	}
 
 	if (buffer && bits) {
 		bits = NULL;
@@ -1246,7 +1272,7 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	if (!dirtyRegion.isEmpty()) {
 		dirtyRegion.andSelf(Rect(buffer->width, buffer->height));
 		if (previousBuffer) {
-			Region copyBack(Region::subtract(oldDirtyRegion, dirtyRegion));
+			const Region copyBack(Region::subtract(oldDirtyRegion, dirtyRegion));
 			if (!copyBack.isEmpty()) {
 				void* prevBits;
 				if (lock(previousBuffer, GRALLOC_USAGE_SW_READ_OFTEN,
@@ -1271,7 +1297,12 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	buffer = 0;
 
 	// dequeue a new buffer
-	nativeWindow->dequeueBuffer(nativeWindow, &buffer);
+	if (nativeWindow->dequeueBuffer(nativeWindow, &buffer)) {
+		delete color;
+		color = 0;
+		setError(EGL_BAD_CURRENT_SURFACE);
+		return EGL_FALSE;
+	}
 
 	// TODO: lockBuffer should rather be executed when the very first
 	// direct rendering occurs.
@@ -1307,8 +1338,10 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	buffer->common.incRef(&buffer->common);
 
 	// finally pin the buffer down
-	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY |
-		GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER, &bits) != FGL_NO_ERROR) {
+	if (lock(buffer, GRALLOC_USAGE_SW_READ_RARELY
+		| GRALLOC_USAGE_SW_WRITE_RARELY | GRALLOC_USAGE_HW_RENDER,
+		&bits) != FGL_NO_ERROR)
+	{
 		LOGE("eglSwapBuffers() failed to lock buffer %p (%ux%u)",
 			buffer, buffer->width, buffer->height);
 		setError(EGL_BAD_ACCESS);
@@ -1317,7 +1350,9 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	}
 
 	delete color;
-	color = new FGLExternalSurface(bits, fglGetBufferPhysicalAddress(buffer));
+	color = new FGLExternalSurface(bits,
+			fglGetBufferPhysicalAddress(buffer),
+			stride * height * bppFromFormat(format));
 
 	return EGL_TRUE;
 }
@@ -2323,13 +2358,12 @@ EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
 	return EGL_TRUE;
 }
 
-struct extention_map_t {
+struct FGLExtensionMap {
     const char * const name;
     __eglMustCastToProperFunctionPointerType address;
 };
 
-static const extention_map_t gExtentionMap[] = {
-#if 0
+static const FGLExtensionMap gExtensionMap[] = {
 	{ "glDrawTexsOES",
 		(__eglMustCastToProperFunctionPointerType)&glDrawTexsOES },
 	{ "glDrawTexiOES",
@@ -2346,10 +2380,13 @@ static const extention_map_t gExtentionMap[] = {
 		(__eglMustCastToProperFunctionPointerType)&glDrawTexfvOES },
 	{ "glDrawTexxvOES",
 		(__eglMustCastToProperFunctionPointerType)&glDrawTexxvOES },
+#if 0
 	{ "glQueryMatrixxOES",
 		(__eglMustCastToProperFunctionPointerType)&glQueryMatrixxOES },
+#endif
 	{ "glEGLImageTargetTexture2DOES",
 		(__eglMustCastToProperFunctionPointerType)&glEGLImageTargetTexture2DOES },
+#if 0
 	{ "glEGLImageTargetRenderbufferStorageOES",
 		(__eglMustCastToProperFunctionPointerType)&glEGLImageTargetRenderbufferStorageOES },
 	{ "glClipPlanef",
@@ -2380,9 +2417,9 @@ static const extention_map_t gExtentionMap[] = {
 EGLAPI __eglMustCastToProperFunctionPointerType EGLAPIENTRY
 eglGetProcAddress(const char *procname)
 {
-	extention_map_t const * const map = gExtentionMap;
+	FGLExtensionMap const * const map = gExtensionMap;
 
-	for (uint32_t i=0 ; i<NELEM(gExtentionMap) ; i++) {
+	for (uint32_t i=0 ; i<NELEM(gExtensionMap) ; i++) {
 		if (!strcmp(procname, map[i].name))
 			return map[i].address;
 	}

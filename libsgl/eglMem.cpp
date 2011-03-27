@@ -134,8 +134,8 @@ FGLLocalSurface::FGLLocalSurface(unsigned long size)
 	this->vaddr	= vaddr;
 	this->paddr	= region.offset;
 
-	LOGD("Created PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
-				fd, vaddr, (unsigned int)region.offset);
+	//LOGD("FGLLocalSurface (vaddr = %p, paddr = %08x, size = %u)",
+	//			vaddr, (unsigned int)region.offset, size);
 
 	flush();
 
@@ -155,8 +155,8 @@ FGLLocalSurface::~FGLLocalSurface()
 	munmap(vaddr, size);
 	close(fd);
 
-	LOGD("Destroyed PMEM surface. fd = %d, vaddr = %p, paddr = %08x",
-				fd, vaddr, (unsigned int)paddr);
+	//LOGD("~FGLLocalSurface (vaddr = %p, paddr = %08x, size = %u)",
+	//			vaddr, (unsigned int)paddr, size);
 }
 
 int FGLLocalSurface::lock(int usage)
@@ -180,15 +180,19 @@ void FGLLocalSurface::flush(void)
 		LOGW("Could not flush PMEM surface %d", fd);
 }
 
-FGLExternalSurface::FGLExternalSurface(void *v, unsigned long p)
+FGLExternalSurface::FGLExternalSurface(void *v, unsigned long p, unsigned long s)
 {
 	vaddr = v;
 	paddr = p;
+	size = s;
+	//LOGD("FGLExternalSurface (vaddr = %p, paddr = %08x, size = %u)",
+	//			vaddr, paddr, size);
 }
 
 FGLExternalSurface::~FGLExternalSurface()
 {
-
+	//LOGD("~FGLExternalSurface (vaddr = %p, paddr = %08x, size = %u)",
+	//			vaddr, paddr, size);
 }
 
 int FGLExternalSurface::lock(int usage)
@@ -203,7 +207,7 @@ int FGLExternalSurface::unlock(void)
 
 void FGLExternalSurface::flush(void)
 {
-
+	cacheflush((intptr_t)vaddr, (intptr_t)((uint8_t *)vaddr + size), 0);
 }
 
 FGLImageSurface::FGLImageSurface(EGLImageKHR img)
@@ -230,11 +234,15 @@ FGLImageSurface::FGLImageSurface(EGLImageKHR img)
 	paddr = fglGetBufferPhysicalAddress(buffer);
 	size = hnd->size;;
 	image = img;
+
+	//LOGD("FGLImageSurface (vaddr = %p, paddr = %08x, size = %u)",
+	//			vaddr, paddr, size);
 }
 
 FGLImageSurface::~FGLImageSurface()
 {
-
+	//LOGD("~FGLImageSurface (vaddr = %p, paddr = %08x, size = %u)",
+	//			vaddr, paddr, size);
 }
 
 int FGLImageSurface::lock(int usage)
@@ -271,5 +279,14 @@ int FGLImageSurface::unlock(void)
 
 void FGLImageSurface::flush(void)
 {
+	android_native_buffer_t *buffer = (android_native_buffer_t *)image;
+	const private_handle_t* hnd =
+			static_cast<const private_handle_t*>(buffer->handle);
+	struct pmem_region region;
 
+	region.offset = 0;
+	region.len = size;
+
+	if (ioctl(hnd->fd, PMEM_CACHE_FLUSH, &region) != 0)
+		LOGW("Could not flush PMEM surface %d", hnd->fd);
 }

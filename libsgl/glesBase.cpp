@@ -698,7 +698,8 @@ static inline void fglSetupTextures(FGLContext *ctx)
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 			ctx->busyTexture[i] = tex;
 			flush = true;
-			tex->dirty = 0;
+			if (!tex->eglImage)
+				tex->dirty = 0;
 		} else {
 			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
@@ -1605,6 +1606,7 @@ static inline void fglSet(GLenum cap, bool state)
 	case GL_LIGHT5:
 	case GL_LIGHT6:
 	case GL_LIGHT7:
+	case GL_NORMALIZE:
 		break;
 	default:
 		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);

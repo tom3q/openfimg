@@ -250,7 +250,7 @@ struct FGLContext {
 };
 
 // We attempt to run in parallel with software GL
-#define FGL_AGL_COEXIST
+//#define FGL_AGL_COEXIST
 
 #ifndef FGL_AGL_COEXIST
 // We have a dedicated TLS slot in bionic
