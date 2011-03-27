@@ -627,8 +627,7 @@ static inline uint32_t getFillColor(FGLContext *ctx,
 		return val;
 	case FGPF_COLOR_MODE_0888:
 		val |= 0xff << 24;
-		if (ctx->perFragment.mask.alpha)
-			mval &= ~(0xff << 24);
+		mval &= ~(0xff << 24);
 		val |= r8 << 16;
 		if (ctx->perFragment.mask.red)
 			mval &= ~(0xff << 16);
