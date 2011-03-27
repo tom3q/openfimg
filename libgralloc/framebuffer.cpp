@@ -267,7 +267,6 @@ int mapFrameBufferLocked(struct private_module_t* module)
 	*/
 	info.yres_virtual = info.yres * NUM_BUFFERS;
 
-
 	uint32_t flags = PAGE_FLIP;
 	if (ioctl(fd, FBIOPUT_VSCREENINFO, &info) == -1) {
 		info.yres_virtual = info.yres;
