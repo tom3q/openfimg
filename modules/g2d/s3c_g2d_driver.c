@@ -20,6 +20,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/io.h>
 #include <linux/clk.h>
@@ -42,13 +43,14 @@
 #include <mach/hardware.h>
 #include <mach/map.h>
 
-#include <plat/power-clock-domain.h>
 #include <plat/pm.h>
 
 #include "g2d_regs.h"
 #include "s3c_g2d.h"
 
-#ifdef CONFIG_S3C64XX_DOMAIN_GATING
+#ifdef CONFIG_S3C64XX_POWER_DOMAIN
+#include <linux/regulator/consumer.h>
+struct regulator *g2d_regulator;
 #define USE_G2D_DOMAIN_GATING
 #endif
 
@@ -77,6 +79,9 @@ struct g2d_drvdata {
 	struct resource 	*mem;	// memory resource
 	struct clk		*clock;	// device clock
 
+#ifdef CONFIG_S3C64XX_POWER_DOMAIN
+	struct regulator	*pd;
+#endif
 #ifdef USE_G2D_DOMAIN_GATING
 	struct hrtimer		timer;	// idle timer
 	int			state;	// power state
@@ -493,11 +498,8 @@ static void g2d_workfunc(struct work_struct *work)
 
 static inline int g2d_do_power_up(struct g2d_drvdata *data)
 {
-#ifdef CONFIG_S3C64XX_DOMAIN_GATING
-	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_ACTIVE_MODE, S3C64XX_2D);
-
-	if (s3c_wait_blk_pwr_ready(S3C64XX_BLK_P))
-		return -1;
+#ifdef CONFIG_S3C64XX_POWER_DOMAIN
+	regulator_enable(data->pd);
 #endif
 	clk_enable(data->clock);
 	g2d_soft_reset(data);
@@ -508,8 +510,8 @@ static inline int g2d_do_power_up(struct g2d_drvdata *data)
 static inline void g2d_do_power_down(struct g2d_drvdata *data)
 {
 	clk_disable(data->clock);
-#ifdef CONFIG_S3C64XX_DOMAIN_GATING
-	s3c_set_normal_cfg(S3C64XX_DOMAIN_P, S3C64XX_LP_MODE, S3C64XX_2D);
+#ifdef CONFIG_S3C64XX_POWER_DOMAIN
+	regulator_disable(data->pd);
 #endif
 }
 
@@ -731,8 +733,8 @@ err_noput:
 	return ret;
 }
 
-static int s3c_g2d_ioctl(struct inode *inode, struct file *file,
-				unsigned int cmd, unsigned long arg)
+static long s3c_g2d_ioctl(struct file *file,
+					unsigned int cmd, unsigned long arg)
 {
 	struct g2d_context *ctx = (struct g2d_context *)file->private_data;
 	int nblock = file->f_flags & O_NONBLOCK;
@@ -814,7 +816,7 @@ static struct file_operations s3c_g2d_fops = {
 	.owner		= THIS_MODULE,
 	.open		= s3c_g2d_open,
 	.release	= s3c_g2d_release,
-	.ioctl		= s3c_g2d_ioctl,
+	.unlocked_ioctl	= s3c_g2d_ioctl,
 	.poll		= s3c_g2d_poll,
 };
 
@@ -840,8 +842,17 @@ static int s3c_g2d_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_S3C64XX_POWER_DOMAIN
+	data->pd = regulator_get(&pdev->dev, "pd");
+	if(IS_ERR(data->pd)) {
+		ERR("failed to get power domain regulator\n");
+		ret = -ENOENT;
+		goto err_regulator;
+	}
+#endif /* CONFIG_S3C64XX_POWER_DOMAIN */
+
 	/* get the clock */
-	data->clock = clk_get(&pdev->dev, "hclk_g2d");
+	data->clock = clk_get(&pdev->dev, "2d");
 	if (data->clock == NULL) {
 		ERR("failed to find g2d clock source\n");
 		ret = -ENOENT;
@@ -893,6 +904,7 @@ static int s3c_g2d_probe(struct platform_device *pdev)
 	INIT_WORK(&data->work, g2d_workfunc);
 	init_waitqueue_head(&data->waitq);
 
+
 #ifdef USE_G2D_DOMAIN_GATING
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->timer.function = g2d_idle_func;
@@ -930,6 +942,10 @@ err_ioremap:
 	release_resource(data->mem);
 err_mem:
 err_clock:
+#ifdef CONFIG_S3C64XX_POWER_DOMAIN
+	regulator_put(data->pd);
+#endif /* CONFIG_S3C64XX_POWER_DOMAIN */
+err_regulator:
 	kfree(data);
 
 	return ret;
@@ -950,6 +966,9 @@ static int s3c_g2d_remove(struct platform_device *pdev)
 	free_irq(data->irq, data);
 	iounmap(data->base);
 	release_resource(data->mem);
+#ifdef CONFIG_S3C64XX_POWER_DOMAIN
+	regulator_put(data->pd);
+#endif /* CONFIG_S3C64XX_POWER_DOMAIN */
 	kfree(data);
 
 	INFO("Driver unloaded succesfully.\n");
