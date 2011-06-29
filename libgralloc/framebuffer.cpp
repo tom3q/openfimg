@@ -141,7 +141,7 @@ static int fb_post(struct framebuffer_device_t* dev, buffer_handle_t buffer)
 		}
 
 		// wait for VSYNC
-		unsigned int dummy; // No idea why is that, but it's required by the driver
+		unsigned int dummy = 0; // No idea why is that, but it's required by the driver
 		if (ioctl(m->framebuffer->fd, FBIO_WAITFORVSYNC, &dummy) < 0) {
 			LOGE("FBIO_WAITFORVSYNC failed");
 			return 0;
@@ -291,8 +291,6 @@ int mapFrameBufferLocked(struct private_module_t* module)
 				* ( info.left_margin  + info.right_margin + info.xres )
 				* info.pixclock
 			);
-	/* tom3q on 6.07.2010 - refresh rate fix for s3c6410 fb driver */
-	refreshRate *= 100;
 
 	if (refreshRate == 0) {
 		// bleagh, bad info from the driver
