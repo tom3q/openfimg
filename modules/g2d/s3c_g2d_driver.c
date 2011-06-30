@@ -50,7 +50,6 @@
 
 #ifdef CONFIG_S3C64XX_POWER_DOMAIN
 #include <linux/regulator/consumer.h>
-struct regulator *g2d_regulator;
 #define USE_G2D_DOMAIN_GATING
 #endif
 
