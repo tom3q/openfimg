@@ -28,7 +28,7 @@ LOCAL_SRC_FILES := 	\
 	framebuffer.cpp \
 	mapper.cpp
 
-LOCAL_MODULE := gralloc.spica
+LOCAL_MODULE := gralloc.s3c6410
 LOCAL_MODULE_TAGS := optional
 LOCAL_ARM_MODE := arm
 LOCAL_CFLAGS += -DLOG_TAG=\"gralloc\" -mcpu=arm1176jzf-s -mfpu=vfp -O2 -Wall
