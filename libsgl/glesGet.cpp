@@ -102,44 +102,58 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		5, 5, 5, 0,
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_5_5_1,
-		2
+		2,
+		10, 5, 0, 0
 	},
 	/* [FGPF_COLOR_MODE_565] */
 	{
 		5, 6, 5, 0,
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_6_5,
-		2
+		2,
+		11, 5, 0, 0
 	},
 	/* [FGPF_COLOR_MODE_4444] */
 	{
 		4, 4, 4, 4,
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_4_4_4_4,
-		2
+		2,
+		12, 8, 4, 0
 	},
 	/* [FGPF_COLOR_MODE_1555] */
 	{
 		5, 5, 5, 1,
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_5_5_5_1,
-		2
+		2,
+		10, 5, 0, 15
 	},
 	/* [FGPF_COLOR_MODE_0888] */
 	{
 		8, 8, 8, 0,
 		GL_RGBA,
 		GL_UNSIGNED_BYTE,
-		4
+		4,
+		16, 8, 0, 0
 	},
 	/* [FGPF_COLOR_MODE_8888] */
 	{
 		8, 8, 8, 8,
 		GL_RGBA,
 		GL_UNSIGNED_BYTE,
-		4
+		4,
+		16, 8, 0, 24
 	}
 };
+
+const FGLColorConfigDesc *fglGetColorConfigDesc(unsigned int format)
+{
+	if (unlikely(format >= NELEM(fglColorConfigs)))
+		return 0;
+
+	return &fglColorConfigs[format];
+}
 
 // ----------------------------------------------------------------------------
 

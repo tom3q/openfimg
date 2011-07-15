@@ -554,111 +554,54 @@ static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
 		fillSingle16masked(buf16, val, mask, cnt % 8);
 }
 
-static inline uint32_t getFillColor(FGLContext *ctx,
+static uint32_t getFillColor(FGLContext *ctx,
 						uint32_t *mask, bool *is32bpp)
 {
-	uint8_t r8, g8, b8, a8;
+	uint8_t r, g, b, a;
+	uint8_t rMask, gMask, bMask, aMask;
 	uint32_t val = 0;
 	uint32_t mval = 0xffffffff;
+	const FGLColorConfigDesc *configDesc;
 
-	r8 = ubyteFromClampf(ctx->clear.red);
-	g8 = ubyteFromClampf(ctx->clear.green);
-	b8 = ubyteFromClampf(ctx->clear.blue);
-	a8 = ubyteFromClampf(ctx->clear.alpha);
-
-	switch (ctx->surface.format) {
-	case FGPF_COLOR_MODE_555:
-		val |= ((r8 & 0xf8) << 7);
-		if (ctx->perFragment.mask.red)
-			mval &= ~(0x1f << 10);
-		val |= ((g8 & 0xf8) << 2);
-		if (ctx->perFragment.mask.green)
-			mval &= ~(0x1f << 5);
-		val |= (b8 >> 3);
-		if (ctx->perFragment.mask.blue)
-			mval &= ~0x1f;
-		*mask = mval;
-		*is32bpp = false;
-		return val;
-	case FGPF_COLOR_MODE_565:
-		val |= ((r8 & 0xf8) << 8);
-		if (ctx->perFragment.mask.red)
-			mval &= ~(0x1f << 11);
-		val |= ((g8 & 0xfc) << 2);
-		if (ctx->perFragment.mask.green)
-			mval &= ~(0x3f << 5);
-		val |= (b8 >> 3);
-		if (ctx->perFragment.mask.blue)
-			mval &= ~0x1f;
-		*mask = mval;
-		*is32bpp = false;
-		return val;
-	case FGPF_COLOR_MODE_4444:
-		val |= ((a8 & 0xf0) << 8);
-		if (ctx->perFragment.mask.alpha)
-			mval &= ~(0x0f << 12);
-		val |= ((r8 & 0xf0) << 4);
-		if (ctx->perFragment.mask.red)
-			mval &= ~(0x0f << 8);
-		val |= (g8 & 0xf0);
-		if (ctx->perFragment.mask.green)
-			mval &= ~(0x0f << 4);
-		val |= (b8 >> 4);
-		if (ctx->perFragment.mask.blue)
-			mval &= ~0x0f;
-		*mask = mval;
-		*is32bpp = false;
-		return val;
-	case FGPF_COLOR_MODE_1555:
-		val |= ((a8 & 0x80) << 15);
-		if (ctx->perFragment.mask.alpha)
-			mval &= ~(0x01 << 15);
-		val |= ((r8 & 0xf8) << 7);
-		if (ctx->perFragment.mask.red)
-			mval &= ~(0x1f << 10);
-		val |= ((g8 & 0xf8) << 2);
-		if (ctx->perFragment.mask.green)
-			mval &= ~(0x1f << 5);
-		val |= (b8 >> 3);
-		if (ctx->perFragment.mask.blue)
-			mval &= ~0x1f;
-		*mask = mval;
-		*is32bpp = false;
-		return val;
-	case FGPF_COLOR_MODE_0888:
-		val |= 0xff << 24;
-		mval &= ~(0xff << 24);
-		val |= r8 << 16;
-		if (ctx->perFragment.mask.red)
-			mval &= ~(0xff << 16);
-		val |= g8 << 8;
-		if (ctx->perFragment.mask.green)
-			mval &= ~(0xff << 8);
-		val |= b8;
-		if (ctx->perFragment.mask.blue)
-			mval &= ~0xff;
-		*mask = mval;
-		*is32bpp = true;
-		return val;
-	case FGPF_COLOR_MODE_8888:
-		val |= a8 << 24;
-		if (ctx->perFragment.mask.alpha)
-			mval &= ~(0xff << 24);
-		val |= r8 << 16;
-		if (ctx->perFragment.mask.red)
-			mval &= ~(0xff << 16);
-		val |= g8 << 8;
-		if (ctx->perFragment.mask.green)
-			mval &= ~(0xff << 8);
-		val |= b8;
-		if (ctx->perFragment.mask.blue)
-			mval &= ~0xff;
-		*mask = mval;
-		*is32bpp = true;
-		return val;
-	default:
+	configDesc = fglGetColorConfigDesc(ctx->surface.format);
+	if (!configDesc)
 		return 0;
-	}
+
+	r	= ubyteFromClampf(ctx->clear.red);
+	rMask	= 0xff;
+	r	>>= (8 - configDesc->red);
+	rMask	>>= (8 - configDesc->red);
+	g	= ubyteFromClampf(ctx->clear.green);
+	gMask	= 0xff;
+	g	>>= (8 - configDesc->green);
+	gMask	>>= (8 - configDesc->green);
+	b	= ubyteFromClampf(ctx->clear.blue);
+	bMask	= 0xff;
+	b	>>= (8 - configDesc->blue);
+	bMask	>>= (8 - configDesc->blue);
+	a	= ubyteFromClampf(ctx->clear.alpha);
+	aMask	= 0xff;
+	a	>>= (8 - configDesc->alpha);
+	aMask	>>= (8 - configDesc->alpha);
+
+	val |= r << configDesc->redPos;
+	val |= g << configDesc->greenPos;
+	val |= b << configDesc->bluePos;
+	val |= a << configDesc->alphaPos;
+
+	if (ctx->perFragment.mask.red)
+		mval &= ~(rMask << configDesc->redPos);
+	if (ctx->perFragment.mask.red)
+		mval &= ~(gMask << configDesc->greenPos);
+	if (ctx->perFragment.mask.red)
+		mval &= ~(bMask << configDesc->bluePos);
+	if (ctx->perFragment.mask.alpha)
+		mval &= ~(aMask << configDesc->alphaPos);
+
+	*is32bpp = (configDesc->pixelSize == 4);
+	*mask = mval;
+
+	return val;
 }
 
 static inline uint32_t getFillDepth(FGLContext *ctx,
