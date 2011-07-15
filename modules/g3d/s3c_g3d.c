@@ -224,15 +224,13 @@ static irqreturn_t g3d_handle_irq(int irq, void *dev_id)
 	Power management
 */
 
-static inline int g3d_do_power_up(struct g3d_drvdata *data)
+static inline void g3d_do_power_up(struct g3d_drvdata *data)
 {
 #ifdef CONFIG_S3C64XX_POWER_DOMAIN
 	regulator_enable(data->pd);
 #endif
 	clk_enable(data->clock);
 	g3d_soft_reset(data);
-
-	return 1;
 }
 
 static inline void g3d_do_power_down(struct g3d_drvdata *data)
@@ -247,16 +245,14 @@ static inline void g3d_do_power_down(struct g3d_drvdata *data)
 /* Called with mutex locked */
 static inline int g3d_power_up(struct g3d_drvdata *data)
 {
-	int ret;
-
 	if (data->state)
 		return 0;
 
 	INFO("Requesting power up.\n");
-	if((ret = g3d_do_power_up(data)) > 0)
-		data->state = 1;
+	g3d_do_power_up(data);
 
-	return ret;
+	data->state = 1;
+	return 1;
 }
 
 /* Called with mutex locked */
@@ -498,11 +494,8 @@ int s3c_g3d_probe(struct platform_device *pdev)
 	data->timer.function = g3d_idle_func;
 	data->state = 1;
 #endif
-	if(g3d_do_power_up(data) < 0) {
-		ERR("G3D power up failed\n");
-		ret = -EFAULT;
-		goto err_pm;
-	}
+
+	g3d_do_power_up(data);
 
 	version = g3d_read(data, G3D_FGGB_VERSION);
 	INFO("detected FIMG-3DSE version %d.%d.%d\n", version >> 24,
@@ -534,7 +527,6 @@ err_misc_register:
 	if(!hrtimer_cancel(&data->timer))
 		g3d_power_down(data);
 #endif
-err_pm:
 	free_irq(data->irq, pdev);
 err_irq:
 	iounmap(data->base);
@@ -596,10 +588,7 @@ static int s3c_g3d_resume(struct platform_device *pdev)
 #ifndef USE_G3D_DOMAIN_GATING
 	struct g3d_drvdata *data = dev_get_drvdata(&pdev->dev);
 
-	if(g3d_do_power_up(data) < 0) {
-		ERR("G3D power up failed\n");
-		return -EFAULT;
-	}
+	g3d_do_power_up(data);
 #endif
 	return 0;
 }
