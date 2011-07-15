@@ -239,6 +239,7 @@ static inline void g3d_do_power_down(struct g3d_drvdata *data)
 #ifdef CONFIG_S3C64XX_POWER_DOMAIN
 	regulator_disable(data->pd);
 #endif
+	data->owner = 0;
 }
 
 #ifdef USE_G3D_DOMAIN_GATING
@@ -297,17 +298,11 @@ static long s3c_g3d_ioctl(struct file *file,
 		mutex_lock(&data->mutex);
 		DBG("Hardware lock acquired by %p\n", ctx);
 #ifdef USE_G3D_DOMAIN_GATING
-		if(!hrtimer_cancel(&data->timer)) {
-			ret = g3d_power_up(data);
-			if (ret < 0) {
-				ERR("Timeout while waiting for G3D power up\n");
-				mutex_unlock(&data->mutex);
-				return -EFAULT;
-			}
-		}
+		if(!hrtimer_cancel(&data->timer))
+			g3d_power_up(data);
 #endif /* USE_G3D_DOMAIN_GATING */
 		if (data->owner != ctx) {
-			ret |= 1;
+			ret = 1;
 			g3d_flush(data, G3D_FGGB_PIPESTAT_MSK);
 			g3d_flush_caches(data);
 			g3d_invalidate_caches(data);
@@ -571,7 +566,6 @@ static int s3c_g3d_remove(struct platform_device *pdev)
 static int s3c_g3d_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct g3d_drvdata *data = dev_get_drvdata(&pdev->dev);
-
 #ifdef USE_G3D_DOMAIN_GATING
 	if(hrtimer_cancel(&data->timer))
 		g3d_power_down(data);
