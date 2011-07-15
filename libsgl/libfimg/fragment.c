@@ -467,7 +467,9 @@ void fimgSetFrameBufSize(fimgContext *ctx,
 
 void fimgCreateFragmentContext(fimgContext *ctx)
 {
-	// Nothing to initialize yet
+	ctx->fragment.depth.mode = FGPF_TEST_MODE_LESS;
+	ctx->fragment.stFront.mode = FGPF_TEST_MODE_ALWAYS;
+	ctx->fragment.stBack.mode = FGPF_TEST_MODE_ALWAYS;
 }
 
 void fimgRestoreFragmentState(fimgContext *ctx)
