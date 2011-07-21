@@ -4,7 +4,7 @@
 #   Copyright(c) 2004-2006, Samsung Electronics, Co., Ltd.
 #
 
-obj-m 		:= s3c_g2d_driver.o
+obj-m 		:= s3c_g2d.o
 
 all:
 	@echo "$(MAKE) --no-print-directory -C $(KDIR) SUBDIRS=$(CURDIR) modules"
