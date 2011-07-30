@@ -131,11 +131,12 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 	},
 	/* [FGPF_COLOR_MODE_0888] */
 	{
-		8, 8, 8, 0,
+		8, 8, 8, 8,
 		GL_RGBA,
 		GL_UNSIGNED_BYTE,
 		4,
-		16, 8, 0, 0
+		16, 8, 0, 24,
+		GL_TRUE /* Force opaque */
 	},
 	/* [FGPF_COLOR_MODE_8888] */
 	{

@@ -560,7 +560,7 @@ static uint32_t getFillColor(FGLContext *ctx,
 	uint8_t r, g, b, a;
 	uint8_t rMask, gMask, bMask, aMask;
 	uint32_t val = 0;
-	uint32_t mval = 0xffffffff;
+	uint32_t mval = 0;
 	const FGLColorConfigDesc *configDesc;
 
 	configDesc = fglGetColorConfigDesc(ctx->surface.format);
@@ -571,15 +571,21 @@ static uint32_t getFillColor(FGLContext *ctx,
 	rMask	= 0xff;
 	r	>>= (8 - configDesc->red);
 	rMask	>>= (8 - configDesc->red);
+
 	g	= ubyteFromClampf(ctx->clear.green);
 	gMask	= 0xff;
 	g	>>= (8 - configDesc->green);
 	gMask	>>= (8 - configDesc->green);
+
 	b	= ubyteFromClampf(ctx->clear.blue);
 	bMask	= 0xff;
 	b	>>= (8 - configDesc->blue);
 	bMask	>>= (8 - configDesc->blue);
-	a	= ubyteFromClampf(ctx->clear.alpha);
+
+	if (configDesc->opaque)
+		a = 0xff;
+	else
+		a = ubyteFromClampf(ctx->clear.alpha);
 	aMask	= 0xff;
 	a	>>= (8 - configDesc->alpha);
 	aMask	>>= (8 - configDesc->alpha);
@@ -589,14 +595,14 @@ static uint32_t getFillColor(FGLContext *ctx,
 	val |= b << configDesc->bluePos;
 	val |= a << configDesc->alphaPos;
 
-	if (ctx->perFragment.mask.red)
-		mval &= ~(rMask << configDesc->redPos);
-	if (ctx->perFragment.mask.red)
-		mval &= ~(gMask << configDesc->greenPos);
-	if (ctx->perFragment.mask.red)
-		mval &= ~(bMask << configDesc->bluePos);
-	if (ctx->perFragment.mask.alpha)
-		mval &= ~(aMask << configDesc->alphaPos);
+	if (!ctx->perFragment.mask.red)
+		mval |= rMask << configDesc->redPos;
+	if (!ctx->perFragment.mask.green)
+		mval |= gMask << configDesc->greenPos;
+	if (!ctx->perFragment.mask.blue)
+		mval |= bMask << configDesc->bluePos;
+	if (!ctx->perFragment.mask.alpha)
+		mval |= aMask << configDesc->alphaPos;
 
 	*is32bpp = (configDesc->pixelSize == 4);
 	*mask = mval;
