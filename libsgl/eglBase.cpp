@@ -1919,50 +1919,63 @@ static int fglMakeCurrent(FGLContext *gl)
 {
 	FGLContext *current = getGlThreadSpecific();
 
-	if (gl) {
-		if (gl->egl.flags & FGL_IS_CURRENT) {
-			if (current != gl) {
-				// it is an error to set a context current, if it's already
-				// current to another thread
-				return -1;
-			}
-		} else {
-			if (current) {
-				FGLRenderSurface *s(static_cast<FGLRenderSurface *>(current->egl.draw));
-				// mark the current context as not current, and flush
-				glFinish();
-				current->egl.flags &= ~FGL_IS_CURRENT;
-				if (current->egl.flags & FGL_TERMINATE) {
-					if(s->isTerminated()) {
-						s->disconnect();
-						s->ctx = 0;
-						delete s;
-					}
-					fglDestroyContext(current);
-				}
-			}
-			// The context is not current, make it current!
-			setGlThreadSpecific(gl);
-			gl->egl.flags |= FGL_IS_CURRENT;
+	// Current context (if available) should get detached
+	if (!gl) {
+		if (!current) {
+			// Nothing changed
+			return 0;
 		}
-	} else {
-		if (current) {
-			FGLRenderSurface *s(static_cast<FGLRenderSurface *>(current->egl.draw));
-			// mark the current context as not current, and flush
-			glFinish();
-			current->egl.flags &= ~FGL_IS_CURRENT;
-			if (current->egl.flags & FGL_TERMINATE) {
-				if(s->isTerminated()) {
-					s->disconnect();
-					s->ctx = 0;
-					delete s;
-				}
-				fglDestroyContext(current);
+
+		FGLRenderSurface *s(static_cast<FGLRenderSurface *>(current->egl.draw));
+		// mark the current context as not current, and flush
+		glFinish();
+		current->egl.flags &= ~FGL_IS_CURRENT;
+		if (current->egl.flags & FGL_TERMINATE) {
+			if(s->isTerminated()) {
+				s->disconnect();
+				s->ctx = 0;
+				delete s;
 			}
+			fglDestroyContext(current);
 		}
-		// this thread has no context attached to it
+
+		// this thread has no context attached to it from now on
 		setGlThreadSpecific(0);
+
+		return 0;
 	}
+
+	// New context should get attached
+	if (gl->egl.flags & FGL_IS_CURRENT) {
+		if (current != gl) {
+			// it is an error to set a context current, if it's already
+			// current to another thread
+			return -1;
+		}
+
+		// Nothing changed
+		return 0;
+	}
+
+	// Detach old context if present
+	if (current) {
+		FGLRenderSurface *s(static_cast<FGLRenderSurface *>(current->egl.draw));
+		// mark the current context as not current, and flush
+		glFinish();
+		current->egl.flags &= ~FGL_IS_CURRENT;
+		if (current->egl.flags & FGL_TERMINATE) {
+			if(s->isTerminated()) {
+				s->disconnect();
+				s->ctx = 0;
+				delete s;
+			}
+			fglDestroyContext(current);
+		}
+	}
+
+	// Make the new context current
+	setGlThreadSpecific(gl);
+	gl->egl.flags |= FGL_IS_CURRENT;
 
 	return 0;
 }
