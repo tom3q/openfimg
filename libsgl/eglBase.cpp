@@ -201,6 +201,11 @@ finish:
 	return ret;
 }
 
+/*
+ * FIXME:
+ * Keep a list of all allocated contexts and surfaces and delete them
+ * or mark for deletion here.
+ */
 EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy)
 {
 	if(!isDisplayValid(dpy)) {
