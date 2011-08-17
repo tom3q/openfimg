@@ -2030,103 +2030,113 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 		return EGL_FALSE;
 	}
 
-	if (ctx == EGL_NO_CONTEXT) {
-		// if we're detaching, we need the current context
-		current_ctx = (EGLContext)getGlThreadSpecific();
-	} else {
-		FGLRenderSurface* d = (FGLRenderSurface*)draw;
-		FGLRenderSurface* r = (FGLRenderSurface*)read;
+	if (ctx != EGL_NO_CONTEXT) {
+		FGLRenderSurface *d = (FGLRenderSurface *)draw;
+		FGLRenderSurface *r = (FGLRenderSurface *)read;
 
-		if ((d && d->ctx && d->ctx != ctx) ||
-		(r && r->ctx && r->ctx != ctx)) {
+		if ((d && d->ctx && d->ctx != ctx)
+		    || (r && r->ctx && r->ctx != ctx)) {
 			// one of the surface is bound to a context in another thread
 			setError(EGL_BAD_ACCESS);
 			return EGL_FALSE;
 		}
 	}
 
-	FGLContext* gl = (FGLContext*)ctx;
-	if (fglMakeCurrent(gl) == 0) {
-		if (ctx) {
-			FGLRenderSurface* d = (FGLRenderSurface*)draw;
-			FGLRenderSurface* r = (FGLRenderSurface*)read;
+	FGLContext *gl = (FGLContext *)ctx;
+	if (fglMakeCurrent(gl) != 0) {
+		setError(EGL_BAD_ACCESS);
+		return EGL_FALSE;
+	}
 
-			if (gl->egl.draw) {
-				FGLRenderSurface* s = reinterpret_cast<FGLRenderSurface*>(gl->egl.draw);
-				s->disconnect();
-			}
+	// We have detached current context
+	if (ctx == EGL_NO_CONTEXT) {
+		current_ctx = (EGLContext)getGlThreadSpecific();
 
-			if (gl->egl.read) {
-				// FIXME: unlock/disconnect the read surface too
-			}
+		if (!current_ctx) {
+			// Nothing changed
+			return EGL_TRUE;
+		}
 
-			gl->egl.draw = draw;
-			gl->egl.read = read;
+		// if surfaces were bound to the context bound to this thread
+		// mark then as unbound.
+		FGLContext *c = (FGLContext *)current_ctx;
 
-			if (d) {
-				if (d->connect() == EGL_FALSE)
-					return EGL_FALSE;
+		FGLRenderSurface *d = (FGLRenderSurface *)c->egl.draw;
+		c->egl.draw = 0;
+		if (d) {
+			d->ctx = EGL_NO_CONTEXT;
+			d->disconnect();
+		}
 
-				d->ctx = ctx;
-				d->bindDrawSurface(gl);
-			}
-
-			if (r) {
-				// FIXME: lock/connect the read surface too
-				r->ctx = ctx;
-				r->bindReadSurface(gl);
-			}
-
-			if (gl->egl.flags & FGL_NEVER_CURRENT) {
-				gl->egl.flags &= ~FGL_NEVER_CURRENT;
-				GLint w = 0;
-				GLint h = 0;
-
-				if (draw) {
-					w = d->getWidth();
-					h = d->getHeight();
-				}
-
-				uint32_t depth = (gl->surface.depthFormat & 0xff) ? 1 : 0;
-				uint32_t stencil = (gl->surface.depthFormat >> 8) ? 0xff : 0;
-
-				fimgSetZBufWriteMask(gl->fimg, depth);
-				fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);
-				fimgSetStencilBufWriteMask(gl->fimg, 1, stencil);
-#if 0
-				fglSetClipper(0, 0, w, h);
-#endif
-				glViewport(0, 0, w, h);
-				glScissor(0, 0, w, h);
-				glDisable(GL_SCISSOR_TEST);
-			}
-		} else {
-			// if surfaces were bound to the context bound to this thread
-			// mark then as unbound.
-			if (current_ctx) {
-				FGLContext* c = (FGLContext*)current_ctx;
-				FGLRenderSurface* d = (FGLRenderSurface*)c->egl.draw;
-				FGLRenderSurface* r = (FGLRenderSurface*)c->egl.read;
-
-				if (d) {
-					c->egl.draw = 0;
-					d->ctx = EGL_NO_CONTEXT;
-					d->disconnect();
-				}
-
-				if (r) {
-					c->egl.read = 0;
-					r->ctx = EGL_NO_CONTEXT;
-					// FIXME: unlock/disconnect the read surface too
-				}
-			}
+		FGLRenderSurface *r = (FGLRenderSurface *)c->egl.read;
+		c->egl.read = 0;
+		if (r && d != r) {
+			r->ctx = EGL_NO_CONTEXT;
+			r->disconnect();
 		}
 
 		return EGL_TRUE;
 	}
 
-	setError(EGL_BAD_ACCESS);
-	return EGL_FALSE;
+	// We have attached new context
+	if (gl->egl.draw) {
+		FGLRenderSurface *s = (FGLRenderSurface *)gl->egl.draw;
+		s->disconnect();
+	}
+
+	if (gl->egl.read && gl->egl.read != gl->egl.draw) {
+		FGLRenderSurface *s = (FGLRenderSurface *)gl->egl.read;
+		s->disconnect();
+	}
+
+	gl->egl.draw = draw;
+	FGLRenderSurface *d = (FGLRenderSurface *)draw;
+	if (d) {
+		if (d->connect() == EGL_FALSE) {
+			// connect() already set the error
+			return EGL_FALSE;
+		}
+
+		d->ctx = ctx;
+		d->bindDrawSurface(gl);
+	}
+
+	FGLRenderSurface *r = (FGLRenderSurface *)read;
+	gl->egl.read = read;
+	if (r) {
+		if (r != d && d->connect() == EGL_FALSE) {
+			// connect() already set the error
+			return EGL_FALSE;
+		}
+
+		r->ctx = ctx;
+		r->bindReadSurface(gl);
+	}
+
+	// Perform first time initialization if needed
+	if (gl->egl.flags & FGL_NEVER_CURRENT) {
+		gl->egl.flags &= ~FGL_NEVER_CURRENT;
+		GLint w = 0;
+		GLint h = 0;
+
+		if (draw) {
+			w = d->getWidth();
+			h = d->getHeight();
+		}
+
+		uint32_t depth = (gl->surface.depthFormat & 0xff) ? 1 : 0;
+		uint32_t stencil = (gl->surface.depthFormat >> 8) ? 0xff : 0;
+
+		fimgSetZBufWriteMask(gl->fimg, depth);
+		fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);
+		fimgSetStencilBufWriteMask(gl->fimg, 1, stencil);
+
+		glViewport(0, 0, w, h);
+		glScissor(0, 0, w, h);
+		glDisable(GL_SCISSOR_TEST);
+	}
+
+	return EGL_TRUE;
 }
 
 EGLAPI EGLContext EGLAPIENTRY eglGetCurrentContext(void)
