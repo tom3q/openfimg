@@ -141,8 +141,8 @@ static int fb_post(struct framebuffer_device_t* dev, buffer_handle_t buffer)
 		}
 
 		// wait for VSYNC
-		unsigned int dummy = 0; // No idea why is that, but it's required by the driver
-		if (ioctl(m->framebuffer->fd, FBIO_WAITFORVSYNC, &dummy) < 0)
+		unsigned int crtc = 0; // s3c-fb requires it to be zero
+		if (ioctl(m->framebuffer->fd, FBIO_WAITFORVSYNC, &crtc) < 0)
 			LOGW("FBIO_WAITFORVSYNC failed");
 
 		m->currentBuffer = buffer;
@@ -159,8 +159,6 @@ static int fb_post(struct framebuffer_device_t* dev, buffer_handle_t buffer)
 			GRALLOC_USAGE_SW_READ_RARELY,
 			0, 0, m->info.xres, m->info.yres,
 			&buffer_vaddr);
-
-//        memcpy(fb_vaddr, buffer_vaddr, m->finfo.line_length * m->info.yres);
 
 		s3c_g2d_copy_buffer(m->s3c_g2d_fd, buffer, 0,
 				0, m->finfo.smem_start,
