@@ -1828,13 +1828,19 @@ EGLAPI EGLBoolean EGLAPIENTRY eglWaitClient(void)
 	return EGL_TRUE;
 }
 
-// TODO: Implement following functions
 EGLAPI EGLBoolean EGLAPIENTRY eglReleaseThread(void)
 {
-	FUNC_UNIMPLEMENTED;
+	EGLContext ctx = eglGetCurrentContext();
+	if (ctx != EGL_NO_CONTEXT) {
+		EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+		eglMakeCurrent(dpy, EGL_NO_CONTEXT, EGL_NO_SURFACE,
+								EGL_NO_SURFACE);
+	}
+
 	return EGL_TRUE;
 }
 
+// TODO: Implement following functions
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferFromClientBuffer(
 	EGLDisplay dpy, EGLenum buftype, EGLClientBuffer buffer,
 	EGLConfig config, const EGLint *attrib_list)
