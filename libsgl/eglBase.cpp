@@ -1912,15 +1912,19 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 		return EGL_FALSE;
 	}
 
-	if (getGlThreadSpecific() == c)
-		eglMakeCurrent(dpy, EGL_NO_SURFACE,
-					EGL_NO_SURFACE, EGL_NO_CONTEXT);
+	if (c->egl.flags & FGL_TERMINATE) {
+		// already scheduled for deletion
+		setError(EGL_BAD_CONTEXT);
+		return EGL_FALSE;
+	}
 
-	if (c->egl.flags & FGL_IS_CURRENT)
+	if (c->egl.flags & FGL_IS_CURRENT) {
+		// mark the context for deletion on context switch
 		c->egl.flags |= FGL_TERMINATE;
-	else
-		fglDestroyContext(c);
+		return EGL_TRUE;
+	}
 
+	fglDestroyContext(c);
 	return EGL_TRUE;
 }
 
