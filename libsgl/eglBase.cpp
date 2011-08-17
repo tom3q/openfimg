@@ -1928,7 +1928,37 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 	return EGL_TRUE;
 }
 
-static int fglMakeCurrent(FGLContext *gl)
+static void fglUnbindContext(FGLContext *c)
+{
+	// mark the current context as not current, and flush
+	glFinish();
+	c->egl.flags &= ~FGL_IS_CURRENT;
+
+	// Unbind the draw surface
+	FGLRenderSurface *d = (FGLRenderSurface *)c->egl.draw;
+	d->disconnect();
+	d->ctx = EGL_NO_CONTEXT;
+	c->egl.draw = EGL_NO_SURFACE;
+	// Delete it if it's terminated
+	if(d->isTerminated())
+		delete d;
+
+	// Unbind the read surface if it's different than draw
+	FGLRenderSurface *r = (FGLRenderSurface *)c->egl.read;
+	if (r != d) {
+		r->disconnect();
+		r->ctx = EGL_NO_CONTEXT;
+	}
+	c->egl.draw = EGL_NO_SURFACE;
+	if(r->isTerminated())
+		delete r;
+
+	if (c->egl.flags & FGL_TERMINATE)
+		fglDestroyContext(c);
+}
+
+static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d,
+							FGLRenderSurface *r)
 {
 	FGLContext *current = getGlThreadSpecific();
 
@@ -1936,66 +1966,87 @@ static int fglMakeCurrent(FGLContext *gl)
 	if (!gl) {
 		if (!current) {
 			// Nothing changed
-			return 0;
+			return EGL_TRUE;
 		}
 
-		FGLRenderSurface *s(static_cast<FGLRenderSurface *>(current->egl.draw));
-		// mark the current context as not current, and flush
-		glFinish();
-		current->egl.flags &= ~FGL_IS_CURRENT;
-		if (current->egl.flags & FGL_TERMINATE) {
-			if(s->isTerminated()) {
-				s->disconnect();
-				s->ctx = 0;
-				delete s;
-			}
-			fglDestroyContext(current);
-		}
+		fglUnbindContext(current);
 
 		// this thread has no context attached to it from now on
 		setGlThreadSpecific(0);
 
-		return 0;
+		return EGL_TRUE;
 	}
 
 	// New context should get attached
 	if (gl->egl.flags & FGL_IS_CURRENT) {
 		if (current != gl) {
-			// it is an error to set a context current, if it's already
-			// current to another thread
-			return -1;
+			// it is an error to set a context current, if it's
+			// already current to another thread
+			setError(EGL_BAD_ACCESS);
+			return EGL_FALSE;
 		}
 
 		// Nothing changed
-		return 0;
+		return EGL_TRUE;
 	}
 
 	// Detach old context if present
-	if (current) {
-		FGLRenderSurface *s(static_cast<FGLRenderSurface *>(current->egl.draw));
-		// mark the current context as not current, and flush
-		glFinish();
-		current->egl.flags &= ~FGL_IS_CURRENT;
-		if (current->egl.flags & FGL_TERMINATE) {
-			if(s->isTerminated()) {
-				s->disconnect();
-				s->ctx = 0;
-				delete s;
-			}
-			fglDestroyContext(current);
-		}
+	if (current)
+		fglUnbindContext(current);
+
+	// Attach draw surface
+	gl->egl.draw = (EGLSurface)d;
+	if (d->connect() == EGL_FALSE) {
+		// connect() already set the error
+		return EGL_FALSE;
 	}
+	d->ctx = (EGLContext)gl;
+	d->bindDrawSurface(gl);
+
+	// Attach read surface
+	gl->egl.read = (EGLSurface)r;
+	if (r != d && d->connect() == EGL_FALSE) {
+		// connect() already set the error
+		return EGL_FALSE;
+	}
+	r->ctx = (EGLContext)gl;
+	r->bindReadSurface(gl);
 
 	// Make the new context current
 	setGlThreadSpecific(gl);
 	gl->egl.flags |= FGL_IS_CURRENT;
 
-	return 0;
+	// Perform first time initialization if needed
+	if (gl->egl.flags & FGL_NEVER_CURRENT) {
+		gl->egl.flags &= ~FGL_NEVER_CURRENT;
+		GLint w = 0;
+		GLint h = 0;
+
+		w = d->getWidth();
+		h = d->getHeight();
+
+		uint32_t depth = (gl->surface.depthFormat & 0xff) ? 1 : 0;
+		uint32_t stencil = (gl->surface.depthFormat >> 8) ? 0xff : 0;
+
+		fimgSetZBufWriteMask(gl->fimg, depth);
+		fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);
+		fimgSetStencilBufWriteMask(gl->fimg, 1, stencil);
+
+		glViewport(0, 0, w, h);
+		glScissor(0, 0, w, h);
+		glDisable(GL_SCISSOR_TEST);
+	}
+
+	return EGL_TRUE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 			EGLSurface read, EGLContext ctx)
 {
+	/*
+	 * Do all the EGL sanity checks
+	 */
+
 	if (!isDisplayValid(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
@@ -2013,7 +2064,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 			setError(EGL_BAD_DISPLAY);
 			return EGL_FALSE;
 		}
-		// TODO: check that draw is compatible with the context
 	}
 
 	if (read && read!=draw) {
@@ -2028,17 +2078,16 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 			setError(EGL_BAD_DISPLAY);
 			return EGL_FALSE;
 		}
-		// TODO: check that read is compatible with the context
 	}
 
-	EGLContext current_ctx = EGL_NO_CONTEXT;
-
-	if ((read == EGL_NO_SURFACE && draw == EGL_NO_SURFACE) && (ctx != EGL_NO_CONTEXT)) {
+	if ((read == EGL_NO_SURFACE || draw == EGL_NO_SURFACE)
+	    && (ctx != EGL_NO_CONTEXT)) {
 		setError(EGL_BAD_MATCH);
 		return EGL_FALSE;
 	}
 
-	if ((read != EGL_NO_SURFACE || draw != EGL_NO_SURFACE) && (ctx == EGL_NO_CONTEXT)) {
+	if ((read != EGL_NO_SURFACE || draw != EGL_NO_SURFACE)
+	    && (ctx == EGL_NO_CONTEXT)) {
 		setError(EGL_BAD_MATCH);
 		return EGL_FALSE;
 	}
@@ -2047,109 +2096,21 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 		FGLRenderSurface *d = (FGLRenderSurface *)draw;
 		FGLRenderSurface *r = (FGLRenderSurface *)read;
 
-		if ((d && d->ctx && d->ctx != ctx)
-		    || (r && r->ctx && r->ctx != ctx)) {
-			// one of the surface is bound to a context in another thread
+		if ((d->ctx && d->ctx != ctx) || (r->ctx && r->ctx != ctx)) {
+			// already bound to another thread
 			setError(EGL_BAD_ACCESS);
 			return EGL_FALSE;
 		}
 	}
 
+	/*
+	 * Proceed with the main part
+	 */
+
 	FGLContext *gl = (FGLContext *)ctx;
-	if (fglMakeCurrent(gl) != 0) {
-		setError(EGL_BAD_ACCESS);
-		return EGL_FALSE;
-	}
-
-	// We have detached current context
-	if (ctx == EGL_NO_CONTEXT) {
-		current_ctx = (EGLContext)getGlThreadSpecific();
-
-		if (!current_ctx) {
-			// Nothing changed
-			return EGL_TRUE;
-		}
-
-		// if surfaces were bound to the context bound to this thread
-		// mark then as unbound.
-		FGLContext *c = (FGLContext *)current_ctx;
-
-		FGLRenderSurface *d = (FGLRenderSurface *)c->egl.draw;
-		c->egl.draw = 0;
-		if (d) {
-			d->ctx = EGL_NO_CONTEXT;
-			d->disconnect();
-		}
-
-		FGLRenderSurface *r = (FGLRenderSurface *)c->egl.read;
-		c->egl.read = 0;
-		if (r && d != r) {
-			r->ctx = EGL_NO_CONTEXT;
-			r->disconnect();
-		}
-
-		return EGL_TRUE;
-	}
-
-	// We have attached new context
-	if (gl->egl.draw) {
-		FGLRenderSurface *s = (FGLRenderSurface *)gl->egl.draw;
-		s->disconnect();
-	}
-
-	if (gl->egl.read && gl->egl.read != gl->egl.draw) {
-		FGLRenderSurface *s = (FGLRenderSurface *)gl->egl.read;
-		s->disconnect();
-	}
-
-	gl->egl.draw = draw;
 	FGLRenderSurface *d = (FGLRenderSurface *)draw;
-	if (d) {
-		if (d->connect() == EGL_FALSE) {
-			// connect() already set the error
-			return EGL_FALSE;
-		}
-
-		d->ctx = ctx;
-		d->bindDrawSurface(gl);
-	}
-
 	FGLRenderSurface *r = (FGLRenderSurface *)read;
-	gl->egl.read = read;
-	if (r) {
-		if (r != d && d->connect() == EGL_FALSE) {
-			// connect() already set the error
-			return EGL_FALSE;
-		}
-
-		r->ctx = ctx;
-		r->bindReadSurface(gl);
-	}
-
-	// Perform first time initialization if needed
-	if (gl->egl.flags & FGL_NEVER_CURRENT) {
-		gl->egl.flags &= ~FGL_NEVER_CURRENT;
-		GLint w = 0;
-		GLint h = 0;
-
-		if (draw) {
-			w = d->getWidth();
-			h = d->getHeight();
-		}
-
-		uint32_t depth = (gl->surface.depthFormat & 0xff) ? 1 : 0;
-		uint32_t stencil = (gl->surface.depthFormat >> 8) ? 0xff : 0;
-
-		fimgSetZBufWriteMask(gl->fimg, depth);
-		fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);
-		fimgSetStencilBufWriteMask(gl->fimg, 1, stencil);
-
-		glViewport(0, 0, w, h);
-		glScissor(0, 0, w, h);
-		glDisable(GL_SCISSOR_TEST);
-	}
-
-	return EGL_TRUE;
+	return fglMakeCurrent(gl, d, r);
 }
 
 EGLAPI EGLContext EGLAPIENTRY eglGetCurrentContext(void)
