@@ -137,15 +137,13 @@ static int fb_post(struct framebuffer_device_t* dev, buffer_handle_t buffer)
 		if (ioctl(m->framebuffer->fd, FBIOPAN_DISPLAY, &m->info) == -1) {
 			LOGE("FBIOPAN_DISPLAY failed");
 			m->base.unlock(&m->base, buffer);
-			return 0;
+			return -errno;
 		}
 
 		// wait for VSYNC
 		unsigned int dummy = 0; // No idea why is that, but it's required by the driver
-		if (ioctl(m->framebuffer->fd, FBIO_WAITFORVSYNC, &dummy) < 0) {
-			LOGE("FBIO_WAITFORVSYNC failed");
-			return 0;
-		}
+		if (ioctl(m->framebuffer->fd, FBIO_WAITFORVSYNC, &dummy) < 0)
+			LOGW("FBIO_WAITFORVSYNC failed");
 
 		m->currentBuffer = buffer;
 	} else {
