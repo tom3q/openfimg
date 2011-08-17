@@ -1696,30 +1696,33 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 		return EGL_FALSE;
 	}
 
-	if (surface != EGL_NO_SURFACE) {
-		FGLRenderSurface *fglSurface( static_cast<FGLRenderSurface *>(surface) );
+	if (surface == EGL_NO_SURFACE)
+		return EGL_TRUE;
 
-		if (!fglSurface->isValid()) {
-			setError(EGL_BAD_SURFACE);
-			return EGL_FALSE;
-		}
+	FGLRenderSurface *fglSurface = (FGLRenderSurface *)surface;
 
-		if (fglSurface->dpy != dpy) {
-			setError(EGL_BAD_DISPLAY);
-			return EGL_FALSE;
-		}
-
-		if (fglSurface->ctx) {
-			// FIXME: this surface is current check what the spec says
-			fglSurface->terminate();
-			//fglSurface->disconnect();
-			//fglSurface->ctx = 0;
-			return EGL_TRUE;
-		}
-
-		delete fglSurface;
+	if (fglSurface->isTerminated()) {
+		setError(EGL_BAD_SURFACE);
+		return EGL_FALSE;
 	}
 
+	if (!fglSurface->isValid()) {
+		setError(EGL_BAD_SURFACE);
+		return EGL_FALSE;
+	}
+
+	if (fglSurface->dpy != dpy) {
+		setError(EGL_BAD_DISPLAY);
+		return EGL_FALSE;
+	}
+
+	if (fglSurface->ctx) {
+		// Mark the surface for destruction on context detach
+		fglSurface->terminate();
+		return EGL_TRUE;
+	}
+
+	delete fglSurface;
 	return EGL_TRUE;
 }
 
