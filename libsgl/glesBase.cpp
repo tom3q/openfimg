@@ -707,7 +707,7 @@ static inline void fglSetupTextures(FGLContext *ctx)
 	} while (i--);
 
 	if (flush)
-		fimgInvalidateFlushCache(ctx->fimg, 0, 1, 0, 0);
+		fimgInvalidateTextureCache(ctx->fimg);
 }
 
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)

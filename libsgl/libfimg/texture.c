@@ -121,6 +121,11 @@ unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level)
 	return texture->offset[level - 1];
 }
 
+void fimgInvalidateTextureCache(fimgContext *ctx)
+{
+	ctx->invalTexCache = 1;
+}
+
 void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 {
 	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base +FGTU_TSTA(unit));

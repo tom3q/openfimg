@@ -319,6 +319,7 @@ void fimgSetTexMinFilter(fimgTexture *texture, unsigned mode);
 void fimgSetTexMagFilter(fimgTexture *texture, unsigned mode);
 void fimgSetTexMipmap(fimgTexture *texture, unsigned mode);
 void fimgSetTexCoordSys(fimgTexture *texture, unsigned mode);
+void fimgInvalidateTextureCache(fimgContext *ctx);
 
 /*
  * OpenGL 1.1 compatibility

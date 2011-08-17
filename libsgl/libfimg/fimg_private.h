@@ -501,6 +501,7 @@ struct _fimgContext {
 #endif
 	fimgClearContext clear;
 	/* Shared context */
+	unsigned int invalTexCache;
 	unsigned int numAttribs;
 	unsigned int fbHeight;
 	/* Register queue */
@@ -622,6 +623,10 @@ static inline void fimgGetHardware(fimgContext *ctx)
 
 static inline void fimgFlushContext(fimgContext *ctx)
 {
+	if (ctx->invalTexCache) {
+		fimgInvalidateFlushCache(ctx, 0, 1, 0, 0);
+		ctx->invalTexCache = 0;
+	}
 	fimgQueueFlush(ctx);
 #ifdef FIMG_FIXED_PIPELINE
 	fimgCompatFlush(ctx);
