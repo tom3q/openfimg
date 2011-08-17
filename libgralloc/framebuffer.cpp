@@ -46,8 +46,8 @@
 //#define GRALLOC_FB_DEBUG
 
 #ifdef GRALLOC_FB_DEBUG
-#define DEBUG_ENTER()	LOGD("Entering %s", __func__); sleep(5)
-#define DEBUG_LEAVE()	LOGD("Leaving %s", __func__); sleep(5)
+#define DEBUG_ENTER()	LOGD("Entering %s", __func__);
+#define DEBUG_LEAVE()	LOGD("Leaving %s", __func__);
 #else
 #define DEBUG_ENTER()
 #define DEBUG_LEAVE()
