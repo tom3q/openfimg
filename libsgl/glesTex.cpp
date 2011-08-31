@@ -134,6 +134,8 @@ static int fglGetFormatInfo(GLenum format, GLenum type,
 			return FGTU_TSTA_TEXTURE_FORMAT_8888;
 		case GL_RGBA: // Needs swapping in pixel shader
 			*swap = 1;
+		/* Fall through */
+		case GL_BGRA_EXT:
 			*bpp = 4;
 			return FGTU_TSTA_TEXTURE_FORMAT_8888;
 		case GL_ALPHA:
