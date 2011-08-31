@@ -1219,6 +1219,7 @@ static inline FGLint getBpp(int format)
 	switch(format) {
 	case PIXEL_FORMAT_RGBA_8888:
 	case PIXEL_FORMAT_RGBX_8888:
+	case PIXEL_FORMAT_BGRA_8888:
 		return 4;
 	case PIXEL_FORMAT_RGB_565:
 		return 2;
