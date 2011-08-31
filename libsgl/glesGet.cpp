@@ -132,7 +132,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 	/* [FGPF_COLOR_MODE_0888] */
 	{
 		8, 8, 8, 8,
-		GL_RGBA,
+		GL_BGRA_EXT,
 		GL_UNSIGNED_BYTE,
 		4,
 		16, 8, 0, 24,
@@ -141,7 +141,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 	/* [FGPF_COLOR_MODE_8888] */
 	{
 		8, 8, 8, 8,
-		GL_RGBA,
+		GL_BGRA_EXT,
 		GL_UNSIGNED_BYTE,
 		4,
 		16, 8, 0, 24
