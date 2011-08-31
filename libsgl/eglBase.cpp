@@ -670,17 +670,15 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 	int numAttributes = 0;
 	int numConfigs =  NELEM(gConfigs);
 	uint32_t possibleMatch = (1<<numConfigs)-1;
-	if(attrib_list) {
-		while(possibleMatch && *attrib_list != EGL_NONE) {
-			numAttributes++;
-			EGLint attr = *attrib_list++;
-			EGLint val  = *attrib_list++;
-			for (int i=0 ; possibleMatch && i<numConfigs ; i++) {
-				if (!(possibleMatch & (1<<i)))
-					continue;
-				if (isAttributeMatching(i, attr, val) == 0) {
-					possibleMatch &= ~(1<<i);
-				}
+	while(possibleMatch && *attrib_list != EGL_NONE) {
+		numAttributes++;
+		EGLint attr = *attrib_list++;
+		EGLint val  = *attrib_list++;
+		for (int i=0 ; possibleMatch && i<numConfigs ; i++) {
+			if (!(possibleMatch & (1<<i)))
+				continue;
+			if (isAttributeMatching(i, attr, val) == 0) {
+				possibleMatch &= ~(1<<i);
 			}
 		}
 	}
