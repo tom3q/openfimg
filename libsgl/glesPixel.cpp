@@ -202,6 +202,45 @@ static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 	} while (--height);
 }
 
+static inline void unpackPixel8888(uint32_t *dst, uint32_t src)
+{
+	uint8_t r, g, b, a;
+
+	b = src & 0xff;
+	src >>= 8;
+	g = src & 0xff;
+	src >>= 8;
+	r = src & 0xff;
+	src >>= 8;
+	a = src;
+
+	*dst = (a << 24) | (b << 16) | (g << 8) | r;
+}
+
+static void convertToUByteBGRA8888(FGLContext *ctx, uint32_t *dst,
+			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+	const uint32_t *src = (const uint32_t *)ctx->surface.draw->vaddr;
+	unsigned alignment = ctx->packAlignment;
+	unsigned dstStride = ((4*width + alignment - 1) & ~(alignment - 1)) / 4;
+	unsigned srcStride = ctx->surface.stride;
+	unsigned xOffset = x;
+	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
+	unsigned srcPad = srcStride - width;
+
+	src += yOffset + xOffset;
+	dst += height*dstStride;
+	do {
+		unsigned w = width;
+		uint32_t *line = dst;
+		do {
+			unpackPixel8888(line++, *src++);
+		} while (--w);
+		src += srcPad;
+		dst -= dstStride;
+	} while (--height);
+}
+
 static void fallbackCopy(uint8_t *dst, const uint8_t *src, unsigned len)
 {
 	while (len--)
@@ -343,6 +382,12 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 			break;
 		case FGPF_COLOR_MODE_1555:
 			convertToUByteRGBA1555(ctx, (uint8_t *)pixels,
+							x, y, width, height);
+			break;
+		/* BGRX8888 -> RGBX8888 */
+		case FGPF_COLOR_MODE_0888:
+		case FGPF_COLOR_MODE_8888:
+			convertToUByteBGRA8888(ctx, (uint32_t *)pixels,
 							x, y, width, height);
 			break;
 		}
