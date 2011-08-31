@@ -128,11 +128,13 @@ static int fglGetFormatInfo(GLenum format, GLenum type,
 	switch (type) {
 	case GL_UNSIGNED_BYTE:
 		switch (format) {
-		case GL_RGB: // Needs conversion
+		case GL_RGB:
+		/* Needs conversion */
 			*conv = 1;
 			*bpp = 4;
 			return FGTU_TSTA_TEXTURE_FORMAT_8888;
-		case GL_RGBA: // Needs swapping in pixel shader
+		case GL_RGBA:
+		/* Needs swapping in pixel shader */
 			*swap = 1;
 		/* Fall through */
 		case GL_BGRA_EXT:
@@ -141,8 +143,10 @@ static int fglGetFormatInfo(GLenum format, GLenum type,
 		case GL_ALPHA:
 			*bpp = 1;
 			return FGTU_TSTA_TEXTURE_FORMAT_8;
-		case GL_LUMINANCE: // Needs conversion
+		case GL_LUMINANCE:
+		/* Needs conversion */
 			*conv = 1;
+		/* Fall through */
 		case GL_LUMINANCE_ALPHA:
 			*bpp = 2;
 			return FGTU_TSTA_TEXTURE_FORMAT_88;
