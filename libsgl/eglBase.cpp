@@ -409,6 +409,32 @@ static const FGLConfigPair configAttributes5[] = {
 	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
 };
 
+static const FGLConfigPair configAttributes6[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       8 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_CONFIG_ID,        6 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
+	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
+};
+
+static const FGLConfigPair configAttributes7[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       8 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,      24 },
+	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_CONFIG_ID,        7 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
+	{ EGL_SURFACE_TYPE,     EGL_WINDOW_BIT|EGL_PBUFFER_BIT/*|EGL_PIXMAP_BIT*/ },
+};
+
 static const FGLConfigs gConfigs[] = {
 	{ configAttributes0, NELEM(configAttributes0) },
 	{ configAttributes1, NELEM(configAttributes1) },
@@ -416,6 +442,8 @@ static const FGLConfigs gConfigs[] = {
 	{ configAttributes3, NELEM(configAttributes3) },
 	{ configAttributes4, NELEM(configAttributes4) },
 	{ configAttributes5, NELEM(configAttributes5) },
+	{ configAttributes6, NELEM(configAttributes6) },
+	{ configAttributes7, NELEM(configAttributes7) },
 };
 
 static const FGLConfigMatcher gConfigManagement[] = {
@@ -487,6 +515,14 @@ static FGLint getConfigFormatInfo(EGLint configID,
 		*depthFormat = 0;
 		break;
 	case 5:
+		*pixelFormat = FGPF_COLOR_MODE_8888;
+		*depthFormat = (8 << 8) | 24;
+		break;
+	case 6:
+		*pixelFormat = FGPF_COLOR_MODE_8888;
+		*depthFormat = 0;
+		break;
+	case 7:
 		*pixelFormat = FGPF_COLOR_MODE_8888;
 		*depthFormat = (8 << 8) | 24;
 		break;
