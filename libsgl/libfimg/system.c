@@ -210,6 +210,7 @@ int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
 {
 	if(ioctl(ctx->fd, S3C_G3D_FLUSH, target)) {
 		LOGE("Could not flush the hardware pipeline");
+		fimgDumpState(ctx, 0, 0, __func__);
 		return -1;
 	}
 
