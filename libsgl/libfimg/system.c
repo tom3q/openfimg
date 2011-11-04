@@ -94,7 +94,7 @@ fimgContext *fimgCreateContext(void)
 	if ((ctx = malloc(sizeof(*ctx))) == NULL)
 		return NULL;
 
-	if ((queue = malloc(2*FIMG_MAX_QUEUE_LEN*sizeof(uint32_t))) == NULL) {
+	if ((queue = malloc(2*(FIMG_MAX_QUEUE_LEN + 1)*sizeof(uint32_t))) == NULL) {
 		free(ctx);
 		return NULL;
 	}

@@ -554,7 +554,7 @@ static inline void fimgQueueFlush(fimgContext *ctx)
 	}
 
 	cnt = ctx->queueLen;
-	ptr = ctx->queueStart;
+	ptr = ctx->queueStart + 2;
 
 	while (cnt--) {
 		fimgWrite(ctx, ptr[1], ptr[0]);
