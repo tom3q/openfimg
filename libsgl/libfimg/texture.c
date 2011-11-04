@@ -142,17 +142,6 @@ void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 		: "0"(reg), "1"(data), "r"(count / 4)
 		: "r0", "r1", "r2", "r3"
 	);
-
-	count %= 4;
-
-	if (count--)
-		*(reg++) = *(data++);
-
-	if (count--)
-		*(reg++) = *(data++);
-
-	if (count--)
-		*(reg++) = *(data++);
 }
 
 /*****************************************************************************
