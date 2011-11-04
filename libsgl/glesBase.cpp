@@ -1185,8 +1185,7 @@ static inline void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
 #endif
 
 	fimgSetXClip(ctx->fimg, xmin, xmax);
-	fimgSetYClip(ctx->fimg, 0, ctx->surface.height);
-	fimgSetScissorParams(ctx->fimg, ctx->surface.width, 0, ymax, ymin);
+	fimgSetYClip(ctx->fimg, ymin, ymax);
 }
 
 GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei height)
@@ -1574,7 +1573,6 @@ static inline void fglSet(GLenum cap, bool state)
 			fglSetScissor(ctx, 0, 0, ctx->surface.width,
 							ctx->surface.height);
 		}
-		fimgSetScissorEnable(ctx->fimg, state);
 #else
 		fimgSetScissorEnable(ctx->fimg, state);
 #endif
