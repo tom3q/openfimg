@@ -916,7 +916,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	}
 
 	EGLint configID;
-	if (getConfigAttrib(dpy, config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
+	if (getConfigAttrib(config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
 		return EGL_NO_SURFACE;
 
 	int32_t depthFormat;
