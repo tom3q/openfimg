@@ -22,15 +22,6 @@
 #ifndef _EGLMEM_H_
 #define _EGLMEM_H_
 
-#include <ui/android_native_buffer.h>
 #include "fglsurface.h"
-
-struct FGLSurface;
-
-void fglFlushPmemSurface(FGLSurface *s);
-int fglCreatePmemSurface(FGLSurface *s, android_native_buffer_t* buffer);
-int fglCreatePmemSurface(FGLSurface *s);
-void fglDestroyPmemSurface(FGLSurface *s);
-unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer);
 
 #endif
