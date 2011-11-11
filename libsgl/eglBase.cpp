@@ -32,13 +32,6 @@
 
 #include <sys/types.h>
 
-#include <cutils/log.h>
-#include <cutils/atomic.h>
-#include <cutils/native_handle.h>
-
-#include <utils/threads.h>
-#include <pthread.h>
-
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES/gl.h>
@@ -53,6 +46,7 @@
 #include <linux/android_pmem.h>
 #include <linux/fb.h>
 
+#include "platform.h"
 #include "common.h"
 #include "types.h"
 #include "state.h"
@@ -69,12 +63,12 @@ static const char *const gVersionString    = "1.4 S3C6410 Android 0.1";
 static const char *const gClientApisString = "OpenGL_ES";
 static const char *const gExtensionsString =
 	"EGL_KHR_image_base "
-	"EGL_ANDROID_image_native_buffer "
-	"EGL_ANDROID_swap_rectangle "
-	"EGL_ANDROID_get_render_buffer"
+	PLATFORM_EXTENSIONS_STRING
 ;
 
+#ifndef PLATFORM_HAS_FAST_TLS
 pthread_key_t eglContextKey = -1;
+#endif
 
 struct FGLDisplay {
 	EGLBoolean initialized;
@@ -190,7 +184,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLin
 	if(likely(disp->initialized))
 		goto finish;
 
-#ifdef FGL_AGL_COEXIST
+#ifndef PLATFORM_HAS_FAST_TLS
 	pthread_key_create(&eglContextKey, NULL);
 #endif
 

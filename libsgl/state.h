@@ -24,7 +24,6 @@
 
 #include <EGL/egl.h>
 #include <GLES/gl.h>
-#include <bionic_tls.h>
 
 #include "common.h"
 #include "types.h"
@@ -65,8 +64,6 @@ enum {
 	FGL_ARRAY_TEXTURE
 };
 #define FGL_ARRAY_TEXTURE(i)	(FGL_ARRAY_TEXTURE + (i))
-
-#include <cutils/log.h>
 
 struct FGLArrayState {
 	GLboolean enabled;
@@ -248,38 +245,5 @@ struct FGLContext {
 			busyTexture[i] = 0;
 	}
 };
-
-// We attempt to run in parallel with software GL
-//#define FGL_AGL_COEXIST
-
-#ifndef FGL_AGL_COEXIST
-// We have a dedicated TLS slot in bionic
-
-inline void setGlThreadSpecific(FGLContext* value)
-{
-	((uint32_t *)__get_tls())[TLS_SLOT_OPENGL] = (uint32_t)value;
-}
-
-inline FGLContext* getGlThreadSpecific()
-{
-	return (FGLContext *)(((unsigned *)__get_tls())[TLS_SLOT_OPENGL]);
-}
-#else // FGL_AGL_COEXIST
-// We have to coexist with software GL
-
-#include <pthread.h>
-
-extern pthread_key_t eglContextKey;
-
-inline void setGlThreadSpecific(FGLContext* value)
-{
-	pthread_setspecific(eglContextKey, value);
-}
-
-inline FGLContext* getGlThreadSpecific()
-{
-	return (FGLContext *)pthread_getspecific(eglContextKey);
-}
-#endif // FGL_AGL_COEXIST
 
 #endif // _LIBSGL_STATE_H_
