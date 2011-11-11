@@ -346,47 +346,48 @@ static const FGLConfigPair defaultConfigAttributes[] = {
 
 // ----------------------------------------------------------------------------
 
-static FGLint getConfigFormatInfo(EGLint configID,
-	int32_t *pixelFormat, int32_t *depthFormat)
+/* Forward declaration */
+static EGLBoolean getConfigAttrib(EGLConfig config,
+					EGLint attribute, EGLint *value);
+
+static EGLBoolean getConfigFormatInfo(EGLint configID,
+				int32_t *pixelFormat, int32_t *depthFormat)
 {
-	switch(configID) {
-	case 0:
-		*pixelFormat = FGPF_COLOR_MODE_565;
-		*depthFormat = 0;
+	EGLint color, alpha, depth, stencil;
+	EGLBoolean ret;
+
+	ret = getConfigAttrib((EGLConfig)configID, EGL_BUFFER_SIZE, &color);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib((EGLConfig)configID, EGL_ALPHA_SIZE, &alpha);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib((EGLConfig)configID, EGL_DEPTH_SIZE, &depth);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib((EGLConfig)configID, EGL_STENCIL_SIZE, &stencil);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	switch (color) {
+	case 32:
+		if (alpha)
+			*pixelFormat = FGPF_COLOR_MODE_8888;
+		else
+			*pixelFormat = FGPF_COLOR_MODE_0888;
 		break;
-	case 1:
-		*pixelFormat = FGPF_COLOR_MODE_565;
-		*depthFormat = (8 << 8) | 24;
-		break;
-	case 2:
-		*pixelFormat = FGPF_COLOR_MODE_0888;
-		*depthFormat = 0;
-		break;
-	case 3:
-		*pixelFormat = FGPF_COLOR_MODE_0888;
-		*depthFormat = (8 << 8) | 24;
-		break;
-	case 4:
-		*pixelFormat = FGPF_COLOR_MODE_8888;
-		*depthFormat = 0;
-		break;
-	case 5:
-		*pixelFormat = FGPF_COLOR_MODE_8888;
-		*depthFormat = (8 << 8) | 24;
-		break;
-	case 6:
-		*pixelFormat = FGPF_COLOR_MODE_8888;
-		*depthFormat = 0;
-		break;
-	case 7:
-		*pixelFormat = FGPF_COLOR_MODE_8888;
-		*depthFormat = (8 << 8) | 24;
-		break;
+	case 16:
 	default:
-		return NAME_NOT_FOUND;
+		*pixelFormat = FGPF_COLOR_MODE_565;
+		break;
 	}
 
-	return FGL_NO_ERROR;
+	*depthFormat = (stencil << 8) | depth;
+
+	return EGL_TRUE;
 }
 
 static FGLint bppFromFormat(EGLint format)
