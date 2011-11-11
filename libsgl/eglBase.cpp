@@ -698,6 +698,21 @@ FGLRenderSurface::~FGLRenderSurface()
 	delete color;
 }
 
+EGLBoolean FGLRenderSurface::bindDrawSurface(FGLContext *gl)
+{
+	fglSetColorBuffer(gl, color, width, height, stride, format);
+	fglSetDepthBuffer(gl, depth, depthFormat);
+
+	return EGL_TRUE;
+}
+
+EGLBoolean FGLRenderSurface::bindReadSurface(FGLContext *gl)
+{
+	fglSetReadBuffer(gl, color);
+
+	return EGL_TRUE;
+}
+
 bool FGLRenderSurface::isValid() const {
 	LOGE_IF(magic != MAGIC, "invalid EGLSurface (%p)", this);
 	return magic == MAGIC;
@@ -841,8 +856,6 @@ struct FGLPbufferSurface : public FGLRenderSurface
 	{
 		return color && color->isValid() && (!depth || depth->isValid());
 	}
-	virtual     EGLBoolean  bindDrawSurface(FGLContext *gl);
-	virtual     EGLBoolean  bindReadSurface(FGLContext *gl);
 	virtual     EGLint      getWidth() const    { return width;  }
 	virtual     EGLint      getHeight() const   { return height; }
 };
@@ -879,20 +892,6 @@ FGLPbufferSurface::~FGLPbufferSurface()
 {
 }
 
-EGLBoolean FGLPbufferSurface::bindDrawSurface(FGLContext *gl)
-{
-	fglSetColorBuffer(gl, color, width, height, stride, format);
-	fglSetDepthBuffer(gl, depth, depthFormat);
-
-	return EGL_TRUE;
-}
-
-EGLBoolean FGLPbufferSurface::bindReadSurface(FGLContext *gl)
-{
-	fglSetReadBuffer(gl, color);
-
-	return EGL_TRUE;
-}
 
 EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	EGLConfig config, EGLNativeWindowType win, const EGLint *attrib_list)
