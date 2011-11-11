@@ -47,6 +47,7 @@
 #include <linux/fb.h>
 
 #include "platform.h"
+#include "fglrendersurface.h"
 #include "common.h"
 #include "types.h"
 #include "state.h"
@@ -800,51 +801,6 @@ void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
 {
 	gl->surface.read = rbuf;
 }
-
-struct FGLRenderSurface
-{
-	enum {
-		TERMINATED = 0x80000000,
-		MAGIC     = 0x31415265
-	};
-
-	uint32_t	magic;
-	uint32_t	flags;
-	EGLDisplay	dpy;
-	EGLConfig	config;
-	EGLContext	ctx;
-
-	FGLRenderSurface(EGLDisplay dpy, EGLConfig config, int32_t pixelFormat,
-							int32_t depthFormat);
-	virtual 		~FGLRenderSurface();
-		bool		isValid() const;
-		void		terminate();
-		bool		isTerminated() const;
-	virtual bool		initCheck() const = 0;
-
-	virtual EGLBoolean	bindDrawSurface(FGLContext *gl) = 0;
-	virtual EGLBoolean	bindReadSurface(FGLContext *gl) = 0;
-	virtual EGLBoolean	connect() { return EGL_TRUE; }
-	virtual void		disconnect() {}
-	virtual EGLint		getWidth() const = 0;
-	virtual EGLint		getHeight() const = 0;
-
-	virtual EGLint		getHorizontalResolution() const;
-	virtual EGLint		getVerticalResolution() const;
-	virtual EGLint		getRefreshRate() const;
-	virtual EGLint		getSwapBehavior() const;
-	virtual EGLBoolean	swapBuffers();
-	virtual EGLBoolean	setSwapRectangle(EGLint l, EGLint t, EGLint w, EGLint h);
-	virtual EGLClientBuffer	getRenderBuffer() const;
-protected:
-	FGLSurface		*color;
-	FGLSurface              *depth;
-	int32_t			depthFormat;
-	int			width;
-	int			stride;
-	int			height;
-	int32_t			format;
-};
 
 FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
 	EGLConfig config, int32_t pixelFormat, int32_t depthFormat) :
