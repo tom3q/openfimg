@@ -424,10 +424,10 @@ static int binarySearch(const T sortedArray[], int first, int last, EGLint key)
 static int isAttributeMatching(int i, EGLint attr, EGLint val)
 {
 	// look for the attribute in all of our configs
-	const FGLConfigPair *configFound = gConfigs[i].array;
+	const FGLConfigPair *configFound = gPlatformConfigs[i].array;
 	int index = binarySearch<FGLConfigPair>(
-		gConfigs[i].array,
-		0, gConfigs[i].size-1,
+		gPlatformConfigs[i].array,
+		0, gPlatformConfigs[i].size-1,
 		attr);
 
 	if (index < 0) {
@@ -484,7 +484,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
 		return EGL_FALSE;
 	}
 
-	EGLint num = NELEM(gConfigs);
+	EGLint num = gPlatformConfigsNum;
 
 	if(!configs) {
 		*num_config = num;
@@ -527,7 +527,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 	}
 
 	int numAttributes = 0;
-	int numConfigs =  NELEM(gConfigs);
+	int numConfigs = gPlatformConfigsNum;
 	uint32_t possibleMatch = (1<<numConfigs)-1;
 	while(possibleMatch && *attrib_list != EGL_NONE) {
 		numAttributes++;
@@ -591,7 +591,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 static EGLBoolean getConfigAttrib(EGLConfig config,
 						EGLint attribute, EGLint *value)
 {
-	size_t numConfigs =  NELEM(gConfigs);
+	size_t numConfigs =  gPlatformConfigsNum;
 	int index = (int)config;
 
 	if (uint32_t(index) >= numConfigs) {
@@ -599,14 +599,19 @@ static EGLBoolean getConfigAttrib(EGLConfig config,
 		return EGL_FALSE;
 	}
 
+	if (attribute == EGL_CONFIG_ID) {
+		*value = index;
+		return EGL_TRUE;
+	}
+
 	int attrIndex;
 	attrIndex = binarySearch<FGLConfigPair>(
-		gConfigs[index].array,
-		0, gConfigs[index].size-1,
+		gPlatformConfigs[index].array,
+		0, gPlatformConfigs[index].size-1,
 		attribute);
 
 	if (attrIndex>=0) {
-		*value = gConfigs[index].array[attrIndex].value;
+		*value = gPlatformConfigs[index].array[attrIndex].value;
 		return EGL_TRUE;
 	}
 
