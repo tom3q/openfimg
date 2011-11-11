@@ -647,6 +647,11 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
 		unsigned int height, unsigned int stride, unsigned int format)
 {
+	if (!cbuf) {
+		gl->surface.draw = 0;
+		return;
+	}
+
 	fimgSetFrameBufSize(gl->fimg, stride, height);
 	fimgSetFrameBufParams(gl->fimg, 1, 0, 255, (fimgColorMode)format);
 	fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
