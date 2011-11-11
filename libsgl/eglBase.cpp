@@ -337,14 +337,15 @@ static const FGLConfigMatcher gConfigManagement[] = {
 	{ EGL_CONFORMANT,                 FGLConfigMatcher::mask    }
 };
 
-
 static const FGLConfigPair defaultConfigAttributes[] = {
 // attributes that are not specified are simply ignored, if a particular
 // one needs not be ignored, it must be specified here, eg:
 // { EGL_SURFACE_TYPE, EGL_WINDOW_BIT },
 };
 
-// ----------------------------------------------------------------------------
+/*
+ * Internal configuration management
+ */
 
 /* Forward declaration */
 static EGLBoolean getConfigAttrib(EGLConfig config,
@@ -892,6 +893,9 @@ FGLPbufferSurface::~FGLPbufferSurface()
 {
 }
 
+/*
+ * EGL surface management
+ */
 
 EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	EGLConfig config, EGLNativeWindowType win, const EGLint *attrib_list)
@@ -936,9 +940,10 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 		// there was a problem in the ctor, the error
 		// flag has been set.
 		delete surface;
-		surface = 0;
+		return EGL_NO_SURFACE;
 	}
-	return surface;
+
+	return (EGLSurface)surface;
 }
 
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig config,
