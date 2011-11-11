@@ -939,11 +939,7 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 }
 
 struct FGLAndroidImage : FGLImage {
-#define FGL_IMAGE_MAGIC 0x474d4941
-	uint32_t magic;
-
-	FGLAndroidImage(void *buf, uint32_t fmt, bool swap, bool argb) :
-		magic(FGL_IMAGE_MAGIC)
+	FGLAndroidImage(void *buf, uint32_t fmt, bool swap, bool argb)
 	{
 		pixelFormat	= fmt;
 		buffer		= buf;
@@ -960,16 +956,10 @@ struct FGLAndroidImage : FGLImage {
 
 	virtual ~FGLAndroidImage()
 	{
-		if (!isValid())
-			return;
 
 		delete surface;
 	}
 
-	virtual bool isValid()
-	{
-		return magic == FGL_IMAGE_MAGIC && surface != NULL;
-	}
 };
 
 EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,

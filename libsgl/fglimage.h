@@ -25,6 +25,8 @@
 struct FGLSurface;
 
 struct FGLImage {
+#define FGL_IMAGE_MAGIC 0x00474d49
+	uint32_t magic;
 	uint32_t pixelFormat;
 	uint32_t stride;
 	uint32_t height;
@@ -35,10 +37,14 @@ struct FGLImage {
 	bool terminated;
 	uint32_t refCount;
 
-	FGLImage() : buffer(0), surface(0), terminated(false), refCount(0) {}
+	FGLImage() : magic(FGL_IMAGE_MAGIC), buffer(0), surface(0),
+					terminated(false), refCount(0) {}
 	virtual ~FGLImage() {}
 
-	virtual bool isValid() = 0;
+	bool isValid()
+	{
+		return magic == FGL_IMAGE_MAGIC && surface != NULL;
+	}
 
 	void connect()
 	{
