@@ -25,6 +25,8 @@
 #include "eglMem.h"
 #include "fglobject.h"
 
+struct FGLImage;
+
 struct FGLTexture {
 	/* Memory surface */
 	FGLSurface	*surface;
@@ -43,7 +45,7 @@ struct FGLTexture {
 	GLboolean	genMipmap;
 	GLboolean	useMipmap;
 	GLint		cropRect[4];
-	void*		eglImage;
+	FGLImage	*eglImage;
 	/* HW state */
 	fimgTexture	*fimg;
 	uint32_t	fglFormat;
