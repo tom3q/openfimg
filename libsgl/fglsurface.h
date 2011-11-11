@@ -75,18 +75,4 @@ public:
 	virtual bool	isValid(void) { return true; };
 };
 
-class FGLImageSurface : public FGLSurface {
-	gralloc_module_t const* module;
-	EGLImageKHR	image;
-public:
-			FGLImageSurface(EGLImageKHR img);
-	virtual		~FGLImageSurface();
-
-	virtual void	flush(void);
-	virtual int	lock(int usage = 0);
-	virtual int	unlock(void);
-
-	virtual bool	isValid(void) { return image != 0; };
-};
-
 #endif

@@ -27,73 +27,13 @@
 
 #include "eglMem.h"
 
-#include <private/ui/sw_gralloc_handle.h>
 #include <linux/android_pmem.h>
-#include <linux/fb.h>
 
 #include "fglsurface.h"
 #include "common.h"
 #include "types.h"
 #include "state.h"
 #include "libfimg/fimg.h"
-
-/* HACK ALERT */
-#include "../../../../hardware/libhardware/modules/gralloc/gralloc_priv.h"
-
-using namespace android;
-
-/**
-	Surfaces
-*/
-
-#define FB_DEVICE_NAME "/dev/graphics/fb0"
-static inline unsigned long getFramebufferAddress(void)
-{
-	static unsigned long address = 0;
-
-//	LOGD("getFramebufferAddress");
-
-	if (address != 0)
-		return address;
-
-	int fb_fd = open(FB_DEVICE_NAME, O_RDWR, 0);
-
-	if (fb_fd == -1) {
-		LOGE("EGL: GetFramebufferAddress: cannot open fb");
-		return 0;
-	}
-
-	fb_fix_screeninfo finfo;
-	if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
-		LOGE("EGL: Failed to get framebuffer address");
-		close(fb_fd);
-		return 0;
-	}
-	close(fb_fd);
-
-	address = finfo.smem_start;
-	return address;
-}
-
-unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer)
-{
-	const private_handle_t* hnd = static_cast<const private_handle_t*>(buffer->handle);
-
-//	LOGD("fglGetBufferPhysicalAddress");
-
-	// this pointer came from framebuffer
-	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
-		return getFramebufferAddress() + hnd->offset;
-
-	// this pointer came from pmem domain
-	pmem_region region;
-	if (ioctl(hnd->fd, PMEM_GET_PHYS, &region) >= 0)
-		return region.offset + hnd->offset;
-
-	// otherwise we failed
-	LOGE("EGL: fglGetBufferPhysicalAddress failed");
-	return 0;
-}
 
 /*
  * NEW SURFACE SUBSYSTEM
@@ -208,85 +148,4 @@ int FGLExternalSurface::unlock(void)
 void FGLExternalSurface::flush(void)
 {
 	cacheflush((intptr_t)vaddr, (intptr_t)((uint8_t *)vaddr + size), 0);
-}
-
-FGLImageSurface::FGLImageSurface(EGLImageKHR img)
-	: image(0)
-{
-	android_native_buffer_t *buffer = (android_native_buffer_t *)img;
-
-	if (buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC)
-		return;
-
-	if (buffer->common.version != sizeof(android_native_buffer_t))
-		return;
-
-	const private_handle_t* hnd =
-			static_cast<const private_handle_t*>(buffer->handle);
-
-	hw_module_t const* pModule;
-	if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule))
-		return;
-
-	module = reinterpret_cast<gralloc_module_t const*>(pModule);
-
-	vaddr = 0; /* Needs locking */
-	paddr = fglGetBufferPhysicalAddress(buffer);
-	size = hnd->size;;
-	image = img;
-
-	//LOGD("FGLImageSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, paddr, size);
-}
-
-FGLImageSurface::~FGLImageSurface()
-{
-	//LOGD("~FGLImageSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, paddr, size);
-}
-
-int FGLImageSurface::lock(int usage)
-{
-	android_native_buffer_t *buf = (android_native_buffer_t *)image;
-	int err;
-
-	if (sw_gralloc_handle_t::validate(buf->handle) < 0) {
-		err = module->lock(module, buf->handle,
-			usage, 0, 0, buf->width, buf->height, &vaddr);
-	} else {
-		sw_gralloc_handle_t const* hnd =
-			reinterpret_cast<sw_gralloc_handle_t const*>(buf->handle);
-		vaddr = (void*)hnd->base;
-		err = FGL_NO_ERROR;
-	}
-
-	return err;
-}
-
-int FGLImageSurface::unlock(void)
-{
-	int err = 0;
-	android_native_buffer_t *buf = (android_native_buffer_t *)image;
-
-	if (!buf)
-		return BAD_VALUE;
-
-	if (sw_gralloc_handle_t::validate(buf->handle) < 0)
-		err = module->unlock(module, buf->handle);
-
-	return err;
-}
-
-void FGLImageSurface::flush(void)
-{
-	android_native_buffer_t *buffer = (android_native_buffer_t *)image;
-	const private_handle_t* hnd =
-			static_cast<const private_handle_t*>(buffer->handle);
-	struct pmem_region region;
-
-	region.offset = 0;
-	region.len = size;
-
-	if (ioctl(hnd->fd, PMEM_CACHE_FLUSH, &region) != 0)
-		LOGW("Could not flush PMEM surface %d", hnd->fd);
 }
