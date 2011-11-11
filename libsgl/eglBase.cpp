@@ -1560,48 +1560,33 @@ EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers(EGLDisplay dpy, EGLSurface surface,
  * Extension management
  */
 
+#define EGLFunc	__eglMustCastToProperFunctionPointerType
 
 static const FGLExtensionMap gExtensionMap[] = {
-	{ "glDrawTexsOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexsOES },
-	{ "glDrawTexiOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexiOES },
-	{ "glDrawTexfOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexfOES },
-	{ "glDrawTexxOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexxOES },
-	{ "glDrawTexsvOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexsvOES },
-	{ "glDrawTexivOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexivOES },
-	{ "glDrawTexfvOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexfvOES },
-	{ "glDrawTexxvOES",
-		(__eglMustCastToProperFunctionPointerType)&glDrawTexxvOES },
+	{ "glDrawTexsOES", (EGLFunc)&glDrawTexsOES },
+	{ "glDrawTexiOES", (EGLFunc)&glDrawTexiOES },
+	{ "glDrawTexfOES", (EGLFunc)&glDrawTexfOES },
+	{ "glDrawTexxOES", (EGLFunc)&glDrawTexxOES },
+	{ "glDrawTexsvOES", (EGLFunc)&glDrawTexsvOES },
+	{ "glDrawTexivOES", (EGLFunc)&glDrawTexivOES },
+	{ "glDrawTexfvOES", (EGLFunc)&glDrawTexfvOES },
+	{ "glDrawTexxvOES", (EGLFunc)&glDrawTexxvOES },
 #if 0
-	{ "glQueryMatrixxOES",
-		(__eglMustCastToProperFunctionPointerType)&glQueryMatrixxOES },
+	{ "glQueryMatrixxOES", (EGLFunc)&glQueryMatrixxOES },
 #endif
 	{ "glEGLImageTargetTexture2DOES",
-		(__eglMustCastToProperFunctionPointerType)&glEGLImageTargetTexture2DOES },
+			(EGLFunc)&glEGLImageTargetTexture2DOES },
 #if 0
 	{ "glEGLImageTargetRenderbufferStorageOES",
-		(__eglMustCastToProperFunctionPointerType)&glEGLImageTargetRenderbufferStorageOES },
-	{ "glClipPlanef",
-		(__eglMustCastToProperFunctionPointerType)&glClipPlanef },
-	{ "glClipPlanex",
-		(__eglMustCastToProperFunctionPointerType)&glClipPlanex },
+			(EGLFunc)&glEGLImageTargetRenderbufferStorageOES },
+	{ "glClipPlanef", (EGLFunc)&glClipPlanef },
+	{ "glClipPlanex", (EGLFunc)&glClipPlanex },
 #endif
-	{ "glBindBuffer",
-		(__eglMustCastToProperFunctionPointerType)&glBindBuffer },
-	{ "glBufferData",
-		(__eglMustCastToProperFunctionPointerType)&glBufferData },
-	{ "glBufferSubData",
-		(__eglMustCastToProperFunctionPointerType)&glBufferSubData },
-	{ "glDeleteBuffers",
-		(__eglMustCastToProperFunctionPointerType)&glDeleteBuffers },
-	{ "glGenBuffers",
-		(__eglMustCastToProperFunctionPointerType)&glGenBuffers },
+	{ "glBindBuffer", (EGLFunc)&glBindBuffer },
+	{ "glBufferData", (EGLFunc)&glBufferData },
+	{ "glBufferSubData", (EGLFunc)&glBufferSubData },
+	{ "glDeleteBuffers", (EGLFunc)&glDeleteBuffers },
+	{ "glGenBuffers", (EGLFunc)&glGenBuffers },
 };
 
 EGLAPI __eglMustCastToProperFunctionPointerType EGLAPIENTRY
