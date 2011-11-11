@@ -59,8 +59,8 @@
 
 using namespace android;
 
-static const char *const gVendorString     = "GLES6410";
-static const char *const gVersionString    = "1.4 S3C6410 Android 0.1";
+static const char *const gVendorString     = "OpenFIMG";
+static const char *const gVersionString    = "1.4 pre-alpha";
 static const char *const gClientApisString = "OpenGL_ES";
 static const char *const gExtensionsString =
 	"EGL_KHR_image_base "
