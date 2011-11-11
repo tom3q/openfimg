@@ -47,12 +47,12 @@ struct FGLExtensionMap {
 #ifdef EGL_ERR_DEBUG
 #define setError(a) ( \
 	LOGD("EGL error %s in %s in line %d", #a, __func__, __LINE__), \
-	_setError(a))
+	fglEGLSetError(a))
 #else
-#define setError _setError
+#define setError fglEGLSetError
 #endif
 
-extern void _setError(EGLint error);
+extern void fglEGLSetError(EGLint error);
 extern EGLBoolean fglEGLValidateDisplay(EGLDisplay dpy);
 
 extern const FGLConfigs gPlatformConfigs[];

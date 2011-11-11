@@ -128,7 +128,7 @@ EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 	return error;
 }
 
-void _setError(EGLint error)
+void fglEGLSetError(EGLint error)
 {
 	if(unlikely(eglErrorKey == -1)) {
 		pthread_mutex_lock(&eglErrorKeyMutex);
