@@ -20,7 +20,7 @@ LIBAGL_USE_GRALLOC_COPYBITS := 1
 LOCAL_ARM_MODE := arm
 
 LOCAL_SRC_FILES:= \
-	eglBase.cpp eglMem.cpp \
+	eglBase.cpp eglMem.cpp eglAndroid.cpp \
 	glesBase.cpp glesGet.cpp glesMatrix.cpp glesPixel.cpp glesTex.cpp \
 	fglmatrix.cpp
 
