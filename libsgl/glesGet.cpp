@@ -516,8 +516,8 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 	case GL_SAMPLES :
 		params[0] = 0;
 		break;
-	case GL_COMPRESSED_TEXTURE_FORMATS :
-		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+	case GL_COMPRESSED_TEXTURE_FORMATS:
+		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
 			params[i] = fglCompressedTextureFormats[i];
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
@@ -656,7 +656,7 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		break;
 #endif
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
 			params[i] = !!fglCompressedTextureFormats[i];
 		break;
 
@@ -810,7 +810,7 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		break;
 #endif
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
 			params[i] = fglCompressedTextureFormats[i];
 		break;
 
@@ -968,7 +968,7 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[1] = FGL_MAX_VIEWPORT_DIMS;
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS :
-		for (int i = 0; i < NELEM(fglCompressedTextureFormats); ++i)
+		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
 			params[i] = fglCompressedTextureFormats[i];
 		break;
 
