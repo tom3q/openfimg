@@ -1592,16 +1592,22 @@ static const FGLExtensionMap gExtensionMap[] = {
 	{ "glBufferSubData", (EGLFunc)&glBufferSubData },
 	{ "glDeleteBuffers", (EGLFunc)&glDeleteBuffers },
 	{ "glGenBuffers", (EGLFunc)&glGenBuffers },
+	{ NULL, NULL },
 };
 
 EGLAPI __eglMustCastToProperFunctionPointerType EGLAPIENTRY
 eglGetProcAddress(const char *procname)
 {
-	const FGLExtensionMap *const map = gExtensionMap;
+	const FGLExtensionMap *map;
 
-	for (uint32_t i=0 ; i<NELEM(gExtensionMap) ; i++) {
-		if (!strcmp(procname, map[i].name))
-			return map[i].address;
+	for (map = gExtensionMap; map->name; ++map) {
+		if (!strcmp(procname, map->name))
+			return map->address;
+	}
+
+	for (map = gPlatformExtensionMap; map->name; ++map) {
+		if (!strcmp(procname, map->name))
+			return map->address;
 	}
 
 	//LOGE("Requested not implemented function %s address", procname);
