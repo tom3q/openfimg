@@ -951,15 +951,20 @@ struct FGLAndroidImage : FGLImage {
 		stride = native_buffer->stride;
 		height = native_buffer->height;
 
+		native_buffer->common.incRef(&native_buffer->common);
+
 		surface = new FGLImageSurface(native_buffer);
 	}
 
 	virtual ~FGLAndroidImage()
 	{
+		android_native_buffer_t *native_buffer =
+					(android_native_buffer_t *)buffer;
+
+		native_buffer->common.decRef(&native_buffer->common);
 
 		delete surface;
 	}
-
 };
 
 EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
@@ -1031,7 +1036,6 @@ EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
 		return EGL_NO_IMAGE_KHR;
 	}
 
-	native_buffer->common.incRef(&native_buffer->common);
 	return (EGLImageKHR)image;
 }
 
@@ -1048,10 +1052,6 @@ EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
 		return EGL_FALSE;
 	}
 
-	android_native_buffer_t *native_buffer =
-				(android_native_buffer_t *)image->buffer;
-
-	native_buffer->common.decRef(&native_buffer->common);
 	image->terminate();
 
 	return EGL_TRUE;
