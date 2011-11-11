@@ -58,6 +58,12 @@ endif
 #    LOCAL_SHARED_LIBRARIES += libui
 #endif
 
+# Build EGL for Android
+LOCAL_CFLAGS += -DFGL_PLATFORM_ANDROID
+
+# Use TLS slot of Bionic dedicated for OpenGL
+LOCAL_CFLAGS += -DANDROID_FAST_TLS
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/egl
 LOCAL_MODULE:= libGLES_fimg
