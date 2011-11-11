@@ -46,6 +46,7 @@
 #include <linux/android_pmem.h>
 #include <linux/fb.h>
 
+#include "eglCommon.h"
 #include "platform.h"
 #include "fglrendersurface.h"
 #include "common.h"
@@ -94,6 +95,11 @@ static inline EGLBoolean isDisplayValid(EGLDisplay dpy)
 	return EGL_FALSE;
 }
 
+EGLBoolean fglEGLValidateDisplay(EGLDisplay dpy)
+{
+	return isDisplayValid(dpy);
+}
+
 static inline FGLDisplay *getDisplay(EGLDisplay dpy)
 {
 	EGLint disp = (EGLint)dpy;
@@ -130,16 +136,7 @@ EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 	return error;
 }
 
-#define EGL_ERR_DEBUG
-
-#ifdef EGL_ERR_DEBUG
-#define setError(a) ( \
-	LOGD("EGL error %s in %s in line %d", #a, __func__, __LINE__), \
-	_setError(a))
-static void _setError(EGLint error)
-#else
-static void setError(EGLint error)
-#endif
+void _setError(EGLint error)
 {
 	if(unlikely(eglErrorKey == -1)) {
 		pthread_mutex_lock(&eglErrorKeyMutex);
@@ -252,16 +249,6 @@ EGLAPI const char *EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name)
 /**
 	Configurations
 */
-
-struct FGLConfigPair {
-	EGLint key;
-	EGLint value;
-};
-
-struct FGLConfigs {
-	const FGLConfigPair *array;
-	int size;
-};
 
 struct FGLConfigMatcher {
 	GLint key;
@@ -2354,10 +2341,6 @@ EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
 	return EGL_TRUE;
 }
 
-struct FGLExtensionMap {
-    const char *const name;
-    __eglMustCastToProperFunctionPointerType address;
-};
 
 static const FGLExtensionMap gExtensionMap[] = {
 	{ "glDrawTexsOES",
