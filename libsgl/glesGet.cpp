@@ -21,6 +21,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cassert>
 #include <errno.h>
 #include <pthread.h>
 #include <fcntl.h>
@@ -161,8 +162,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 
 const FGLColorConfigDesc *fglGetColorConfigDesc(unsigned int format)
 {
-	if (unlikely(format >= NELEM(fglColorConfigs)))
-		return 0;
+	assert(format < NELEM(fglColorConfigs));
 
 	return &fglColorConfigs[format];
 }
