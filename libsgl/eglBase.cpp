@@ -72,6 +72,10 @@ static const char *const gExtensionsString =
 pthread_key_t eglContextKey = -1;
 #endif
 
+/*
+ * Display
+ */
+
 struct FGLDisplay {
 	EGLBoolean initialized;
 	pthread_mutex_t lock;
@@ -122,9 +126,9 @@ static inline EGLBoolean isDisplayInitialized(EGLDisplay dpy)
 static pthread_mutex_t eglErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t eglErrorKey = -1;
 
-/**
-	Error handling
-*/
+/*
+ * Error handling
+ */
 
 EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 {
@@ -148,9 +152,9 @@ void _setError(EGLint error)
 	pthread_setspecific(eglErrorKey, (void *)error);
 }
 
-/**
-	Initialization
-*/
+/*
+ * Initialization
+ */
 
 EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id)
 {
@@ -246,9 +250,9 @@ EGLAPI const char *EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name)
 	return NULL;
 }
 
-/**
-	Configurations
-*/
+/*
+ * Configurations
+ */
 
 struct FGLConfigMatcher {
 	GLint key;
@@ -527,8 +531,6 @@ static FGLint bppFromFormat(EGLint format)
 	}
 }
 
-// ----------------------------------------------------------------------------
-
 template<typename T>
 static int binarySearch(const T sortedArray[], int first, int last, EGLint key)
 {
@@ -587,6 +589,10 @@ static int isAttributeMatching(int i, EGLint attr, EGLint val)
 
 	return 0;
 }
+
+/*
+ * EGL configuration queries
+ */
 
 EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
 			EGLint config_size, EGLint *num_config)
@@ -757,6 +763,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 	return getConfigAttrib(dpy, config, attribute, value);
 }
 
+/*
+ * Buffers (render surfaces)
+ */
+
 void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
 		unsigned int height, unsigned int stride, unsigned int format)
 {
@@ -787,6 +797,10 @@ void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
 {
 	gl->surface.read = rbuf;
 }
+
+/*
+ * Render surface base class
+ */
 
 FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
 	EGLConfig config, int32_t pixelFormat, int32_t depthFormat) :
@@ -1359,6 +1373,9 @@ EGLBoolean FGLWindowSurface::bindReadSurface(FGLContext *gl)
 
 	return EGL_TRUE;
 }
+/*
+ * EGL surface management
+ */
 
 EGLint FGLWindowSurface::getHorizontalResolution() const {
 	return (nativeWindow->xdpi * EGL_DISPLAY_SCALING) * (1.0f / 25.4f);
@@ -1390,8 +1407,10 @@ EGLint FGLWindowSurface::getSwapBehavior() const
 
 	return EGL_BUFFER_DESTROYED;
 }
+/*
+ * EGL Pixmap surface
+ */
 
-// ----------------------------------------------------------------------------
 #if 0
 /* FIXME: Implement pixmap support */
 struct FGLPixmapSurface : public FGLRenderSurface
@@ -1471,7 +1490,10 @@ EGLBoolean FGLPixmapSurface::bindReadSurface(FGLContext *gl)
 }
 /* FIXME: Implement pixmap support. */
 #endif
-// ----------------------------------------------------------------------------
+
+/*
+ * EGL PBuffer surface
+ */
 
 struct FGLPbufferSurface : public FGLRenderSurface
 {
@@ -2340,6 +2362,9 @@ EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
 
 	return EGL_TRUE;
 }
+/*
+ * Extension management
+ */
 
 
 static const FGLExtensionMap gExtensionMap[] = {
