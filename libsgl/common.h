@@ -97,6 +97,4 @@ static inline T clamp(T v, T l, T h)
 	return v;
 }
 
-void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
-
 #endif // _LIBSGL_COMMON_H_
