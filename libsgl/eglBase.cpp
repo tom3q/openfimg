@@ -291,7 +291,6 @@ struct FGLConfigMatcher {
 * the EGL specification.
 */
 
-#define FGL_MAX_VIEWPORT_DIMS		2048
 #define FGL_MAX_VIEWPORT_PIXELS		(FGL_MAX_VIEWPORT_DIMS*FGL_MAX_VIEWPORT_DIMS)
 
 static const FGLConfigPair baseConfigAttributes[] = {
