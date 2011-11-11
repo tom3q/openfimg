@@ -42,7 +42,7 @@
 #include "libfimg/fimg.h"
 
 /*
- * NEW SURFACE SUBSYSTEM
+ * Surfaces
  */
 
 FGLLocalSurface::FGLLocalSurface(unsigned long size)
