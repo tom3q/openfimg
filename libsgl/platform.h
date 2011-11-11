@@ -49,6 +49,7 @@ static inline FGLContext* getGlThreadSpecific()
 #endif /* ANDROID_FAST_TLS */
 
 #define PLATFORM_EXTENSIONS_STRING		\
+	"EGL_KHR_image_base "			\
 	"EGL_ANDROID_image_native_buffer "	\
 	"EGL_ANDROID_swap_rectangle "		\
 	"EGL_ANDROID_get_render_buffer"		\

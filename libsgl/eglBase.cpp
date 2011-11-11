@@ -51,10 +51,7 @@
 static const char *const gVendorString     = "OpenFIMG";
 static const char *const gVersionString    = "1.4 pre-alpha";
 static const char *const gClientApisString = "OpenGL_ES";
-static const char *const gExtensionsString =
-	"EGL_KHR_image_base "
-	PLATFORM_EXTENSIONS_STRING
-;
+static const char *const gExtensionsString = "" PLATFORM_EXTENSIONS_STRING;
 
 #ifndef PLATFORM_HAS_FAST_TLS
 pthread_key_t eglContextKey = -1;
@@ -1578,10 +1575,6 @@ static const FGLExtensionMap gExtensionMap[] = {
 	{ "glDrawTexxvOES", (EGLFunc)&glDrawTexxvOES },
 #if 0
 	{ "glQueryMatrixxOES", (EGLFunc)&glQueryMatrixxOES },
-#endif
-	{ "glEGLImageTargetTexture2DOES",
-			(EGLFunc)&glEGLImageTargetTexture2DOES },
-#if 0
 	{ "glEGLImageTargetRenderbufferStorageOES",
 			(EGLFunc)&glEGLImageTargetRenderbufferStorageOES },
 	{ "glClipPlanef", (EGLFunc)&glClipPlanef },
@@ -1592,6 +1585,8 @@ static const FGLExtensionMap gExtensionMap[] = {
 	{ "glBufferSubData", (EGLFunc)&glBufferSubData },
 	{ "glDeleteBuffers", (EGLFunc)&glDeleteBuffers },
 	{ "glGenBuffers", (EGLFunc)&glGenBuffers },
+	{ "glEGLImageTargetTexture2DOES",
+				(EGLFunc)&glEGLImageTargetTexture2DOES },
 	{ NULL, NULL },
 };
 
