@@ -103,7 +103,8 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_5_5_1,
 		2,
-		10, 5, 0, 0
+		10, 5, 0, 0,
+		GL_TRUE, /* Force opaque */
 	},
 	/* [FGPF_COLOR_MODE_565] */
 	{
@@ -111,7 +112,8 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_6_5,
 		2,
-		11, 5, 0, 0
+		11, 5, 0, 0,
+		GL_FALSE,
 	},
 	/* [FGPF_COLOR_MODE_4444] */
 	{
@@ -119,7 +121,8 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_4_4_4_4,
 		2,
-		12, 8, 4, 0
+		12, 8, 4, 0,
+		GL_FALSE,
 	},
 	/* [FGPF_COLOR_MODE_1555] */
 	{
@@ -127,7 +130,8 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_5_5_5_1,
 		2,
-		10, 5, 0, 15
+		10, 5, 0, 15,
+		GL_FALSE,
 	},
 	/* [FGPF_COLOR_MODE_0888] */
 	{
@@ -136,7 +140,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_UNSIGNED_BYTE,
 		4,
 		16, 8, 0, 24,
-		GL_TRUE /* Force opaque */
+		GL_TRUE, /* Force opaque */
 	},
 	/* [FGPF_COLOR_MODE_8888] */
 	{
@@ -144,7 +148,8 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_BGRA_EXT,
 		GL_UNSIGNED_BYTE,
 		4,
-		16, 8, 0, 24
+		16, 8, 0, 24,
+		GL_FALSE,
 	}
 };
 
