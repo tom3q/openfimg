@@ -344,9 +344,64 @@ static const FGLConfigPair defaultConfigAttributes[] = {
  * Internal configuration management
  */
 
-/* Forward declaration */
+template<typename T>
+static int binarySearch(const T sortedArray[], int first, int last, EGLint key)
+{
+	while (first <= last) {
+		int mid = (first + last) / 2;
+
+		if (key > sortedArray[mid].key) {
+			first = mid + 1;
+		} else if (key < sortedArray[mid].key) {
+			last = mid - 1;
+		} else {
+			return mid;
+		}
+	}
+
+	return -1;
+}
+
 static EGLBoolean getConfigAttrib(EGLConfig config,
-					EGLint attribute, EGLint *value);
+						EGLint attribute, EGLint *value)
+{
+	size_t numConfigs =  gPlatformConfigsNum;
+	int index = (int)config;
+
+	if (uint32_t(index) >= numConfigs) {
+		setError(EGL_BAD_CONFIG);
+		return EGL_FALSE;
+	}
+
+	if (attribute == EGL_CONFIG_ID) {
+		*value = index;
+		return EGL_TRUE;
+	}
+
+	int attrIndex;
+	attrIndex = binarySearch<FGLConfigPair>(
+		gPlatformConfigs[index].array,
+		0, gPlatformConfigs[index].size-1,
+		attribute);
+
+	if (attrIndex>=0) {
+		*value = gPlatformConfigs[index].array[attrIndex].value;
+		return EGL_TRUE;
+	}
+
+	attrIndex = binarySearch<FGLConfigPair>(
+		baseConfigAttributes,
+		0, NELEM(baseConfigAttributes)-1,
+		attribute);
+
+	if (attrIndex>=0) {
+		*value = baseConfigAttributes[attrIndex].value;
+		return EGL_TRUE;
+	}
+
+	setError(EGL_BAD_ATTRIBUTE);
+	return EGL_FALSE;
+}
 
 static EGLBoolean getConfigFormatInfo(EGLint configID,
 				int32_t *pixelFormat, int32_t *depthFormat)
@@ -399,24 +454,6 @@ static FGLint bppFromFormat(EGLint format)
 	default:
 		return 0;
 	}
-}
-
-template<typename T>
-static int binarySearch(const T sortedArray[], int first, int last, EGLint key)
-{
-	while (first <= last) {
-		int mid = (first + last) / 2;
-
-		if (key > sortedArray[mid].key) {
-			first = mid + 1;
-		} else if (key < sortedArray[mid].key) {
-			last = mid - 1;
-		} else {
-			return mid;
-		}
-	}
-
-	return -1;
 }
 
 static int isAttributeMatching(int i, EGLint attr, EGLint val)
@@ -584,47 +621,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 
 	*num_config = n;
 	return EGL_TRUE;
-}
-
-static EGLBoolean getConfigAttrib(EGLConfig config,
-						EGLint attribute, EGLint *value)
-{
-	size_t numConfigs =  gPlatformConfigsNum;
-	int index = (int)config;
-
-	if (uint32_t(index) >= numConfigs) {
-		setError(EGL_BAD_CONFIG);
-		return EGL_FALSE;
-	}
-
-	if (attribute == EGL_CONFIG_ID) {
-		*value = index;
-		return EGL_TRUE;
-	}
-
-	int attrIndex;
-	attrIndex = binarySearch<FGLConfigPair>(
-		gPlatformConfigs[index].array,
-		0, gPlatformConfigs[index].size-1,
-		attribute);
-
-	if (attrIndex>=0) {
-		*value = gPlatformConfigs[index].array[attrIndex].value;
-		return EGL_TRUE;
-	}
-
-	attrIndex = binarySearch<FGLConfigPair>(
-		baseConfigAttributes,
-		0, NELEM(baseConfigAttributes)-1,
-		attribute);
-
-	if (attrIndex>=0) {
-		*value = baseConfigAttributes[attrIndex].value;
-		return EGL_TRUE;
-	}
-
-	setError(EGL_BAD_ATTRIBUTE);
-	return EGL_FALSE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config,
