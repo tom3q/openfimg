@@ -921,7 +921,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 
 	int32_t depthFormat;
 	int32_t pixelFormat;
-	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) != NO_ERROR) {
+	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) == EGL_FALSE) {
 		setError(EGL_BAD_MATCH);
 		return EGL_NO_SURFACE;
 	}
@@ -964,7 +964,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 
 	int32_t depthFormat;
 	int32_t pixelFormat;
-	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) != NO_ERROR) {
+	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) == EGL_FALSE) {
 		setError(EGL_BAD_MATCH);
 		return EGL_NO_SURFACE;
 	}
