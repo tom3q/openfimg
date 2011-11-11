@@ -105,6 +105,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		2,
 		10, 5, 0, 0,
 		GL_TRUE, /* Force opaque */
+		FGTU_TSTA_TEXTURE_FORMAT_1555,
 	},
 	/* [FGPF_COLOR_MODE_565] */
 	{
@@ -114,6 +115,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		2,
 		11, 5, 0, 0,
 		GL_FALSE,
+		FGTU_TSTA_TEXTURE_FORMAT_565,
 	},
 	/* [FGPF_COLOR_MODE_4444] */
 	{
@@ -123,6 +125,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		2,
 		12, 8, 4, 0,
 		GL_FALSE,
+		FGTU_TSTA_TEXTURE_FORMAT_4444,
 	},
 	/* [FGPF_COLOR_MODE_1555] */
 	{
@@ -132,6 +135,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		2,
 		10, 5, 0, 15,
 		GL_FALSE,
+		FGTU_TSTA_TEXTURE_FORMAT_1555,
 	},
 	/* [FGPF_COLOR_MODE_0888] */
 	{
@@ -141,6 +145,7 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		4,
 		16, 8, 0, 24,
 		GL_TRUE, /* Force opaque */
+		FGTU_TSTA_TEXTURE_FORMAT_8888,
 	},
 	/* [FGPF_COLOR_MODE_8888] */
 	{
@@ -150,7 +155,8 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		4,
 		16, 8, 0, 24,
 		GL_FALSE,
-	}
+		FGTU_TSTA_TEXTURE_FORMAT_8888,
+	},
 };
 
 const FGLColorConfigDesc *fglGetColorConfigDesc(unsigned int format)

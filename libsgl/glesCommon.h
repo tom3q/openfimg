@@ -134,6 +134,7 @@ struct FGLColorConfigDesc {
 	uint8_t bluePos;
 	uint8_t alphaPos;
 	GLboolean opaque;
+	GLint texFormat;
 };
 
 extern const FGLColorConfigDesc fglColorConfigs[];
