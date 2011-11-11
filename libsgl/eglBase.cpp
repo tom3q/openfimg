@@ -284,6 +284,7 @@ static const FGLConfigPair baseConfigAttributes[] = {
 	{ EGL_NATIVE_VISUAL_TYPE,         0                                 },
 	{ EGL_SAMPLES,                    0                                 },
 	{ EGL_SAMPLE_BUFFERS,             0                                 },
+	{ EGL_SURFACE_TYPE,               EGL_WINDOW_BIT|EGL_PBUFFER_BIT    },
 	{ EGL_TRANSPARENT_TYPE,           EGL_NONE                          },
 	{ EGL_TRANSPARENT_BLUE_VALUE,     0                                 },
 	{ EGL_TRANSPARENT_GREEN_VALUE,    0                                 },
