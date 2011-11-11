@@ -587,8 +587,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 	return EGL_TRUE;
 }
 
-static EGLBoolean getConfigAttrib(EGLDisplay dpy, EGLConfig config,
-	EGLint attribute, EGLint *value)
+static EGLBoolean getConfigAttrib(EGLConfig config,
+						EGLint attribute, EGLint *value)
 {
 	size_t numConfigs =  NELEM(gConfigs);
 	int index = (int)config;
@@ -631,7 +631,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 		return EGL_FALSE;
 	}
 
-	return getConfigAttrib(dpy, config, attribute, value);
+	return getConfigAttrib(config, attribute, value);
 }
 
 /*
@@ -897,7 +897,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	}
 
 	EGLint surfaceType;
-	if (getConfigAttrib(dpy, config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
+	if (getConfigAttrib(config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
 		return EGL_NO_SURFACE;
 
 	if (!(surfaceType & EGL_WINDOW_BIT)) {
@@ -940,7 +940,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 	}
 
 	EGLint surfaceType;
-	if (getConfigAttrib(dpy, config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
+	if (getConfigAttrib(config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
 		return EGL_NO_SURFACE;
 
 	if (!(surfaceType & EGL_PBUFFER_BIT)) {
@@ -949,7 +949,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 	}
 
 	EGLint configID;
-	if (getConfigAttrib(dpy, config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
+	if (getConfigAttrib(config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
 		return EGL_NO_SURFACE;
 
 	int32_t depthFormat;
@@ -1055,7 +1055,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 
 	switch (attribute) {
 		case EGL_CONFIG_ID:
-			ret = getConfigAttrib(dpy, fglSurface->config, EGL_CONFIG_ID, value);
+			ret = getConfigAttrib(fglSurface->config,
+							EGL_CONFIG_ID, value);
 			break;
 		case EGL_WIDTH:
 			*value = fglSurface->getWidth();
@@ -1476,7 +1477,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 	case EGL_CONFIG_ID:
 		// Returns the ID of the EGL frame buffer configuration with
 		// respect to which the context was created
-		return getConfigAttrib(dpy, c->egl.config, EGL_CONFIG_ID, value);
+		return getConfigAttrib(c->egl.config, EGL_CONFIG_ID, value);
 	}
 
 	setError(EGL_BAD_ATTRIBUTE);
