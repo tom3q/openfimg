@@ -22,6 +22,7 @@
 #ifndef _GLESCOMMON_H_
 #define _GLESCOMMON_H_
 
+#include "platform.h"
 #include "state.h"
 #include "types.h"
 
