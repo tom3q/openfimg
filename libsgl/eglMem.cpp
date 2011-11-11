@@ -25,8 +25,6 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include "eglMem.h"
-
 #include <linux/android_pmem.h>
 
 #include <EGL/egl.h>
@@ -34,7 +32,6 @@
 
 #include "eglCommon.h"
 #include "platform.h"
-#include "eglMem.h"
 #include "fglsurface.h"
 #include "common.h"
 #include "types.h"
