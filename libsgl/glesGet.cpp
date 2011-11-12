@@ -37,8 +37,8 @@
 	Client API information
 */
 
-static char const * const gVendorString     = "GLES6410";
-static char const * const gRendererString   = "S3C6410 FIMG-3DSE";
+static char const * const gVendorString     = "OpenFIMG";
+static char const * const gRendererString   = "FIMG-3DSE";
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
 static char const * const gExtensionsString =
 #if 0
