@@ -20,9 +20,9 @@ LIBAGL_USE_GRALLOC_COPYBITS := 1
 LOCAL_ARM_MODE := arm
 
 LOCAL_SRC_FILES:= \
-	eglBase.cpp eglMem.cpp eglAndroid.cpp \
+	eglBase.cpp eglAndroid.cpp \
 	glesBase.cpp glesGet.cpp glesMatrix.cpp glesPixel.cpp glesTex.cpp \
-	fglmatrix.cpp
+	fglmatrix.cpp fglsurface.cpp
 
 LOCAL_CFLAGS += -DLOG_TAG=\"libsgl\"
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
