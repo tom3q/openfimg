@@ -21,7 +21,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <cutils/log.h>
 #include "fimg_private.h"
 
 struct block {
@@ -57,7 +56,7 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 	char buf[VALUES_PER_LINE * LINE_SIZE + 1];
 	char *s;
 
-	LOG(LOG_DEBUG, "fimgdump", "DUMP %d %d (%s %d %d)", getpid(), ctx->fd, func, mode, count);
+	LOGD("DUMP %d %d (%s %d %d)", getpid(), ctx->fd, func, mode, count);
 
 	for (b = blocks; b->length; ++b) {
 		unsigned addr	= b->start;
@@ -72,7 +71,7 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 				s += LINE_SIZE;
 			}
 			*(--s) = '\0';
-			LOG(LOG_DEBUG, "fimgdump", "%s", buf);
+			LOGD("%s", buf);
 		} while (len);
 	}
 }

@@ -754,7 +754,8 @@ EGLBoolean FGLRenderSurface::bindReadSurface(FGLContext *gl)
 }
 
 bool FGLRenderSurface::isValid() const {
-	LOGE_IF(magic != MAGIC, "invalid EGLSurface (%p)", this);
+	if (magic != MAGIC)
+		LOGE("invalid EGLSurface (%p)", this);
 	return magic == MAGIC;
 }
 

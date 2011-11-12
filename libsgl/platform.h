@@ -48,6 +48,8 @@ static inline FGLContext* getGlThreadSpecific()
 }
 #endif /* ANDROID_FAST_TLS */
 
+#define PLATFORM_HAS_CUSTOM_LOG
+
 #define PLATFORM_EXTENSIONS_STRING		\
 	"EGL_KHR_image_base "			\
 	"EGL_ANDROID_image_native_buffer "	\
@@ -72,5 +74,28 @@ static inline void setGlThreadSpecific(FGLContext* value)
 	pthread_setspecific(eglContextKey, value);
 }
 #endif /* PLATFORM_HAS_FAST_TLS */
+
+#ifndef PLATFORM_HAS_CUSTOM_LOG
+
+#include <cstdio>
+
+#define LOG_ERR		"E"
+#define LOG_WARN	"W"
+#define LOG_INFO	"I"
+#define LOG_DBG		"D"
+
+#define pr_log(lvl, file, line, fmt, ...)	\
+	fprintf(stderr, "[%s] %s: %d: " fmt, lvl, file, line, ##__VA_ARGS__)
+
+#define LOGE(fmt, ...)	\
+		pr_log(LOG_ERR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOGW(fmt, ...)	\
+		pr_log(LOG_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOGI(fmt, ...)	\
+		pr_log(LOG_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOGD(fmt, ...)	\
+		pr_log(LOG_DBG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+#endif /* PLATFORM_HAS_CUSTOM_LOG */
 
 #endif /* _EGLPLATFORM_H_ */
