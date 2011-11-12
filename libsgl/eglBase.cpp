@@ -43,7 +43,7 @@
 #include "types.h"
 #include "state.h"
 #include "libfimg/fimg.h"
-#include "eglMem.h"
+#include "fglsurface.h"
 
 #define FGL_EGL_MAJOR		1
 #define FGL_EGL_MINOR		4

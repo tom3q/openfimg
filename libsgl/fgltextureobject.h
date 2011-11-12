@@ -22,7 +22,7 @@
 #ifndef _LIBSGL_FGLTEXTUREOBJECT_
 #define _LIBSGL_FGLTEXTUREOBJECT_
 
-#include "eglMem.h"
+#include "fglsurface.h"
 #include "fglobject.h"
 #include "fglimage.h"
 

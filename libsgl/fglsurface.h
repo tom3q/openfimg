@@ -28,7 +28,6 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include "eglMem.h"
 #include <private/ui/sw_gralloc_handle.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>

@@ -41,7 +41,7 @@
 #include "common.h"
 #include "types.h"
 #include "libfimg/fimg.h"
-#include "eglMem.h"
+#include "fglsurface.h"
 
 #include "../libgralloc/gralloc_priv.h"
 #include <linux/android_pmem.h>
