@@ -25,6 +25,7 @@
 struct FGLContext;
 
 #if defined(FGL_PLATFORM_ANDROID)
+
 #include <cutils/log.h>
 #include <cutils/atomic.h>
 #include <cutils/native_handle.h>
