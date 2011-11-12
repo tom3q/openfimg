@@ -48,6 +48,8 @@ struct FGLPixelFormat {
 	int green;
 	int blue;
 	int alpha;
+
+	FGLPixelFormat() : bpp(0), red(0), green(0), blue(0), alpha(0) {}
 };
 
 #define EGL_ERR_DEBUG
