@@ -1576,7 +1576,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 	}
 
 	// post the surface
-	d->swapBuffers();
+	if (d->swapBuffers() != EGL_TRUE)
+		/* Error code should have been set */
+		return EGL_FALSE;
 
 	// if it's bound to a context, update the buffer
 	if (d->ctx != EGL_NO_CONTEXT) {
