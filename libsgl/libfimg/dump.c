@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "fimg_private.h"
 
 struct block {
