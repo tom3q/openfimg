@@ -919,11 +919,27 @@ EGLint FGLWindowSurface::getSwapBehavior() const
 FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
 	int32_t depthFormat, EGLNativeWindowType window, int32_t pixelFormat)
 {
+	int ret;
+	int format;
 	android_native_window_t *win = 
 				static_cast<android_native_window_t *>(window);
 
 	if (win->common.magic != ANDROID_NATIVE_WINDOW_MAGIC) {
 		setError(EGL_BAD_NATIVE_WINDOW);
+		return NULL;
+	}
+
+	win->query(win, NATIVE_WINDOW_FORMAT, &format);
+
+	FGLPixelFormat fglFormat;
+	ret = nativeToFGLPixelFormat(format, &fglFormat);
+	if (ret < 0) {
+		setError(EGL_BAD_MATCH);
+		return NULL;
+	}
+
+	if (fglEGLValidatePixelFormat(config, &fglFormat) != EGL_TRUE) {
+		setError(EGL_BAD_MATCH);
 		return NULL;
 	}
 
