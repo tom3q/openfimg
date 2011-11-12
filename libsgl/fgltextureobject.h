@@ -24,8 +24,7 @@
 
 #include "eglMem.h"
 #include "fglobject.h"
-
-struct FGLImage;
+#include "fglimage.h"
 
 struct FGLTexture {
 	/* Memory surface */
@@ -74,7 +73,10 @@ struct FGLTexture {
 		if(!isValid())
 			return;
 
-		delete surface;
+		if (eglImage)
+			eglImage->disconnect();
+		else
+			delete surface;
 
 		fimgDestroyTexture(fimg);
 	}
