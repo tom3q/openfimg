@@ -456,6 +456,52 @@ static FGLint bppFromFormat(EGLint format)
 	}
 }
 
+EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, FGLPixelFormat *fmt)
+{
+	EGLBoolean ret;
+	EGLint bpp, red, green, blue, alpha;
+
+	if (!fmt)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib(config, EGL_BUFFER_SIZE, &bpp);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib(config, EGL_RED_SIZE, &red);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib(config, EGL_GREEN_SIZE, &green);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib(config, EGL_BLUE_SIZE, &blue);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	ret = getConfigAttrib(config, EGL_ALPHA_SIZE, &alpha);
+	if (ret == EGL_FALSE)
+		return EGL_FALSE;
+
+	if (fmt->bpp != bpp)
+		return EGL_FALSE;
+
+	if (fmt->red != red)
+		return EGL_FALSE;
+
+	if (fmt->green != green)
+		return EGL_FALSE;
+
+	if (fmt->blue != blue)
+		return EGL_FALSE;
+
+	if (fmt->alpha != alpha)
+		return EGL_FALSE;
+
+	return EGL_TRUE;
+}
+
 static int isAttributeMatching(int i, EGLint attr, EGLint val)
 {
 	// look for the attribute in all of our configs
