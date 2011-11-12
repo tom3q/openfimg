@@ -6,9 +6,3 @@ libgralloc:
 
 libsgl:
 	OpenGL ES library for Android
-
-modules:
-	Kernel modules
-
-patches:
-	Kernel patches
