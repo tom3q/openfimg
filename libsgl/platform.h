@@ -57,9 +57,16 @@ static inline FGLContext* getGlThreadSpecific()
 	"EGL_ANDROID_swap_rectangle "		\
 	"EGL_ANDROID_get_render_buffer"		\
 
-#else /* FGL_PLATFORM_ANDROID */
+#elif defined(FGL_PLATFORM_FRAMEBUFFER)
+
+#define PLATFORM_EXTENSIONS_STRING		\
+	""
+
+#else
+
 #error No platform defined
-#endif /* FGL_PLATFORM_ANDROID */
+
+#endif
 
 #ifndef PLATFORM_HAS_FAST_TLS
 
