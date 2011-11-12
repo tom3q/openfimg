@@ -39,7 +39,7 @@ public:
 	void		*vaddr;
 	unsigned long	size;
 
-			FGLSurface() {};
+			FGLSurface() : paddr(0), vaddr(0), size(0) {};
 	virtual		~FGLSurface() {};
 
 	virtual void	flush(void) = 0;
