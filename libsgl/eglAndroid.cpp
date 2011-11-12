@@ -487,6 +487,62 @@ private:
 	Rect oldDirtyRegion;
 };
 
+static int nativeToFGLPixelFormat(int format, FGLPixelFormat *fglFormat)
+{
+	int bpp, r, g, b, a;
+
+	switch(format) {
+	case HAL_PIXEL_FORMAT_BGRA_8888:
+	case HAL_PIXEL_FORMAT_RGBA_8888:
+		bpp = 32;
+		r = 8;
+		g = 8;
+		b = 8;
+		a = 8;
+		break;
+	case HAL_PIXEL_FORMAT_RGBX_8888:
+		bpp = 32;
+		r = 8;
+		g = 8;
+		b = 8;
+		a = 0;
+		break;
+	case HAL_PIXEL_FORMAT_RGB_565:
+		bpp = 16;
+		r = 5;
+		g = 6;
+		b = 5;
+		a = 0;
+		break;
+	case HAL_PIXEL_FORMAT_RGBA_4444:
+		bpp = 16;
+		r = 4;
+		g = 4;
+		b = 4;
+		a = 4;
+		break;
+	case HAL_PIXEL_FORMAT_RGBA_5551:
+		bpp = 16;
+		r = 5;
+		g = 5;
+		b = 5;
+		a = 1;
+		break;
+	default:
+		return -1;
+	}
+
+	if (fglFormat) {
+		fglFormat->bpp		= bpp;
+		fglFormat->red		= r;
+		fglFormat->green	= g;
+		fglFormat->blue		= b;
+		fglFormat->alpha	= a;
+	}
+
+	return 0;
+}
+
 FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	EGLConfig config,
 	int32_t depthFormat,
@@ -511,20 +567,9 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_HEIGHT, &height);
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_FORMAT, &format);
 
-	switch(format) {
-	case HAL_PIXEL_FORMAT_BGRA_8888:
-	case HAL_PIXEL_FORMAT_RGBA_8888:
-	case HAL_PIXEL_FORMAT_RGBX_8888:
-		bytesPerPixel = 4;
-		break;
-	case HAL_PIXEL_FORMAT_RGB_565:
-	case HAL_PIXEL_FORMAT_RGBA_4444:
-	case HAL_PIXEL_FORMAT_RGBA_5551:
-		bytesPerPixel = 2;
-		break;
-	default:
-		bytesPerPixel = 0;
-	}
+	FGLPixelFormat fglFormat;
+	nativeToFGLPixelFormat(format, &fglFormat);
+	bytesPerPixel = fglFormat.bpp * 8;
 }
 
 FGLWindowSurface::~FGLWindowSurface()
