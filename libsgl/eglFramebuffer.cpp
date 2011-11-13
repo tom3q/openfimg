@@ -166,9 +166,10 @@ const int gPlatformConfigsNum = NELEM(gPlatformConfigs);
 
 class FGLFramebufferSurface : public FGLSurface {
 public:
-	FGLFramebufferSurface(int fd, unsigned long yoffset,
-							unsigned long length);
-	virtual ~FGLFramebufferSurface();
+	FGLFramebufferSurface(unsigned long paddr,
+					void *vaddr, unsigned long length) :
+		FGLSurface(paddr, vaddr, length) {}
+	virtual ~FGLFramebufferSurface() {}
 
 	virtual void flush(void) {}
 
@@ -184,41 +185,9 @@ public:
 
 	virtual bool isValid(void)
 	{
-		return vaddr != 0;
+		return true;
 	}
 };
-
-FGLFramebufferSurface::FGLFramebufferSurface(int fd,
-				unsigned long yoffset, unsigned long length)
-{
-	fb_fix_screeninfo finfo;
-	unsigned long offset;
-
-	if (ioctl(fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
-		LOGE("%s: FBIOGET_FSCREENINFO failed", __func__);
-		return;
-	}
-
-	offset = finfo.line_length*yoffset;
-
-	paddr = finfo.smem_start + offset;
-	size = length;
-
-	vaddr = mmap(NULL, length, PROT_READ | PROT_WRITE,
-							MAP_SHARED, fd, offset);
-	if (vaddr == MAP_FAILED) {
-		LOGE("%s: mmap failed", __func__);
-		vaddr = 0;
-	}
-}
-
-FGLFramebufferSurface::~FGLFramebufferSurface()
-{
-	if (!isValid())
-		return;
-
-	munmap(vaddr, size);
-}
 
 class FGLFramebufferManager {
 	int _fd;
@@ -308,7 +277,7 @@ struct FGLWindowSurface : public FGLRenderSurface {
 
 	virtual bool initCheck() const
 	{
-		return true;
+		return vbase != NULL;
 	}
 
 	virtual EGLint getWidth() const
@@ -332,6 +301,11 @@ private:
 	int	bufferCount;
 	int	yoffset;
 
+	unsigned long	pbase;
+	void		*vbase;
+	unsigned long	vlen;
+	unsigned long	lineLength;
+
 	FGLFramebufferManager *manager;
 };
 
@@ -341,19 +315,45 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy, EGLConfig config,
 	bytesPerPixel(0), fd(fileDesc)
 {
 	fb_var_screeninfo vinfo;
+	fb_fix_screeninfo finfo;
 
 	ioctl(fd, FBIOGET_VSCREENINFO, &vinfo);
+	ioctl(fd, FBIOGET_FSCREENINFO, &finfo);
 
+	stride		= vinfo.xres;
 	width		= vinfo.xres;
 	height		= vinfo.yres;
 	bytesPerPixel	= vinfo.bits_per_pixel / 8;
-	bufferCount	= vinfo.yres_virtual / vinfo.yres;
+	bufferCount	= 2;
+	pbase		= finfo.smem_start;
+	lineLength	= finfo.line_length;
+
+	vinfo.yres_virtual = 2*vinfo.yres;
+	if (ioctl(fd, FBIOPUT_VSCREENINFO, &vinfo) < 0) {
+		vinfo.yres_virtual = vinfo.yres;
+		bufferCount = 1;
+		LOGW("FBIOPUT_VSCREENINFO failed, page flipping not supported");
+	}
+
+	unsigned long fbSize = vinfo.yres_virtual * finfo.line_length;
+	unsigned long pageSize = getpagesize();
+	vlen = (fbSize + pageSize - 1) & ~(pageSize - 1);
+
+	vbase = mmap(NULL, vlen, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	if (vbase == MAP_FAILED) {
+		vbase = 0;
+		LOGE("mmap failed");
+		setError(EGL_BAD_ALLOC);
+		return;
+	}
 
 	manager = new FGLFramebufferManager(fd, bufferCount, height); 
 }
 
 FGLWindowSurface::~FGLWindowSurface()
 {
+	if (vbase != NULL)
+		munmap(vbase, vlen);
 	delete manager;
 	delete color;
 	delete depth;
@@ -379,11 +379,20 @@ EGLBoolean FGLWindowSurface::connect()
 	}
 
 	yoffset = manager->get();
-	if (yoffset < 0)
+	if (yoffset < 0) {
+		setError(EGL_BAD_ALLOC);
 		return EGL_FALSE;
+	}
 
-	color = new FGLFramebufferSurface(fd, yoffset,
-					stride * height * bytesPerPixel);
+	color = new FGLFramebufferSurface(pbase + yoffset*lineLength,
+			(char *)vbase + yoffset*lineLength, height*lineLength);
+	if (!color->isValid()) {
+		delete color;
+		color = 0;
+		manager->put(yoffset);
+		setError(EGL_BAD_ALLOC);
+		return EGL_FALSE;
+	}
 
 	return EGL_TRUE;
 }
@@ -402,23 +411,37 @@ void FGLWindowSurface::disconnect()
 
 EGLBoolean FGLWindowSurface::swapBuffers()
 {
+	FGLSurface *newColor;
+	int newYOffset;
+
 	if (bufferCount < 2) {
 		setError(EGL_BAD_ACCESS);
+		return EGL_FALSE;
+	}
+
+	newYOffset = manager->get();
+	if (newYOffset < 0) {
+		setError(EGL_BAD_ALLOC);
+		return EGL_FALSE;
+	}
+
+	newColor = new FGLFramebufferSurface(pbase + newYOffset*lineLength,
+			(char *)vbase + newYOffset*lineLength, height*lineLength);
+	if (!newColor->isValid()) {
+		delete newColor;
+		newColor = 0;
+		manager->put(newYOffset);
+		setError(EGL_BAD_ALLOC);
 		return EGL_FALSE;
 	}
 
 	if (color) {
 		manager->put(yoffset);
 		delete color;
-		color = 0;
 	}
 
-	yoffset = manager->get();
-	if (yoffset < 0)
-		return EGL_FALSE;
-
-	color = new FGLFramebufferSurface(fd, yoffset,
-					stride * height * bytesPerPixel);
+	color = newColor;
+	yoffset = newYOffset;
 
 	return EGL_TRUE;
 }
