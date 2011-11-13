@@ -59,7 +59,7 @@ FGLLocalSurface::FGLLocalSurface(unsigned long size)
 
 	// allocate and map the memory
 	if ((vaddr = mmap(NULL, size, PROT_WRITE | PROT_READ,
-				MAP_SHARED, fd, NULL)) == MAP_FAILED) {
+				MAP_SHARED, fd, 0)) == MAP_FAILED) {
 		LOGE("EGL: PMEM buffer allocation failed (%s)", strerror(errno));
 		goto err_mmap;
 	}
