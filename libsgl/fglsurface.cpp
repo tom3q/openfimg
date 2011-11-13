@@ -53,6 +53,10 @@ FGLLocalSurface::FGLLocalSurface(unsigned long size)
 	int fd;
 	void *vaddr;
 	pmem_region region;
+	unsigned long page_size = getpagesize();
+	unsigned long rounded;
+
+	rounded = (size + page_size - 1) & ~(page_size - 1);
 
 	// create a buffer file (cached)
 	fd = open("/dev/pmem_gpu1", O_RDWR, 0);
@@ -62,7 +66,7 @@ FGLLocalSurface::FGLLocalSurface(unsigned long size)
 	}
 
 	// allocate and map the memory
-	if ((vaddr = mmap(NULL, size, PROT_WRITE | PROT_READ,
+	if ((vaddr = mmap(NULL, rounded, PROT_WRITE | PROT_READ,
 				MAP_SHARED, fd, 0)) == MAP_FAILED) {
 		LOGE("EGL: PMEM buffer allocation failed (%s)", strerror(errno));
 		goto err_mmap;
@@ -74,23 +78,23 @@ FGLLocalSurface::FGLLocalSurface(unsigned long size)
 	}
 
 	/* Clear the buffer (NOTE: Is it needed?) */
-	memset((char*)vaddr, 0, size);
+	memset((char*)vaddr, 0, rounded);
 
 	/* Setup surface struct */
-	this->size	= size;
+	this->size	= rounded;
 	this->fd	= fd;
 	this->vaddr	= vaddr;
 	this->paddr	= region.offset;
 
 	//LOGD("FGLLocalSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, (unsigned int)region.offset, size);
+	//			vaddr, (unsigned int)region.offset, rounded);
 
 	flush();
 
 	return;
 
 err_phys:
-	munmap(vaddr, size);
+	munmap(vaddr, rounded);
 err_mmap:
 	close(fd);
 }
