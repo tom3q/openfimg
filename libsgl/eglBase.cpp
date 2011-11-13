@@ -31,13 +31,14 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 
+#include "platform.h"
+
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 
 #include "eglCommon.h"
-#include "platform.h"
 #include "fglrendersurface.h"
 #include "common.h"
 #include "types.h"
