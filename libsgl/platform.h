@@ -74,6 +74,8 @@ static inline FGLContext* getGlThreadSpecific()
 
 #ifndef PLATFORM_HAS_FAST_TLS
 
+#include <pthread.h>
+
 extern pthread_key_t eglContextKey;
 
 static inline FGLContext* getGlThreadSpecific()
