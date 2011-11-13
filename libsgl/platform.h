@@ -22,6 +22,10 @@
 #ifndef _EGLPLATFORM_H_
 #define _EGLPLATFORM_H_
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 struct FGLContext;
 
 #if defined(FGL_PLATFORM_ANDROID)
