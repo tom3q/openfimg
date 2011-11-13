@@ -5,6 +5,12 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/include \
 	-I$(top_builddir)/include
 
+AM_CPPFLAGS += \
+	-O2 \
+	-mcpu=arm1176jzf-s \
+	-mfpu=vfp -Wall \
+	-Wno-unused-parameter \
+	-marm
 
 lib_LTLIBRARIES = \
 	libGLES_fimg.la
