@@ -363,8 +363,6 @@ inline void fimgPSSetPCRange(fimgContext *ctx,
  *****************************************************************************/
 inline int fimgPSSetAttributeNum(fimgContext *ctx, unsigned int attributeNum)
 {
-	int ret;
-
 	fimgWrite(ctx, attributeNum, FGPS_ATTRIB_NUM);
 
 	do {
@@ -406,11 +404,15 @@ int fimgPSInBufferStatusReady(fimgContext *ctx)
 int fimgLoadVShader(fimgContext *ctx,
 		    const unsigned int *pShaderCode, unsigned int numAttribs)
 {
+#if 0
 	unsigned int i;
+#endif
 	unsigned int size;
 	unsigned int offset = 0;
+#if 0
 	fimgVShaderAttrIdx AttribIdx;
 	unsigned int IdxVal = 0;
+#endif
 	volatile void *pAddr;
 	void *pShaderData;
 
