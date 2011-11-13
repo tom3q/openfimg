@@ -64,6 +64,7 @@ fi
 # Static definitions
 #
 AC_DEFINE(GL_GLEXT_PROTOTYPES, 1, [Include prototypes of GL extensions])
+AC_DEFINE(EGL_EGLEXT_PROTOTYPES, 1, [Include prototypes of EGL extensions])
 
 #
 # Go!
