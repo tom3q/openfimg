@@ -19,13 +19,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 #include <errno.h>
 #include <pthread.h>
 #include <fcntl.h>
+
 #include <GLES/gl.h>
 #include <GLES/glext.h>
+
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
 #include "libfimg/fimg.h"

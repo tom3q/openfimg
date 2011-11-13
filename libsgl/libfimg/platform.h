@@ -22,10 +22,6 @@
 #ifndef _PLATFORM_H_
 #define _PLATFORM_H_
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
 #if defined(FGL_PLATFORM_ANDROID)
 
 #include <cutils/log.h>
