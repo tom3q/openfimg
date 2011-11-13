@@ -24,6 +24,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <linux/android_pmem.h>
 

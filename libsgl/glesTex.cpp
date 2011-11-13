@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 #include "glesCommon.h"

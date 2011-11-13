@@ -22,6 +22,7 @@
 #ifndef _LIBSGL_FGLBUFFEROBJECT_
 #define _LIBSGL_FGLBUFFEROBJECT_
 
+#include <cstdlib>
 #include "fglobject.h"
 
 struct FGLBuffer {
