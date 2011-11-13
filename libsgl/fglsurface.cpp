@@ -151,5 +151,5 @@ int FGLExternalSurface::unlock(void)
 
 void FGLExternalSurface::flush(void)
 {
-	cacheflush((intptr_t)vaddr, (intptr_t)((uint8_t *)vaddr + size), 0);
+	__clear_cache((char *)vaddr, (char *)vaddr + size);
 }
