@@ -39,6 +39,8 @@ public:
 	unsigned long	size;
 
 			FGLSurface() : paddr(0), vaddr(0), size(0) {};
+			FGLSurface(unsigned long p, void *v, unsigned long s) :
+				paddr(p), vaddr(v), size(s) {};
 	virtual		~FGLSurface() {};
 
 	virtual void	flush(void) = 0;
