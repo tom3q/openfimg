@@ -110,7 +110,7 @@ static inline EGLBoolean isDisplayInitialized(EGLDisplay dpy)
 }
 
 static pthread_mutex_t eglErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_key_t eglErrorKey = -1;
+static pthread_key_t eglErrorKey = (pthread_key_t)-1;
 
 /*
  * Error handling
@@ -118,7 +118,7 @@ static pthread_key_t eglErrorKey = -1;
 
 EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 {
-	if(unlikely(eglErrorKey == -1))
+	if(unlikely(eglErrorKey == (pthread_key_t)-1))
 		return EGL_SUCCESS;
 
 	EGLint error = (EGLint)pthread_getspecific(eglErrorKey);
@@ -128,9 +128,9 @@ EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 
 void fglEGLSetError(EGLint error)
 {
-	if(unlikely(eglErrorKey == -1)) {
+	if(unlikely(eglErrorKey == (pthread_key_t)-1)) {
 		pthread_mutex_lock(&eglErrorKeyMutex);
-		if(eglErrorKey == -1)
+		if(eglErrorKey == (pthread_key_t)-1)
 			pthread_key_create(&eglErrorKey, NULL);
 		pthread_mutex_unlock(&eglErrorKeyMutex);
 	}

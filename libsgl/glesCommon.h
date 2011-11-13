@@ -105,9 +105,9 @@ static inline void setError(GLenum error)
 {
 	GLenum errorCode;
 
-	if(unlikely(glErrorKey == -1)) {
+	if(unlikely(glErrorKey == (pthread_key_t)-1)) {
 		pthread_mutex_lock(&glErrorKeyMutex);
-		if(glErrorKey == -1)
+		if(glErrorKey == (pthread_key_t)-1)
 			pthread_key_create(&glErrorKey, NULL);
 		pthread_mutex_unlock(&glErrorKeyMutex);
 		errorCode = GL_NO_ERROR;

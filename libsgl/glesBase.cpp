@@ -40,11 +40,11 @@
 */
 
 pthread_mutex_t glErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_key_t glErrorKey = -1;
+pthread_key_t glErrorKey = (pthread_key_t)-1;
 
 GL_API GLenum GL_APIENTRY glGetError (void)
 {
-	if(unlikely(glErrorKey == -1))
+	if(unlikely(glErrorKey == (pthread_key_t)-1))
 		return GL_NO_ERROR;
 
 	GLenum error = (GLenum)pthread_getspecific(glErrorKey);
