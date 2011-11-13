@@ -26,7 +26,7 @@
 # include <config.h>
 #endif
 
-#if defined(FIMG_PLATFORM_ANDROID)
+#if defined(FGL_PLATFORM_ANDROID)
 
 #include <cutils/log.h>
 
