@@ -76,7 +76,7 @@ uint32_t fimgGetPipelineStatus(fimgContext *ctx)
 int fimgFlush(fimgContext *ctx)
 {
 	/* Return if already flushed */
-	if(fimgRead(ctx, FGGB_PIPESTATE) == 0)
+	if((fimgRead(ctx, FGGB_PIPESTATE) & FGHI_PIPELINE_ALL) == 0)
 		return 0;
 
 	/* Flush whole pipeline */
@@ -131,7 +131,8 @@ void fimgFinish(fimgContext *ctx)
 {
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
-	fimgInvalidateFlushCache(ctx, 0, 0, 1, 1);
+	fimgInvalidateFlushCache(ctx, 0, 0, 3, 3);
+	fimgSelectiveFlush(ctx, FGHI_PIPELINE_CCACHE);
 	fimgPutHardware(ctx);
 }
 
