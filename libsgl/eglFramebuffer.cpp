@@ -220,6 +220,8 @@ FGLFramebufferManager::~FGLFramebufferManager()
 	delete[] _buffers;
 }
 
+#define FRAMEBUFFER_USE_VSYNC
+
 int FGLFramebufferManager::put(unsigned int yoffset)
 {
 	if (!_empty && _read == _write)
