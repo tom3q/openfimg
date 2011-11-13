@@ -526,6 +526,7 @@ static inline void fimgWrite(fimgContext *ctx, unsigned int data, unsigned int a
 	}
 #endif
 	*reg = data;
+	__sync_synchronize();
 }
 
 static inline unsigned int fimgRead(fimgContext *ctx, unsigned int addr)
@@ -539,6 +540,7 @@ static inline unsigned int fimgRead(fimgContext *ctx, unsigned int addr)
 	}
 #endif
 	val = *reg;
+	__sync_synchronize();
 	return val;
 }
 
@@ -552,6 +554,7 @@ static inline void fimgWriteF(fimgContext *ctx, float data, unsigned int addr)
 	}
 #endif
 	*reg = data;
+	__sync_synchronize();
 }
 
 static inline float fimgReadF(fimgContext *ctx, unsigned int addr)
@@ -565,6 +568,7 @@ static inline float fimgReadF(fimgContext *ctx, unsigned int addr)
 	}
 #endif
 	val = *reg;
+	__sync_synchronize();
 	return val;
 }
 
