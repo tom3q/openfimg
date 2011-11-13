@@ -36,7 +36,7 @@
 #define LOG_DBG		"D"
 
 #define pr_log(lvl, file, line, fmt, ...)	\
-	fprintf(stderr, "[%s] %s: %d: " fmt, lvl, file, line, ##__VA_ARGS__)
+	fprintf(stderr, "[libfimg:%s] %s: %d: " fmt "\n", lvl, file, line, ##__VA_ARGS__)
 
 #define LOGE(fmt, ...)	\
 		pr_log(LOG_ERR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
