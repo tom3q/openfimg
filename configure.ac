@@ -3,10 +3,26 @@ AC_INIT([openfimg], [git], [tomasz.figa@gmail.com])
 AC_CONFIG_SRCDIR([libsgl/eglBase.cpp])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile libsgl/Makefile libsgl/libfimg/Makefile])
+AC_CONFIG_MACRO_DIR([m4])
+
+#
+# libtool library versioning stuff
+#
+# Library code modified:            REVISION++
+# Interfaces changed/added/removed: CURRENT++   REVISION=0
+# Interfaces added:                 AGE++
+# Interfaces removed:               AGE=0
+LT_CURRENT=0
+LT_REVISION=0
+LT_AGE=0
+AC_SUBST(LT_CURRENT)
+AC_SUBST(LT_REVISION)
+AC_SUBST(LT_AGE)
+LT_INIT
 
 AC_PROG_CC
 AC_PROG_CXX
-AC_PROG_RANLIB
+AC_PROG_LIBTOOL
 
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 

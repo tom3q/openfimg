@@ -5,12 +5,13 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/include \
 	-I$(top_builddir)/include
 
-lib_LIBRARIES = \
-	libGLES_fimg.a
 
-libGLES_fimg_a_LIBADD = libfimg/libfimg.a
+lib_LTLIBRARIES = \
+	libGLES_fimg.la
 
-libGLES_fimg_a_SOURCES = \
+libGLES_fimg_la_LIBADD = libfimg/libfimg.la
+
+libGLES_fimg_la_SOURCES = \
 	eglBase.cpp \
 	fglmatrix.cpp \
 	fglsurface.cpp \
@@ -21,9 +22,9 @@ libGLES_fimg_a_SOURCES = \
 	glesTex.cpp
 
 if PLATFORM_ANDROID
-	libGLES_fimg_a_SOURCES += eglAndroid.cpp
+	libGLES_fimg_la_SOURCES += eglAndroid.cpp
 endif
 
 if PLATFORM_FRAMEBUFFER
-	libGLES_fimg_a_SOURCES += eglFramebuffer.cpp
+	libGLES_fimg_la_SOURCES += eglFramebuffer.cpp
 endif

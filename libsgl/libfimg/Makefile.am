@@ -1,7 +1,7 @@
-noinst_LIBRARIES = \
-	libfimg.a
+noinst_LTLIBRARIES = \
+	libfimg.la
 
-libfimg_a_SOURCES = \
+libfimg_la_SOURCES = \
 	compat.c \
 	dump.c \
 	fragment.c \

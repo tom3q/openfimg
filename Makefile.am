@@ -1,1 +1,3 @@
 SUBDIRS = libsgl
+
+ACLOCAL_AMFLAGS = -I m4
