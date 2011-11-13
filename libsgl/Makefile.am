@@ -28,9 +28,9 @@ libGLES_fimg_la_SOURCES = \
 	glesTex.cpp
 
 if PLATFORM_ANDROID
-	libGLES_fimg_la_SOURCES += eglAndroid.cpp
+libGLES_fimg_la_SOURCES += eglAndroid.cpp
 endif
 
 if PLATFORM_FRAMEBUFFER
-	libGLES_fimg_la_SOURCES += eglFramebuffer.cpp
+libGLES_fimg_la_SOURCES += eglFramebuffer.cpp
 endif
