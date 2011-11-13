@@ -29,8 +29,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <linux/android_pmem.h>
-
 #include "fimg_private.h"
 #include "s3c_g3d.h"
 
