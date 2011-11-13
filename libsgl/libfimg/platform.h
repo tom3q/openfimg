@@ -49,4 +49,8 @@
 
 #endif
 
+#ifndef HAVE___SYNC_SYNCHRONIZE
+#define __sync_synchronize()
+#endif
+
 #endif /* _PLATFORM_H_ */

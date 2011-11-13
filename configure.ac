@@ -27,6 +27,11 @@ AC_PROG_CXX
 AC_PROG_LIBTOOL
 
 #
+# Function checks
+#
+AC_CHECK_FUNCS(__sync_synchronize)
+
+#
 # Init automake
 #
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
