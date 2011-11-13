@@ -509,31 +509,63 @@ struct _fimgContext {
 	unsigned int *queueStart;
 	unsigned int *queue;
 	unsigned int queueLen;
+	/* Lock state */
+	unsigned int locked;
 };
+
+#define FIMG_DEBUG_HW_LOCK
 
 /* Registry accessors */
 static inline void fimgWrite(fimgContext *ctx, unsigned int data, unsigned int addr)
 {
 	volatile unsigned int *reg = (volatile unsigned int *)((volatile char *)ctx->base + addr);
+#ifdef FIMG_DEBUG_HW_LOCK
+	if (!ctx->locked) {
+		LOGE("Tried to access hardware registers without hw lock.");
+		return;
+	}
+#endif
 	*reg = data;
 }
 
 static inline unsigned int fimgRead(fimgContext *ctx, unsigned int addr)
 {
 	volatile unsigned int *reg = (volatile unsigned int *)((volatile char *)ctx->base + addr);
-	return *reg;
+	unsigned int val;
+#ifdef FIMG_DEBUG_HW_LOCK
+	if (!ctx->locked) {
+		LOGE("Tried to access hardware registers without hw lock.");
+		return 0xdeaddead;
+	}
+#endif
+	val = *reg;
+	return val;
 }
 
 static inline void fimgWriteF(fimgContext *ctx, float data, unsigned int addr)
 {
 	volatile float *reg = (volatile float *)((volatile char *)ctx->base + addr);
+#ifdef FIMG_DEBUG_HW_LOCK
+	if (!ctx->locked) {
+		LOGE("Tried to access hardware registers without hw lock.");
+		return;
+	}
+#endif
 	*reg = data;
 }
 
 static inline float fimgReadF(fimgContext *ctx, unsigned int addr)
 {
 	volatile float *reg = (volatile float *)((volatile char *)ctx->base + addr);
-	return *reg;
+	float val;
+#ifdef FIMG_DEBUG_HW_LOCK
+	if (!ctx->locked) {
+		LOGE("Tried to access hardware registers without hw lock.");
+		return 0xdeaddead;
+	}
+#endif
+	val = *reg;
+	return val;
 }
 
 /* Register queue */

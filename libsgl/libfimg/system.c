@@ -180,6 +180,8 @@ int fimgAcquireHardwareLock(fimgContext *ctx)
 		return -1;
 	}
 
+	ctx->locked = 1;
+
 	return ret;
 }
 
@@ -195,6 +197,8 @@ int fimgReleaseHardwareLock(fimgContext *ctx)
 		LOGE("Could not release the hardware lock");
 		return -1;
 	}
+
+	ctx->locked = 0;
 
 	return 0;
 }
