@@ -2,7 +2,6 @@ AC_PREREQ([2.59])
 AC_INIT([openfimg], [git], [tomasz.figa@gmail.com])
 AC_CONFIG_SRCDIR([libsgl/eglBase.cpp])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile libsgl/Makefile libsgl/libfimg/Makefile])
 AC_CONFIG_MACRO_DIR([m4])
 
 #
@@ -20,12 +19,19 @@ AC_SUBST(LT_REVISION)
 AC_SUBST(LT_AGE)
 LT_INIT
 
+#
+# Program checks
+#
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_LIBTOOL
 
+#
+# Init automake
+#
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
+# Configuration options
 AC_MSG_CHECKING([whether to enable Android EGL backend])
 AC_ARG_ENABLE(android,
 	AS_HELP_STRING([--enable-android], [enable Android EGL backend @<:@default=no@:>@]),
@@ -54,6 +60,23 @@ if test "${ENABLE_FRAMEBUFFER}" = "yes"; then
 	AC_DEFINE(FGL_PLATFORM_FRAMEBUFFER, 1, [use Android EGL backend])
 fi
 
+#
+# Static definitions
+#
 AC_DEFINE(GL_GLEXT_PROTOTYPES, 1, [FIXME])
 
+#
+# Go!
+#
+AC_CONFIG_FILES([Makefile libsgl/Makefile libsgl/libfimg/Makefile])
 AC_OUTPUT
+
+AC_MSG_NOTICE([------------------------------------------------------])
+AC_MSG_NOTICE([Current settings:])
+AC_MSG_NOTICE([cross compiling: $cross_compiling])
+AC_MSG_NOTICE([Install prefix:  $prefix])
+AC_MSG_NOTICE([sysconfdir:      $sysconfdir])
+AC_MSG_NOTICE([Compiler:        $CXX])
+AC_MSG_NOTICE([CFLAGS:          $CFLAGS])
+AC_MSG_NOTICE([Additional libs: $LIBS])
+AC_MSG_NOTICE([------------------------------------------------------])
