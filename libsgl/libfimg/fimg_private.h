@@ -645,16 +645,23 @@ static inline void fimgGetHardware(fimgContext *ctx)
 {
 	int ret;
 
-	if(unlikely((ret = fimgAcquireHardwareLock(ctx)) != 0)) {
-		if(likely(ret > 0)) {
-			//fimgFlush(ctx);
-			fimgRestoreContext(ctx);
-			//fimgInvalidateFlushCache(ctx, 1, 1, 0, 0);
-			return;
-		} else {
-			fprintf(stderr, "FIMG: Could not acquire hardware lock");
-			exit(EBUSY);
-		}
+	ret = fimgAcquireHardwareLock(ctx);
+	if (likely(!ret))
+		return;
+
+	switch (ret) {
+	case 2:
+		fimgFlushCache(ctx, 3, 3);
+		fimgSelectiveFlush(ctx, FGHI_PIPELINE_CCACHE);
+		fimgWaitForCacheFlush(ctx, 3, 3);
+		fimgInvalidateCache(ctx, 1, 3);
+		/* Fall through */
+	case 1:
+		fimgRestoreContext(ctx);
+		break;
+	default:
+		fprintf(stderr, "FIMG: Could not acquire hardware lock");
+		exit(EBUSY);
 	}
 }
 
