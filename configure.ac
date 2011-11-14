@@ -47,7 +47,7 @@ AC_CHECK_FUNCS(__sync_synchronize)
 #
 # Init automake
 #
-AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+AM_INIT_AUTOMAKE([foreign -Wall -Werror dist-bzip2])
 
 # Configuration options
 AC_MSG_CHECKING([whether to enable Android EGL backend])
