@@ -27,6 +27,9 @@ libGLES_fimg_la_SOURCES = \
 	glesPixel.cpp \
 	glesTex.cpp
 
+MAINTAINERCLEANFILES = \
+	Makefile.in
+
 if PLATFORM_ANDROID
 libGLES_fimg_la_SOURCES += eglAndroid.cpp
 endif

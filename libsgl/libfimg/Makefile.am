@@ -26,3 +26,6 @@ libfimg_la_SOURCES = \
 	shaders.c \
 	system.c \
 	texture.c
+
+MAINTAINERCLEANFILES = \
+	Makefile.in
