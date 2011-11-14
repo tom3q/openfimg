@@ -78,6 +78,10 @@ if test "${ENABLE_FRAMEBUFFER}" = "yes"; then
 	AC_DEFINE(FGL_PLATFORM_FRAMEBUFFER, 1, [use Android EGL backend])
 fi
 
+if test "${ENABLE_FRAMEBUFFER}" = "no" -a "${ENABLE_ANDROID}" = "no"; then
+	AC_MSG_ERROR([At least one of the backends (Android or framebuffer) must be enabled])
+fi
+
 #
 # Static definitions
 #
