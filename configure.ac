@@ -3,6 +3,19 @@ AC_INIT([openfimg], [git], [tomasz.figa@gmail.com])
 AC_CONFIG_SRCDIR([libsgl/eglBase.cpp])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+
+# this program makes only sense on an ARM CPU!
+AC_MSG_CHECKING([host CPU])
+case "${host_cpu}" in
+	*arm*)
+		AC_MSG_RESULT([ARM])
+		;;
+	*)
+		AC_MSG_ERROR([Only ARM CPUs are supported])
+		;;
+esac
 
 #
 # libtool library versioning stuff
