@@ -46,6 +46,9 @@ AC_PROG_LIBTOOL
 #
 AC_CHECK_FUNCS(__sync_synchronize)
 
+# default is less verbosity while building the package
+AM_SILENT_RULES([yes])
+
 #
 # Init automake
 #
