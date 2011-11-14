@@ -92,47 +92,83 @@ int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask)
 }
 
 /*****************************************************************************
- * FUNCTIONS:	fimgClearCache
- * SYNOPSIS:	This function clears the caches
- * PARAMETERS:	[IN] clearFlags: Specified caches are cleared
- * RETURNS:	 0, on success
- *		-1, on timeout
+ * FUNCTIONS:	fimgInvalidateCache
+ * SYNOPSIS:
+ * PARAMETERS:
+ * RETURNS:
+ *
  *****************************************************************************/
-int fimgInvalidateFlushCache(fimgContext *ctx,
-			     unsigned int vtcclear, unsigned int tcclear,
-			     unsigned int ccflush, unsigned int zcflush)
+int fimgInvalidateCache(fimgContext *ctx,
+				unsigned int vtcclear, unsigned int tcclear)
 {
-#if 0
-	unsigned int timeout = 1000000;
-#endif
 	fimgCacheCtl ctl;
 
 	ctl.val = 0;
 	ctl.vtcclear = vtcclear;
 	ctl.tcclear = tcclear;
+
+	fimgWrite(ctx, ctl.val, FGGB_CACHECTL); // start clearing the cache
+
+	while(fimgRead(ctx, FGGB_CACHECTL) & ctl.val);
+
+	return 0;
+}
+
+/*****************************************************************************
+ * FUNCTIONS:	fimgFlushCache
+ * SYNOPSIS:
+ * PARAMETERS:
+ * RETURNS:
+ *
+ *****************************************************************************/
+int fimgFlushCache(fimgContext *ctx, unsigned int ccflush, unsigned int zcflush)
+{
+	fimgCacheCtl ctl;
+
+	ctl.val = 0;
 	ctl.ccflush = ccflush;
 	ctl.zcflush = zcflush;
 
 	fimgWrite(ctx, ctl.val, FGGB_CACHECTL); // start clearing the cache
 
-	while(fimgRead(ctx, FGGB_CACHECTL) & ctl.val) {
-#if 0
-		if(--timeout == 0)
-			return -1;
+	return 0;
+}
 
-		usleep(1);
-#endif
-	}
+/*****************************************************************************
+ * FUNCTIONS:	fimgWaitForCacheFlush
+ * SYNOPSIS:
+ * PARAMETERS:
+ * RETURNS:
+ *
+ *****************************************************************************/
+int fimgWaitForCacheFlush(fimgContext *ctx,
+				unsigned int ccflush, unsigned int zcflush)
+{
+	fimgCacheCtl ctl;
+
+	ctl.val = 0;
+	ctl.ccflush = ccflush;
+	ctl.zcflush = zcflush;
+
+	while(fimgRead(ctx, FGGB_CACHECTL) & ctl.val);
 
 	return 0;
 }
 
+/*****************************************************************************
+ * FUNCTIONS:	fimgFinish
+ * SYNOPSIS:
+ * PARAMETERS:
+ * RETURNS:
+ *
+ *****************************************************************************/
 void fimgFinish(fimgContext *ctx)
 {
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
-	fimgInvalidateFlushCache(ctx, 0, 0, 3, 3);
+	fimgFlushCache(ctx, 3, 3);
 	fimgSelectiveFlush(ctx, FGHI_PIPELINE_CCACHE);
+	fimgWaitForCacheFlush(ctx, 3, 3);
 	fimgPutHardware(ctx);
 }
 

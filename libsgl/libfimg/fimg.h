@@ -60,9 +60,12 @@ typedef struct _fimgContext fimgContext;
 uint32_t fimgGetPipelineStatus(fimgContext *ctx);
 int fimgFlush(fimgContext *ctx);
 int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask);
-int fimgInvalidateFlushCache(fimgContext *ctx,
-			     unsigned int vtcclear, unsigned int tcclear,
-			     unsigned int ccflush, unsigned int zcflush);
+int fimgInvalidateCache(fimgContext *ctx,
+				unsigned int vtcclear, unsigned int tcclear);
+int fimgFlushCache(fimgContext *ctx,
+				unsigned int ccflush, unsigned int zcflush);
+int fimgWaitForCacheFlush(fimgContext *ctx,
+				unsigned int ccflush, unsigned int zcflush);
 void fimgFinish(fimgContext *ctx);
 void fimgSoftReset(fimgContext *ctx);
 void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev);

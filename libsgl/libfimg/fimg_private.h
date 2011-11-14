@@ -661,7 +661,7 @@ static inline void fimgGetHardware(fimgContext *ctx)
 static inline void fimgFlushContext(fimgContext *ctx)
 {
 	if (ctx->invalTexCache) {
-		fimgInvalidateFlushCache(ctx, 0, 1, 0, 0);
+		fimgInvalidateCache(ctx, 0, 3);
 		ctx->invalTexCache = 0;
 	}
 	fimgQueueFlush(ctx);

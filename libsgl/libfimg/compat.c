@@ -805,7 +805,9 @@ void fimgClear(fimgContext *ctx, uint32_t mode)
 
 	// wait for hardware
 	fimgFlush(ctx);
-	fimgInvalidateFlushCache(ctx, 0, 0, 1, 1);
+	fimgFlushCache(ctx, 3, 3);
+	fimgSelectiveFlush(ctx, FGHI_PIPELINE_CCACHE);
+	fimgWaitForCacheFlush(ctx, 3, 3);
 
 	// restore rasterizer
 	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
