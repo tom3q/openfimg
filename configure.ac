@@ -17,6 +17,8 @@ case "${host_cpu}" in
 		;;
 esac
 
+CFLAGS="${CFLAGS} -g -W -Wall -Wsign-compare -Wfloat-equal -Wformat-security -Wno-unused-parameter"
+
 #
 # libtool library versioning stuff
 #
@@ -83,10 +85,29 @@ if test "${ENABLE_FRAMEBUFFER}" = "no" -a "${ENABLE_ANDROID}" = "no"; then
 fi
 
 #
+# Debugging
+#
+AC_MSG_CHECKING([whether to enable debugging])
+AC_ARG_ENABLE([debug],
+	[AS_HELP_STRING([--enable-debug],
+		[use debug compiler flags and macros @<:@default=disabled@:>@])],
+	[enable_debug="$enableval"],
+	[enable_debug=no])
+AC_MSG_RESULT([${enable_debug}])
+
+#
 # Static definitions
 #
 AC_DEFINE(GL_GLEXT_PROTOTYPES, 1, [Include prototypes of GL extensions])
 AC_DEFINE(EGL_EGLEXT_PROTOTYPES, 1, [Include prototypes of EGL extensions])
+
+if test "${enable_debug}" = "yes"; then
+	CFLAGS="${CFLAGS} -O1"
+	AC_DEFINE(DEBUG, 1, [debugging])
+else
+	CFLAGS="${CFLAGS} -O2"
+	AC_DEFINE(NDEBUG, 1, [no debugging])
+fi
 
 #
 # Go!
