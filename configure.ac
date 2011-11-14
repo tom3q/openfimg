@@ -80,7 +80,7 @@ AC_ARG_ENABLE(framebuffer,
 AC_MSG_RESULT([${ENABLE_FRAMEBUFFER}])
 AM_CONDITIONAL([PLATFORM_FRAMEBUFFER], [test "${ENABLE_FRAMEBUFFER}" = "yes"])
 if test "${ENABLE_FRAMEBUFFER}" = "yes"; then
-	AC_DEFINE(FGL_PLATFORM_FRAMEBUFFER, 1, [use Android EGL backend])
+	AC_DEFINE(FGL_PLATFORM_FRAMEBUFFER, 1, [use Linux framebuffer backend])
 fi
 
 if test "${ENABLE_FRAMEBUFFER}" = "no" -a "${ENABLE_ANDROID}" = "no"; then
