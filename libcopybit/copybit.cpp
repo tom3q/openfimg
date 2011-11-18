@@ -35,7 +35,7 @@
 #include <hardware/copybit.h>
 
 #include "../libgralloc/gralloc_priv.h"
-#include "../modules/g2d/s3c_g2d.h"
+#include "s3c_g2d.h"
 
 //#define COPYBIT_DEBUG
 
