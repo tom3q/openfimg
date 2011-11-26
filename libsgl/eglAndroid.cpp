@@ -51,7 +51,6 @@
 #include <linux/android_pmem.h>
 #include <ui/android_native_buffer.h>
 #include <ui/PixelFormat.h>
-#include <hardware/copybit.h>
 #include <hardware/gralloc.h>
 #include <linux/fb.h>
 
@@ -355,7 +354,6 @@ private:
 	android_native_buffer_t	*buffer;
 	android_native_buffer_t	*previousBuffer;
 	const gralloc_module_t	*module;
-	copybit_device_t	*blitengine;
 	void			*bits;
 	int			bytesPerPixel;
 
@@ -453,27 +451,6 @@ private:
 		ssize_t count;
 	};
 
-	struct region_iterator : public copybit_region_t {
-		region_iterator(const Region& region)
-		: b(region.begin()), e(region.end())
-		{
-			this->next = iterate;
-		}
-	private:
-		static int iterate(const copybit_region_t *self, copybit_rect_t *rect)
-		{
-			const region_iterator *me = static_cast<const region_iterator *>(self);
-			if (me->b != me->e) {
-				*reinterpret_cast<Rect *>(rect) = *me->b++;
-				return 1;
-			}
-			return 0;
-		}
-
-		mutable Region::const_iterator b;
-		Region::const_iterator const e;
-	};
-
 	void copyBlt(
 		android_native_buffer_t *dst, void *dst_vaddr,
 		android_native_buffer_t *src, const void *src_vaddr,
@@ -546,16 +523,12 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	int32_t pixelFormat)
 	: FGLRenderSurface(dpy, config, pixelFormat, depthFormat),
 	nativeWindow(window), buffer(0), previousBuffer(0), module(0),
-	blitengine(0), bits(0)
+	bits(0)
 {
 	const hw_module_t *pModule;
 	hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule);
 	module = reinterpret_cast<const gralloc_module_t *>(pModule);
 	int format;
-
-	//if (hw_get_module(COPYBIT_HARDWARE_MODULE_ID, &pModule) == 0) {
-	//	copybit_open(pModule, &blitengine);
-	//}
 
 	// keep a reference on the window
 	nativeWindow->common.incRef(&nativeWindow->common);
@@ -577,10 +550,6 @@ FGLWindowSurface::~FGLWindowSurface()
 		previousBuffer->common.decRef(&previousBuffer->common);
 	}
 	nativeWindow->common.decRef(&nativeWindow->common);
-
-	if (blitengine) {
-		copybit_close(blitengine);
-	}
 }
 
 EGLBoolean FGLWindowSurface::connect()
@@ -704,35 +673,6 @@ void FGLWindowSurface::copyBlt(
 	const Region& clip)
 {
 	// NOTE: dst and src must be the same format
-#if 0
-	FGLint err = FGL_NO_ERROR;
-
-	copybit_device_t *const copybit = blitengine;
-	if (copybit)  {
-		copybit_image_t simg;
-		simg.w = src->stride;
-		simg.h = src->height;
-		simg.format = src->format;
-		simg.handle = const_cast<native_handle_t *>(src->handle);
-
-		copybit_image_t dimg;
-		dimg.w = dst->stride;
-		dimg.h = dst->height;
-		dimg.format = dst->format;
-		dimg.handle = const_cast<native_handle_t *>(dst->handle);
-
-		copybit->set_parameter(copybit, COPYBIT_TRANSFORM, 0);
-		copybit->set_parameter(copybit, COPYBIT_PLANE_ALPHA, 255);
-		copybit->set_parameter(copybit, COPYBIT_DITHER, COPYBIT_DISABLE);
-		region_iterator it(clip);
-
-		err = copybit->blit(copybit, &dimg, &simg, &it);
-		if (err == FGL_NO_ERROR)
-			return;
-
-		LOGE("copybit failed (%s)", strerror(err));
-	}
-#endif
 	Region::const_iterator cur = clip.begin();
 	Region::const_iterator end = clip.end();
 
