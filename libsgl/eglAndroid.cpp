@@ -49,7 +49,6 @@
 
 #include <gralloc_priv.h>
 #include <linux/android_pmem.h>
-#include <private/ui/sw_gralloc_handle.h>
 #include <ui/android_native_buffer.h>
 #include <ui/PixelFormat.h>
 #include <hardware/copybit.h>
@@ -289,15 +288,8 @@ int FGLImageSurface::lock(int usage)
 	android_native_buffer_t *buf = (android_native_buffer_t *)image;
 	int err;
 
-	if (sw_gralloc_handle_t::validate(buf->handle) < 0) {
-		err = module->lock(module, buf->handle,
-			usage, 0, 0, buf->width, buf->height, &vaddr);
-	} else {
-		sw_gralloc_handle_t const* hnd =
-			reinterpret_cast<sw_gralloc_handle_t const*>(buf->handle);
-		vaddr = (void*)hnd->base;
-		err = FGL_NO_ERROR;
-	}
+	err = module->lock(module, buf->handle,
+		usage, 0, 0, buf->width, buf->height, &vaddr);
 
 	return err;
 }
@@ -310,8 +302,7 @@ int FGLImageSurface::unlock(void)
 	if (!buf)
 		return BAD_VALUE;
 
-	if (sw_gralloc_handle_t::validate(buf->handle) < 0)
-		err = module->unlock(module, buf->handle);
+	err = module->unlock(module, buf->handle);
 
 	return err;
 }
@@ -676,15 +667,10 @@ FGLint FGLWindowSurface::lock(
 	android_native_buffer_t *buf, int usage, void **vaddr)
 {
 	int err;
-	if (sw_gralloc_handle_t::validate(buf->handle) < 0) {
-		err = module->lock(module, buf->handle,
-			usage, 0, 0, buf->width, buf->height, vaddr);
-	} else {
-		const sw_gralloc_handle_t *hnd =
-			reinterpret_cast<const sw_gralloc_handle_t *>(buf->handle);
-		*vaddr = (void *)hnd->base;
-		err = FGL_NO_ERROR;
-	}
+
+        err = module->lock(module, buf->handle,
+				usage, 0, 0, buf->width, buf->height, vaddr);
+
 	return err;
 }
 
@@ -692,9 +678,9 @@ FGLint FGLWindowSurface::unlock(android_native_buffer_t *buf)
 {
 	if (!buf) return BAD_VALUE;
 	int err = FGL_NO_ERROR;
-	if (sw_gralloc_handle_t::validate(buf->handle) < 0) {
-		err = module->unlock(module, buf->handle);
-	}
+
+	err = module->unlock(module, buf->handle);
+
 	return err;
 }
 
