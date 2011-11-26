@@ -24,6 +24,9 @@ LOCAL_SRC_FILES:= \
 	glesBase.cpp glesGet.cpp glesMatrix.cpp glesPixel.cpp glesTex.cpp \
 	fglmatrix.cpp fglsurface.cpp
 
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/../include
+
 LOCAL_CFLAGS += -DLOG_TAG=\"libsgl\"
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
 #LOCAL_CFLAGS += -fvisibility=hidden

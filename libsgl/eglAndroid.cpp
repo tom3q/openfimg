@@ -47,13 +47,14 @@
 #include "libfimg/fimg.h"
 #include "fglsurface.h"
 
-#include "../libgralloc/gralloc_priv.h"
+#include <gralloc_priv.h>
 #include <linux/android_pmem.h>
 #include <private/ui/sw_gralloc_handle.h>
 #include <ui/android_native_buffer.h>
 #include <ui/PixelFormat.h>
 #include <hardware/copybit.h>
 #include <hardware/gralloc.h>
+#include <linux/fb.h>
 
 using namespace android;
 
