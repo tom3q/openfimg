@@ -1,8 +1,16 @@
-libcopybit:
-	Copybit library for Android
+OpenFIMG
+Open source implementation of OpenGL compatible API for Samsung FIMG-3DSE GPU
 
-libgralloc:
-	Gralloc library for Android
+The project is aimed to provide a proper implementation of API compatible with
+OpenGL ES 1.1 (and maybe 2.0 in future) for the 3D engine (FIMG 3DSE) embedded
+in some Samsung SoCs (including S3C6410, S5P6442 and S5PC100, not to confuse
+with S5PC110 which contains a PowerVR SGX graphics core), as the original one
+contains many bugs and is written in a suboptimal way.
 
-libsgl:
-	OpenGL ES library for Android
+It is currently being tested on Samsung Galaxy Spica (S3C6410, Android) and
+Tiny6410 development board (S3C6410, Debian), but it should work without any
+problems on any S3C6410-based device and with some minor changes on any device
+with SoC featuring the FIMG-3DSE GPU (S5PC100, S5P6442).
+
+For more information, check out project wiki:
+https://github.com/tom3q/openfimg/wiki
