@@ -17,9 +17,15 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_ARM_MODE := arm
 
 LOCAL_SRC_FILES:= \
-	eglBase.cpp eglAndroid.cpp \
-	glesBase.cpp glesGet.cpp glesMatrix.cpp glesPixel.cpp glesTex.cpp \
-	fglmatrix.cpp fglsurface.cpp
+	eglBase.cpp \
+	eglAndroid.cpp \
+	glesBase.cpp \
+	glesGet.cpp \
+	glesMatrix.cpp \
+	glesPixel.cpp \
+	glesTex.cpp \
+	fglmatrix.cpp \
+	fglsurface.cpp
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/../include
