@@ -20,6 +20,7 @@ LOCAL_SRC_FILES:= \
 	eglBase.cpp \
 	eglAndroid.cpp \
 	glesBase.cpp \
+	glesFramebuffer.cpp \
 	glesGet.cpp \
 	glesMatrix.cpp \
 	glesPixel.cpp \
