@@ -17,7 +17,7 @@ case "${host_cpu}" in
 		;;
 esac
 
-CFLAGS="${CFLAGS} -g -W -Wall -Wsign-compare -Wfloat-equal -Wformat-security -Wno-unused-parameter"
+CFLAGS="${CFLAGS} -W -Wall -Wsign-compare -Wfloat-equal -Wformat-security -Wno-unused-parameter"
 
 #
 # libtool library versioning stuff
@@ -105,7 +105,7 @@ AC_DEFINE(GL_GLEXT_PROTOTYPES, 1, [Include prototypes of GL extensions])
 AC_DEFINE(EGL_EGLEXT_PROTOTYPES, 1, [Include prototypes of EGL extensions])
 
 if test "${enable_debug}" = "yes"; then
-	CFLAGS="${CFLAGS} -O1"
+	CFLAGS="${CFLAGS} -O1 -g"
 	AC_DEFINE(DEBUG, 1, [debugging])
 else
 	CFLAGS="${CFLAGS} -O2"
