@@ -221,6 +221,7 @@ struct FGLContext {
 	GLint clientActiveTexture;
 	FGLMatrixState matrix;
 	FGLTextureState texture[FGL_MAX_TEXTURE_UNITS];
+	FGLTextureState textureExternal[FGL_MAX_TEXTURE_UNITS];
 	FGLuint unpackAlignment;
 	FGLuint packAlignment;
 	FGLBufferObjectBinding arrayBuffer;

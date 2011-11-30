@@ -692,8 +692,14 @@ static inline void fglSetupTextures(FGLContext *ctx)
 	int i = FGL_MAX_TEXTURE_UNITS - 1;
 
 	do {
-		bool enabled = ctx->texture[i].enabled;
-		FGLTexture *tex = ctx->texture[i].getTexture();
+		FGLTexture *tex;
+		bool enabled = ctx->textureExternal[i].enabled;
+		if (enabled) {
+			tex = ctx->textureExternal[i].getTexture();
+		} else {
+			tex = ctx->texture[i].getTexture();
+			enabled = ctx->texture[i].enabled;
+		}
 
 		if(enabled && tex->surface && tex->isComplete()) {
 			/* Texture is ready */
@@ -1559,6 +1565,9 @@ static inline void fglSet(GLenum cap, bool state)
 	switch (cap) {
 	case GL_TEXTURE_2D:
 		ctx->texture[ctx->activeTexture].enabled = state;
+		break;
+	case GL_TEXTURE_EXTERNAL_OES:
+		ctx->textureExternal[ctx->activeTexture].enabled = state;
 		break;
 	case GL_CULL_FACE:
 		fimgSetFaceCullEnable(ctx->fimg, state);

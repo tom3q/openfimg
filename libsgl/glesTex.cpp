@@ -94,14 +94,23 @@ void fglCleanTextureObjects(FGLContext *ctx)
 
 GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 {
-	if(target != GL_TEXTURE_2D) {
+	FGLTextureObjectBinding *binding;
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_TEXTURE_2D:
+		binding = &ctx->texture[ctx->activeTexture].binding;
+		break;
+	case GL_TEXTURE_EXTERNAL_OES:
+		binding = &ctx->textureExternal[ctx->activeTexture].binding;
+		break;
+	default:
 		setError(GL_INVALID_ENUM);
 		return;
 	}
 
 	if(texture == 0) {
-		FGLContext *ctx = getContext();
-		ctx->texture[ctx->activeTexture].binding.unbind();
+		binding->unbind();
 		return;
 	}
 
@@ -109,8 +118,6 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		setError(GL_INVALID_VALUE);
 		return;
 	}
-
-	FGLContext *ctx = getContext();
 
 	FGLTextureObject *obj = fglTextureObjects[texture];
 	if(obj == NULL) {
@@ -122,7 +129,7 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		fglTextureObjects[texture] = obj;
 	}
 
-	obj->bind(&ctx->texture[ctx->activeTexture].binding);
+	obj->bind(binding);
 }
 
 static int fglGetFormatInfo(GLenum format, GLenum type,
@@ -993,7 +1000,8 @@ GL_API void GL_APIENTRY glCopyTexSubImage2D (GLenum target, GLint level,
 GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 							GLeglImageOES img)
 {
-	if (unlikely(target != GL_TEXTURE_2D)) {
+	if (unlikely(target != GL_TEXTURE_2D
+	    && target != GL_TEXTURE_EXTERNAL_OES)) {
 		setError(GL_INVALID_ENUM);
 		return;
 	}
@@ -1005,7 +1013,11 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	}
 
 	FGLContext *ctx = getContext();
-	FGLTexture *tex = ctx->texture[ctx->activeTexture].getTexture();
+	FGLTexture *tex;
+	if (target == GL_TEXTURE_EXTERNAL_OES)
+		tex =  ctx->textureExternal[ctx->activeTexture].getTexture();
+	else
+		tex = ctx->texture[ctx->activeTexture].getTexture();
 
 	const FGLColorConfigDesc *cfg =
 				fglGetColorConfigDesc(image->pixelFormat);
@@ -1046,14 +1058,20 @@ GL_API void GL_APIENTRY glEGLImageTargetRenderbufferStorageOES (GLenum target, G
 
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)
 {
-	if(target != GL_TEXTURE_2D) {
+	FGLTexture *obj;
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_TEXTURE_2D:
+		obj = ctx->texture[ctx->activeTexture].getTexture();
+		break;
+	case GL_TEXTURE_EXTERNAL_OES:
+		obj = ctx->textureExternal[ctx->activeTexture].getTexture();
+		break;
+	default:
 		setError(GL_INVALID_ENUM);
 		return;
 	}
-
-	FGLContext *ctx = getContext();
-	FGLTexture *obj =
-		ctx->texture[ctx->activeTexture].getTexture();
 
 	switch (pname) {
 	case GL_TEXTURE_WRAP_S:
@@ -1144,14 +1162,20 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 GL_API void GL_APIENTRY glTexParameteriv (GLenum target, GLenum pname,
 							const GLint *params)
 {
-	if(target != GL_TEXTURE_2D) {
+	FGLTexture *obj;
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_TEXTURE_2D:
+		obj = ctx->texture[ctx->activeTexture].getTexture();
+		break;
+	case GL_TEXTURE_EXTERNAL_OES:
+		obj = ctx->textureExternal[ctx->activeTexture].getTexture();
+		break;
+	default:
 		setError(GL_INVALID_ENUM);
 		return;
 	}
-
-	FGLContext *ctx = getContext();
-	FGLTexture *obj =
-		ctx->texture[ctx->activeTexture].getTexture();
 
 	switch (pname) {
 	case GL_TEXTURE_CROP_RECT_OES:
