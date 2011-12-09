@@ -15,6 +15,7 @@ libGLES_fimg_la_SOURCES = \
 	fglmatrix.cpp \
 	fglsurface.cpp \
 	glesBase.cpp \
+	glesFramebuffer.cpp \
 	glesGet.cpp \
 	glesMatrix.cpp \
 	glesPixel.cpp \

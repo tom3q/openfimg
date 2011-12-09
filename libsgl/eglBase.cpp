@@ -49,6 +49,7 @@
 #include "state.h"
 #include "libfimg/fimg.h"
 #include "fglsurface.h"
+#include "glesFramebuffer.h"
 
 #define FGL_EGL_MAJOR		1
 #define FGL_EGL_MINOR		4
@@ -683,46 +684,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 	}
 
 	return getConfigAttrib(config, attribute, value);
-}
-
-/*
- * Buffers (render surfaces)
- */
-
-void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
-		unsigned int height, unsigned int stride, unsigned int format)
-{
-	if (!cbuf) {
-		gl->surface.draw = 0;
-		return;
-	}
-
-	fimgSetFrameBufSize(gl->fimg, stride, height);
-	fimgSetFrameBufParams(gl->fimg, 1, 0, 255, (fimgColorMode)format);
-	fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
-	gl->surface.draw = cbuf;
-	gl->surface.width = width;
-	gl->surface.stride = stride;
-	gl->surface.height = height;
-	gl->surface.format = format;
-}
-
-void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf, unsigned int format)
-{
-	if (!zbuf || !format) {
-		gl->surface.depth = 0;
-		gl->surface.depthFormat = 0;
-		return;
-	}
-
-	fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
-	gl->surface.depth = zbuf;
-	gl->surface.depthFormat = format;
-}
-
-void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
-{
-	gl->surface.read = rbuf;
 }
 
 /*
