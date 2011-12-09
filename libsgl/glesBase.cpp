@@ -37,9 +37,6 @@
 #include "libfimg/fimg.h"
 #include "s3c_g2d.h"
 
-//#define TRACE_FUNCTIONS
-//#define GLES_DEBUG
-
 /**
 	Error handling
 */
