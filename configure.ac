@@ -109,6 +109,19 @@ AC_ARG_ENABLE([debug],
 	[enable_debug=no])
 AC_MSG_RESULT([${enable_debug}])
 
+AC_MSG_CHECKING([whether to enable printing GL errors])
+AC_ARG_ENABLE(glerror,
+	AS_HELP_STRING([--enable-glerror], [enable printing GL errors @<:@default=no@:>@]),
+		[case "$enableval" in
+		y | yes) ENABLE_GLERROR=yes ;;
+		*) ENABLE_GLERROR=no ;;
+	esac],
+	[ENABLE_GLERROR=no])
+AC_MSG_RESULT([${ENABLE_GLERROR}])
+if test "${ENABLE_GLERROR}" = "yes"; then
+	AC_DEFINE(GLES_ERR_DEBUG, 1, [print GL errors])
+fi
+
 #
 # Static definitions
 #

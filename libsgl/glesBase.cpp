@@ -39,7 +39,6 @@
 
 //#define TRACE_FUNCTIONS
 //#define GLES_DEBUG
-#define GLES_ERR_DEBUG
 
 /**
 	Error handling
