@@ -705,6 +705,7 @@ void fimgRestoreCompatState(fimgContext *ctx)
 	fimgCompatFlush(ctx);
 }
 
+#if 0
 /*
  * Clear
  */
@@ -851,3 +852,4 @@ void fimgSetClearStencil(fimgContext *ctx, uint8_t stencil)
 {
 	ctx->clear.stencil = stencil;
 }
+#endif
