@@ -793,14 +793,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		return;
 	}
 
-#ifndef FIMG_USE_VERTEX_BUFFER
 	fimgDrawArrays(ctx->fimg, fglMode, arrays, first, count);
-#else
-	if (count <= 24)
-		fimgDrawArraysBuffered(ctx->fimg, fglMode, arrays, first, count);
-	else
-		fimgDrawArrays(ctx->fimg, fglMode, arrays, first, count);
-#endif
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
@@ -875,30 +868,12 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 
 	switch (type) {
 	case GL_UNSIGNED_BYTE:
-#ifndef FIMG_USE_VERTEX_BUFFER
 		fimgDrawElementsUByteIdx(ctx->fimg, fglMode, arrays,
 					count, (const uint8_t *)indices);
-#else
-		if (count > 24)
-			fimgDrawElementsUByteIdx(ctx->fimg, fglMode, arrays,
-					count, (const uint8_t *)indices);
-		else
-			fimgDrawElementsBufferedUByteIdx(ctx->fimg, fglMode,
-				arrays, count, (const uint8_t *)indices);
-#endif
 		break;
 	case GL_UNSIGNED_SHORT:
-#ifndef FIMG_USE_VERTEX_BUFFER
 		fimgDrawElementsUShortIdx(ctx->fimg, fglMode, arrays, count,
 						(const uint16_t *)indices);
-#else
-		if (count > 24)
-			fimgDrawElementsUShortIdx(ctx->fimg, fglMode, arrays,
-					count, (const uint16_t *)indices);
-		else
-			fimgDrawElementsBufferedUShortIdx(ctx->fimg, fglMode,
-				arrays, count, (const uint16_t *)indices);
-#endif
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -1015,11 +990,8 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
 
-#ifndef FIMG_USE_VERTEX_BUFFER
 	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_FAN, arrays, 0, 4);
-#else
-	fimgDrawArraysBuffered(ctx->fimg, FGPE_TRIANGLE_FAN, arrays, 0, 4);
-#endif
+
 	// Restore previous state
 
 	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {

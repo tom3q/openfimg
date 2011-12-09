@@ -511,6 +511,9 @@ struct _fimgContext {
 	unsigned int queueLen;
 	/* Lock state */
 	unsigned int locked;
+	/* Vertex data */
+	uint8_t *vertexData;
+	size_t vertexDataSize;
 };
 
 #define FIMG_DEBUG_HW_LOCK

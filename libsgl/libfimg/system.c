@@ -132,6 +132,7 @@ void fimgDestroyContext(fimgContext *ctx)
 {
 	fimgDeviceClose(ctx);
 	free(ctx->queueStart);
+	free(ctx->vertexData);
 	free(ctx);
 }
 

@@ -47,7 +47,7 @@
  *****************************************************************************/
 void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 {
-	ctx->primitive.vctx.type = type; // See fimgPrimitiveType enum
+	ctx->primitive.vctx.type = 1 << type; // See fimgPrimitiveType enum
 #ifdef FIMG_INTERPOLATION_WORKAROUND
 	ctx->primitive.vctx.vsOut = 8; // WORKAROUND
 #else

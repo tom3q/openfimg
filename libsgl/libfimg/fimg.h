@@ -107,8 +107,8 @@ typedef enum {
 
 typedef struct {
 	const void	*pointer;
-	unsigned int	stride;
-	unsigned int	width;
+	uint16_t	stride;
+	uint16_t	width;
 } fimgArray;
 
 /* Functions */
@@ -136,14 +136,15 @@ void fimgSetAttribCount(fimgContext *ctx, unsigned char count);
 
 /* Type definitions */
 typedef enum {
-	FGPE_TRIANGLES		= (1 << 7),
-	FGPE_TRIANGLE_FAN	= (1 << 6),
-	FGPE_TRIANGLE_STRIP	= (1 << 5),
-	FGPE_LINES		= (1 << 4),
-	FGPE_LINE_LOOP		= (1 << 3),
-	FGPE_LINE_STRIP		= (1 << 2),
-	FGPE_POINTS		= (1 << 1),
-	FGPE_POINT_SPRITE	= (1 << 0)
+	FGPE_POINT_SPRITE = 0,
+	FGPE_POINTS,
+	FGPE_LINE_STRIP,
+	FGPE_LINE_LOOP,
+	FGPE_LINES,
+	FGPE_TRIANGLE_STRIP,
+	FGPE_TRIANGLE_FAN,
+	FGPE_TRIANGLES,
+	FGPE_PRIMITIVE_MAX,
 } fimgPrimitiveType;
 
 /* Functions */
