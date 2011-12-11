@@ -301,7 +301,7 @@ static uint32_t packAttribute(fimgContext *ctx, uint32_t *buf,
 
 /* Generic vertex copy */
 static uint32_t copyVertices1To1(fimgContext *ctx, fimgArray *arrays,
-						uint32_t first, uint32_t count)
+						uint32_t *first, uint32_t *count)
 {
 	fimgArray *a = arrays;
 	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
@@ -309,11 +309,8 @@ static uint32_t copyVertices1To1(fimgContext *ctx, fimgArray *arrays,
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
 
-	if (!count)
-		return 0;
-
-	if (batchSize > count)
-		batchSize = count;
+	if (batchSize > *count)
+		batchSize = *count;
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
@@ -323,24 +320,24 @@ static uint32_t copyVertices1To1(fimgContext *ctx, fimgArray *arrays,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		if (a->stride == a->width && !(a->width % 4)) {
-			memcpy(buf + offset, a->pointer + first*a->stride,
+			memcpy(buf + offset, a->pointer + *first*a->stride,
 							batchSize*a->width);
 			offset += batchSize*a->width;
 			continue;
 		}
 		offset += packAttribute(ctx,
-				(uint32_t *)(buf + offset), a, first, batchSize);
+				(uint32_t *)(buf + offset), a, *first, batchSize);
 	}
 
 	ctx->vertexDataSize = offset;
 
+	*first += batchSize;
+	*count -= batchSize;
 	return batchSize;
 }
 
-#ifdef FIMG_CONVERT_TRISTRIPS
-/* Conversion of triangle strips to separate triangles */
-static uint32_t copyVerticesTristrip(fimgContext *ctx, fimgArray *arrays,
-						uint32_t first, uint32_t count)
+static uint32_t copyVerticesLinestrip(fimgContext *ctx,
+			fimgArray *arrays, uint32_t *first, uint32_t *count)
 {
 	fimgArray *a = arrays;
 	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
@@ -348,8 +345,177 @@ static uint32_t copyVerticesTristrip(fimgContext *ctx, fimgArray *arrays,
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
 
-	if (batchSize > 3*(count - 3 + 1))
-		batchSize = 3*(count - 3 + 1);
+	if (*count < 2)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		if (a->stride == a->width && !(a->width % 4)) {
+			memcpy(buf + offset, a->pointer + *first*a->stride,
+							batchSize*a->width);
+			offset += batchSize*a->width;
+			continue;
+		}
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, *first, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*first += batchSize - 1;
+	*count -= batchSize - 1;
+	return batchSize;
+}
+
+static uint32_t copyVerticesLines(fimgContext *ctx, fimgArray *arrays,
+						uint32_t *first, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 2)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+
+	if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		if (a->stride == a->width && !(a->width % 4)) {
+			memcpy(buf + offset, a->pointer + *first*a->stride,
+							batchSize*a->width);
+			offset += batchSize*a->width;
+			continue;
+		}
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, *first, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*first += batchSize;
+	*count -= batchSize;
+	return batchSize;
+}
+
+static uint32_t copyVerticesTristrip(fimgContext *ctx,
+			fimgArray *arrays, uint32_t *first, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+	else if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		if (a->stride == a->width && !(a->width % 4)) {
+			memcpy(buf + offset, a->pointer + *first*a->stride,
+							batchSize*a->width);
+			offset += batchSize*a->width;
+			continue;
+		}
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, *first, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*first += batchSize - 2;
+	*count -= batchSize - 2;
+	return batchSize;
+}
+
+static uint32_t copyVerticesTrifan(fimgContext *ctx,
+			fimgArray *arrays, uint32_t *first, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		if (a->stride == a->width && !(a->width % 4)) {
+			memcpy(buf + offset, a->pointer, a->width);
+			offset += a->width;
+			memcpy(buf + offset, a->pointer + (*first + 1)*a->stride,
+						(batchSize - 1)*a->width);
+			offset += (batchSize - 1)*a->width;
+			continue;
+		}
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, 0, 1);
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a,
+						*first + 1, batchSize - 1);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*first += batchSize - 2;
+	*count -= batchSize - 2;
+	return batchSize;
+}
+
+static uint32_t copyVerticesTris(fimgContext *ctx, fimgArray *arrays,
+					uint32_t *first, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
 
 	if (batchSize % 3)
 		batchSize -= batchSize % 3;
@@ -361,51 +527,22 @@ static uint32_t copyVerticesTristrip(fimgContext *ctx, fimgArray *arrays,
 			continue;
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
-		/* offset += packAttributeTristrip(ctx,
-				(uint32_t *)(buf + offset), a, first, batchSize); */
-		/* TODO */
-	}
-
-	ctx->vertexDataSize = offset;
-
-	return batchSize;
-}
-#endif
-
-#ifdef FIMG_CONVERT_TRIFANS
-/* Conversion of triangle fans to separate triangles */
-static uint32_t copyVerticesTrifan(fimgContext *ctx, fimgArray *arrays,
-						uint32_t first, uint32_t count)
-{
-	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
-	uint32_t i;
-	uint32_t offset = DATA_OFFSET;
-	uint8_t *buf = ctx->vertexData;
-
-	if (batchSize > 3*(count - 3 + 1))
-		batchSize = 3*(count - 3 + 1);
-
-	if (batchSize % 3)
-		batchSize -= batchSize % 3;
-
-	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
-		if (!a->stride) {
-			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
-			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+		if (a->stride == a->width && !(a->width % 4)) {
+			memcpy(buf + offset, a->pointer + *first*a->stride,
+							batchSize*a->width);
+			offset += batchSize*a->width;
 			continue;
 		}
-		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
-		/*offset += packAttributeTrifan(ctx,
-				(uint32_t *)(buf + offset), a, first, batchSize); */
-		/* TODO */
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, *first, batchSize);
 	}
 
 	ctx->vertexDataSize = offset;
 
+	*first += batchSize;
+	*count -= batchSize;
 	return batchSize;
 }
-#endif
 
 /*
  * Indexed uint16_t
@@ -563,7 +700,7 @@ static uint32_t packAttributeIdx16(fimgContext *ctx, uint32_t *buf,
 }
 
 static uint32_t copyVertices1To1Idx16(fimgContext *ctx, fimgArray *arrays,
-					const uint16_t *indices, uint32_t count)
+			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
 	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
@@ -571,8 +708,148 @@ static uint32_t copyVertices1To1Idx16(fimgContext *ctx, fimgArray *arrays,
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
 
-	if (batchSize > count)
-		batchSize = count;
+	if (batchSize > *count)
+		batchSize = *count;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize;
+	*count -= batchSize;
+	return batchSize;
+}
+
+static uint32_t copyVerticesLinestripIdx16(fimgContext *ctx, fimgArray *arrays,
+			const uint16_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 2)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+	else if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize - 2;
+	*count -= batchSize - 2;
+	return batchSize;
+}
+
+
+static uint32_t copyVerticesLinesIdx16(fimgContext *ctx, fimgArray *arrays,
+				const uint16_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 2)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+
+	if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize;
+	*count -= batchSize;
+	return batchSize;
+}
+
+static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
+			const uint16_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+	else if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize - 2;
+	*count -= batchSize - 2;
+	return batchSize;
+}
+
+static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
+			const uint16_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
@@ -582,18 +859,20 @@ static uint32_t copyVertices1To1Idx16(fimgContext *ctx, fimgArray *arrays,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		offset += packAttributeIdx16(ctx,
-				(uint32_t *)(buf + offset), a, indices, batchSize);
+				(uint32_t *)(buf + offset), a, indices, 1);
+		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
+					a, indices + *pos, batchSize - 1);
 	}
 
 	ctx->vertexDataSize = offset;
 
+	*pos += batchSize - 2;
+	*count -= batchSize - 2;
 	return batchSize;
 }
 
-#ifdef FIMG_CONVERT_TRISTRIPS
-/* Conversion of triangle strips to separate triangles */
-static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
-					const uint16_t *indices, uint32_t count)
+static uint32_t copyVerticesTrisIdx16(fimgContext *ctx, fimgArray *arrays,
+			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
 	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
@@ -601,44 +880,32 @@ static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
 
-	if (batchSize > count)
-		batchSize = count;
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
 
 	if (batchSize % 3)
 		batchSize -= batchSize % 3;
 
-	/* TODO */
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
 
 	ctx->vertexDataSize = offset;
 
+	*pos += batchSize;
+	*count -= batchSize;
 	return batchSize;
 }
-#endif
-
-#ifdef FIMG_CONVERT_TRIFANS
-/* Conversion of triangle fans to separate triangles */
-static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
-					const uint16_t *indices, uint32_t count)
-{
-	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
-	uint32_t i;
-	uint32_t offset = DATA_OFFSET;
-	uint8_t *buf = ctx->vertexData;
-
-	if (batchSize > count)
-		batchSize = count;
-
-	if (batchSize % 3)
-		batchSize -= batchSize % 3;
-
-	/* TODO */
-
-	ctx->vertexDataSize = offset;
-
-	return batchSize;
-}
-#endif
 
 /*
  * Indexed uint8_t
@@ -796,7 +1063,7 @@ static uint32_t packAttributeIdx8(fimgContext *ctx, uint32_t *buf,
 }
 
 static uint32_t copyVertices1To1Idx8(fimgContext *ctx, fimgArray *arrays,
-					const uint8_t *indices, uint32_t count)
+			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
 	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
@@ -804,8 +1071,148 @@ static uint32_t copyVertices1To1Idx8(fimgContext *ctx, fimgArray *arrays,
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
 
-	if (batchSize > count)
-		batchSize = count;
+	if (batchSize > *count)
+		batchSize = *count;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize;
+	*count -= batchSize;
+	return batchSize;
+}
+
+static uint32_t copyVerticesLinestripIdx8(fimgContext *ctx, fimgArray *arrays,
+			const uint8_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 2)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+	else if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize - 2;
+	*count -= batchSize - 2;
+	return batchSize;
+}
+
+
+static uint32_t copyVerticesLinesIdx8(fimgContext *ctx, fimgArray *arrays,
+			const uint8_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 2)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+
+	if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize;
+	*count -= batchSize;
+	return batchSize;
+}
+
+static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
+			const uint8_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
+	else if (batchSize % 2)
+		--batchSize;
+
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
+
+	ctx->vertexDataSize = offset;
+
+	*pos += batchSize - 2;
+	*count -= batchSize - 2;
+	return batchSize;
+}
+
+static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
+			const uint8_t *indices, uint32_t *pos, uint32_t *count)
+{
+	fimgArray *a = arrays;
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t i;
+	uint32_t offset = DATA_OFFSET;
+	uint8_t *buf = ctx->vertexData;
+
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
@@ -815,18 +1222,20 @@ static uint32_t copyVertices1To1Idx8(fimgContext *ctx, fimgArray *arrays,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		offset += packAttributeIdx8(ctx,
-				(uint32_t *)(buf + offset), a, indices, batchSize);
+				(uint32_t *)(buf + offset), a, indices, 1);
+		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
+					a, indices + *pos, batchSize - 1);
 	}
 
 	ctx->vertexDataSize = offset;
 
+	*pos += batchSize - 2;
+	*count -= batchSize - 2;
 	return batchSize;
 }
 
-#ifdef FIMG_CONVERT_TRISTRIPS
-/* Conversion of triangle strips to separate triangles */
-static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
-					const uint8_t *indices, uint32_t count)
+static uint32_t copyVerticesTrisIdx8(fimgContext *ctx, fimgArray *arrays,
+				const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
 	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
@@ -834,55 +1243,43 @@ static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
 
-	if (batchSize > count)
-		batchSize = count;
+	if (*count < 3)
+		return 0;
+
+	if (batchSize > *count)
+		batchSize = *count;
 
 	if (batchSize % 3)
 		batchSize -= batchSize % 3;
 
-	/* TODO */
+	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
+		if (!a->stride) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
+			continue;
+		}
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos, batchSize);
+	}
 
 	ctx->vertexDataSize = offset;
 
+	*pos += batchSize;
+	*count -= batchSize;
 	return batchSize;
 }
-#endif
-
-#ifdef FIMG_CONVERT_TRIFANS
-/* Conversion of triangle fans to separate triangles */
-static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
-					const uint8_t *indices, uint32_t count)
-{
-	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
-	uint32_t i;
-	uint32_t offset = DATA_OFFSET;
-	uint8_t *buf = ctx->vertexData;
-
-	if (batchSize > count)
-		batchSize = count;
-
-	if (batchSize % 3)
-		batchSize -= batchSize % 3;
-
-	/* TODO */
-
-	ctx->vertexDataSize = offset;
-
-	return batchSize;
-}
-#endif
 
 /*
  * Primitive engine has problems with triangle strips and triangle fans,
  * so in those cases geometry must be converted to separate triangles
  */
 struct primitiveHandler {
-	uint32_t (*direct)(fimgContext *, fimgArray *, uint32_t, uint32_t);
+	uint32_t (*direct)(fimgContext *, fimgArray *, uint32_t *, uint32_t *);
 	uint32_t (*indexed_8)(fimgContext *, fimgArray *,
-						const uint8_t *, uint32_t);
+				const uint8_t *, uint32_t *, uint32_t *);
 	uint32_t (*indexed_16)(fimgContext *, fimgArray *,
-						const uint16_t *, uint32_t);
+				const uint16_t *, uint32_t *, uint32_t *);
 };
 
 static const struct primitiveHandler primitiveHandler[FGPE_PRIMITIVE_MAX] = {
@@ -897,46 +1294,39 @@ static const struct primitiveHandler primitiveHandler[FGPE_PRIMITIVE_MAX] = {
 		.indexed_16	= copyVertices1To1Idx16
 	},
 	[FGPE_LINE_STRIP] = {
-		.direct		= copyVertices1To1,
-		.indexed_8	= copyVertices1To1Idx8,
-		.indexed_16	= copyVertices1To1Idx16
+		.direct		= copyVerticesLinestrip,
+		.indexed_8	= copyVerticesLinestripIdx8,
+		.indexed_16	= copyVerticesLinestripIdx16
 	},
 	[FGPE_LINE_LOOP] = {
-		.direct		= copyVertices1To1,
-		.indexed_8	= copyVertices1To1Idx8,
-		.indexed_16	= copyVertices1To1Idx16
+		/*
+		 * Line loops don't go well with buffered transfers,
+		 * so let's just force higher level code to emulate them
+		 * using line strips.
+		 */
+		.direct		= 0,
+		.indexed_8	= 0,
+		.indexed_16	= 0
 	},
 	[FGPE_LINES] = {
-		.direct		= copyVertices1To1,
-		.indexed_8	= copyVertices1To1Idx8,
-		.indexed_16	= copyVertices1To1Idx16
+		.direct		= copyVerticesLines,
+		.indexed_8	= copyVerticesLinesIdx8,
+		.indexed_16	= copyVerticesLinesIdx16
 	},
 	[FGPE_TRIANGLE_STRIP] = {
-#ifdef FIMG_CONVERT_TRISTRIPS
 		.direct		= copyVerticesTristrip,
 		.indexed_8	= copyVerticesTristripIdx8,
 		.indexed_16	= copyVerticesTristripIdx16
-#else
-		.direct		= copyVertices1To1,
-		.indexed_8	= copyVertices1To1Idx8,
-		.indexed_16	= copyVertices1To1Idx16
-#endif
 	},
 	[FGPE_TRIANGLE_FAN] = {
-#ifdef FIMG_CONVERT_TRIFANS
 		.direct		= copyVerticesTrifan,
 		.indexed_8	= copyVerticesTrifanIdx8,
 		.indexed_16	= copyVerticesTrifanIdx16
-#else
-		.direct		= copyVertices1To1,
-		.indexed_8	= copyVertices1To1Idx8,
-		.indexed_16	= copyVertices1To1Idx16
-#endif
 	},
 	[FGPE_TRIANGLES] = {
-		.direct		= copyVertices1To1,
-		.indexed_8	= copyVertices1To1Idx8,
-		.indexed_16	= copyVertices1To1Idx16
+		.direct		= copyVerticesTris,
+		.indexed_8	= copyVerticesTrisIdx8,
+		.indexed_16	= copyVerticesTrisIdx16
 	},
 };
 
@@ -991,7 +1381,7 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 	}
 
 	/* Prepare first batch without waiting for hardware */
-	copied = primitiveHandler[mode].direct(ctx, arrays, first, count);
+	copied = primitiveHandler[mode].direct(ctx, arrays, &first, &count);
 	if (!copied)
 		return;
 
@@ -999,20 +1389,7 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
 	fimgFlushContext(ctx);
-
-	switch (mode) {
-	case FGPE_PRIMITIVE_MAX: /* Hack to compile with both settings disabled */
-#ifdef FIMG_CONVERT_TRIFANS
-	case FGPE_TRIANGLE_FAN:
-#endif
-#ifdef FIMG_CONVERT_TRIFANS
-	case FGPE_TRIANGLE_STRIP:
-#endif
-		fimgSetVertexContext(ctx, FGPE_TRIANGLES);
-		break;
-	default:
-		fimgSetVertexContext(ctx, mode);
-	};
+	fimgSetVertexContext(ctx, mode);
 
 	setupAttributes(ctx, arrays);
 #ifdef FIMG_DUMP_STATE_BEFORE_DRAW
@@ -1025,11 +1402,9 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 		fillVertexBuffer(ctx);
 		setupVertexBuffer(ctx);
 		drawAutoinc(ctx, 0, copied);
-		count -= copied;
-		first += copied;
 		copied = primitiveHandler[mode].direct(ctx,
-							arrays, first, count);
-	} while (count);
+							arrays, &first, &count);
+	} while (copied);
 
 	/* Release hardware */
 	fimgPutHardware(ctx);
@@ -1039,6 +1414,7 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 		fimgArray *arrays, unsigned int count, const uint8_t *indices)
 {
 	unsigned int copied;
+	unsigned int pos = 0;
 
 	if (mode >= FGPE_PRIMITIVE_MAX)
 		return;
@@ -1052,7 +1428,8 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 	}
 
 	/* Prepare first batch without waiting for hardware */
-	copied = primitiveHandler[mode].indexed_8(ctx, arrays, indices, count);
+	copied = primitiveHandler[mode].indexed_8(ctx,
+						arrays, indices, &pos, &count);
 	if (!copied)
 		return;
 
@@ -1060,20 +1437,7 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
 	fimgFlushContext(ctx);
-
-	switch (mode) {
-	case FGPE_PRIMITIVE_MAX: /* Hack to compile with both settings disabled */
-#ifdef FIMG_CONVERT_TRIFANS
-	case FGPE_TRIANGLE_FAN:
-#endif
-#ifdef FIMG_CONVERT_TRIFANS
-	case FGPE_TRIANGLE_STRIP:
-#endif
-		fimgSetVertexContext(ctx, FGPE_TRIANGLES);
-		break;
-	default:
-		fimgSetVertexContext(ctx, mode);
-	};
+	fimgSetVertexContext(ctx, mode);
 
 	setupAttributes(ctx, arrays);
 #ifdef FIMG_DUMP_STATE_BEFORE_DRAW
@@ -1086,11 +1450,9 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 		fillVertexBuffer(ctx);
 		setupVertexBuffer(ctx);
 		drawAutoinc(ctx, 0, copied);
-		count -= copied;
-		indices += copied;
 		copied = primitiveHandler[mode].indexed_8(ctx,
-							arrays, indices, count);
-	} while (count);
+						arrays, indices, &pos, &count);
+	} while (copied);
 
 	/* Release hardware */
 	fimgPutHardware(ctx);
@@ -1100,12 +1462,13 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 		fimgArray *arrays, unsigned int count, const uint16_t *indices)
 {
 	unsigned int copied;
+	unsigned int pos = 0;
 
 	if (mode >= FGPE_PRIMITIVE_MAX)
 		return;
 
 	if (!ctx->vertexData)
-		ctx->vertexData = malloc(VERTEX_BUFFER_SIZE);
+		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
 
 	if (!ctx->vertexData) {
 		LOGE("Failed to allocate vertex data buffer. Terminating.");
@@ -1113,7 +1476,8 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 	}
 
 	/* Prepare first batch without waiting for hardware */
-	copied = primitiveHandler[mode].indexed_16(ctx, arrays, indices, count);
+	copied = primitiveHandler[mode].indexed_16(ctx,
+						arrays, indices, &pos, &count);
 	if (!copied)
 		return;
 
@@ -1121,20 +1485,7 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 	fimgGetHardware(ctx);
 	fimgFlush(ctx);
 	fimgFlushContext(ctx);
-
-	switch (mode) {
-	case FGPE_PRIMITIVE_MAX: /* Hack to compile with both settings disabled */
-#ifdef FIMG_CONVERT_TRIFANS
-	case FGPE_TRIANGLE_FAN:
-#endif
-#ifdef FIMG_CONVERT_TRIFANS
-	case FGPE_TRIANGLE_STRIP:
-#endif
-		fimgSetVertexContext(ctx, FGPE_TRIANGLES);
-		break;
-	default:
-		fimgSetVertexContext(ctx, mode);
-	};
+	fimgSetVertexContext(ctx, mode);
 
 	setupAttributes(ctx, arrays);
 #ifdef FIMG_DUMP_STATE_BEFORE_DRAW
@@ -1147,11 +1498,9 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 		fillVertexBuffer(ctx);
 		setupVertexBuffer(ctx);
 		drawAutoinc(ctx, 0, copied);
-		count -= copied;
-		indices += copied;
 		copied = primitiveHandler[mode].indexed_16(ctx,
-							arrays, indices, count);
-	} while (count);
+						arrays, indices, &pos, &count);
+	} while (copied);
 
 	/* Release hardware */
 	fimgPutHardware(ctx);

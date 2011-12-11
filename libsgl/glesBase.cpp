@@ -762,7 +762,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	case GL_LINE_LOOP:
 		if (count < 2)
 			return;
-		fglMode = FGPE_LINE_LOOP;
+		fglMode = FGPE_LINE_STRIP;
 		break;
 	case GL_LINES:
 		if (count < 2)
@@ -792,6 +792,17 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	}
 
 	fimgDrawArrays(ctx->fimg, fglMode, arrays, count);
+
+	if (mode == GL_LINE_LOOP) {
+	/*
+	* Line loops have to be emulated using line strips,
+	* as the buffered geometry transfer code doesn't get well
+	* with them.
+	*/
+		const uint8_t indices[2] = { count - 1, 0 };
+		fimgDrawElementsUByteIdx(ctx->fimg,
+						fglMode, arrays, 2, indices);
+	}
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
@@ -835,7 +846,7 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	case GL_LINE_LOOP:
 		if (count < 2)
 			return;
-		fglMode = FGPE_LINE_LOOP;
+		fglMode = FGPE_LINE_STRIP;
 		break;
 	case GL_LINES:
 		if (count < 2)
@@ -865,14 +876,42 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	}
 
 	switch (type) {
-	case GL_UNSIGNED_BYTE:
+	case GL_UNSIGNED_BYTE: {
+		const uint8_t *indices8 = (const uint8_t *)indices;
 		fimgDrawElementsUByteIdx(ctx->fimg, fglMode, arrays,
-					count, (const uint8_t *)indices);
+							count, indices8);
+		if (mode == GL_LINE_LOOP) {
+		/*
+		 * Line loops have to be emulated using line strips,
+		 * as the buffered geometry transfer code doesn't get well
+		 * with them.
+		 */
+			uint8_t tmp[2];
+			tmp[0] = indices8[count - 1];
+			tmp[1] = indices8[0];
+			fimgDrawElementsUByteIdx(ctx->fimg, fglMode,
+								arrays, 2, tmp);
+		}
 		break;
-	case GL_UNSIGNED_SHORT:
-		fimgDrawElementsUShortIdx(ctx->fimg, fglMode, arrays, count,
-						(const uint16_t *)indices);
+	}
+	case GL_UNSIGNED_SHORT: {
+		const uint16_t *indices16 = (const uint16_t *)indices;
+		fimgDrawElementsUShortIdx(ctx->fimg, fglMode, arrays,
+							count, indices16);
+		if (mode == GL_LINE_LOOP) {
+		/*
+		 * Line loops have to be emulated using line strips,
+		 * as the buffered geometry transfer code doesn't get well
+		 * with them.
+		 */
+			uint16_t tmp[2];
+			tmp[0] = indices16[count - 1];
+			tmp[1] = indices16[0];
+			fimgDrawElementsUShortIdx(ctx->fimg, fglMode,
+								arrays, 2, tmp);
+		}
 		break;
+	}
 	default:
 		setError(GL_INVALID_ENUM);
 	}
