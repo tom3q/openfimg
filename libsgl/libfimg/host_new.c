@@ -756,8 +756,6 @@ static uint32_t copyVerticesLinestripIdx16(fimgContext *ctx, fimgArray *arrays,
 
 	if (batchSize > *count)
 		batchSize = *count;
-	else if (batchSize % 2)
-		--batchSize;
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
@@ -772,8 +770,8 @@ static uint32_t copyVerticesLinestripIdx16(fimgContext *ctx, fimgArray *arrays,
 
 	ctx->vertexDataSize = offset;
 
-	*pos += batchSize - 2;
-	*count -= batchSize - 2;
+	*pos += batchSize - 1;
+	*count -= batchSize - 1;
 	return batchSize;
 }
 
@@ -1119,8 +1117,6 @@ static uint32_t copyVerticesLinestripIdx8(fimgContext *ctx, fimgArray *arrays,
 
 	if (batchSize > *count)
 		batchSize = *count;
-	else if (batchSize % 2)
-		--batchSize;
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
@@ -1135,8 +1131,8 @@ static uint32_t copyVerticesLinestripIdx8(fimgContext *ctx, fimgArray *arrays,
 
 	ctx->vertexDataSize = offset;
 
-	*pos += batchSize - 2;
-	*count -= batchSize - 2;
+	*pos += batchSize - 1;
+	*count -= batchSize - 1;
 	return batchSize;
 }
 
