@@ -1185,6 +1185,12 @@ GL_API void GL_APIENTRY glLineWidth (GLfloat width)
 
 	FGLContext *ctx = getContext();
 
+	if (width < FGL_MIN_LINE_WIDTH)
+		width = FGL_MIN_LINE_WIDTH;
+
+	if (width > FGL_MAX_LINE_WIDTH)
+		width = FGL_MAX_LINE_WIDTH;
+
 	ctx->rasterizer.lineWidth = width;
 	fimgSetLineWidth(ctx->fimg, width);
 }
@@ -1202,6 +1208,12 @@ GL_API void GL_APIENTRY glPointSize (GLfloat size)
 	}
 
 	FGLContext *ctx = getContext();
+
+	if (size < FGL_MIN_POINT_SIZE)
+		size = FGL_MIN_POINT_SIZE;
+
+	if (size > FGL_MAX_POINT_SIZE)
+		size = FGL_MAX_POINT_SIZE;
 
 	ctx->rasterizer.pointSize = size;
 	fimgSetPointWidth(ctx->fimg, size);
