@@ -494,13 +494,15 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[0] = FGL_MAX_VIEWPORT_DIMS;
 		params[1] = FGL_MAX_VIEWPORT_DIMS;
 		break;
-#if 0
 	case GL_ALIASED_POINT_SIZE_RANGE:
-		//TODO
+		params[0] = FGL_MIN_POINT_SIZE;
+		params[1] = FGL_MAX_POINT_SIZE;
 		break;
 	case GL_ALIASED_LINE_WIDTH_RANGE:
-		//TODO
+		params[0] = FGL_MIN_LINE_WIDTH;
+		params[1] = FGL_MAX_LINE_WIDTH;
 		break;
+#if 0
 	case GL_MAX_ELEMENTS_INDICES :
 		params[0] = MAX_ELEMENTS_INDICES;
 		break;
@@ -649,14 +651,14 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		params[0] = !!FGL_MAX_VIEWPORT_DIMS;
 		params[1] = !!FGL_MAX_VIEWPORT_DIMS;
 		break;
-#if 0
 	case GL_ALIASED_POINT_SIZE_RANGE:
-		//TODO
+		params[0] = !!FGL_MIN_POINT_SIZE;
+		params[1] = !!FGL_MAX_POINT_SIZE;
 		break;
 	case GL_ALIASED_LINE_WIDTH_RANGE:
-		//TODO
+		params[0] = !!FGL_MIN_LINE_WIDTH;
+		params[1] = !!FGL_MAX_LINE_WIDTH;
 		break;
-#endif
 	case GL_COMPRESSED_TEXTURE_FORMATS :
 		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
 			params[i] = !!fglCompressedTextureFormats[i];
@@ -801,14 +803,14 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		params[0] = fixedFromInt(FGL_MAX_VIEWPORT_DIMS);
 		params[1] = fixedFromInt(FGL_MAX_VIEWPORT_DIMS);
 		break;
-#if 0
 	case GL_ALIASED_POINT_SIZE_RANGE:
-		//TODO
+		params[0] = fixedFromFloat(FGL_MIN_POINT_SIZE);
+		params[1] = fixedFromFloat(FGL_MAX_POINT_SIZE);
 		break;
 	case GL_ALIASED_LINE_WIDTH_RANGE:
-		//TODO
+		params[0] = fixedFromFloat(FGL_MIN_LINE_WIDTH);
+		params[1] = fixedFromFloat(FGL_MAX_LINE_WIDTH);
 		break;
-#endif
 	case GL_COMPRESSED_TEXTURE_FORMATS :
 		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
 			params[i] = fglCompressedTextureFormats[i];
@@ -956,13 +958,15 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[2] = ctx->blend_data.blnd_clr_blue;
 		params[3] = ctx->blend_data.blnd_clr_alpha;
 		break;
+#endif
 	case GL_ALIASED_POINT_SIZE_RANGE:
-		//TODO
+		params[0] = FGL_MIN_POINT_SIZE;
+		params[1] = FGL_MAX_POINT_SIZE;
 		break;
 	case GL_ALIASED_LINE_WIDTH_RANGE:
-		//TODO
+		params[0] = FGL_MIN_LINE_WIDTH;
+		params[1] = FGL_MAX_LINE_WIDTH;
 		break;
-#endif
 	case GL_MAX_VIEWPORT_DIMS:
 		params[0] = FGL_MAX_VIEWPORT_DIMS;
 		params[1] = FGL_MAX_VIEWPORT_DIMS;

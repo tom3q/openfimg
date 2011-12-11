@@ -36,6 +36,10 @@
 #define FGL_MAX_SUBPIXEL_BITS		4
 #define FGL_MAX_TEXTURE_SIZE		2048
 #define FGL_MAX_VIEWPORT_DIMS		2048
+#define FGL_MIN_POINT_SIZE		(1.0f)
+#define FGL_MAX_POINT_SIZE		(2048.0f)
+#define FGL_MIN_LINE_WIDTH		(1.0f)
+#define FGL_MAX_LINE_WIDTH		(128.0f)
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
