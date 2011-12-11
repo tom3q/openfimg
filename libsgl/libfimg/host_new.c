@@ -38,7 +38,6 @@
 #define FGHI_VBADDR		0x8010
 #define FGHI_VB_ENTRY		0xe000
 
-#define ATTRIB_NUM		10
 #define FGHI_ATTRIB(i)		(0x8040 + 4*(i))
 #define FGHI_ATTRIB_VBCTRL(i)	(0x8080 + 4*(i))
 #define FGHI_ATTRIB_VBBASE(i)	(0x80c0 + 4*(i))
@@ -56,7 +55,7 @@ typedef enum {
 void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
 {
 #ifdef FIMG_INTERPOLATION_WORKAROUND
-	ctx->host.control.numoutattrib = 9;
+	ctx->host.control.numoutattrib = FIMG_ATTRIB_NUM;
 #else
 	ctx->host.control.numoutattrib = count;
 #endif
@@ -98,7 +97,7 @@ static inline void setVtxBufAttrib(fimgContext *ctx, unsigned char idx,
 #define VERTEX_BUFFER_CONST	(MAX_WORDS_PER_VERTEX)
 #define VERTEX_BUFFER_WORDS	(VERTEX_BUFFER_SIZE / 4 - VERTEX_BUFFER_CONST)
 
-#define MAX_ATTRIBS		(8)
+#define MAX_ATTRIBS		(FIMG_ATTRIB_NUM)
 #define MAX_WORDS_PER_ATTRIB	(4)
 #define MAX_WORDS_PER_VERTEX	(MAX_ATTRIBS*MAX_WORDS_PER_ATTRIB)
 

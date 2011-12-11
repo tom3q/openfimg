@@ -49,7 +49,7 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 {
 	ctx->primitive.vctx.type = 1 << type; // See fimgPrimitiveType enum
 #ifdef FIMG_INTERPOLATION_WORKAROUND
-	ctx->primitive.vctx.vsOut = 8; // WORKAROUND
+	ctx->primitive.vctx.vsOut = FIMG_ATTRIB_NUM - 1; // WORKAROUND
 #else
 	ctx->primitive.vctx.vsOut = ctx->numAttribs - 1; // Without position
 #endif

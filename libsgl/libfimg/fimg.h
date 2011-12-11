@@ -81,7 +81,7 @@ uint32_t fimgGetInterruptState(fimgContext *ctx);
  * Host interface
  */
 
-#define FIMG_ATTRIB_NUM			8
+#define FIMG_ATTRIB_NUM		9
 
 /* Type definitions */
 #define FGHI_NUMCOMP(i)		((i) - 1)

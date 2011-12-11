@@ -663,7 +663,7 @@ void fimgCompatFlush(fimgContext *ctx)
 		fimgCompatLoadPixelShader(ctx);
 		ctx->compat.psDirty = 0;
 	}
-	setPixelShaderAttribCount(ctx, 8);
+	setPixelShaderAttribCount(ctx, FIMG_ATTRIB_NUM - 1);
 
 	for (i = 0; i < FIMG_NUM_TEXTURE_UNITS; i++) {
 		if (ctx->compat.texture[i].texture == NULL)
