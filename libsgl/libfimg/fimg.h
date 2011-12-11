@@ -59,7 +59,11 @@ typedef struct _fimgContext fimgContext;
 /* Functions */
 uint32_t fimgGetPipelineStatus(fimgContext *ctx);
 int fimgFlush(fimgContext *ctx);
+#if 0
 int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask);
+#else
+static inline int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask) {}
+#endif
 int fimgInvalidateCache(fimgContext *ctx,
 				unsigned int vtcclear, unsigned int tcclear);
 int fimgFlushCache(fimgContext *ctx,

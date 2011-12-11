@@ -83,6 +83,7 @@ int fimgFlush(fimgContext *ctx)
 	return fimgWaitForFlush(ctx, FGHI_PIPELINE_ALL);
 }
 
+#if 0
 int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask)
 {
 	if (fimgRead(ctx, FGGB_PIPESTATE) & mask)
@@ -90,6 +91,7 @@ int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask)
 
 	return 0;
 }
+#endif
 
 /*****************************************************************************
  * FUNCTIONS:	fimgInvalidateCache
