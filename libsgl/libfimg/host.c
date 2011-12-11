@@ -177,8 +177,8 @@ static inline void fimgDrawVertex(fimgContext *ctx, fimgArray *arrays, unsigned 
  * 		[IN] first: index of first vertex
  *		[IN] count: number of vertices
  *****************************************************************************/
-void fimgDrawArrays(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-					unsigned int first, unsigned int count)
+void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
+					fimgArray *arrays, unsigned int count)
 {
 	unsigned int i;
 	fimgAttribute last;
@@ -209,7 +209,7 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 	words[1] = 0xffffffff;
 	fimgSendToFIFO(ctx, 2, words);
 
-	for(i=first; i<first+count; i++)
+	for(i=0; i<count; i++)
 		fimgDrawVertex(ctx, arrays, i);
 
 	// Free hardware lock

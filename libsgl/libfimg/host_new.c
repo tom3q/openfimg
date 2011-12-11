@@ -973,10 +973,11 @@ static void setupVertexBuffer(fimgContext *ctx)
 	}
 }
 
-void fimgDrawArrays(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-					unsigned int first, unsigned int count)
+void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
+					fimgArray *arrays, unsigned int count)
 {
 	unsigned int copied;
+	unsigned int first = 0;
 
 	if (mode >= FGPE_PRIMITIVE_MAX)
 		return;

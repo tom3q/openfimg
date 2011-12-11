@@ -731,7 +731,9 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); ++i) {
 		if(ctx->array[i].enabled) {
-			arrays[i].pointer	= ctx->array[i].pointer;
+			arrays[i].pointer	=
+					(const uint8_t *)ctx->array[i].pointer
+					+ first*ctx->array[i].stride;
 			arrays[i].stride	= ctx->array[i].stride;
 			arrays[i].width		= ctx->array[i].width;
 		} else {
@@ -789,7 +791,7 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		return;
 	}
 
-	fimgDrawArrays(ctx->fimg, fglMode, arrays, first, count);
+	fimgDrawArrays(ctx->fimg, fglMode, arrays, count);
 }
 
 GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
@@ -986,7 +988,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
 
-	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_FAN, arrays, 0, 4);
+	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_FAN, arrays, 4);
 
 	// Restore previous state
 

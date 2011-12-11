@@ -112,8 +112,8 @@ typedef struct {
 } fimgArray;
 
 /* Functions */
-void fimgDrawArrays(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-					unsigned int first, unsigned int count);
+void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
+					fimgArray *arrays, unsigned int count);
 void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 				unsigned int count, const uint8_t *indices);
 void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
