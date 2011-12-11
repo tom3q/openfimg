@@ -220,10 +220,10 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 		params[1] = ctx->viewport.zFar;
 		break;
 	case GL_POINT_SIZE:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);
+		params[0] = ctx->rasterizer.pointSize;
 		break;
 	case GL_LINE_WIDTH:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_LINE_WIDTH);
+		params[0] = ctx->rasterizer.lineWidth;
 		break;
 	case GL_CULL_FACE_MODE:
 		switch (fimgGetRasterizerState(ctx->fimg, FIMG_CULL_FACE_MODE)) {
@@ -603,12 +603,10 @@ GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 		params[1] = !!ctx->viewport.zFar;
 		break;
 	case GL_POINT_SIZE:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-							FIMG_POINT_SIZE) != 0;
+		params[0] = ctx->rasterizer.pointSize != 0.0f;
 		break;
 	case GL_LINE_WIDTH:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-							FIMG_LINE_WIDTH) != 0;
+		params[0] = ctx->rasterizer.lineWidth != 0.0f;
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
 		params[0] = fimgGetRasterizerStateF(ctx->fimg,
@@ -760,12 +758,10 @@ GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 		params[1] = fixedFromFloat(ctx->viewport.zFar);
 		break;
 	case GL_POINT_SIZE:
-		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
-							FIMG_POINT_SIZE));
+		params[0] = fixedFromFloat(ctx->rasterizer.pointSize);
 		break;
 	case GL_LINE_WIDTH:
-		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
-							FIMG_LINE_WIDTH));
+		params[0] = fixedFromFloat(ctx->rasterizer.lineWidth);
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
 		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
@@ -919,10 +915,10 @@ GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 		params[1] = ctx->viewport.zFar;
 		break;
 	case GL_POINT_SIZE:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_POINT_SIZE);
+		params[0] = ctx->rasterizer.pointSize;
 		break;
 	case GL_LINE_WIDTH:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg, FIMG_LINE_WIDTH);
+		params[0] = ctx->rasterizer.lineWidth;
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
 		params[0] = fimgGetRasterizerStateF(ctx->fimg,

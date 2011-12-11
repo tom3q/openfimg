@@ -211,6 +211,14 @@ struct FGLClearState {
 		red(0), green(0), blue(0), alpha(0), depth(1.0), stencil(0) {};
 };
 
+struct FGLRasterizerState {
+	float lineWidth;
+	float pointSize;
+
+	FGLRasterizerState() :
+		lineWidth(1.0f), pointSize(1.0f) {};
+};
+
 struct FGLContext {
 	/* HW state */
 	fimgContext *fimg;
@@ -227,6 +235,7 @@ struct FGLContext {
 	FGLBufferObjectBinding arrayBuffer;
 	FGLBufferObjectBinding elementArrayBuffer;
 	FGLViewportState viewport;
+	FGLRasterizerState rasterizer;
 	FGLPerFragmentState perFragment;
 	FGLClearState clear;
 	FGLTexture *busyTexture[FGL_MAX_TEXTURE_UNITS];

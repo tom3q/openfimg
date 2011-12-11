@@ -1176,6 +1176,42 @@ GL_API void GL_APIENTRY glFrontFace (GLenum mode)
 	fimgSetFaceCullFront(ctx->fimg, cw);
 }
 
+GL_API void GL_APIENTRY glLineWidth (GLfloat width)
+{
+	if (width <= 0.0f) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	ctx->rasterizer.lineWidth = width;
+	fimgSetLineWidth(ctx->fimg, width);
+}
+
+GL_API void GL_APIENTRY glLineWidthx (GLfixed width)
+{
+	glLineWidth(floatFromFixed(width));
+}
+
+GL_API void GL_APIENTRY glPointSize (GLfloat size)
+{
+	if (size <= 0.0f) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	ctx->rasterizer.pointSize = size;
+	fimgSetPointWidth(ctx->fimg, size);
+}
+
+GL_API void GL_APIENTRY glPointSizex (GLfixed size)
+{
+	glPointSize(floatFromFixed(size));
+}
+
 /**
 	Per-fragment operations
 */
@@ -1796,16 +1832,6 @@ GL_API void GL_APIENTRY glLightxv (GLenum light, GLenum pname,
 	FUNC_UNIMPLEMENTED;
 }
 
-GL_API void GL_APIENTRY glLineWidth (GLfloat width)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glLineWidthx (GLfixed width)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
 GL_API void GL_APIENTRY glMaterialf (GLenum face, GLenum pname, GLfloat param)
 {
 	FUNC_UNIMPLEMENTED;
@@ -1844,16 +1870,6 @@ GL_API void GL_APIENTRY glPointParameterx (GLenum pname, GLfixed param)
 }
 
 GL_API void GL_APIENTRY glPointParameterxv (GLenum pname, const GLfixed *params)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glPointSize (GLfloat size)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glPointSizex (GLfixed size)
 {
 	FUNC_UNIMPLEMENTED;
 }
