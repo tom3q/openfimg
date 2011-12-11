@@ -185,7 +185,7 @@ static void fillVertexBuffer(fimgContext *ctx)
 	volatile uint32_t *reg =
 			(volatile uint32_t *)(ctx->base + FGHI_VB_ENTRY);
 	uint32_t *data = (uint32_t *)ctx->vertexData;
-	unsigned count = ((ctx->vertexDataSize + 31) & ~31) / 4;
+	unsigned count = (ctx->vertexDataSize + 31) / 32;
 
 	fimgWrite(ctx, 0, FGHI_VBADDR);
 
@@ -196,7 +196,7 @@ static void fillVertexBuffer(fimgContext *ctx)
 		"subs %2, %2, $1\n\t"
 		"bne 1b\n\t"
 		:
-		: "r"(reg), "r"(data), "r"(count / 8)
+		: "r"(reg), "r"(data), "r"(count)
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"
 	);
 }
