@@ -1353,11 +1353,10 @@ static inline void drawAutoinc(fimgContext *ctx,
 static void setupAttributes(fimgContext *ctx, fimgArray *arrays)
 {
 	fimgAttribute last;
-	fimgArray *a;
 	unsigned int i;
 
 	// write attribute configuration
-	for (a = arrays, i = 0; i < ctx->numAttribs - 1; i++, a++)
+	for (i = 0; i < ctx->numAttribs - 1; ++i)
 		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
 
 	// write the last one
