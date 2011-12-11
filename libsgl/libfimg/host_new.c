@@ -111,6 +111,7 @@ static inline void setVtxBufAttrib(fimgContext *ctx, unsigned char idx,
  * as the range of input number is pretty small (1 to 32 words per vertex).
  */
 static const int vertexWordsToVertexCount[] = {
+	4096, /* Limit for constant vertices */
 	VERTEX_BUFFER_WORDS / 1,
 	VERTEX_BUFFER_WORDS / 2,
 	VERTEX_BUFFER_WORDS / 3,
@@ -145,9 +146,6 @@ static const int vertexWordsToVertexCount[] = {
 	VERTEX_BUFFER_WORDS / 32,
 };
 
-#define VERTEX_WORDS_TO_VERTEX_COUNT(words) \
-	(vertexWordsToVertexCount[(words - 1) & (MAX_WORDS_PER_VERTEX - 1)])
-
 /* Calculate how many vertices will fit into vertex buffer with given config */
 static unsigned int calculateBatchSize(fimgArray *arrays, int count)
 {
@@ -164,7 +162,7 @@ static unsigned int calculateBatchSize(fimgArray *arrays, int count)
 		size += (a->width + 3) / 4;
 	}
 
-	return VERTEX_WORDS_TO_VERTEX_COUNT(size);
+	return vertexWordsToVertexCount[size];
 }
 
 static void fillVertexBuffer(fimgContext *ctx)
