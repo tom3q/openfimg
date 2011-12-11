@@ -399,6 +399,7 @@ static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 static void fglGenerateMipmaps(FGLTexture *obj)
 {
  FUNCTION_TRACER;
+#if 0
 	/* Handle cases supported by G2D hardware */
 	switch (obj->fglFormat) {
 	case FGTU_TSTA_TEXTURE_FORMAT_565:
@@ -414,7 +415,7 @@ static void fglGenerateMipmaps(FGLTexture *obj)
 			break;
 		return;
 	}
-
+#endif
 	/* Handle other cases (including G2D failure) */
 	fglGenerateMipmapsSW(obj);
 }
