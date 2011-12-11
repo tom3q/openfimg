@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <malloc.h>
 #include "fimg_private.h"
 
 #define FGHI_FIFO_SIZE		32
@@ -1372,7 +1373,7 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 		return;
 
 	if (!ctx->vertexData)
-		ctx->vertexData = malloc(VERTEX_BUFFER_SIZE);
+		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
 
 	if (!ctx->vertexData) {
 		LOGE("Failed to allocate vertex data buffer. Terminating.");
@@ -1419,7 +1420,7 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 		return;
 
 	if (!ctx->vertexData)
-		ctx->vertexData = malloc(VERTEX_BUFFER_SIZE);
+		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
 
 	if (!ctx->vertexData) {
 		LOGE("Failed to allocate vertex data buffer. Terminating.");
