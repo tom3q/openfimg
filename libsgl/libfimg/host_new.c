@@ -1384,6 +1384,11 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 	if (mode >= FGPE_PRIMITIVE_MAX)
 		return;
 
+	if (!primitiveHandler[mode].direct) {
+		LOGE("%s: Unsupported mode %d", __func__, mode);
+		return;
+	}
+
 	if (!ctx->vertexData)
 		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
 
@@ -1430,6 +1435,11 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 
 	if (mode >= FGPE_PRIMITIVE_MAX)
 		return;
+
+	if (!primitiveHandler[mode].indexed_8) {
+		LOGE("%s: Unsupported mode %d", __func__, mode);
+		return;
+	}
 
 	if (!ctx->vertexData)
 		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
@@ -1478,6 +1488,11 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 
 	if (mode >= FGPE_PRIMITIVE_MAX)
 		return;
+
+	if (!primitiveHandler[mode].indexed_16) {
+		LOGE("%s: Unsupported mode %d", __func__, mode);
+		return;
+	}
 
 	if (!ctx->vertexData)
 		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
