@@ -114,16 +114,10 @@ typedef struct {
 /* Functions */
 void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 					fimgArray *arrays, unsigned int count);
-void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-				unsigned int count, const uint8_t *indices);
-void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-				unsigned int count, const uint16_t *indices);
-void fimgDrawArraysBuffered(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-					unsigned int first, unsigned int count);
-void fimgDrawElementsBufferedUByteIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-				unsigned int count, const uint8_t *indices);
-void fimgDrawElementsBufferedUShortIdx(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
-				unsigned int count, const uint16_t *indices);
+void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
+		fimgArray *arrays, unsigned int count, const uint8_t *indices);
+void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
+		fimgArray *arrays, unsigned int count, const uint16_t *indices);
 void fimgSetAttribute(fimgContext *ctx,
 		      unsigned int idx,
 		      unsigned int type,
