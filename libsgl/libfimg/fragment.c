@@ -471,9 +471,15 @@ void fimgSetFrameBufSize(fimgContext *ctx,
 
 void fimgCreateFragmentContext(fimgContext *ctx)
 {
+	ctx->fragment.alpha.mode = FGPF_TEST_MODE_ALWAYS;
 	ctx->fragment.depth.mode = FGPF_TEST_MODE_LESS;
-	ctx->fragment.stFront.mode = FGPF_TEST_MODE_ALWAYS;
-	ctx->fragment.stBack.mode = FGPF_TEST_MODE_ALWAYS;
+	ctx->fragment.stFront.mode = FGPF_STENCIL_MODE_ALWAYS;
+	ctx->fragment.stFront.mask = 0xff;
+	ctx->fragment.stBack.mode = FGPF_STENCIL_MODE_ALWAYS;
+	ctx->fragment.stBack.mask = 0xff;
+	ctx->fragment.blend.asrcblendfunc = FGPF_BLEND_FUNC_ONE;
+	ctx->fragment.blend.csrcblendfunc = FGPF_BLEND_FUNC_ONE;
+	ctx->fragment.fbctl.dither = 1;
 }
 
 void fimgRestoreFragmentState(fimgContext *ctx)
