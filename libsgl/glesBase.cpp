@@ -1226,6 +1226,20 @@ GL_API void GL_APIENTRY glPointSizex (GLfixed size)
 	glPointSize(floatFromFixed(size));
 }
 
+GL_API void GL_APIENTRY glPolygonOffset (GLfloat factor, GLfloat units)
+{
+	FGLContext *ctx = getContext();
+
+	fimgSetDepthOffsetParam(ctx->fimg, factor, units);
+	ctx->rasterizer.polyOffFactor = factor;
+	ctx->rasterizer.polyOffUnits = units;
+}
+
+GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
+{
+	glPolygonOffset(floatFromFixed(factor), floatFromFixed(units));
+}
+
 /**
 	Per-fragment operations
 */
@@ -1894,16 +1908,6 @@ GL_API void GL_APIENTRY glPointParameterx (GLenum pname, GLfixed param)
 }
 
 GL_API void GL_APIENTRY glPointParameterxv (GLenum pname, const GLfixed *params)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glPolygonOffset (GLfloat factor, GLfloat units)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
 {
 	FUNC_UNIMPLEMENTED;
 }
