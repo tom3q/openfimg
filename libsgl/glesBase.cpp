@@ -1289,7 +1289,7 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 #if 0
 	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
 #else
-	if (ctx->perFragment.scissor.enabled)
+	if (ctx->enable.scissorTest)
 		fglSetScissor(ctx, x, y, width, height);
 #endif
 }
@@ -1654,12 +1654,14 @@ static inline void fglSet(GLenum cap, bool state)
 		break;
 	case GL_CULL_FACE:
 		fimgSetFaceCullEnable(ctx->fimg, state);
+		ctx->enable.cullFace = 1;
 		break;
 	case GL_POLYGON_OFFSET_FILL:
 		fimgEnableDepthOffset(ctx->fimg, state);
+		ctx->enable.polyOffFill = 1;
 		break;
 	case GL_SCISSOR_TEST:
-		ctx->perFragment.scissor.enabled = state;
+		ctx->enable.scissorTest = state;
 #if 1
 		if (state) {
 			fglSetScissor(ctx, ctx->perFragment.scissor.left,
@@ -1676,21 +1678,27 @@ static inline void fglSet(GLenum cap, bool state)
 		break;
 	case GL_ALPHA_TEST:
 		fimgSetAlphaEnable(ctx->fimg, state);
+		ctx->enable.alphaTest = state;
 		break;
 	case GL_STENCIL_TEST:
 		fimgSetStencilEnable(ctx->fimg, state);
+		ctx->enable.stencilTest = state;
 		break;
 	case GL_DEPTH_TEST:
 		fimgSetDepthEnable(ctx->fimg, state);
+		ctx->enable.depthTest = state;
 		break;
 	case GL_BLEND:
 		fimgSetBlendEnable(ctx->fimg, state);
+		ctx->enable.blend = state;
 		break;
 	case GL_DITHER:
 		fimgSetDitherEnable(ctx->fimg, state);
+		ctx->enable.dither = state;
 		break;
 	case GL_COLOR_LOGIC_OP:
 		fimgSetLogicalOpEnable(ctx->fimg, state);
+		ctx->enable.colorLogicOp = state;
 		break;
 	case GL_LIGHTING:
 	case GL_LIGHT0:

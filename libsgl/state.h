@@ -173,10 +173,9 @@ struct FGLScissorState {
 	GLint bottom;
 	GLint width;
 	GLint height;
-	GLboolean enabled;
 
 	FGLScissorState() :
-		left(0), bottom(0), width(2048), height(2048), enabled(GL_FALSE) {};
+		left(0), bottom(0), width(2048), height(2048) {};
 };
 
 struct FGLMaskState {
@@ -242,6 +241,22 @@ struct FGLRasterizerState {
 		frontFace(GL_CCW), polyOffFactor(0.0f), polyOffUnits(0.0f) {};
 };
 
+struct FGLEnableState {
+	unsigned cullFace	:1;
+	unsigned polyOffFill	:1;
+	unsigned scissorTest	:1;
+	unsigned stencilTest	:1;
+	unsigned depthTest	:1;
+	unsigned blend		:1;
+	unsigned dither		:1;
+	unsigned colorLogicOp	:1;
+	unsigned alphaTest	:1;
+
+	FGLEnableState() :
+		cullFace(0), polyOffFill(0), scissorTest(0), stencilTest(0),
+		depthTest(0), blend(0), dither(1), colorLogicOp(0) {};
+};
+
 struct FGLContext {
 	/* HW state */
 	fimgContext *fimg;
@@ -262,6 +277,7 @@ struct FGLContext {
 	FGLPerFragmentState perFragment;
 	FGLClearState clear;
 	FGLTexture *busyTexture[FGL_MAX_TEXTURE_UNITS];
+	FGLEnableState enable;
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;

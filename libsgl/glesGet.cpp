@@ -542,37 +542,21 @@ GL_API GLboolean GL_APIENTRY glIsEnabled (GLenum cap)
 
 	switch (cap) {
 	case GL_CULL_FACE:
-		return fimgGetRasterizerState(ctx->fimg, FIMG_CULL_FACE_EN);
-		break;
+		return ctx->enable.cullFace;
 	case GL_POLYGON_OFFSET_FILL:
-		return fimgGetRasterizerState(ctx->fimg, FIMG_DEPTH_OFFSET_EN);
-		break;
+		return ctx->enable.polyOffFill;
 	case GL_SCISSOR_TEST:
-		return fimgGetFragmentState(ctx->fimg, FIMG_SCISSOR_TEST);
-		break;
+		return ctx->enable.scissorTest;
 	case GL_STENCIL_TEST:
-		return fimgGetFragmentState(ctx->fimg, FIMG_STENCIL_TEST);
-		break;
+		return ctx->enable.stencilTest;
 	case GL_DEPTH_TEST:
-		return fimgGetFragmentState(ctx->fimg, FIMG_DEPTH_TEST);
-		break;
+		return ctx->enable.depthTest;
 	case GL_BLEND:
-		return fimgGetFragmentState(ctx->fimg, FIMG_BLEND);
-		break;
+		return ctx->enable.blend;
 	case GL_DITHER:
-		return fimgGetFragmentState(ctx->fimg, FIMG_DITHER);
-		break;
-#if 0
-	case GL_ALPHA_TEST_EXP:
-		break;
-#endif
+		return ctx->enable.dither;
 	case GL_COLOR_LOGIC_OP:
-		return fimgGetFragmentState(ctx->fimg, FIMG_COLOR_LOGIC_OP);
-		break;
-#if 0
-	case GL_POINT_SPRITE_OES_EXP:
-		break;
-#endif
+		return ctx->enable.colorLogicOp;
 	default:
 		setError(GL_INVALID_ENUM);
 		return GL_FALSE;

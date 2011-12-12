@@ -690,7 +690,7 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 	b = 0;
 	w = ctx->surface.width;
 	h = ctx->surface.height;
-	if (ctx->perFragment.scissor.enabled) {
+	if (ctx->enable.scissorTest) {
 		if (ctx->perFragment.scissor.left > 0)
 			l = ctx->perFragment.scissor.left;
 		if (ctx->perFragment.scissor.bottom > 0)
