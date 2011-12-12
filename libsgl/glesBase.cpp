@@ -1247,26 +1247,10 @@ GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
 static inline void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
 						GLsizei width, GLsizei height)
 {
-#if 0
-	unsigned int xmin = clamp(x, ctx->viewport.x,
-			ctx->viewport.x + ctx->viewport.width);
-	unsigned int xmax = clamp(x + width, ctx->viewport.x,
-			ctx->viewport.x + ctx->viewport.width);
-	unsigned int ymin = clamp(y, ctx->viewport.y,
-			ctx->viewport.y + ctx->viewport.height);
-	unsigned int ymax = clamp(y + height, ctx->viewport.y,
-			ctx->viewport.y + ctx->viewport.height);
-#elif 0
-	unsigned int xmin = x;
-	unsigned int xmax = x + width;
-	unsigned int ymin = y;
-	unsigned int ymax = y + height;
-#else
 	unsigned int xmin = clamp(x, 0, ctx->surface.width);
 	unsigned int xmax = clamp(x + width, 0, ctx->surface.width);
 	unsigned int ymin = clamp(y, 0, ctx->surface.height);
 	unsigned int ymax = clamp(y + height, 0, ctx->surface.height);
-#endif
 
 	fimgSetXClip(ctx->fimg, xmin, xmax);
 	fimgSetYClip(ctx->fimg, ymin, ymax);
@@ -1286,12 +1270,8 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 	ctx->perFragment.scissor.width	= width;
 	ctx->perFragment.scissor.height	= height;
 
-#if 0
-	fimgSetScissorParams(ctx->fimg, x + width, x, y + height, y);
-#else
 	if (ctx->enable.scissorTest)
 		fglSetScissor(ctx, x, y, width, height);
-#endif
 }
 
 static inline void fglAlphaFunc (GLenum func, GLubyte ref)
@@ -1627,16 +1607,6 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 	ctx->perFragment.logicOp = opcode;
 }
 
-#if 0
-void fglSetClipper(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
-{
-	FGLContext *ctx = getContext();
-
-	fimgSetXClip(ctx->fimg, left, right);
-	fimgSetYClip(ctx->fimg, top, bottom);
-}
-#endif
-
 /**
 	Enable/disable
 */
@@ -1662,7 +1632,6 @@ static inline void fglSet(GLenum cap, bool state)
 		break;
 	case GL_SCISSOR_TEST:
 		ctx->enable.scissorTest = state;
-#if 1
 		if (state) {
 			fglSetScissor(ctx, ctx->perFragment.scissor.left,
 					ctx->perFragment.scissor.bottom,
@@ -1672,9 +1641,6 @@ static inline void fglSet(GLenum cap, bool state)
 			fglSetScissor(ctx, 0, 0, ctx->surface.width,
 							ctx->surface.height);
 		}
-#else
-		fimgSetScissorEnable(ctx->fimg, state);
-#endif
 		break;
 	case GL_ALPHA_TEST:
 		fimgSetAlphaEnable(ctx->fimg, state);

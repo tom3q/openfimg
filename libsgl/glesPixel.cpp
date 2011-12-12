@@ -709,9 +709,7 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 	if (!h || !w)
 		return;
 
-	//lineByLine |= (l > 0);
 	lineByLine |= (w < ctx->surface.width);
-	//lineByLine &= (ctx->perFragment.scissor.enabled == GL_TRUE);
 
 	if (mode & GL_COLOR_BUFFER_BIT) {
 		bool is32bpp = false;
