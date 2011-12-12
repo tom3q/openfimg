@@ -547,6 +547,8 @@ GL_API GLboolean GL_APIENTRY glIsEnabled (GLenum cap)
 		return ctx->enable.polyOffFill;
 	case GL_SCISSOR_TEST:
 		return ctx->enable.scissorTest;
+	case GL_ALPHA_TEST:
+		return ctx->enable.alphaTest;
 	case GL_STENCIL_TEST:
 		return ctx->enable.stencilTest;
 	case GL_DEPTH_TEST:
