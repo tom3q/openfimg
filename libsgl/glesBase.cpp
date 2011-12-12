@@ -1466,6 +1466,29 @@ GL_API void GL_APIENTRY glDepthFunc (GLenum func)
 	ctx->perFragment.depthFunc = func;
 }
 
+static void fglSetBlending(FGLContext *ctx)
+{
+	fimgBlendFunction fglSrc, fglDest;
+
+	if (ctx->enable.blend) {
+		fglSrc = ctx->perFragment.fglBlendSrc;
+		fglDest = ctx->perFragment.fglBlendDst;
+	} else if (ctx->perFragment.masked) {
+		fglSrc = FGPF_BLEND_FUNC_ONE;
+		fglDest = FGPF_BLEND_FUNC_ZERO;
+	} else {
+		fimgSetBlendEnable(ctx->fimg, 0);
+		return;
+	}
+
+	if (fglColorConfigs[ctx->surface.format].alpha)
+		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+	else
+		fimgSetBlendFuncNoAlpha(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+
+	fimgSetBlendEnable(ctx->fimg, 1);
+}
+
 GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
 {
 	fimgBlendFunction fglSrc, fglDest;
@@ -1535,12 +1558,12 @@ GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
 
 	FGLContext *ctx = getContext();
 
-	if (fglColorConfigs[ctx->surface.format].alpha)
-		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
-	else
-		fimgSetBlendFuncNoAlpha(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
 	ctx->perFragment.blendSrc = sfactor;
+	ctx->perFragment.fglBlendSrc = fglSrc;
 	ctx->perFragment.blendDst = dfactor;
+	ctx->perFragment.fglBlendDst = fglDest;
+
+	fglSetBlending(ctx);
 }
 
 GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
@@ -1655,8 +1678,8 @@ static inline void fglSet(GLenum cap, bool state)
 		ctx->enable.depthTest = state;
 		break;
 	case GL_BLEND:
-		fimgSetBlendEnable(ctx->fimg, state);
 		ctx->enable.blend = state;
+		fglSetBlending(ctx);
 		break;
 	case GL_DITHER:
 		fimgSetDitherEnable(ctx->fimg, state);
@@ -1735,7 +1758,9 @@ GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green,
 	ctx->perFragment.mask.green = green;
 	ctx->perFragment.mask.blue = blue;
 	ctx->perFragment.mask.alpha = alpha;
+	ctx->perFragment.masked = (!red || !green || !blue || !alpha);
 
+	fglSetBlending(ctx);
 	fimgSetColorBufWriteMask(ctx->fimg, red, green, blue, alpha);
 }
 

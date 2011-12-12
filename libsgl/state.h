@@ -211,9 +211,14 @@ struct FGLPerFragmentState {
 	GLenum blendSrc;
 	GLenum blendDst;
 	GLenum logicOp;
+	bool masked;
+	fimgBlendFunction fglBlendSrc;
+	fimgBlendFunction fglBlendDst;
 
 	FGLPerFragmentState() :
-		blendSrc(GL_ONE), blendDst(GL_ZERO), logicOp(GL_COPY) {};
+		blendSrc(GL_ONE), blendDst(GL_ZERO), logicOp(GL_COPY),
+		masked(false), fglBlendSrc(FGPF_BLEND_FUNC_ONE),
+		fglBlendDst(FGPF_BLEND_FUNC_ZERO) {};
 };
 
 struct FGLClearState {
