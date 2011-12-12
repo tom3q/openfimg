@@ -103,7 +103,9 @@ static inline GLint intFromFixed(GLfixed x)
 
 static inline GLint intFromClampf(GLclampf c)
 {
-	return (c * (0xffffffff) - 1) / 2;
+	if (c < 0.5f)
+		return 0;
+	return 1;
 }
 
 static inline GLint intFromClampx(GLclampx c)
