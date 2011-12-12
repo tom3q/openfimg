@@ -23,6 +23,7 @@
 #define _LIBSGL_TYPES_H_
 
 #include <GLES/gl.h>
+#include <cmath>
 
 typedef GLfloat FGLvec4f[4];
 typedef GLfloat FGLvec3f[3];
@@ -138,6 +139,16 @@ static inline GLboolean boolFromFixed(GLfixed x)
 static inline GLboolean boolFromInt(GLint i)
 {
 	return !!i;
+}
+
+static inline GLint intFromNormalized(GLfloat f)
+{
+        return (double)f*2147483648.0f - 0.5f*f - 0.5f;
+}
+
+static inline GLint round(GLfloat f)
+{
+	return (f > 0.0f) ? floor(f + 0.5f) : ceil(f - 0.5f);
 }
 
 typedef unsigned char FGLubyte;

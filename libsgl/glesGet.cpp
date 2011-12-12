@@ -194,385 +194,261 @@ GL_API const GLubyte * GL_APIENTRY glGetString (GLenum name)
 	}
 }
 
-GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
-{
-	FGLContext *ctx = getContext();
+struct FGLStateGetter {
+	FGLStateGetter() : _n(0) {}
 
+	virtual void putInteger(GLint i) = 0;
+	virtual void putFloat(GLfloat f) = 0;
+	virtual void putBoolean(GLboolean b) = 0;
+	virtual void putFixed(GLfixed x) = 0;
+	virtual void putEnum(GLenum e) = 0;
+	virtual void putNormalized(GLfloat f) = 0;
+
+	virtual ~FGLStateGetter() {}
+
+protected:
+	int _n;
+};
+
+struct FGLFloatGetter : FGLStateGetter {
+	FGLFloatGetter(GLfloat *f) : _f(f) {}
+
+	virtual void putInteger(GLint i) { _f[_n++] = i; }
+	virtual void putFloat(GLfloat f) { _f[_n++] = f; }
+	virtual void putBoolean(GLboolean b) { _f[_n++] = b; }
+	virtual void putFixed(GLfixed x) { _f[_n++] = floatFromFixed(x); }
+	virtual void putEnum(GLenum e) { _f[_n++] = e; }
+	virtual void putNormalized(GLfloat f) { _f[_n++] = f; }
+
+private:
+	GLfloat *_f;
+};
+
+struct FGLFixedGetter : FGLStateGetter {
+	FGLFixedGetter(GLfixed *x) : _x(x) {}
+
+	virtual void putInteger(GLint i) { _x[_n++] = fixedFromInt(i); }
+	virtual void putFloat(GLfloat f) { _x[_n++] = fixedFromFloat(f); }
+	virtual void putBoolean(GLboolean b) { _x[_n++] = fixedFromBool(b); }
+	virtual void putFixed(GLfixed x) { _x[_n++] = x; }
+	virtual void putEnum(GLenum e) { _x[_n++] = e; }
+	virtual void putNormalized(GLfloat f) { _x[_n++] = fixedFromFloat(f); }
+
+private:
+	GLfixed *_x;
+};
+
+struct FGLIntegerGetter : FGLStateGetter {
+	FGLIntegerGetter(GLint *i) : _i(i) {}
+
+	virtual void putInteger(GLint i) { _i[_n++] = i; }
+	virtual void putFloat(GLfloat f) { _i[_n++] = round(f); }
+	virtual void putBoolean(GLboolean b) { _i[_n++] = b; }
+	virtual void putFixed(GLfixed x) { _i[_n++] = round(floatFromFixed(x)); }
+	virtual void putEnum(GLenum e) { _i[_n++] = e; }
+	virtual void putNormalized(GLfloat f) { _i[_n++] = intFromNormalized(f); }
+
+private:
+	GLint *_i;
+};
+
+struct FGLBooleanGetter : FGLStateGetter {
+	FGLBooleanGetter(GLboolean *b) : _b(b) {}
+
+	virtual void putInteger(GLint i) { _b[_n++] = !!i; }
+	virtual void putFloat(GLfloat f) { _b[_n++] = (f != 0.0f); }
+	virtual void putBoolean(GLboolean b) { _b[_n++] = b; }
+	virtual void putFixed(GLfixed x) { _b[_n++] = !!x; }
+	virtual void putEnum(GLenum e) { _b[_n++] = false; }
+	virtual void putNormalized(GLfloat f) { _b[_n++] = (f != 0.0f); }
+
+private:
+	GLboolean *_b;
+};
+
+void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
+{
 	switch (pname) {
 	case GL_ARRAY_BUFFER_BINDING:
-		params[0] = 0;
 		if (ctx->arrayBuffer.isBound())
-			params[0] = ctx->arrayBuffer.getName();
+			state.putInteger(ctx->arrayBuffer.getName());
+		else
+			state.putInteger(0);
 		break;
 	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
-		params[0] = 0;
 		if (ctx->elementArrayBuffer.isBound())
-			params[0] = ctx->elementArrayBuffer.getName();
+			state.putInteger(ctx->elementArrayBuffer.getName());
+		else
+			state.putInteger(0);
 		break;
 	case GL_VIEWPORT:
-		params[0] = ctx->viewport.x;
-		params[1] = ctx->viewport.y;
-		params[2] = ctx->viewport.width;
-		params[3] = ctx->viewport.height;
+		state.putFloat(ctx->viewport.x);
+		state.putFloat(ctx->viewport.y);
+		state.putFloat(ctx->viewport.width);
+		state.putFloat(ctx->viewport.height);
 		break;
 	case GL_DEPTH_RANGE:
-		params[0] = ctx->viewport.zNear;
-		params[1] = ctx->viewport.zFar;
+		state.putFloat(ctx->viewport.zNear);
+		state.putFloat(ctx->viewport.zFar);
 		break;
 	case GL_POINT_SIZE:
-		params[0] = ctx->rasterizer.pointSize;
+		state.putFloat(ctx->rasterizer.pointSize);
 		break;
 	case GL_LINE_WIDTH:
-		params[0] = ctx->rasterizer.lineWidth;
+		state.putFloat(ctx->rasterizer.lineWidth);
 		break;
 	case GL_CULL_FACE_MODE:
-		switch (fimgGetRasterizerState(ctx->fimg, FIMG_CULL_FACE_MODE)) {
-		case FGRA_BFCULL_FACE_FRONT:
-			params[0] = GL_FRONT;
-			break;
-		case FGRA_BFCULL_FACE_BACK:
-			params[0] = GL_BACK;
-			break;
-		case FGRA_BFCULL_FACE_BOTH:
-			params[0] = GL_FRONT_AND_BACK;
-			break;
-		}
+		state.putEnum(ctx->rasterizer.cullFace);
 		break;
 	case GL_FRONT_FACE:
-		if (fimgGetRasterizerState(ctx->fimg, FIMG_FRONT_FACE))
-			params[0] = GL_CW;
-		else
-			params[0] = GL_CCW;
+		state.putEnum(ctx->rasterizer.frontFace);
 		break;
 	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_FACTOR);
+		state.putFloat(ctx->rasterizer.polyOffFactor);
 		break;
 	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_UNITS);
+		state.putFloat(ctx->rasterizer.polyOffUnits);
 		break;
 	case GL_TEXTURE_BINDING_2D: {
 		FGLTextureObjectBinding *b =
 				&ctx->texture[ctx->activeTexture].binding;
 		if (b->isBound())
-			params[0] = b->getName();
+			state.putInteger(b->getName());
 		else
-			params[0] = 0.0f;
+			state.putInteger(0);
 		break; }
 	case GL_ACTIVE_TEXTURE:
-		params[0] = ctx->activeTexture;
+		state.putInteger(ctx->activeTexture);
 		break;
 	case GL_COLOR_WRITEMASK:
-		params[0] = ctx->perFragment.mask.red;
-		params[1] = ctx->perFragment.mask.green;
-		params[2] = ctx->perFragment.mask.blue;
-		params[3] = ctx->perFragment.mask.alpha;
+		state.putBoolean(ctx->perFragment.mask.red);
+		state.putBoolean(ctx->perFragment.mask.green);
+		state.putBoolean(ctx->perFragment.mask.blue);
+		state.putBoolean(ctx->perFragment.mask.alpha);
 		break;
 	case GL_DEPTH_WRITEMASK:
-		params[0] = ctx->perFragment.mask.depth;
+		state.putBoolean(ctx->perFragment.mask.depth);
 		break;
 	case GL_STENCIL_WRITEMASK :
-		params[0] = ctx->perFragment.mask.stencil;
+		state.putInteger(ctx->perFragment.mask.stencil);
 		break;
-#if 0
-	case GL_STENCIL_BACK_WRITEMASK :
-		params[0] = (float)ctx->back_stencil_writemask;
-		break;
-#endif
 	case GL_COLOR_CLEAR_VALUE :
-		params[0] = intFromClampf(ctx->clear.red);
-		params[1] = intFromClampf(ctx->clear.green);
-		params[2] = intFromClampf(ctx->clear.blue);
-		params[3] = intFromClampf(ctx->clear.alpha);
+		state.putNormalized(ctx->clear.red);
+		state.putNormalized(ctx->clear.green);
+		state.putNormalized(ctx->clear.blue);
+		state.putNormalized(ctx->clear.alpha);
 		break;
 	case GL_DEPTH_CLEAR_VALUE :
-		params[0] = intFromClampf(ctx->clear.depth);
+		state.putNormalized(ctx->clear.depth);
 		break;
 	case GL_STENCIL_CLEAR_VALUE:
-		params[0] = ctx->clear.stencil;
+		state.putInteger(ctx->clear.stencil);
 		break;
 	case GL_SCISSOR_BOX:
-		params[0] = ctx->perFragment.scissor.left;
-		params[1] = ctx->perFragment.scissor.bottom;
-		params[2] = ctx->perFragment.scissor.width;
-		params[3] = ctx->perFragment.scissor.height;
+		state.putInteger(ctx->perFragment.scissor.left);
+		state.putInteger(ctx->perFragment.scissor.bottom);
+		state.putInteger(ctx->perFragment.scissor.width);
+		state.putInteger(ctx->perFragment.scissor.height);
 		break;
 	case GL_STENCIL_FUNC:
-		switch (fimgGetFragmentState(ctx->fimg,
-						FIMG_FRONT_STENCIL_FUNC)) {
-		case FGPF_STENCIL_MODE_NEVER:
-			params[0] = GL_NEVER;
-			break;
-		case FGPF_STENCIL_MODE_ALWAYS:
-			params[0] = GL_ALWAYS;
-			break;
-		case FGPF_STENCIL_MODE_GREATER:
-			params[0] = GL_GREATER;
-			break;
-		case FGPF_STENCIL_MODE_GEQUAL:
-			params[0] = GL_GEQUAL;
-			break;
-		case FGPF_STENCIL_MODE_EQUAL:
-			params[0] = GL_EQUAL;
-			break;
-		case FGPF_STENCIL_MODE_LESS:
-			params[0] = GL_LESS;
-			break;
-		case FGPF_STENCIL_MODE_LEQUAL:
-			params[0] = GL_LEQUAL;
-			break;
-		case FGPF_STENCIL_MODE_NOTEQUAL:
-			params[0] = GL_NOTEQUAL;
-			break;
-		}
+		state.putEnum(ctx->perFragment.stencil.func);
 		break;
 	case GL_STENCIL_VALUE_MASK:
-		params[0] = fimgGetFragmentState(ctx->fimg,
-						FIMG_FRONT_STENCIL_MASK);
+		state.putInteger(ctx->perFragment.stencil.mask);
 		break;
 	case GL_STENCIL_REF :
-		params[0] = fimgGetFragmentState(ctx->fimg,
-						FIMG_FRONT_STENCIL_REF);
+		state.putInteger(ctx->perFragment.stencil.ref);
 		break;
 	case GL_STENCIL_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg,
-						FIMG_FRONT_STENCIL_SFAIL)) {
-		case FGPF_TEST_ACTION_KEEP:
-			params[0] = GL_KEEP;
-			break;
-		case FGPF_TEST_ACTION_ZERO:
-			params[0] = GL_ZERO;
-			break;
-		case FGPF_TEST_ACTION_REPLACE:
-			params[0] = GL_REPLACE;
-			break;
-		case FGPF_TEST_ACTION_INCR:
-			params[0] = GL_INCR;
-			break;
-		case FGPF_TEST_ACTION_DECR:
-			params[0] = GL_DECR;
-			break;
-		case FGPF_TEST_ACTION_INVERT:
-			params[0] = GL_INVERT;
-			break;
-		}
+		state.putEnum(ctx->perFragment.stencil.fail);
 		break;
 	case GL_STENCIL_PASS_DEPTH_FAIL :
-		switch (fimgGetFragmentState(ctx->fimg,
-						FIMG_FRONT_STENCIL_DPFAIL)) {
-		case FGPF_TEST_ACTION_KEEP:
-			params[0] = GL_KEEP;
-			break;
-		case FGPF_TEST_ACTION_ZERO:
-			params[0] = GL_ZERO;
-			break;
-		case FGPF_TEST_ACTION_REPLACE:
-			params[0] = GL_REPLACE;
-			break;
-		case FGPF_TEST_ACTION_INCR:
-			params[0] = GL_INCR;
-			break;
-		case FGPF_TEST_ACTION_DECR:
-			params[0] = GL_DECR;
-			break;
-		case FGPF_TEST_ACTION_INVERT:
-			params[0] = GL_INVERT;
-			break;
-		}
+		state.putEnum(ctx->perFragment.stencil.passDepthFail);
 		break;
 	case GL_STENCIL_PASS_DEPTH_PASS :
-		switch (fimgGetFragmentState(ctx->fimg,
-						FIMG_FRONT_STENCIL_DPPASS)) {
-		case FGPF_TEST_ACTION_KEEP:
-			params[0] = GL_KEEP;
-			break;
-		case FGPF_TEST_ACTION_ZERO:
-			params[0] = GL_ZERO;
-			break;
-		case FGPF_TEST_ACTION_REPLACE:
-			params[0] = GL_REPLACE;
-			break;
-		case FGPF_TEST_ACTION_INCR:
-			params[0] = GL_INCR;
-			break;
-		case FGPF_TEST_ACTION_DECR:
-			params[0] = GL_DECR;
-			break;
-		case FGPF_TEST_ACTION_INVERT:
-			params[0] = GL_INVERT;
-			break;
-		}
+		state.putEnum(ctx->perFragment.stencil.passDepthPass);
 		break;
-#if 0
-	case GL_STENCIL_BACK_FUNC :
-		params[0] = (float)ctx->stencil_test_data.back_face_func;
-		break;
-	case GL_STENCIL_BACK_VALUE_MASK :
-		params[0] = (float)ctx->stencil_test_data.back_face_mask;
-		break;
-	case GL_STENCIL_BACK_REF :
-		params[0] = (float)ctx->stencil_test_data.back_face_ref;
-		break;
-	case GL_STENCIL_BACK_FAIL :
-		params[0] = (float)ctx->stencil_test_data.back_face_fail;
-		break;
-	case GL_STENCIL_BACK_PASS_DEPTH_FAIL :
-		params[0] = (float)ctx->stencil_test_data.back_face_zfail;
-		break;
-	case GL_STENCIL_BACK_PASS_DEPTH_PASS :
-		params[0] = (float)ctx->stencil_test_data.back_face_zpass;
-		break;
-#endif
 	case GL_DEPTH_FUNC:
-		switch (fimgGetFragmentState(ctx->fimg, FIMG_DEPTH_FUNC)) {
-		case FGPF_TEST_MODE_NEVER:
-			params[0] = GL_NEVER;
-			break;
-		case FGPF_TEST_MODE_ALWAYS:
-			params[0] = GL_ALWAYS;
-			break;
-		case FGPF_TEST_MODE_GREATER:
-			params[0] = GL_GREATER;
-			break;
-		case FGPF_TEST_MODE_GEQUAL:
-			params[0] = GL_GEQUAL;
-			break;
-		case FGPF_TEST_MODE_EQUAL:
-			params[0] = GL_EQUAL;
-			break;
-		case FGPF_TEST_MODE_LESS:
-			params[0] = GL_LESS;
-			break;
-		case FGPF_TEST_MODE_LEQUAL:
-			params[0] = GL_LEQUAL;
-			break;
-		case FGPF_TEST_MODE_NOTEQUAL:
-			params[0] = GL_NOTEQUAL;
-			break;
-		}
+		state.putEnum(ctx->perFragment.depthFunc);
 		break;
-#if 0
-	case GL_BLEND_SRC_RGB :
-		params[0] = (float)ctx->blend_data.fn_srcRGB;
+	case GL_BLEND_SRC:
+		state.putEnum(ctx->perFragment.blendSrc);
 		break;
-	case GL_BLEND_SRC_ALPHA:
-		params[0] = (float)ctx->blend_data.fn_srcAlpha;
+	case GL_BLEND_DST:
+		state.putEnum(ctx->perFragment.blendDst);
 		break;
-	case GL_BLEND_DST_RGB :
-		params[0] = (float)ctx->blend_data.fn_dstRGB;
+	case GL_LOGIC_OP_MODE:
+		state.putEnum(ctx->perFragment.logicOp);
 		break;
-	case GL_BLEND_DST_ALPHA:
-		params[0] = (float)ctx->blend_data.fn_dstAlpha;
-		break;
-	case GL_BLEND_EQUATION_RGB :
-		params[0] =(float)ctx->blend_data.eqn_modeRGB ;
-		break;
-	case GL_BLEND_EQUATION_ALPHA:
-		params[0] = (float)ctx->blend_data.eqn_modeAlpha;
-		break;
-	case GL_BLEND_COLOR :
-		params[0] = ctx->blend_data.blnd_clr_red  ;
-		params[1] = ctx->blend_data.blnd_clr_green;
-		params[2] = ctx->blend_data.blnd_clr_blue;
-		params[3] = ctx->blend_data.blnd_clr_alpha;
-		break;
-#endif
 	case GL_UNPACK_ALIGNMENT:
-		params[0] = ctx->unpackAlignment;
+		state.putInteger(ctx->unpackAlignment);
 		break;
 	case GL_PACK_ALIGNMENT:
-		params[0] = ctx->packAlignment;
+		state.putInteger(ctx->packAlignment);
 		break;
 	case GL_SUBPIXEL_BITS:
-		params[0] = FGL_MAX_SUBPIXEL_BITS;
+		state.putInteger(FGL_MAX_SUBPIXEL_BITS);
 		break;
 	case GL_MAX_TEXTURE_SIZE:
-		params[0] = FGL_MAX_TEXTURE_SIZE;
+		state.putInteger(FGL_MAX_TEXTURE_SIZE);
 		break;
 	case GL_MAX_VIEWPORT_DIMS:
-		params[0] = FGL_MAX_VIEWPORT_DIMS;
-		params[1] = FGL_MAX_VIEWPORT_DIMS;
+		state.putInteger(FGL_MAX_VIEWPORT_DIMS);
+		state.putInteger(FGL_MAX_VIEWPORT_DIMS);
 		break;
 	case GL_ALIASED_POINT_SIZE_RANGE:
-		params[0] = FGL_MIN_POINT_SIZE;
-		params[1] = FGL_MAX_POINT_SIZE;
+		state.putFloat(FGL_MIN_POINT_SIZE);
+		state.putFloat(FGL_MAX_POINT_SIZE);
 		break;
 	case GL_ALIASED_LINE_WIDTH_RANGE:
-		params[0] = FGL_MIN_LINE_WIDTH;
-		params[1] = FGL_MAX_LINE_WIDTH;
+		state.putFloat(FGL_MIN_LINE_WIDTH);
+		state.putFloat(FGL_MAX_LINE_WIDTH);
 		break;
-#if 0
-	case GL_MAX_ELEMENTS_INDICES :
-		params[0] = MAX_ELEMENTS_INDICES;
-		break;
-	case GL_MAX_ELEMENTS_VERTICES :
-		params[0] = MAX_ELEMENTS_VERTICES;
-		break;
-#endif
 	case GL_MAX_TEXTURE_UNITS:
-		params[0] = FGL_MAX_TEXTURE_UNITS;
+		state.putInteger(FGL_MAX_TEXTURE_UNITS);
 		break;
 	case GL_MAX_LIGHTS:
-		params[0] = FGL_MAX_LIGHTS;
+		state.putInteger(FGL_MAX_LIGHTS);
 		break;
 	case GL_SAMPLE_BUFFERS :
-		params[0] = 0;
+		state.putInteger(0);
 		break;
 	case GL_SAMPLES :
-		params[0] = 0;
+		state.putInteger(0);
 		break;
 	case GL_COMPRESSED_TEXTURE_FORMATS:
 		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
-			params[i] = fglCompressedTextureFormats[i];
+			state.putEnum(fglCompressedTextureFormats[i]);
 		break;
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-		params[0] = NELEM(fglCompressedTextureFormats);
+		state.putInteger(NELEM(fglCompressedTextureFormats));
 		break;
-#if 0
-	case GL_MAX_RENDERBUFFER_SIZE :
-		params[0] = FGL_MAX_RENDERBUFFER_SIZE;
-		break;
-#endif
 	case GL_RED_BITS :
-		params[0] = fglColorConfigs[ctx->surface.format].red;
+		state.putInteger(fglColorConfigs[ctx->surface.format].red);
 		break;
 	case GL_GREEN_BITS:
-		params[0] = fglColorConfigs[ctx->surface.format].green;
+		state.putInteger(fglColorConfigs[ctx->surface.format].green);
 		break;
 	case GL_BLUE_BITS :
-		params[0] = fglColorConfigs[ctx->surface.format].blue;
+		state.putInteger(fglColorConfigs[ctx->surface.format].blue);
 		break;
 	case GL_ALPHA_BITS :
-		params[0] = fglColorConfigs[ctx->surface.format].alpha;
+		state.putInteger(fglColorConfigs[ctx->surface.format].alpha);
 		break;
 	case GL_DEPTH_BITS :
-		params[0] = ctx->surface.depthFormat & 0xff;
+		state.putInteger(ctx->surface.depthFormat & 0xff);
 		break;
 	case GL_STENCIL_BITS:
-		params[0] = ctx->surface.depthFormat >> 8;
+		state.putInteger(ctx->surface.depthFormat >> 8);
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-		params[0] = fglColorConfigs[ctx->surface.format].readType;
+		state.putEnum(fglColorConfigs[ctx->surface.format].readType);
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-		params[0] = fglColorConfigs[ctx->surface.format].readFormat;
+		state.putEnum(fglColorConfigs[ctx->surface.format].readFormat);
 		break;
-#if 0
-	case GL_ALPHA_TEST_FUNC_EXP:
-		params[0] = (float)ctx->alpha_test_data.func;
-		break;
-	case GL_ALPHA_TEST_REF_EXP:
-		params[0] = ctx->alpha_test_data.refValue;
-		break;
-	case GL_LOGIC_OP_MODE_EXP:
-		break;
-#endif
 
 	/* Single boolean values */
-#if 0
-	case GL_ALPHA_TEST_EXP:
-#endif
 	case GL_CULL_FACE:
 	case GL_POLYGON_OFFSET_FILL:
 	case GL_SCISSOR_TEST:
@@ -581,7 +457,7 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 	case GL_BLEND:
 	case GL_DITHER:
 	case GL_COLOR_LOGIC_OP:
-		params[0] = glIsEnabled(pname);
+		state.putBoolean(glIsEnabled(pname));
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
@@ -589,470 +465,36 @@ GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
 	}
 }
 
+GL_API void GL_APIENTRY glGetIntegerv (GLenum pname, GLint *params)
+{
+	FGLContext *ctx = getContext();
+	FGLIntegerGetter state(params);
+
+	fglGetState(ctx, pname, state);
+}
+
 GL_API void GL_APIENTRY glGetBooleanv (GLenum pname, GLboolean *params)
 {
 	FGLContext *ctx = getContext();
+	FGLBooleanGetter state(params);
 
-	switch (pname) {
-	case GL_VIEWPORT:
-		params[0] = !!ctx->viewport.x;
-		params[1] = !!ctx->viewport.y;
-		params[2] = !!ctx->viewport.width;
-		params[3] = !!ctx->viewport.height;
-		break;
-	case GL_DEPTH_RANGE:
-		params[0] = !!ctx->viewport.zNear;
-		params[1] = !!ctx->viewport.zFar;
-		break;
-	case GL_POINT_SIZE:
-		params[0] = ctx->rasterizer.pointSize != 0.0f;
-		break;
-	case GL_LINE_WIDTH:
-		params[0] = ctx->rasterizer.lineWidth != 0.0f;
-		break;
-	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_FACTOR) != 0;
-		break;
-	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_UNITS) != 0;
-		break;
-	case GL_COLOR_WRITEMASK:
-		params[0] = ctx->perFragment.mask.red;
-		params[1] = ctx->perFragment.mask.green;
-		params[2] = ctx->perFragment.mask.blue;
-		params[3] = ctx->perFragment.mask.alpha;
-		break;
-	case GL_COLOR_CLEAR_VALUE :
-		params[0] = ctx->clear.red != 0;
-		params[1] = ctx->clear.green != 0;
-		params[2] = ctx->clear.blue != 0;
-		params[3] = ctx->clear.alpha != 0;
-		break;
-	case GL_DEPTH_CLEAR_VALUE :
-		params[0] = ctx->clear.depth != 0;
-		break;
-	case GL_SCISSOR_BOX:
-		params[0] = ctx->perFragment.scissor.left != 0;
-		params[1] = ctx->perFragment.scissor.bottom != 0;
-		params[2] = ctx->perFragment.scissor.width != 0;
-		params[3] = ctx->perFragment.scissor.height != 0;
-		break;
-#if 0
-	case GL_BLEND_COLOR :
-		params[0] = ctx->blend_data.blnd_clr_red  ;
-		params[1] = ctx->blend_data.blnd_clr_green;
-		params[2] = ctx->blend_data.blnd_clr_blue;
-		params[3] = ctx->blend_data.blnd_clr_alpha;
-		break;
-#endif
-	case GL_MAX_VIEWPORT_DIMS:
-		params[0] = !!FGL_MAX_VIEWPORT_DIMS;
-		params[1] = !!FGL_MAX_VIEWPORT_DIMS;
-		break;
-	case GL_ALIASED_POINT_SIZE_RANGE:
-		params[0] = !!FGL_MIN_POINT_SIZE;
-		params[1] = !!FGL_MAX_POINT_SIZE;
-		break;
-	case GL_ALIASED_LINE_WIDTH_RANGE:
-		params[0] = !!FGL_MIN_LINE_WIDTH;
-		params[1] = !!FGL_MAX_LINE_WIDTH;
-		break;
-	case GL_COMPRESSED_TEXTURE_FORMATS :
-		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
-			params[i] = !!fglCompressedTextureFormats[i];
-		break;
-
-	/* Single integer values */
-#if 0
-	case GL_MAX_ELEMENTS_INDICES :
-	case GL_MAX_ELEMENTS_VERTICES :
-	case GL_MAX_RENDERBUFFER_SIZE :
-	case GL_ALPHA_TEST_FUNC_EXP:
-	case GL_ALPHA_TEST_REF_EXP:
-	case GL_LOGIC_OP_MODE_EXP:
-	case GL_BLEND_SRC_RGB :
-	case GL_BLEND_SRC_ALPHA:
-	case GL_BLEND_DST_RGB :
-	case GL_BLEND_DST_ALPHA:
-	case GL_BLEND_EQUATION_RGB :
-	case GL_BLEND_EQUATION_ALPHA:
-	case GL_STENCIL_BACK_FUNC :
-	case GL_STENCIL_BACK_VALUE_MASK :
-	case GL_STENCIL_BACK_REF :
-	case GL_STENCIL_BACK_FAIL :
-	case GL_STENCIL_BACK_PASS_DEPTH_FAIL :
-	case GL_STENCIL_BACK_PASS_DEPTH_PASS :
-	case GL_STENCIL_BACK_WRITEMASK :
-#endif
-	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-	case GL_ARRAY_BUFFER_BINDING:
-	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
-	case GL_CULL_FACE_MODE:
-	case GL_FRONT_FACE:
-	case GL_TEXTURE_BINDING_2D:
-	case GL_ACTIVE_TEXTURE:
-	case GL_STENCIL_CLEAR_VALUE:
-	case GL_DEPTH_WRITEMASK:
-	case GL_STENCIL_WRITEMASK :
-	case GL_STENCIL_FUNC:
-	case GL_STENCIL_VALUE_MASK:
-	case GL_STENCIL_REF :
-	case GL_STENCIL_FAIL :
-	case GL_STENCIL_PASS_DEPTH_FAIL :
-	case GL_STENCIL_PASS_DEPTH_PASS :
-	case GL_DEPTH_FUNC:
-	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-	case GL_UNPACK_ALIGNMENT:
-	case GL_PACK_ALIGNMENT:
-	case GL_SUBPIXEL_BITS:
-	case GL_MAX_TEXTURE_SIZE:
-	case GL_MAX_TEXTURE_UNITS:
-	case GL_MAX_LIGHTS:
-	case GL_SAMPLE_BUFFERS :
-	case GL_SAMPLES :
-	case GL_RED_BITS :
-	case GL_GREEN_BITS:
-	case GL_BLUE_BITS :
-	case GL_ALPHA_BITS :
-	case GL_DEPTH_BITS :
-	case GL_STENCIL_BITS:
-		GLint intval;
-		glGetIntegerv(pname, &intval);
-		params[0] = !!intval;
-		break;
-
-	/* Single boolean values */
-#if 0
-	case GL_ALPHA_TEST_EXP:
-#endif
-	case GL_CULL_FACE:
-	case GL_POLYGON_OFFSET_FILL:
-	case GL_SCISSOR_TEST:
-	case GL_STENCIL_TEST:
-	case GL_DEPTH_TEST:
-	case GL_BLEND:
-	case GL_DITHER:
-	case GL_COLOR_LOGIC_OP:
-		params[0] = glIsEnabled(pname);
-		break;
-	default:
-		setError(GL_INVALID_ENUM);
-	}
+	fglGetState(ctx, pname, state);
 }
 
 GL_API void GL_APIENTRY glGetFixedv (GLenum pname, GLfixed *params)
 {
 	FGLContext *ctx = getContext();
-	GLint intval;
+	FGLFixedGetter state(params);
 
-	switch (pname) {
-	case GL_VIEWPORT:
-		params[0] = fixedFromInt(ctx->viewport.x);
-		params[1] = fixedFromInt(ctx->viewport.y);
-		params[2] = fixedFromInt(ctx->viewport.width);
-		params[3] = fixedFromInt(ctx->viewport.height);
-		break;
-	case GL_DEPTH_RANGE:
-		params[0] = fixedFromFloat(ctx->viewport.zNear);
-		params[1] = fixedFromFloat(ctx->viewport.zFar);
-		break;
-	case GL_POINT_SIZE:
-		params[0] = fixedFromFloat(ctx->rasterizer.pointSize);
-		break;
-	case GL_LINE_WIDTH:
-		params[0] = fixedFromFloat(ctx->rasterizer.lineWidth);
-		break;
-	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_FACTOR));
-		break;
-	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fixedFromFloat(fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_UNITS));
-		break;
-	case GL_COLOR_WRITEMASK:
-		params[0] = fixedFromBool(ctx->perFragment.mask.red);
-		params[1] = fixedFromBool(ctx->perFragment.mask.green);
-		params[2] = fixedFromBool(ctx->perFragment.mask.blue);
-		params[3] = fixedFromBool(ctx->perFragment.mask.alpha);
-		break;
-#if 0
-	case GL_STENCIL_BACK_WRITEMASK :
-		params[0] = (float)ctx->back_stencil_writemask;
-		break;
-#endif
-	case GL_COLOR_CLEAR_VALUE :
-		params[0] = fixedFromFloat(ctx->clear.red);
-		params[1] = fixedFromFloat(ctx->clear.green);
-		params[2] = fixedFromFloat(ctx->clear.blue);
-		params[3] = fixedFromFloat(ctx->clear.alpha);
-		break;
-	case GL_DEPTH_CLEAR_VALUE :
-		params[0] = fixedFromFloat(ctx->clear.depth);
-		break;
-	case GL_SCISSOR_BOX:
-		params[0] = fixedFromInt(ctx->perFragment.scissor.left);
-		params[1] = fixedFromInt(ctx->perFragment.scissor.bottom);
-		params[2] = fixedFromInt(ctx->perFragment.scissor.width);
-		params[3] = fixedFromInt(ctx->perFragment.scissor.height);
-		break;
-	case GL_MAX_VIEWPORT_DIMS:
-		params[0] = fixedFromInt(FGL_MAX_VIEWPORT_DIMS);
-		params[1] = fixedFromInt(FGL_MAX_VIEWPORT_DIMS);
-		break;
-	case GL_ALIASED_POINT_SIZE_RANGE:
-		params[0] = fixedFromFloat(FGL_MIN_POINT_SIZE);
-		params[1] = fixedFromFloat(FGL_MAX_POINT_SIZE);
-		break;
-	case GL_ALIASED_LINE_WIDTH_RANGE:
-		params[0] = fixedFromFloat(FGL_MIN_LINE_WIDTH);
-		params[1] = fixedFromFloat(FGL_MAX_LINE_WIDTH);
-		break;
-	case GL_COMPRESSED_TEXTURE_FORMATS :
-		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
-			params[i] = fglCompressedTextureFormats[i];
-		break;
-
-	/* Single integer values */
-#if 0
-	case GL_MAX_ELEMENTS_INDICES :
-	case GL_MAX_ELEMENTS_VERTICES :
-	case GL_MAX_RENDERBUFFER_SIZE :
-	case GL_ALPHA_TEST_REF_EXP:
-	case GL_LOGIC_OP_MODE_EXP:
-	case GL_STENCIL_BACK_VALUE_MASK :
-	case GL_STENCIL_BACK_REF :
-	case GL_STENCIL_BACK_WRITEMASK :
-#endif
-	case GL_ARRAY_BUFFER_BINDING:
-	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
-	case GL_TEXTURE_BINDING_2D:
-	case GL_ACTIVE_TEXTURE:
-	case GL_STENCIL_CLEAR_VALUE:
-	case GL_DEPTH_WRITEMASK:
-	case GL_STENCIL_WRITEMASK :
-	case GL_STENCIL_VALUE_MASK:
-	case GL_STENCIL_REF :
-	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-	case GL_UNPACK_ALIGNMENT:
-	case GL_PACK_ALIGNMENT:
-	case GL_SUBPIXEL_BITS:
-	case GL_MAX_TEXTURE_SIZE:
-	case GL_MAX_TEXTURE_UNITS:
-	case GL_MAX_LIGHTS:
-	case GL_SAMPLE_BUFFERS :
-	case GL_SAMPLES :
-	case GL_RED_BITS :
-	case GL_GREEN_BITS:
-	case GL_BLUE_BITS :
-	case GL_ALPHA_BITS :
-	case GL_DEPTH_BITS :
-	case GL_STENCIL_BITS :
-		glGetIntegerv(pname, &intval);
-		params[0] = fixedFromInt(intval);
-		break;
-
-	/* Single enumerated values */
-#if 0
-	case GL_ALPHA_TEST_FUNC_EXP:
-	case GL_BLEND_SRC_RGB :
-	case GL_BLEND_SRC_ALPHA:
-	case GL_BLEND_DST_RGB :
-	case GL_BLEND_DST_ALPHA:
-	case GL_BLEND_EQUATION_RGB :
-	case GL_BLEND_EQUATION_ALPHA:
-	case GL_STENCIL_BACK_FUNC :
-	case GL_STENCIL_BACK_FAIL :
-	case GL_STENCIL_BACK_PASS_DEPTH_FAIL :
-	case GL_STENCIL_BACK_PASS_DEPTH_PASS :
-#endif
-	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-	case GL_CULL_FACE_MODE:
-	case GL_FRONT_FACE:
-	case GL_STENCIL_FUNC:
-	case GL_STENCIL_FAIL :
-	case GL_STENCIL_PASS_DEPTH_FAIL :
-	case GL_STENCIL_PASS_DEPTH_PASS :
-	case GL_DEPTH_FUNC:
-		glGetIntegerv(pname, &intval);
-		params[0] = intval;
-		break;
-
-	/* Single boolean value */
-#if 0
-	case GL_ALPHA_TEST_EXP:
-#endif
-	case GL_CULL_FACE:
-	case GL_POLYGON_OFFSET_FILL:
-	case GL_SCISSOR_TEST:
-	case GL_STENCIL_TEST:
-	case GL_DEPTH_TEST:
-	case GL_BLEND:
-	case GL_DITHER:
-	case GL_COLOR_LOGIC_OP:
-		params[0] = fixedFromBool(glIsEnabled(pname));
-		break;
-	default:
-		setError(GL_INVALID_ENUM);
-	}
+	fglGetState(ctx, pname, state);
 }
 
 GL_API void GL_APIENTRY glGetFloatv (GLenum pname, GLfloat *params)
 {
 	FGLContext *ctx = getContext();
+	FGLFloatGetter state(params);
 
-	switch (pname) {
-	case GL_VIEWPORT:
-		params[0] = ctx->viewport.x;
-		params[1] = ctx->viewport.y;
-		params[2] = ctx->viewport.width;
-		params[3] = ctx->viewport.height;
-		break;
-	case GL_DEPTH_RANGE:
-		params[0] = ctx->viewport.zNear;
-		params[1] = ctx->viewport.zFar;
-		break;
-	case GL_POINT_SIZE:
-		params[0] = ctx->rasterizer.pointSize;
-		break;
-	case GL_LINE_WIDTH:
-		params[0] = ctx->rasterizer.lineWidth;
-		break;
-	case GL_POLYGON_OFFSET_FACTOR:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_FACTOR);
-		break;
-	case GL_POLYGON_OFFSET_UNITS:
-		params[0] = fimgGetRasterizerStateF(ctx->fimg,
-						FIMG_DEPTH_OFFSET_UNITS);
-		break;
-	case GL_COLOR_WRITEMASK:
-		params[0] = ctx->perFragment.mask.red;
-		params[1] = ctx->perFragment.mask.green;
-		params[2] = ctx->perFragment.mask.blue;
-		params[3] = ctx->perFragment.mask.alpha;
-		break;
-	case GL_COLOR_CLEAR_VALUE :
-		params[0] = ctx->clear.red;
-		params[1] = ctx->clear.green;
-		params[2] = ctx->clear.blue;
-		params[3] = ctx->clear.alpha;
-		break;
-	case GL_DEPTH_CLEAR_VALUE :
-		params[0] = ctx->clear.depth;
-		break;
-	case GL_SCISSOR_BOX:
-		params[0] = ctx->perFragment.scissor.left;
-		params[1] = ctx->perFragment.scissor.bottom;
-		params[2] = ctx->perFragment.scissor.width;
-		params[3] = ctx->perFragment.scissor.height;
-		break;
-#if 0
-	case GL_BLEND_COLOR :
-		params[0] = ctx->blend_data.blnd_clr_red  ;
-		params[1] = ctx->blend_data.blnd_clr_green;
-		params[2] = ctx->blend_data.blnd_clr_blue;
-		params[3] = ctx->blend_data.blnd_clr_alpha;
-		break;
-#endif
-	case GL_ALIASED_POINT_SIZE_RANGE:
-		params[0] = FGL_MIN_POINT_SIZE;
-		params[1] = FGL_MAX_POINT_SIZE;
-		break;
-	case GL_ALIASED_LINE_WIDTH_RANGE:
-		params[0] = FGL_MIN_LINE_WIDTH;
-		params[1] = FGL_MAX_LINE_WIDTH;
-		break;
-	case GL_MAX_VIEWPORT_DIMS:
-		params[0] = FGL_MAX_VIEWPORT_DIMS;
-		params[1] = FGL_MAX_VIEWPORT_DIMS;
-		break;
-	case GL_COMPRESSED_TEXTURE_FORMATS :
-		for (int i = 0; i < (int)NELEM(fglCompressedTextureFormats); ++i)
-			params[i] = fglCompressedTextureFormats[i];
-		break;
-
-	/* Single integer values */
-#if 0
-	case GL_MAX_ELEMENTS_INDICES :
-	case GL_MAX_ELEMENTS_VERTICES :
-	case GL_MAX_RENDERBUFFER_SIZE :
-	case GL_ALPHA_TEST_FUNC_EXP:
-	case GL_ALPHA_TEST_REF_EXP:
-	case GL_LOGIC_OP_MODE_EXP:
-	case GL_BLEND_SRC_RGB :
-	case GL_BLEND_SRC_ALPHA:
-	case GL_BLEND_DST_RGB :
-	case GL_BLEND_DST_ALPHA:
-	case GL_BLEND_EQUATION_RGB :
-	case GL_BLEND_EQUATION_ALPHA:
-	case GL_STENCIL_BACK_FUNC :
-	case GL_STENCIL_BACK_VALUE_MASK :
-	case GL_STENCIL_BACK_REF :
-	case GL_STENCIL_BACK_FAIL :
-	case GL_STENCIL_BACK_PASS_DEPTH_FAIL :
-	case GL_STENCIL_BACK_PASS_DEPTH_PASS :
-	case GL_STENCIL_BACK_WRITEMASK :
-#endif
-	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-	case GL_ARRAY_BUFFER_BINDING:
-	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
-	case GL_CULL_FACE_MODE:
-	case GL_FRONT_FACE:
-	case GL_TEXTURE_BINDING_2D:
-	case GL_ACTIVE_TEXTURE:
-	case GL_STENCIL_CLEAR_VALUE:
-	case GL_DEPTH_WRITEMASK:
-	case GL_STENCIL_WRITEMASK :
-	case GL_STENCIL_FUNC:
-	case GL_STENCIL_VALUE_MASK:
-	case GL_STENCIL_REF :
-	case GL_STENCIL_FAIL :
-	case GL_STENCIL_PASS_DEPTH_FAIL :
-	case GL_STENCIL_PASS_DEPTH_PASS :
-	case GL_DEPTH_FUNC:
-	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
-	case GL_UNPACK_ALIGNMENT:
-	case GL_PACK_ALIGNMENT:
-	case GL_SUBPIXEL_BITS:
-	case GL_MAX_TEXTURE_SIZE:
-	case GL_MAX_TEXTURE_UNITS:
-	case GL_MAX_LIGHTS:
-	case GL_SAMPLE_BUFFERS :
-	case GL_SAMPLES :
-	case GL_RED_BITS :
-	case GL_GREEN_BITS:
-	case GL_BLUE_BITS :
-	case GL_ALPHA_BITS :
-	case GL_DEPTH_BITS :
-	case GL_STENCIL_BITS:
-		GLint intval;
-		glGetIntegerv(pname, &intval);
-		params[0] = intval;
-		break;
-
-	/* Single boolean values */
-#if 0
-	case GL_ALPHA_TEST_EXP:
-#endif
-	case GL_CULL_FACE:
-	case GL_POLYGON_OFFSET_FILL:
-	case GL_SCISSOR_TEST:
-	case GL_STENCIL_TEST:
-	case GL_DEPTH_TEST:
-	case GL_BLEND:
-	case GL_DITHER:
-	case GL_COLOR_LOGIC_OP:
-		params[0] = glIsEnabled(pname);
-		break;
-	default:
-		setError(GL_INVALID_ENUM);
-	}
+	fglGetState(ctx, pname, state);
 }
 
 GL_API void GL_APIENTRY glGetPointerv (GLenum pname, void **params)

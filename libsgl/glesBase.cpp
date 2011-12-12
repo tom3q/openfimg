@@ -1153,6 +1153,7 @@ GL_API void GL_APIENTRY glCullFace (GLenum mode)
 	FGLContext *ctx = getContext();
 
 	fimgSetFaceCullFace(ctx->fimg, face);
+	ctx->rasterizer.cullFace = mode;
 }
 
 GL_API void GL_APIENTRY glFrontFace (GLenum mode)
@@ -1174,6 +1175,7 @@ GL_API void GL_APIENTRY glFrontFace (GLenum mode)
 	FGLContext *ctx = getContext();
 
 	fimgSetFaceCullFront(ctx->fimg, cw);
+	ctx->rasterizer.frontFace = mode;
 }
 
 GL_API void GL_APIENTRY glLineWidth (GLfloat width)
@@ -1365,6 +1367,9 @@ GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
 
 	fimgSetFrontStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
 	fimgSetBackStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
+	ctx->perFragment.stencil.func = func;
+	ctx->perFragment.stencil.ref = ref;
+	ctx->perFragment.stencil.mask = mask;
 }
 
 static inline GLint fglActionFromEnum(GLenum action)
@@ -1422,6 +1427,9 @@ GL_API void GL_APIENTRY glStencilOp (GLenum fail, GLenum zfail, GLenum zpass)
 			(fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
 	fimgSetBackStencilOp(ctx->fimg, (fimgTestAction)fglFail,
 			(fimgTestAction)fglZFail, (fimgTestAction)fglZPass);
+	ctx->perFragment.stencil.fail = fail;
+	ctx->perFragment.stencil.passDepthFail = zfail;
+	ctx->perFragment.stencil.passDepthPass = zpass;
 }
 
 GL_API void GL_APIENTRY glDepthFunc (GLenum func)
@@ -1461,6 +1469,7 @@ GL_API void GL_APIENTRY glDepthFunc (GLenum func)
 	FGLContext *ctx = getContext();
 
 	fimgSetDepthParams(ctx->fimg, fglFunc);
+	ctx->perFragment.depthFunc = func;
 }
 
 GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
@@ -1536,6 +1545,8 @@ GL_API void GL_APIENTRY glBlendFunc (GLenum sfactor, GLenum dfactor)
 		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
 	else
 		fimgSetBlendFuncNoAlpha(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
+	ctx->perFragment.blendSrc = sfactor;
+	ctx->perFragment.blendDst = dfactor;
 }
 
 GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
@@ -1599,6 +1610,7 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 	FGLContext *ctx = getContext();
 
 	fimgSetLogicalOpParams(ctx->fimg, fglOp, fglOp);
+	ctx->perFragment.logicOp = opcode;
 }
 
 #if 0

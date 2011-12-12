@@ -191,12 +191,30 @@ struct FGLMaskState {
 		alpha(1), red(1), green(1), blue(1), depth(1), stencil(0xff) {};
 };
 
+struct FGLStencilState {
+	GLuint mask;
+	GLint ref;
+	GLenum func;
+	GLenum fail;
+	GLenum passDepthFail;
+	GLenum passDepthPass;
+
+	FGLStencilState() :
+		mask(0xffffffff), ref(0), func(GL_ALWAYS), fail(GL_KEEP),
+		passDepthFail(GL_KEEP), passDepthPass(GL_KEEP) {};
+};
+
 struct FGLPerFragmentState {
 	FGLScissorState scissor;
+	FGLStencilState stencil;
 	FGLMaskState mask;
+	GLenum depthFunc;
+	GLenum blendSrc;
+	GLenum blendDst;
+	GLenum logicOp;
 
 	FGLPerFragmentState() :
-		scissor() {};
+		blendSrc(GL_ONE), blendDst(GL_ZERO), logicOp(GL_COPY) {};
 };
 
 struct FGLClearState {
@@ -214,9 +232,14 @@ struct FGLClearState {
 struct FGLRasterizerState {
 	float lineWidth;
 	float pointSize;
+	GLenum cullFace;
+	GLenum frontFace;
+	GLfloat polyOffFactor;
+	GLfloat polyOffUnits;
 
 	FGLRasterizerState() :
-		lineWidth(1.0f), pointSize(1.0f) {};
+		lineWidth(1.0f), pointSize(1.0f), cullFace(GL_BACK),
+		frontFace(GL_CCW), polyOffFactor(0.0f), polyOffUnits(0.0f) {};
 };
 
 struct FGLContext {
