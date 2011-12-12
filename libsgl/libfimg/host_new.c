@@ -1552,6 +1552,7 @@ void fimgCreateHostContext(fimgContext *ctx)
 
 	ctx->host.control.autoinc = 1;
 	ctx->host.control.envb = 1;
+	ctx->host.control.numoutattrib = FIMG_ATTRIB_NUM;
 
 	template.val = 0;
 	template.srcx = 0;
