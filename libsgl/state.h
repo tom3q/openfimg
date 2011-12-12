@@ -286,8 +286,8 @@ struct FGLContext {
 	static FGLvec4f defaultVertex[4 + FGL_MAX_TEXTURE_UNITS];
 
 	FGLContext(fimgContext *fctx) :
-		fimg(fctx), activeTexture(0), clientActiveTexture(0), matrix(),
-		unpackAlignment(4), packAlignment(4), egl(), surface()
+		fimg(fctx), activeTexture(0), clientActiveTexture(0),
+		unpackAlignment(4), packAlignment(4)
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 		for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i)
