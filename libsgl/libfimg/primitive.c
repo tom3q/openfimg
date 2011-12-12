@@ -137,31 +137,3 @@ void fimgRestorePrimitiveState(fimgContext *ctx)
 	fimgWriteF(ctx, ctx->primitive.halfDistance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
 	fimgWriteF(ctx, ctx->primitive.center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }
-
-float fimgGetPrimitiveStateF(fimgContext *ctx, unsigned int name)
-{
-	switch (name) {
-	case FIMG_VIEWPORT_X:
-		return ctx->primitive.ox - ctx->primitive.halfPX;
-	case FIMG_VIEWPORT_Y:
-#ifdef FIMG_COORD_FLIP_Y
-		return ctx->fbHeight - ctx->primitive.oy + ctx->primitive.halfPY;
-#else
-		return ctx->primitive.oy - ctx->primitive.halfPY;
-#endif
-	case FIMG_VIEWPORT_W:
-		return 2*ctx->primitive.halfPX;
-	case FIMG_VIEWPORT_H:
-#ifdef FIMG_COORD_FLIP_Y
-		return -2*ctx->primitive.halfPY;
-#else
-		return 2*ctx->primitive.halfPY;
-#endif
-	case FIMG_DEPTH_RANGE_NEAR:
-		return ctx->primitive.center - ctx->primitive.halfDistance;
-	case FIMG_DEPTH_RANGE_FAR:
-		return ctx->primitive.halfDistance + ctx->primitive.center;
-	}
-
-	return 0;
-}

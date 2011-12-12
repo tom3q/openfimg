@@ -164,8 +164,6 @@ enum {
 	FIMG_DEPTH_RANGE_FAR
 };
 
-float fimgGetPrimitiveStateF(fimgContext *ctx, unsigned int name);
-
 /*
  * Raster engine
  */
@@ -205,9 +203,6 @@ enum {
 	FIMG_DEPTH_OFFSET_FACTOR,
 	FIMG_DEPTH_OFFSET_UNITS
 };
-
-float fimgGetRasterizerStateF(fimgContext *ctx, unsigned int name);
-unsigned int fimgGetRasterizerState(fimgContext *ctx, unsigned int name);
 
 /*
  * Shaders
@@ -576,8 +571,6 @@ enum {
 	FIMG_BACK_STENCIL_DPPASS,
 	FIMG_DEPTH_FUNC
 };
-
-unsigned int fimgGetFragmentState(fimgContext *ctx, unsigned int op);
 
 /*
  * OS support
