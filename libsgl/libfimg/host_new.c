@@ -333,8 +333,8 @@ static uint32_t copyVertices1To1(fimgContext *ctx, fimgArray *arrays,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		if (a->stride == a->width && !(a->width % 4)) {
-			memcpy(buf + offset, a->pointer + *first*a->stride,
-							batchSize*a->width);
+			memcpy(buf + offset, (const uint8_t *)a->pointer
+					+ *first*a->stride, batchSize*a->width);
 			offset += batchSize*a->width;
 			continue;
 		}
@@ -372,8 +372,8 @@ static uint32_t copyVerticesLinestrip(fimgContext *ctx,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		if (a->stride == a->width && !(a->width % 4)) {
-			memcpy(buf + offset, a->pointer + *first*a->stride,
-							batchSize*a->width);
+			memcpy(buf + offset, (const uint8_t *)a->pointer
+					+ *first*a->stride, batchSize*a->width);
 			offset += batchSize*a->width;
 			continue;
 		}
@@ -414,8 +414,8 @@ static uint32_t copyVerticesLines(fimgContext *ctx, fimgArray *arrays,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		if (a->stride == a->width && !(a->width % 4)) {
-			memcpy(buf + offset, a->pointer + *first*a->stride,
-							batchSize*a->width);
+			memcpy(buf + offset, (const uint8_t*)a->pointer
+					+ *first*a->stride, batchSize*a->width);
 			offset += batchSize*a->width;
 			continue;
 		}
@@ -455,8 +455,8 @@ static uint32_t copyVerticesTristrip(fimgContext *ctx,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		if (a->stride == a->width && !(a->width % 4)) {
-			memcpy(buf + offset, a->pointer + *first*a->stride,
-							batchSize*a->width);
+			memcpy(buf + offset, (const uint8_t *)a->pointer
+					+ *first*a->stride, batchSize*a->width);
 			offset += batchSize*a->width;
 			continue;
 		}
@@ -496,7 +496,8 @@ static uint32_t copyVerticesTrifan(fimgContext *ctx,
 		if (a->stride == a->width && !(a->width % 4)) {
 			memcpy(buf + offset, a->pointer, a->width);
 			offset += a->width;
-			memcpy(buf + offset, a->pointer + (*first + 1)*a->stride,
+			memcpy(buf + offset, (const uint8_t *)a->pointer
+						+ (*first + 1)*a->stride,
 						(batchSize - 1)*a->width);
 			offset += (batchSize - 1)*a->width;
 			continue;
@@ -541,8 +542,8 @@ static uint32_t copyVerticesTris(fimgContext *ctx, fimgArray *arrays,
 		}
 		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
 		if (a->stride == a->width && !(a->width % 4)) {
-			memcpy(buf + offset, a->pointer + *first*a->stride,
-							batchSize*a->width);
+			memcpy(buf + offset, (const uint8_t *)a->pointer
+					+ *first*a->stride, batchSize*a->width);
 			offset += batchSize*a->width;
 			continue;
 		}
