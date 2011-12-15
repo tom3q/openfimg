@@ -819,7 +819,7 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask)
 		return;
 
 	/* Make sure the hardware isn't rendering */
-	glFlush();
+	glFinish();
 	/* Clear the buffers in software */
 	fglClear(ctx, mask);
 }
