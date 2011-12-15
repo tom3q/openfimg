@@ -1769,7 +1769,7 @@ GL_API void GL_APIENTRY glDisable (GLenum cap)
 
 GL_API void GL_APIENTRY glFlush (void)
 {
-	//FUNC_UNIMPLEMENTED;
+	/* Nothing to do here */
 }
 
 GL_API void GL_APIENTRY glFinish (void)
