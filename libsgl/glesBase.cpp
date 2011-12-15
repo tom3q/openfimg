@@ -1816,12 +1816,6 @@ GL_API void GL_APIENTRY glFogxv (GLenum pname, const GLfixed *params)
 	FUNC_UNIMPLEMENTED;
 }
 
-GL_API void GL_APIENTRY glGetBufferParameteriv (GLenum target,
-						GLenum pname, GLint *params)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
 GL_API void GL_APIENTRY glGetClipPlanef (GLenum pname, GLfloat eqn[4])
 {
 	FUNC_UNIMPLEMENTED;

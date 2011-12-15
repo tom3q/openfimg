@@ -564,3 +564,41 @@ GL_API GLboolean GL_APIENTRY glIsEnabled (GLenum cap)
 		return GL_FALSE;
 	}
 }
+
+GL_API void GL_APIENTRY glGetBufferParameteriv (GLenum target,
+						GLenum pname, GLint *params)
+{
+	FGLBufferObjectBinding *binding;
+
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_ARRAY_BUFFER:
+		binding = &ctx->arrayBuffer;
+		break;
+	case GL_ELEMENT_ARRAY_BUFFER:
+		binding = &ctx->elementArrayBuffer;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLBuffer *buf = binding->get();
+
+	if (!buf) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	switch (pname) {
+	case GL_BUFFER_SIZE:
+		*params = buf->size;
+		break;
+	case GL_BUFFER_USAGE:
+		*params = buf->usage;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+}
