@@ -442,7 +442,7 @@ static uint32_t copyVerticesTristrip(fimgContext *ctx,
 	if (*count < 3)
 		return 0;
 
-	if (batchSize > *count)
+	if (batchSize >= *count)
 		batchSize = *count;
 	else if (batchSize % 2)
 		--batchSize;
@@ -825,7 +825,7 @@ static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
 	if (*count < 3)
 		return 0;
 
-	if (batchSize > *count)
+	if (batchSize >= *count)
 		batchSize = *count;
 	else if (batchSize % 2)
 		--batchSize;
@@ -1186,7 +1186,7 @@ static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
 	if (*count < 3)
 		return 0;
 
-	if (batchSize > *count)
+	if (batchSize >= *count)
 		batchSize = *count;
 	else if (batchSize % 2)
 		--batchSize;
