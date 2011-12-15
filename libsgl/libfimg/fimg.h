@@ -397,18 +397,6 @@ void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
 
 #endif
 
-enum {
-	FGFP_CLEAR_COLOR	= 1,
-	FGFP_CLEAR_DEPTH	= 2,
-	FGFP_CLEAR_STENCIL	= 4
-};
-
-void fimgClear(fimgContext *ctx, uint32_t mode);
-void fimgSetClearColor(fimgContext *ctx, float red, float green,
-						float blue, float alpha);
-void fimgSetClearDepth(fimgContext *ctx, float depth);
-void fimgSetClearStencil(fimgContext *ctx, uint8_t stencil);
-
 /*
  * Per-fragment unit
  */

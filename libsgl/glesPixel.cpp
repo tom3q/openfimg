@@ -811,8 +811,6 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 #define FGL_CLEAR_MASK \
 	(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
 
-//#define FGL_HARDWARE_CLEAR
-
 GL_API void GL_APIENTRY glClear (GLbitfield mask)
 {
 	FGLContext *ctx = getContext();
@@ -820,26 +818,10 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask)
 	if ((mask & FGL_CLEAR_MASK) == 0)
 		return;
 
-#ifdef FGL_HARDWARE_CLEAR
-	uint32_t mode = 0;
-
-	if (mask & GL_COLOR_BUFFER_BIT)
-		mode |= FGFP_CLEAR_COLOR;
-
-	if (mask & GL_DEPTH_BUFFER_BIT)
-		mode |= FGFP_CLEAR_DEPTH;
-
-	if (mask & GL_STENCIL_BUFFER_BIT)
-		mode |= FGFP_CLEAR_STENCIL;
-
-	/* Clear the buffers in hardware */
-	fimgClear(ctx->fimg, mode);
-#else
 	/* Make sure the hardware isn't rendering */
 	glFlush();
 	/* Clear the buffers in software */
 	fglClear(ctx, mask);
-#endif
 }
 
 GL_API void GL_APIENTRY glClearColor (GLclampf red, GLclampf green,
@@ -851,11 +833,6 @@ GL_API void GL_APIENTRY glClearColor (GLclampf red, GLclampf green,
 	ctx->clear.green = clampFloat(green);
 	ctx->clear.blue = clampFloat(blue);
 	ctx->clear.alpha = clampFloat(alpha);
-
-#ifdef FGL_HARDWARE_CLEAR
-	fimgSetClearColor(ctx->fimg, clampFloat(red), clampFloat(green),
-				clampFloat(blue), clampFloat(alpha));
-#endif
 }
 
 GL_API void GL_APIENTRY glClearColorx (GLclampx red, GLclampx green,
@@ -870,10 +847,6 @@ GL_API void GL_APIENTRY glClearDepthf (GLclampf depth)
 	FGLContext *ctx = getContext();
 
 	ctx->clear.depth = clampFloat(depth);
-
-#ifdef FGL_HARDWARE_CLEAR
-	fimgSetClearDepth(ctx->fimg, clampFloat(depth));
-#endif
 }
 
 GL_API void GL_APIENTRY glClearDepthx (GLclampx depth)
@@ -886,8 +859,4 @@ GL_API void GL_APIENTRY glClearStencil (GLint s)
 	FGLContext *ctx = getContext();
 
 	ctx->clear.stencil = s;
-
-#ifdef FGL_HARDWARE_CLEAR
-	fimgSetClearStencil(ctx->fimg, s);
-#endif
 }
