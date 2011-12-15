@@ -249,6 +249,15 @@ GL_API void GL_APIENTRY glBufferData (GLenum target, GLsizeiptr size,
 		return;
 	}
 
+	switch (usage) {
+	case GL_STATIC_DRAW:
+	case GL_DYNAMIC_DRAW:
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
 	if (!binding->isBound()) {
 		setError(GL_INVALID_OPERATION);
 		return;
@@ -260,6 +269,7 @@ GL_API void GL_APIENTRY glBufferData (GLenum target, GLsizeiptr size,
 		setError(GL_OUT_OF_MEMORY);
 		return;
 	}
+	buf->usage = usage;
 
 	if (data != 0)
 		memcpy(buf->memory, data, size);

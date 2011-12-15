@@ -23,14 +23,16 @@
 #define _LIBSGL_FGLBUFFEROBJECT_
 
 #include <cstdlib>
+#include <GLES/gl.h>
 #include "fglobject.h"
 
 struct FGLBuffer {
 	void *memory;
 	int size;
+	GLenum usage;
 
 	FGLBuffer() :
-		memory(0), size(0) {};
+		memory(0), size(0), usage(GL_STATIC_DRAW) {};
 
 	~FGLBuffer()
 	{
