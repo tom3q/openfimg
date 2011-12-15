@@ -1816,28 +1816,6 @@ GL_API void GL_APIENTRY glFogxv (GLenum pname, const GLfixed *params)
 	FUNC_UNIMPLEMENTED;
 }
 
-GL_API void GL_APIENTRY glGetClipPlanef (GLenum pname, GLfloat eqn[4])
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glGetClipPlanex (GLenum pname, GLfixed eqn[4])
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glGetLightfv (GLenum light, GLenum pname,
-							GLfloat *params)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
-GL_API void GL_APIENTRY glGetMaterialfv (GLenum face, GLenum pname,
-							GLfloat *params)
-{
-	FUNC_UNIMPLEMENTED;
-}
-
 GL_API void GL_APIENTRY glHint (GLenum target, GLenum mode)
 {
 	FUNC_UNIMPLEMENTED;

@@ -602,3 +602,29 @@ GL_API void GL_APIENTRY glGetBufferParameteriv (GLenum target,
 		setError(GL_INVALID_ENUM);
 	}
 }
+
+/*
+ * Stubs
+ */
+
+GL_API void GL_APIENTRY glGetClipPlanef (GLenum pname, GLfloat eqn[4])
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetClipPlanex (GLenum pname, GLfixed eqn[4])
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetLightfv (GLenum light, GLenum pname,
+							GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
+
+GL_API void GL_APIENTRY glGetMaterialfv (GLenum face, GLenum pname,
+							GLfloat *params)
+{
+	FUNC_UNIMPLEMENTED;
+}
