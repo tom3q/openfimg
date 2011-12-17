@@ -873,7 +873,7 @@ static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
 		offset += packAttributeIdx16(ctx,
 				(uint32_t *)(buf + offset), a, indices, 1);
 		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
-					a, indices + *pos, batchSize - 1);
+					a, indices + *pos + 1, batchSize - 1);
 	}
 
 	ctx->vertexDataSize = offset;
@@ -1234,7 +1234,7 @@ static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
 		offset += packAttributeIdx8(ctx,
 				(uint32_t *)(buf + offset), a, indices, 1);
 		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
-					a, indices + *pos, batchSize - 1);
+					a, indices + *pos + 1, batchSize - 1);
 	}
 
 	ctx->vertexDataSize = offset;
