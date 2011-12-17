@@ -1386,12 +1386,12 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 		return;
 	}
 
-	if (!ctx->vertexData)
-		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
-
 	if (!ctx->vertexData) {
-		LOGE("Failed to allocate vertex data buffer. Terminating.");
-		exit(ENOMEM);
+		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
+		if (!ctx->vertexData) {
+			LOGE("Failed to allocate vertex data buffer. Terminating.");
+			exit(ENOMEM);
+		}
 	}
 
 	/* Prepare first batch without waiting for hardware */
@@ -1442,12 +1442,12 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 		return;
 	}
 
-	if (!ctx->vertexData)
-		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
-
 	if (!ctx->vertexData) {
-		LOGE("Failed to allocate vertex data buffer. Terminating.");
-		exit(ENOMEM);
+		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
+		if (!ctx->vertexData) {
+			LOGE("Failed to allocate vertex data buffer. Terminating.");
+			exit(ENOMEM);
+		}
 	}
 
 	/* Prepare first batch without waiting for hardware */
@@ -1499,12 +1499,12 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 		return;
 	}
 
-	if (!ctx->vertexData)
-		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
-
 	if (!ctx->vertexData) {
-		LOGE("Failed to allocate vertex data buffer. Terminating.");
-		exit(ENOMEM);
+		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
+		if (!ctx->vertexData) {
+			LOGE("Failed to allocate vertex data buffer. Terminating.");
+			exit(ENOMEM);
+		}
 	}
 
 	/* Prepare first batch without waiting for hardware */
