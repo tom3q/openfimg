@@ -46,4 +46,10 @@
 /* Enable clipper workaround */
 //#define FIMG_CLIPPER_WORKAROUND
 
+/* Use dump file to store GPU crash dumps */
+#define FIMG_USE_DUMP_FILE
+
+/* Dump file path */
+#define FIMG_DUMP_FILE_PATH	"/tmp"
+
 #endif /* _FIMG_CONFIG_H_ */

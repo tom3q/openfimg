@@ -57,6 +57,7 @@ static const struct block blocks[] = {
 
 void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *func)
 {
+#ifndef FIMG_USE_DUMP_FILE
 	const struct block *b;
 	char buf[VALUES_PER_LINE * LINE_SIZE + 1];
 	char *s;
@@ -79,4 +80,36 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 			LOGD("%s", buf);
 		} while (len);
 	}
+#else
+	const struct block *b;
+	char buf[VALUES_PER_LINE * LINE_SIZE + 1];
+	char *s;
+	FILE *file;
+
+	file = fopen(FIMG_DUMP_FILE_PATH "/fimg.dmp", "a+");
+	if (!file)
+		return;
+
+	fprintf(file, "DUMP %d %d (%s %d %d)\n",
+					getpid(), ctx->fd, func, mode, count);
+
+	for (b = blocks; b->length; ++b) {
+		unsigned addr	= b->start;
+		unsigned len	= b->length;
+		do {
+			unsigned i;
+			s = buf;
+			for (i = 0; i < VALUES_PER_LINE && len; ++i) {
+				fprintf(file, "%08x ", fimgRead(ctx, addr));
+				addr += 4;
+				len -= 4;
+				s += LINE_SIZE;
+			}
+			*(--s) = '\0';
+			fprintf(file, "\n");
+		} while (len);
+	}
+
+	fclose(file);
+#endif
 }
