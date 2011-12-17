@@ -801,6 +801,8 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 		return;
 	}
 
+	ctx->finished = false;
+
 	fimgDrawArrays(ctx->fimg, fglMode, arrays, count);
 
 	if (mode == GL_LINE_LOOP) {
@@ -884,6 +886,8 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 		setError(GL_INVALID_ENUM);
 		return;
 	}
+
+	ctx->finished = false;
 
 	switch (type) {
 	case GL_UNSIGNED_BYTE: {
@@ -1036,6 +1040,8 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	fglSetupTextures(ctx);
 
 	fimgSetAttribCount(ctx->fimg, 4 + FGL_MAX_TEXTURE_UNITS);
+
+	ctx->finished = false;
 
 	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_FAN, arrays, 4);
 
@@ -1776,10 +1782,15 @@ GL_API void GL_APIENTRY glFinish (void)
 {
 	FGLContext *ctx = getContext();
 
+	if (ctx->finished)
+		return;
+
 	fimgFinish(ctx->fimg);
 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i)
 		ctx->busyTexture[i] = 0;
+
+	ctx->finished = true;
 }
 
 /**

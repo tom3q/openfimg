@@ -286,13 +286,14 @@ struct FGLContext {
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;
+	bool finished;
 
 	/* Static initializers */
 	static FGLvec4f defaultVertex[4 + FGL_MAX_TEXTURE_UNITS];
 
 	FGLContext(fimgContext *fctx) :
 		fimg(fctx), activeTexture(0), clientActiveTexture(0),
-		unpackAlignment(4), packAlignment(4)
+		unpackAlignment(4), packAlignment(4), finished(true)
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 		for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i)
