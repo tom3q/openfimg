@@ -111,5 +111,14 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 	}
 
 	fclose(file);
+
+	file = fopen(FIMG_DUMP_FILE_PATH "/geometry.dmp", "a+");
+	if (!file)
+		return;
+
+	fwrite(&ctx->vertexDataSize, sizeof(ctx->vertexDataSize), 1, file);
+	fwrite(ctx->vertexData, ctx->vertexDataSize, 1, file);
+
+	fclose(file);
 #endif
 }
