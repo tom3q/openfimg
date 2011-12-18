@@ -76,13 +76,20 @@ public:
 
 	inline int get(void *owner)
 	{
+		int name;
+
 		if(write == 0)
 			/* Out of names */
 			return -1;
 
 		--write;
-		owners[write] = owner;
-		return unused[write];
+
+		name = unused[write];
+
+		owners[name - 1] = owner;
+		pool[name - 1] = NULL;
+
+		return name;
 	}
 
 	inline void *getOwner(unsigned name)
