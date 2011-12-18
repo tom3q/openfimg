@@ -760,8 +760,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 							obj->surface->paddr);
 		fimgSetTex2DSize(obj->fimg, width, height);
 
-		obj->levels = (1 << 0);
-		obj->dirty = true;
+		obj->levels = 0;
 	}
 
 	// Copy the image (with conversion if needed)
