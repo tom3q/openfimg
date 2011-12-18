@@ -56,7 +56,9 @@ static inline GLclampf clampfFromInt(GLint c)
 
 static inline GLfloat floatFromFixed(GLfixed c)
 {
-	return (GLfloat)c / (1 << 16);
+	const double div = 1.0f / 65536.0f;
+	double tmp = c;
+	return (float)(div * tmp);
 }
 
 static inline GLclampf clampFloat(GLclampf f)
