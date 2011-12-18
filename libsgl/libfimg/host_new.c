@@ -434,7 +434,7 @@ static uint32_t copyVerticesTristrip(fimgContext *ctx,
 			fimgArray *arrays, uint32_t *first, uint32_t *count)
 {
 	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs) - 1;
 	uint32_t i;
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
@@ -449,33 +449,38 @@ static uint32_t copyVerticesTristrip(fimgContext *ctx,
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
-			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize + 1);
 			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
 			continue;
 		}
-		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize + 1);
 		if (a->stride == a->width && !(a->width % 4)) {
 			memcpy(buf + offset, (const uint8_t *)a->pointer
 					+ *first*a->stride, batchSize*a->width);
 			offset += batchSize*a->width;
+			memcpy(buf + offset, (const uint8_t *)a->pointer
+					+ (*first + batchSize - 1)*a->stride, 1*a->width);
+			offset += 1*a->width;
 			continue;
 		}
 		offset += packAttribute(ctx,
 				(uint32_t *)(buf + offset), a, *first, batchSize);
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, *first + batchSize - 1, 1);
 	}
 
 	ctx->vertexDataSize = offset;
 
 	*first += batchSize - 2;
 	*count -= batchSize - 2;
-	return batchSize;
+	return batchSize + 1;
 }
 
 static uint32_t copyVerticesTrifan(fimgContext *ctx,
 			fimgArray *arrays, uint32_t *first, uint32_t *count)
 {
 	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs) - 2;
 	uint32_t i;
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
@@ -488,12 +493,16 @@ static uint32_t copyVerticesTrifan(fimgContext *ctx,
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
-			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize + 2);
 			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
 			continue;
 		}
-		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize + 2);
 		if (a->stride == a->width && !(a->width % 4)) {
+			memcpy(buf + offset, a->pointer, a->width);
+			offset += a->width;
+			memcpy(buf + offset, a->pointer, a->width);
+			offset += a->width;
 			memcpy(buf + offset, a->pointer, a->width);
 			offset += a->width;
 			memcpy(buf + offset, (const uint8_t *)a->pointer
@@ -505,6 +514,10 @@ static uint32_t copyVerticesTrifan(fimgContext *ctx,
 		offset += packAttribute(ctx,
 				(uint32_t *)(buf + offset), a, 0, 1);
 		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, 0, 1);
+		offset += packAttribute(ctx,
+				(uint32_t *)(buf + offset), a, 0, 1);
+		offset += packAttribute(ctx,
 				(uint32_t *)(buf + offset), a,
 						*first + 1, batchSize - 1);
 	}
@@ -513,7 +526,7 @@ static uint32_t copyVerticesTrifan(fimgContext *ctx,
 
 	*first += batchSize - 2;
 	*count -= batchSize - 2;
-	return batchSize;
+	return batchSize + 2;
 }
 
 static uint32_t copyVerticesTris(fimgContext *ctx, fimgArray *arrays,
@@ -817,7 +830,7 @@ static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
 			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs) - 1;
 	uint32_t i;
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
@@ -832,27 +845,29 @@ static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
-			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize + 1);
 			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
 			continue;
 		}
-		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize + 1);
 		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
 						a, indices + *pos, batchSize);
+		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos + batchSize - 1, 1);
 	}
 
 	ctx->vertexDataSize = offset;
 
 	*pos += batchSize - 2;
 	*count -= batchSize - 2;
-	return batchSize;
+	return batchSize + 1;
 }
 
 static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
 			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs) - 2;
 	uint32_t i;
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
@@ -865,11 +880,15 @@ static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
-			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize + 2);
 			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
 			continue;
 		}
-		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize + 2);
+		offset += packAttributeIdx16(ctx,
+				(uint32_t *)(buf + offset), a, indices, 1);
+		offset += packAttributeIdx16(ctx,
+				(uint32_t *)(buf + offset), a, indices, 1);
 		offset += packAttributeIdx16(ctx,
 				(uint32_t *)(buf + offset), a, indices, 1);
 		offset += packAttributeIdx16(ctx, (uint32_t *)(buf + offset),
@@ -880,7 +899,7 @@ static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
 
 	*pos += batchSize - 2;
 	*count -= batchSize - 2;
-	return batchSize;
+	return batchSize + 2;
 }
 
 static uint32_t copyVerticesTrisIdx16(fimgContext *ctx, fimgArray *arrays,
@@ -1178,7 +1197,7 @@ static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
 			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs) - 1;
 	uint32_t i;
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
@@ -1193,27 +1212,29 @@ static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
-			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize + 1);
 			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
 			continue;
 		}
-		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize + 1);
 		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
 						a, indices + *pos, batchSize);
+		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
+						a, indices + *pos + batchSize - 1, 1);
 	}
 
 	ctx->vertexDataSize = offset;
 
 	*pos += batchSize - 2;
 	*count -= batchSize - 2;
-	return batchSize;
+	return batchSize + 1;
 }
 
 static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
 			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
 	fimgArray *a = arrays;
-	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	uint32_t batchSize = calculateBatchSize(arrays, ctx->numAttribs) - 2;
 	uint32_t i;
 	uint32_t offset = DATA_OFFSET;
 	uint8_t *buf = ctx->vertexData;
@@ -1226,11 +1247,15 @@ static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
 
 	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
 		if (!a->stride) {
-			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize);
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, batchSize + 2);
 			memcpy(buf + CONST_ADDR(i), a->pointer, a->width);
 			continue;
 		}
-		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize);
+		setVtxBufAttrib(ctx, i, offset, (a->width + 3) & ~3, batchSize + 2);
+		offset += packAttributeIdx8(ctx,
+				(uint32_t *)(buf + offset), a, indices, 1);
+		offset += packAttributeIdx8(ctx,
+				(uint32_t *)(buf + offset), a, indices, 1);
 		offset += packAttributeIdx8(ctx,
 				(uint32_t *)(buf + offset), a, indices, 1);
 		offset += packAttributeIdx8(ctx, (uint32_t *)(buf + offset),
@@ -1241,7 +1266,7 @@ static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
 
 	*pos += batchSize - 2;
 	*count -= batchSize - 2;
-	return batchSize;
+	return batchSize + 2;
 }
 
 static uint32_t copyVerticesTrisIdx8(fimgContext *ctx, fimgArray *arrays,
