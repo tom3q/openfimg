@@ -85,6 +85,8 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 	char buf[VALUES_PER_LINE * LINE_SIZE + 1];
 	char *s;
 	FILE *file;
+	unsigned i;
+	int ret;
 
 	file = fopen(FIMG_DUMP_FILE_PATH "/fimg.dmp", "a+");
 	if (!file)
@@ -97,7 +99,6 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 		unsigned addr	= b->start;
 		unsigned len	= b->length;
 		do {
-			unsigned i;
 			s = buf;
 			for (i = 0; i < VALUES_PER_LINE && len; ++i) {
 				fprintf(file, "%08x ", fimgRead(ctx, addr));
@@ -116,9 +117,30 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 	if (!file)
 		return;
 
-	fwrite(&ctx->vertexDataSize, sizeof(ctx->vertexDataSize), 1, file);
-	fwrite(ctx->vertexData, ctx->vertexDataSize, 1, file);
+	ret = fwrite(&ctx->vertexDataSize, sizeof(ctx->vertexDataSize), 1, file);
+	ret = fwrite(ctx->vertexData, ctx->vertexDataSize, 1, file);
 
 	fclose(file);
+#ifdef FIMG_FIXED_PIPELINE
+	file = fopen(FIMG_DUMP_FILE_PATH "/matrix.dmp", "a+");
+	if (!file)
+		return;
+
+	for (i = 0; i < 2 + FIMG_NUM_TEXTURE_UNITS; ++i) {
+		float dummy[16] = {
+			0.0, 0.0, 0.0, 0.0,
+			0.0, 0.0, 0.0, 0.0,
+			0.0, 0.0, 0.0, 0.0,
+			0.0, 0.0, 0.0, 0.0
+		};
+
+		if (ctx->compat.matrix[i])
+			ret = fwrite(ctx->compat.matrix[i], sizeof(float), 16, file);
+		else
+			ret = fwrite(dummy, sizeof(float), 16, file);
+	}
+
+	fclose(file);
+#endif
 #endif
 }
