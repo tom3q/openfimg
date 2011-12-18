@@ -40,11 +40,11 @@
 */
 
 unsigned int FGLMatrixState::stackSizes[3 + FGL_MAX_TEXTURE_UNITS] = {
-	2,	// Projection matrices
-	16,	// Model-view matrices
-	16,	// Inverted model-view matrices
-	2,	// Texture 0 matrices
-	2	// Texture 1 matrices
+	16,	// Projection matrices
+	32,	// Model-view matrices
+	32,	// Inverted model-view matrices
+	8,	// Texture 0 matrices
+	8	// Texture 1 matrices
 };
 
 GL_API void GL_APIENTRY glMatrixMode (GLenum mode)
