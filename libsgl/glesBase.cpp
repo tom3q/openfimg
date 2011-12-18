@@ -161,7 +161,6 @@ GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
 			return;
 		}
 		fglBufferObjects[name] = NULL;
-		LOGD("Allocated buffer %d", name);
 		*cur = name;
 		cur++;
 	} while (--i);
@@ -183,7 +182,6 @@ GL_API void GL_APIENTRY glDeleteBuffers (GLsizei n, const GLuint *buffers)
 			continue;
 		}
 
-		LOGD("Freeing buffer %d", name);
 		delete (fglBufferObjects[name]);
 		fglBufferObjects.put(name);
 	}
