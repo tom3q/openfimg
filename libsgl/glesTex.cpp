@@ -776,8 +776,12 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 						ctx->unpackAlignment);
 		}
 
-		if (obj->genMipmap)
+		obj->levels = 1;
+
+		if (obj->genMipmap) {
 			fglGenerateMipmaps(obj);
+			obj->levels = (1 << (obj->maxLevel + 1)) - 1;
+		}
 
 		obj->dirty = true;
 	}
