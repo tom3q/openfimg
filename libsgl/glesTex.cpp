@@ -588,7 +588,7 @@ static inline void fglWaitForTexture(FGLContext *ctx, FGLTexture *tex)
 {
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i) {
 		if (ctx->busyTexture[i] == tex) {
-			glFlush();
+			glFinish();
 			break;
 		}
 	}
