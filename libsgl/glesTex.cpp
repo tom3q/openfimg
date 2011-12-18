@@ -332,7 +332,7 @@ static void fglGenerateMipmapsSW(FGLTexture *obj)
 				+ fimgGetTexMipmapOffset(obj->fimg, level + 1);
 	}
 }
-
+#if 0
 static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 {
  FUNCTION_TRACER;
@@ -395,7 +395,7 @@ static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 	close(fd);
 	return 0;
 }
-
+#endif
 static void fglGenerateMipmaps(FGLTexture *obj)
 {
  FUNCTION_TRACER;
