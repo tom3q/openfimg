@@ -461,7 +461,7 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 		break;
 	default:
 		setError(GL_INVALID_ENUM);
-		LOGD("Invalid enum: %d", pname);
+		LOGD("Invalid enum: %x", pname);
 	}
 }
 
