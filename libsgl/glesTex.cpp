@@ -1148,9 +1148,13 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 		obj->magFilter = param;
 		switch(param) {
 		case GL_NEAREST:
+		case GL_NEAREST_MIPMAP_NEAREST:
+		case GL_NEAREST_MIPMAP_LINEAR:
 			fimgSetTexMagFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
 			break;
 		case GL_LINEAR:
+		case GL_LINEAR_MIPMAP_NEAREST:
+		case GL_LINEAR_MIPMAP_LINEAR:
 			fimgSetTexMagFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
 			break;
 		default:
