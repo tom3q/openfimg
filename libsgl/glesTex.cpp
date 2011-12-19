@@ -759,8 +759,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		fimgInitTexture(obj->fimg, obj->fglFormat, obj->maxLevel,
 							obj->surface->paddr);
 		fimgSetTex2DSize(obj->fimg, width, height);
-
-		obj->levels = 1;
 	}
 
 	// Copy the image (with conversion if needed)
@@ -776,8 +774,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 						ctx->unpackAlignment);
 		}
 
-		obj->levels |= 1;
-
 		if (obj->genMipmap) {
 			fglGenerateMipmaps(obj);
 			obj->levels = (1 << (obj->maxLevel + 1)) - 1;
@@ -785,6 +781,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 		obj->dirty = true;
 	}
+
+	obj->levels |= 1;
 }
 
 static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
