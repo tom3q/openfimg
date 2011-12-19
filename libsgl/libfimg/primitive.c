@@ -102,6 +102,25 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 	fimgQueueF(ctx, half_py, FGPE_VIEWPORT_HALF_PY);
 }
 
+void fimgSetViewportBypass(fimgContext *ctx)
+{
+	ctx->primitive.ox = 0.0f;
+	ctx->primitive.oy = ctx->fbHeight;
+	ctx->primitive.halfPX = 1.0f;
+	ctx->primitive.halfPY = -1.0f;
+
+	fimgQueueF(ctx, 0.0f, FGPE_VIEWPORT_OX);
+	fimgQueueF(ctx, ctx->fbHeight, FGPE_VIEWPORT_OY);
+	fimgQueueF(ctx, 1.0f, FGPE_VIEWPORT_HALF_PX);
+	fimgQueueF(ctx, -1.0f, FGPE_VIEWPORT_HALF_PY);
+
+	ctx->primitive.halfDistance = 1.0f;
+	ctx->primitive.center = 0.0f;
+
+	fimgQueueF(ctx, 1.0f, FGPE_DEPTHRANGE_HALF_F_SUB_N);
+	fimgQueueF(ctx, 0.0f, FGPE_DEPTHRANGE_HALF_F_ADD_N);
+}
+
 /*****************************************************************************
  * FUNCTIONS:	fimgSetDepthRange
  * SYNOPSIS:	This function defines an encoding for z-coordinate that's performed
