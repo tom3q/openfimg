@@ -444,15 +444,13 @@ static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 
 		++lvl;
 
-		if (width >= 2) {
-			size /= 2;
+		if (width >= 2)
 			width /= 2;
-		}
 
-		if (height >= 2) {
-			size /= 2;
+		if (height >= 2)
 			height /= 2;
-		}
+
+		size = width * height;
 	} while (1);
 
 	obj->maxLevel = lvl;
