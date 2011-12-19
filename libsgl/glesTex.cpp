@@ -200,7 +200,7 @@ static void fglGenerateMipmapsSW(FGLTexture *obj)
 
 	void *curLevel = obj->surface->vaddr;
 	void *nextLevel = (uint8_t *)obj->surface->vaddr
-				+ fimgGetTexMipmapOffset(obj->fimg, 1);
+				+ obj->bpp*fimgGetTexMipmapOffset(obj->fimg, 1);
 
 	while(true) {
 		++level;
@@ -329,7 +329,7 @@ static void fglGenerateMipmapsSW(FGLTexture *obj)
 
 		curLevel = nextLevel;
 		nextLevel = (uint8_t *)obj->surface->vaddr
-				+ fimgGetTexMipmapOffset(obj->fimg, level + 1);
+			+ obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level + 1);
 	}
 }
 #if 0
@@ -378,7 +378,7 @@ static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
 		if (height > 1)
 			height /= 2;
 
-		req.dst.offs	= fimgGetTexMipmapOffset(obj->fimg, lvl);
+		req.dst.offs	= obj->bpp*fimgGetTexMipmapOffset(obj->fimg, lvl);
 		req.dst.w	= width;
 		req.dst.h	= height;
 		req.dst.r	= width - 1;
@@ -426,7 +426,7 @@ static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 	size_t offset, size;
 	unsigned int lvl, check;
 
-	size = width * height * bpp;
+	size = width * height;
 	offset = 0;
 	check = max(width, height);
 	lvl = 0;
@@ -463,7 +463,7 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
  FUNCTION_TRACER;
-	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -482,7 +482,7 @@ static void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
  FUNCTION_TRACER;
-	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -519,7 +519,7 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
  FUNCTION_TRACER;
-	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -745,7 +745,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->swap = swap;
 
 		// Calculate mipmaps
-		unsigned size = fglCalculateMipmaps(obj, width, height, bpp);
+		unsigned size;
+		size = bpp*fglCalculateMipmaps(obj, width, height, bpp);
 
 		// Setup surface
 		obj->surface = new FGLLocalSurface(size);
@@ -792,7 +793,7 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
  FUNCTION_TRACER;
-	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -821,7 +822,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
  FUNCTION_TRACER;
-	unsigned offset = fimgGetTexMipmapOffset(obj->fimg, level);
+	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
