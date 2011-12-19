@@ -45,6 +45,8 @@ struct FGLTexture {
 	GLboolean	useMipmap;
 	GLint		cropRect[4];
 	FGLImage	*eglImage;
+	GLfloat		invWidth;
+	GLfloat		invHeight;
 	/* HW state */
 	fimgTexture	*fimg;
 	uint32_t	fglFormat;

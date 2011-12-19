@@ -949,8 +949,8 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	GLfloat zNear = ctx->viewport.zNear;
 	GLfloat zFar = ctx->viewport.zFar;
 
-	fimgSetDepthRange(ctx->fimg, 0.0f, 1.0f);
-	fimgSetViewportParams(ctx->fimg, 0, 0, ctx->surface.width, ctx->surface.height);
+	fimgSetViewportBypass(ctx->fimg);
+	fimgSetFaceCullEnable(ctx->fimg, 0);
 
 	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {
 		arrayEnabled[i] = ctx->array[i].enabled;
@@ -981,19 +981,17 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	else
 		zD = zNear + z*(zFar - zNear);
 
-	float invWidth = 2.0f/ctx->surface.width;
-	float invHeight = 2.0f/ctx->surface.height;
-	vertices[ 0] = invWidth * x - 1;
-	vertices[ 1] = invHeight * (y + height) - 1;
+	vertices[ 0] = x;
+	vertices[ 1] = y;
 	vertices[ 2] = zD;
-	vertices[ 3] = invWidth * (x + width) - 1;
-	vertices[ 4] = vertices[ 1];
+	vertices[ 3] = x + width;
+	vertices[ 4] = y;
 	vertices[ 5] = zD;
-	vertices[ 6] = vertices[ 3];
-	vertices[ 7] = invHeight * y - 1;
+	vertices[ 6] = x + width;
+	vertices[ 7] = y + height;
 	vertices[ 8] = zD;
-	vertices[ 9] = vertices[ 0];
-	vertices[10] = vertices[ 7];
+	vertices[ 9] = x;
+	vertices[10] = y + height;
 	vertices[11] = zD;
 
 	// Proceed with drawing
@@ -1012,18 +1010,23 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	}
 
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; i++) {
-		FGLTexture *tex = ctx->texture[i].getTexture();
-		if (ctx->texture[i].enabled && tex->surface) {
-			float invHeight = 1.0f/tex->height;
-			float invWidth = 1.0f/tex->width;
-			texcoords[i][0]	= invWidth*tex->cropRect[0];
-			texcoords[i][1] = 1 - invHeight*(tex->cropRect[1]);
-			texcoords[i][2] = invWidth*(tex->cropRect[0] + tex->cropRect[2]);
-			texcoords[i][3] = texcoords[i][1];
-			texcoords[i][4] = texcoords[i][2];
-			texcoords[i][5] = 1 - invHeight*(tex->cropRect[1] + tex->cropRect[3]);
-			texcoords[i][6] = texcoords[i][0];
-			texcoords[i][7] = texcoords[i][5];
+		FGLTexture *tex;
+		bool enabled = ctx->textureExternal[i].enabled;
+		if (enabled) {
+			tex = ctx->textureExternal[i].getTexture();
+		} else {
+			tex = ctx->texture[i].getTexture();
+			enabled = ctx->texture[i].enabled;
+		}
+		if (enabled && tex->surface && tex->isComplete()) {
+			texcoords[i][0]	= tex->invWidth*tex->cropRect[0];
+			texcoords[i][1] = tex->invHeight*(tex->cropRect[1]);
+			texcoords[i][2] = tex->invWidth*(tex->cropRect[0] + tex->cropRect[2]);
+			texcoords[i][3] = tex->invHeight*(tex->cropRect[1]);
+			texcoords[i][4] = tex->invWidth*(tex->cropRect[0] + tex->cropRect[2]);
+			texcoords[i][5] = tex->invHeight*(tex->cropRect[1] + tex->cropRect[3]);
+			texcoords[i][6] = tex->invWidth*tex->cropRect[0];
+			texcoords[i][7] = tex->invHeight*(tex->cropRect[1] + tex->cropRect[3]);
 			arrays[FGL_ARRAY_TEXTURE(i)].stride = 8;
 		} else {
 			texcoords[i][0] = 0;
@@ -1054,6 +1057,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	fimgSetDepthRange(ctx->fimg, zNear, zFar);
 	fimgSetViewportParams(ctx->fimg, viewportX, viewportY, viewportW, viewportH);
+	fimgSetFaceCullEnable(ctx->fimg, ctx->enable.cullFace);
 }
 
 GL_API void GL_APIENTRY glDrawTexsOES (GLshort x, GLshort y, GLshort z, GLshort width, GLshort height)
