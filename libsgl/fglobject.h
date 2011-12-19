@@ -122,7 +122,7 @@ public:
 		if (b->prev)
 			b->prev->next = b->next;
 		else
-			list = NULL;
+			list = b->next;
 
 		b->object = NULL;
 	}
