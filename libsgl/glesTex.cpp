@@ -742,6 +742,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->bpp = bpp;
 		obj->convert = convert;
 		obj->swap = swap;
+		obj->levels = 0;
 
 		// Calculate mipmaps
 		unsigned size;
