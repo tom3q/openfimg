@@ -942,6 +942,11 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		return;
 	}
 
+	if (!obj->surface || obj->eglImage) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
 	if (format != obj->format || type != obj->type) {
 		setError(GL_INVALID_ENUM);
 		return;
