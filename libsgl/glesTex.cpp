@@ -680,9 +680,10 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 						       ctx->unpackAlignment);
 			}
 
-			obj->levels |= (1 << level);
 			obj->dirty = true;
 		}
+
+		obj->levels |= (1 << level);
 
 		return;
 	}
@@ -759,7 +760,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 							obj->surface->paddr);
 		fimgSetTex2DSize(obj->fimg, width, height);
 
-		obj->levels = 0;
+		obj->levels = 1;
 	}
 
 	// Copy the image (with conversion if needed)
@@ -775,7 +776,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 						ctx->unpackAlignment);
 		}
 
-		obj->levels = 1;
+		obj->levels |= 1;
 
 		if (obj->genMipmap) {
 			fglGenerateMipmaps(obj);
