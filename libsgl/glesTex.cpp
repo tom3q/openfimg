@@ -922,7 +922,7 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	FGLContext *ctx = getContext();
 	FGLTexture *obj = ctx->texture[ctx->activeTexture].getTexture();
 
-	if (obj->eglImage || !obj->surface) {
+	if (obj->eglImage) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -948,9 +948,15 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		return;
 	}
 
-	if (!obj->surface || obj->eglImage) {
-		setError(GL_INVALID_OPERATION);
-		return;
+	if (!obj->surface) {
+		if (level != 0) {
+			setError(GL_INVALID_OPERATION);
+			return;
+		}
+		glTexImage2D(target, 0, format, width, height, 0,
+							format, type, NULL);
+		if (!obj->surface)
+			return;
 	}
 
 	if (format != obj->format || type != obj->type) {
