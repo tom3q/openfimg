@@ -695,24 +695,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 	// level == 0
 
-#ifndef FGL_NPOT_TEXTURES
-	// Check if width is a power of two
-	GLsizei tmp;
-
-	for (tmp = 1; 2*tmp <= width; tmp = 2*tmp) ;
-	if (tmp != width) {
-		setError(GL_INVALID_VALUE);
-		return;
-	}
-
-	// Check if height is a power of two
-	for (tmp = 1; 2*tmp <= height; tmp = 2*tmp) ;
-	if (tmp != height) {
-		setError(GL_INVALID_VALUE);
-		return;
-	}
-#endif
-
 	// Get format information
 	unsigned bpp;
 	bool convert;

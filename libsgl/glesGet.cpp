@@ -75,9 +75,7 @@ static char const * const gExtensionsString =
 	"GL_EXT_texture_format_BGRA8888 "
 	//"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
 	//"GL_ARB_texture_compression "           // TODO IMPORTANT
-#ifdef FGL_NPOT_TEXTURES
 	"GL_ARB_texture_non_power_of_two "
-#endif
 	//"GL_ANDROID_user_clip_plane "           // TODO
 	//"GL_ANDROID_vertex_buffer_object "      // TODO
 	//"GL_ANDROID_generate_mipmap "           // TODO
