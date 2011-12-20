@@ -914,6 +914,11 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		GLenum format, GLenum type, const GLvoid *pixels)
 {
  FUNCTION_TRACER;
+	if (target != GL_TEXTURE_2D) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
 	FGLContext *ctx = getContext();
 	FGLTexture *obj =
 		ctx->texture[ctx->activeTexture].getTexture();
