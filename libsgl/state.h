@@ -24,6 +24,7 @@
 
 #include <EGL/egl.h>
 #include <GLES/gl.h>
+#include <GLES/glext.h>
 
 #include "common.h"
 #include "types.h"
@@ -296,8 +297,11 @@ struct FGLContext {
 		unpackAlignment(4), packAlignment(4), finished(true)
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
-		for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i)
+		for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i) {
 			busyTexture[i] = 0;
+			texture[i].defTexture.target = GL_TEXTURE_2D;
+			textureExternal[i].defTexture.target = GL_TEXTURE_EXTERNAL_OES;
+		}
 	}
 };
 

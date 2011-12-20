@@ -48,6 +48,7 @@ struct FGLTexture {
 	GLfloat		invWidth;
 	GLfloat		invHeight;
 	bool		invReady;
+	GLenum		target;
 	/* HW state */
 	fimgTexture	*fimg;
 	uint32_t	fglFormat;

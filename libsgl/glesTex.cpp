@@ -127,6 +127,10 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 			return;
 		}
 		fglTextureObjects[texture] = obj;
+		obj->object.target = target;
+	} else if (obj->object.target != target) {
+		setError(GL_INVALID_OPERATION);
+		return;
 	}
 
 	obj->bind(binding);
