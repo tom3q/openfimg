@@ -635,6 +635,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	// Specifying mipmaps
 	if (level > 0) {
 		if (obj->eglImage) {
+			/* TODO: Copy eglImage contents into new texture */
 			setError(GL_INVALID_OPERATION);
 			return;
 		}
@@ -923,6 +924,7 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	FGLTexture *obj = ctx->texture[ctx->activeTexture].getTexture();
 
 	if (obj->eglImage) {
+		/* TODO: Copy eglImage contents into new texture */
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
