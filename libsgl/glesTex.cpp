@@ -901,6 +901,11 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		return;
 	}
 
+	if (!obj->surface) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
 	if (level > obj->maxLevel) {
 		setError(GL_INVALID_VALUE);
 		return;
@@ -920,17 +925,6 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		glTexImage2D(target, level, format, width, height,
 						0, format, type, pixels);
 		return;
-	}
-
-	if (!obj->surface) {
-		if (level != 0) {
-			setError(GL_INVALID_OPERATION);
-			return;
-		}
-		glTexImage2D(target, 0, format, width, height, 0,
-							format, type, NULL);
-		if (!obj->surface)
-			return;
 	}
 
 	if (format != obj->format || type != obj->type) {
