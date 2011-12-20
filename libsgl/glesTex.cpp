@@ -1035,6 +1035,9 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	fimgInitTexture(tex->fimg, (image->isARGB << 4) | tex->fglFormat,
 					tex->maxLevel, tex->surface->paddr);
 	fimgSetTex2DSize(tex->fimg, image->stride, image->height);
+	fimgSetTexMipmap(tex->fimg, FGTU_TSTA_MIPMAP_DISABLED);
+	if (target == GL_TEXTURE_EXTERNAL_OES)
+		fimgSetTexMinFilter(tex->fimg, FGTU_TSTA_FILTER_LINEAR);
 
 	tex->eglImage->connect();
 }
