@@ -33,7 +33,6 @@ struct FGLTexture {
 	GLint		width;
 	GLint		height;
 	GLboolean	compressed;
-	GLint		levels;
 	GLint		maxLevel;
 	GLenum		format;
 	GLenum		type;
@@ -42,7 +41,6 @@ struct FGLTexture {
 	GLenum		sWrap;
 	GLenum		tWrap;
 	GLboolean	genMipmap;
-	GLboolean	useMipmap;
 	GLint		cropRect[4];
 	FGLImage	*eglImage;
 	GLfloat		invWidth;
@@ -59,10 +57,10 @@ struct FGLTexture {
 	bool		swap;
 
 	FGLTexture() :
-		surface(0), compressed(0), levels(0), maxLevel(0), format(GL_RGB),
+		surface(0), compressed(0), maxLevel(0), format(GL_RGB),
 		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
 		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
-		genMipmap(0), useMipmap(GL_TRUE), eglImage(0), invReady(false),
+		genMipmap(0), eglImage(0), invReady(false),
 		fimg(NULL), valid(false), dirty(false), swap(false)
 	{
 		fimg = fimgCreateTexture();
@@ -92,10 +90,7 @@ struct FGLTexture {
 
 	inline bool isComplete(void)
 	{
-		if (!useMipmap)
-			return levels & 1;
-
-		return levels == ((1 << (maxLevel + 1)) - 1);
+		return (surface != 0);
 	}
 };
 

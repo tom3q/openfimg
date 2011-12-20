@@ -626,12 +626,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	FGLTexture *obj =
 		ctx->texture[ctx->activeTexture].getTexture();
 
-	if (!width || !height) {
-		// Null texture specified
-		obj->levels &= ~(1 << level);
-		return;
-	}
-
 	// Specifying mipmaps
 	if (level > 0) {
 		if (obj->eglImage) {
@@ -688,8 +682,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 			obj->dirty = true;
 		}
 
-		obj->levels |= (1 << level);
-
 		return;
 	}
 
@@ -719,6 +711,9 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->surface = 0;
 	}
 
+	if (!width || !height)
+		return;
+
 	// (Re)allocate the texture
 	if (!obj->surface) {
 		obj->invReady = false;
@@ -730,7 +725,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->bpp = bpp;
 		obj->convert = convert;
 		obj->swap = swap;
-		obj->levels = 0;
 
 		// Calculate mipmaps
 		unsigned size;
@@ -763,15 +757,11 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 						ctx->unpackAlignment);
 		}
 
-		if (obj->genMipmap) {
+		if (obj->genMipmap)
 			fglGenerateMipmaps(obj);
-			obj->levels = (1 << (obj->maxLevel + 1)) - 1;
-		}
 
 		obj->dirty = true;
 	}
-
-	obj->levels |= 1;
 }
 
 static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
@@ -1042,7 +1032,6 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->bpp	= cfg->pixelSize;
 	tex->convert	= 0;
 	tex->maxLevel	= 0;
-	tex->levels	= (1 << 0);
 	tex->dirty	= true;
 	tex->width	= image->stride;
 	tex->height	= image->height;
@@ -1115,32 +1104,26 @@ GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint para
 		case GL_NEAREST:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_DISABLED);
-			obj->useMipmap = GL_FALSE;
 			break;
 		case GL_NEAREST_MIPMAP_NEAREST:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_NEAREST);
-			obj->useMipmap = GL_TRUE;
 			break;
 		case GL_NEAREST_MIPMAP_LINEAR:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_NEAREST);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_LINEAR);
-			obj->useMipmap = GL_TRUE;
 			break;
 		case GL_LINEAR:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_DISABLED);
-			obj->useMipmap = GL_FALSE;
 			break;
 		case GL_LINEAR_MIPMAP_NEAREST:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_NEAREST);
-			obj->useMipmap = GL_TRUE;
 			break;
 		case GL_LINEAR_MIPMAP_LINEAR:
 			fimgSetTexMinFilter(obj->fimg, FGTU_TSTA_FILTER_LINEAR);
 			fimgSetTexMipmap(obj->fimg, FGTU_TSTA_MIPMAP_LINEAR);
-			obj->useMipmap = GL_TRUE;
 			break;
 		default:
 			setError(GL_INVALID_VALUE);

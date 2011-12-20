@@ -1018,7 +1018,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 			tex = ctx->texture[i].getTexture();
 			enabled = ctx->texture[i].enabled;
 		}
-		if (enabled && tex->surface && tex->isComplete()) {
+		if (enabled && tex->isComplete()) {
 			if (!tex->invReady) {
 				tex->invWidth = 1.0f/tex->width;
 				tex->invHeight = 1.0f/tex->height;
