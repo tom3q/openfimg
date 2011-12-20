@@ -1228,7 +1228,31 @@ GL_API void GL_APIENTRY glTexParameterf (GLenum target, GLenum pname,
 GL_API void GL_APIENTRY glTexParameterfv (GLenum target, GLenum pname,
 							const GLfloat *params)
 {
-	glTexParameteri(target, pname, (GLint)(*params));
+	FGLTexture *obj;
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_TEXTURE_2D:
+		obj = ctx->texture[ctx->activeTexture].getTexture();
+		break;
+	case GL_TEXTURE_EXTERNAL_OES:
+		obj = ctx->textureExternal[ctx->activeTexture].getTexture();
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	switch (pname) {
+	case GL_TEXTURE_CROP_RECT_OES:
+		obj->cropRect[0] = round(params[0]);
+		obj->cropRect[1] = round(params[1]);
+		obj->cropRect[2] = round(params[2]);
+		obj->cropRect[3] = round(params[3]);
+		break;
+	default:
+		glTexParameteri(target, pname, (GLint)(*params));
+	}
 }
 
 GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname,
@@ -1240,7 +1264,31 @@ GL_API void GL_APIENTRY glTexParameterx (GLenum target, GLenum pname,
 GL_API void GL_APIENTRY glTexParameterxv (GLenum target, GLenum pname,
 							const GLfixed *params)
 {
-	glTexParameteri(target, pname, *params);
+	FGLTexture *obj;
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_TEXTURE_2D:
+		obj = ctx->texture[ctx->activeTexture].getTexture();
+		break;
+	case GL_TEXTURE_EXTERNAL_OES:
+		obj = ctx->textureExternal[ctx->activeTexture].getTexture();
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	switch (pname) {
+	case GL_TEXTURE_CROP_RECT_OES:
+		obj->cropRect[0] = round(floatFromFixed(params[0]));
+		obj->cropRect[1] = round(floatFromFixed(params[1]));
+		obj->cropRect[2] = round(floatFromFixed(params[2]));
+		obj->cropRect[3] = round(floatFromFixed(params[3]));
+		break;
+	default:
+		glTexParameteri(target, pname, *params);
+	}
 }
 
 GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
