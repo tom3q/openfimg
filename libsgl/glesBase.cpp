@@ -1019,6 +1019,11 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 			enabled = ctx->texture[i].enabled;
 		}
 		if (enabled && tex->surface && tex->isComplete()) {
+			if (!tex->invReady) {
+				tex->invWidth = 1.0f/tex->width;
+				tex->invHeight = 1.0f/tex->height;
+				tex->invReady = true;
+			}
 			texcoords[i][0]	= tex->invWidth*tex->cropRect[0];
 			texcoords[i][1] = tex->invHeight*(tex->cropRect[1]);
 			texcoords[i][2] = tex->invWidth*(tex->cropRect[0] + tex->cropRect[2]);

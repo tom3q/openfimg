@@ -734,7 +734,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 	// (Re)allocate the texture
 	if (!obj->surface) {
-		obj->invWidth = 1.0f/width;
+		obj->invReady = false;
 		obj->width = width;
 		obj->height = height;
 		obj->format = format;
@@ -744,7 +744,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->convert = convert;
 		obj->swap = swap;
 		obj->levels = 0;
-		obj->invHeight = 1.0f/height;
 
 		// Calculate mipmaps
 		unsigned size;
@@ -1037,6 +1036,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	else
 		delete tex->surface;
 
+	tex->invReady	= false;
 	tex->surface	= image->surface;
 	tex->eglImage	= image;
 	tex->format	= cfg->readFormat;

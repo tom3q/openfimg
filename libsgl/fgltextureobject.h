@@ -47,6 +47,7 @@ struct FGLTexture {
 	FGLImage	*eglImage;
 	GLfloat		invWidth;
 	GLfloat		invHeight;
+	bool		invReady;
 	/* HW state */
 	fimgTexture	*fimg;
 	uint32_t	fglFormat;
@@ -60,7 +61,7 @@ struct FGLTexture {
 		surface(0), compressed(0), levels(0), maxLevel(0), format(GL_RGB),
 		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
 		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
-		genMipmap(0), useMipmap(GL_TRUE), eglImage(0),
+		genMipmap(0), useMipmap(GL_TRUE), eglImage(0), invReady(false),
 		fimg(NULL), valid(false), dirty(false), swap(false)
 	{
 		fimg = fimgCreateTexture();
