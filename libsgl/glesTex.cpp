@@ -920,8 +920,7 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	}
 
 	FGLContext *ctx = getContext();
-	FGLTexture *obj =
-		ctx->texture[ctx->activeTexture].getTexture();
+	FGLTexture *obj = ctx->texture[ctx->activeTexture].getTexture();
 
 	if (obj->eglImage || !obj->surface) {
 		setError(GL_INVALID_OPERATION);
@@ -942,9 +941,6 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	mipmapH = obj->height >> level;
 	if (!mipmapH)
 		mipmapH = 1;
-
-	//LOGD("glTexSubImage2D: x = %d, y = %d, w = %d, h = %d",
-	//				xoffset, yoffset, width, height);
 
 	if (!xoffset && !yoffset && mipmapW == width && mipmapH == height) {
 		glTexImage2D(target, level, format, width, height,
@@ -1018,8 +1014,17 @@ GL_API void GL_APIENTRY glCopyTexSubImage2D (GLenum target, GLint level,
 GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 							GLeglImageOES img)
 {
-	if (unlikely(target != GL_TEXTURE_2D
-	    && target != GL_TEXTURE_EXTERNAL_OES)) {
+	FGLContext *ctx = getContext();
+	FGLTexture *tex;
+
+	switch (target) {
+	case GL_TEXTURE_2D:
+		tex = ctx->texture[ctx->activeTexture].getTexture();
+		break;
+	case GL_TEXTURE_EXTERNAL_OES:
+		tex = ctx->textureExternal[ctx->activeTexture].getTexture();
+		break;
+	default:
 		setError(GL_INVALID_ENUM);
 		return;
 	}
@@ -1029,13 +1034,6 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 		setError(GL_INVALID_VALUE);
 		return;
 	}
-
-	FGLContext *ctx = getContext();
-	FGLTexture *tex;
-	if (target == GL_TEXTURE_EXTERNAL_OES)
-		tex =  ctx->textureExternal[ctx->activeTexture].getTexture();
-	else
-		tex = ctx->texture[ctx->activeTexture].getTexture();
 
 	const FGLColorConfigDesc *cfg =
 				fglGetColorConfigDesc(image->pixelFormat);
