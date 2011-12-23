@@ -25,7 +25,6 @@
 template<typename T, int size>
 class FGLObjectManager {
 	/* Array of pointers addressed by used names */
-	FGLObject<T>	guard;
 	FGLObject<T>	**pool;
 	void		**owners;
 	/* Stack of unused names */
@@ -34,7 +33,7 @@ class FGLObjectManager {
 	bool		valid;
 public:
 	FGLObjectManager() :
-		guard(0), pool(NULL), unused(NULL), valid(false)
+		pool(NULL), unused(NULL), valid(false)
 	{
 		if(size <= 0)
 			return;
@@ -59,7 +58,7 @@ public:
 		write = size;
 
 		for(unsigned i = 0; i < size; i++) {
-			pool[i] = &guard;
+			pool[i] = (FGLObject<T> *)i;
 			owners[i] = 0;
 			unused[i] = i + 1;
 		}
@@ -86,21 +85,35 @@ public:
 
 		name = unused[write];
 
-		owners[name - 1] = owner;
 		pool[name - 1] = NULL;
+		owners[name - 1] = owner;
 
 		return name;
 	}
 
-	inline void *getOwner(unsigned name)
+	inline int get(unsigned name, void *owner)
 	{
-		return owners[name - 1];
+		if (name == 0 || name > size)
+			return -1;
+
+		if (owners[name - 1])
+			return -1;
+
+		unsigned pos = (unsigned)pool[name - 1];
+
+		--write;
+		unused[pos] = unused[write];
+		pool[unused[write] - 1] = (FGLObject<T> *)pos;
+		pool[name - 1] = NULL;
+		owners[name - 1] = owner;
+
+		return name;
 	}
 
 	inline void put(unsigned name)
 	{
-		pool[name - 1] = &guard;
 		owners[name - 1] = 0;
+		pool[name - 1] = (FGLObject<T> *)write;
 		unused[write] = name;
 		++write;
 	}
@@ -114,7 +127,10 @@ public:
 				pool[i]->unbindAll();
 				delete pool[i];
 			}
-			put(i + 1);
+			owners[i] = 0;
+			pool[i] = (FGLObject<T> *)write;
+			unused[write] = i + 1;
+			++write;
 		}
 	}
 
@@ -130,7 +146,13 @@ public:
 
 	inline bool isValid(unsigned name)
 	{
-		return (name <= size) && (pool[name - 1] != &guard);
+		if (!name || name > size)
+			return false;
+
+		if (!owners[name - 1])
+			return false;
+
+		return true;
 	}
 };
 

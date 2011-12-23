@@ -114,7 +114,8 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		return;
 	}
 
-	if(!fglTextureObjects.isValid(texture)) {
+	if(!fglTextureObjects.isValid(texture)
+	    && fglTextureObjects.get(texture, ctx) < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}

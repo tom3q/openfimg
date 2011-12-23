@@ -210,7 +210,8 @@ GL_API void GL_APIENTRY glBindBuffer (GLenum target, GLuint buffer)
 		return;
 	}
 
-	if(!fglBufferObjects.isValid(buffer)) {
+	if(!fglBufferObjects.isValid(buffer)
+	    && fglBufferObjects.get(buffer, ctx) < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
