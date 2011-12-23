@@ -569,6 +569,7 @@ GL_API void GL_APIENTRY glEnableClientState (GLenum array)
 	case GL_POINT_SIZE_ARRAY_OES:
 		idx = FGL_ARRAY_POINT_SIZE;
 		break;
+	case GL_TEXTURE_2D: /* Workaround for broken applications */
 	case GL_TEXTURE_COORD_ARRAY:
 		idx = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
 		break;
@@ -608,6 +609,7 @@ GL_API void GL_APIENTRY glDisableClientState (GLenum array)
 	case GL_POINT_SIZE_ARRAY_OES:
 		idx = FGL_ARRAY_POINT_SIZE;
 		break;
+	case GL_TEXTURE_2D: /* Workaround for broken applications */
 	case GL_TEXTURE_COORD_ARRAY:
 		idx = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
 		break;
