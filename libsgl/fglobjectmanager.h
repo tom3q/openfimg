@@ -22,6 +22,8 @@
 #ifndef _LIBSGL_FGLPOOLALLOCATOR_
 #define _LIBSGL_FGLPOOLALLOCATOR_
 
+#include <pthread.h>
+
 template<typename T, int size>
 class FGLObjectManager {
 	/* Array of pointers addressed by used names */
@@ -31,10 +33,13 @@ class FGLObjectManager {
 	unsigned	*unused;
 	unsigned	write;
 	bool		valid;
+	pthread_mutex_t	mutex;
 public:
 	FGLObjectManager() :
 		pool(NULL), unused(NULL), valid(false)
 	{
+		pthread_mutex_init(&mutex, NULL);
+
 		if(size <= 0)
 			return;
 
@@ -71,15 +76,21 @@ public:
 		delete[] owners;
 		delete[] unused;
 		delete[] pool;
+
+		pthread_mutex_destroy(&mutex);
 	}
 
 	inline int get(void *owner)
 	{
 		int name;
 
-		if(write == 0)
+		pthread_mutex_lock(&mutex);
+
+		if(write == 0) {
 			/* Out of names */
+			pthread_mutex_unlock(&mutex);
 			return -1;
+		}
 
 		--write;
 
@@ -87,6 +98,8 @@ public:
 
 		pool[name - 1] = NULL;
 		owners[name - 1] = owner;
+
+		pthread_mutex_unlock(&mutex);
 
 		return name;
 	}
@@ -96,8 +109,12 @@ public:
 		if (name == 0 || name > size)
 			return -1;
 
-		if (owners[name - 1])
+		pthread_mutex_lock(&mutex);
+
+		if (owners[name - 1]) {
+			pthread_mutex_unlock(&mutex);
 			return -1;
+		}
 
 		unsigned pos = (unsigned)pool[name - 1];
 
@@ -107,19 +124,27 @@ public:
 		pool[name - 1] = NULL;
 		owners[name - 1] = owner;
 
+		pthread_mutex_unlock(&mutex);
+
 		return name;
 	}
 
 	inline void put(unsigned name)
 	{
+		pthread_mutex_lock(&mutex);
+
 		owners[name - 1] = 0;
 		pool[name - 1] = (FGLObject<T> *)write;
 		unused[write] = name;
 		++write;
+
+		pthread_mutex_unlock(&mutex);
 	}
 
 	inline void clean(void *owner)
 	{
+		pthread_mutex_lock(&mutex);
+
 		for(unsigned i = 0; i < size; i++) {
 			if (owners[i] != owner)
 				continue;
@@ -132,6 +157,8 @@ public:
 			unused[write] = i + 1;
 			++write;
 		}
+
+		pthread_mutex_unlock(&mutex);
 	}
 
 	inline const FGLObject<T>* &operator[](unsigned name) const
@@ -149,8 +176,14 @@ public:
 		if (!name || name > size)
 			return false;
 
-		if (!owners[name - 1])
+		pthread_mutex_lock(&mutex);
+
+		if (!owners[name - 1]) {
+			pthread_mutex_unlock(&mutex);
 			return false;
+		}
+
+		pthread_mutex_unlock(&mutex);
 
 		return true;
 	}
