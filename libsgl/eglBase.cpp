@@ -1240,8 +1240,8 @@ static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 		w = d->getWidth();
 		h = d->getHeight();
 
-		uint32_t depth = (gl->surface.depthFormat & 0xff) ? 1 : 0;
-		uint32_t stencil = (gl->surface.depthFormat >> 8) ? 0xff : 0;
+		uint32_t depth = (d->getDepthFormat() & 0xff) ? 1 : 0;
+		uint32_t stencil = (d->getDepthFormat() >> 8) ? 0xff : 0;
 
 		fimgSetZBufWriteMask(gl->fimg, depth);
 		fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);

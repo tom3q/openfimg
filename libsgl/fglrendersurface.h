@@ -50,6 +50,7 @@ struct FGLRenderSurface
 	virtual void		disconnect() {}
 	virtual EGLint		getWidth() const = 0;
 	virtual EGLint		getHeight() const = 0;
+	virtual int32_t		getDepthFormat() { return depthFormat; }
 
 	virtual EGLint		getHorizontalResolution() const;
 	virtual EGLint		getVerticalResolution() const;
