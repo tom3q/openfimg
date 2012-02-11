@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/glesCommon.h
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION
@@ -64,7 +64,7 @@ static inline GLint unitFromTextureEnum(GLenum texture)
 	return unit;
 }
 
-/**
+/*
 	Context management
 */
 
@@ -87,7 +87,7 @@ static inline FGLContext *getContext(void)
 	return ctx;
 }
 
-/**
+/*
 	Error handling
 */
 

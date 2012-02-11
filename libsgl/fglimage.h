@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/fglimage.h
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION

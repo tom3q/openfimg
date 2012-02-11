@@ -1037,7 +1037,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 	return ret;
 }
 
-/**
+/*
 	Client APIs
 */
 

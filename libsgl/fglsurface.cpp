@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/eglMem.cpp
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) EGL IMPLEMENTATION

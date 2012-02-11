@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/matrix.cpp
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION
@@ -28,11 +28,11 @@
 #include <cmath>
 #include "fglmatrix.h"
 
-/**
+/*
  *	4x4 matrix (for geometry transformation)
  */
 
-/**
+/*
  *	Matrix loading
  */
 
@@ -166,7 +166,7 @@ void FGLmatrix::inverseTranslate(GLfloat x, GLfloat y, GLfloat z)
 	(*this)[3][2] = -z;
 }
 
-/**
+/*
 	Required conditions:
 	x != 0, y != 0, z != 0
 */
@@ -179,7 +179,7 @@ void FGLmatrix::inverseScale(GLfloat x, GLfloat y, GLfloat z)
 	(*this)[2][2] = 1.0f/z;
 }
 
-/**
+/*
 	Required conditions:
 	zNear != 0, zFar != 0
 */
@@ -197,7 +197,7 @@ void FGLmatrix::inverseFrustum(GLfloat left, GLfloat right, GLfloat bottom, GLfl
 	(*this)[3][3] = (zFar + zNear) / (-2 * zFar * zNear);
 }
 
-/**
+/*
 	Required conditions:
 	zNear != zFar, right != left, top != bottom
 */
@@ -213,7 +213,7 @@ void FGLmatrix::inverseOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloa
 	(*this)[3][2] = (zNear + zFar) / -2;
 }
 
-/**
+/*
 	Matrix modification
 */
 

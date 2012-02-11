@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/fgltextureobject.h
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION

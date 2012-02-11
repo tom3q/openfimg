@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/glesPixel.cpp
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION
@@ -69,7 +69,7 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
 	}
 }
 
-/**
+/*
 	Reading pixels
 */
 
@@ -401,7 +401,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 	setError(GL_INVALID_ENUM);
 }
 
-/**
+/*
 	Clearing buffers
 */
 

@@ -414,7 +414,7 @@ typedef enum {
 	FGPF_TEST_MODE_NOTEQUAL
 } fimgTestMode;
 
-/**
+/*
  *	WORKAROUND
  *	Inconsistent with fimgTestMode due to hardware bug
  */

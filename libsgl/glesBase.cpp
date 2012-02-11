@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/glesBase.cpp
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION
@@ -37,7 +37,7 @@
 #include "libfimg/fimg.h"
 #include "s3c_g2d.h"
 
-/**
+/*
 	Error handling
 */
 
@@ -54,7 +54,7 @@ GL_API GLenum GL_APIENTRY glGetError (void)
 	return error;
 }
 
-/**
+/*
 	Vertex state
 */
 
@@ -635,7 +635,7 @@ GL_API void GL_APIENTRY glClientActiveTexture (GLenum texture)
 	ctx->clientActiveTexture = unit;
 }
 
-/**
+/*
 	Drawing
 */
 
@@ -932,7 +932,7 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	}
 }
 
-/**
+/*
 	Draw texture
 */
 
@@ -1106,7 +1106,7 @@ GL_API void GL_APIENTRY glDrawTexfvOES (const GLfloat *coords)
 	glDrawTexfOES(coords[0], coords[1], coords[2], coords[3], coords[4]);
 }
 
-/**
+/*
 	Transformations
 */
 
@@ -1153,7 +1153,7 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 	fimgSetViewportParams(ctx->fimg, x, y, width, height);
 }
 
-/**
+/*
 	Rasterization
 */
 
@@ -1693,7 +1693,7 @@ GL_API void GL_APIENTRY glStencilMask (GLuint mask)
 	}
 }
 
-/**
+/*
 	Enable/disable
 */
 
@@ -1779,7 +1779,7 @@ GL_API void GL_APIENTRY glDisable (GLenum cap)
 	fglSet(cap, false);
 }
 
-/**
+/*
 	Flush/Finish
 */
 
@@ -1803,7 +1803,7 @@ GL_API void GL_APIENTRY glFinish (void)
 	ctx->finished = true;
 }
 
-/**
+/*
 	Stubs
 */
 
@@ -1926,7 +1926,7 @@ GL_API void GL_APIENTRY glPointParameterxv (GLenum pname, const GLfixed *params)
 	FUNC_UNIMPLEMENTED;
 }
 
-/**
+/*
 	Context management
 */
 

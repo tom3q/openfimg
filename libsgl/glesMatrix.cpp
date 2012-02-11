@@ -1,4 +1,4 @@
-/**
+/*
  * libsgl/glesMatrix.cpp
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION
@@ -35,7 +35,7 @@
 #include "libfimg/fimg.h"
 #include "s3c_g2d.h"
 
-/**
+/*
 	Matrices
 */
 
