@@ -25,6 +25,9 @@
 template<typename T1, typename T2>
 class FGLObject;
 
+template<typename T1, typename T2>
+class FGLObjectBindingIterator;
+
 /*
  * FGLObjectBinding
  *
@@ -72,6 +75,55 @@ public:
 	}
 
 	friend class FGLObject<T1, T2>;
+	friend class FGLObjectBindingIterator<T1, T2>;
+};
+
+/*
+ * FGLObjectBindingIterator
+ *
+ * An object that allows to access all objects of type T2, to which
+ * a given object of type T1 is bound using its FGLObject object.
+ */
+template<typename T1, typename T2>
+class FGLObjectBindingIterator {
+	FGLObject<T1, T2> *object;
+	FGLObjectBinding<T1, T2> *ptr;
+
+public:
+	T2 *get(void)
+	{
+		return ptr->getParent();
+	}
+
+	FGLObjectBindingIterator<T1, T2> &operator++(void)
+	{
+		if (ptr != &object->sentinel)
+			ptr = ptr->next;
+	}
+
+	FGLObjectBindingIterator<T1, T2> &operator++(int)
+	{
+		FGLObjectBindingIterator<T1, T2> copy = *this;
+
+		if (ptr != &object->sentinel)
+			ptr = ptr->next;
+
+		return copy;
+	}
+
+	bool operator==(const FGLObjectBindingIterator<T1, T2> &op)
+	{
+		return ptr == op.ptr;
+	}
+
+	bool operator!=(const FGLObjectBindingIterator<T1, T2> &op)
+	{
+		return ptr != op.ptr;
+	}
+
+	FGLObjectBindingIterator(FGLObject<T1, T2> *o,
+						FGLObjectBinding<T1, T2> *p) :
+		object(o), ptr(p) {}
 };
 
 /*
@@ -139,7 +191,20 @@ public:
 		return b->object == this;
 	}
 
+	inline FGLObjectBindingIterator<T1, T2> begin(void)
+	{
+		return FGLObjectBindingIterator<T1, T2>(this, sentinel.next);
+	}
+
+	inline FGLObjectBindingIterator<T1, T2> end(void)
+	{
+		return FGLObjectBindingIterator<T1, T2>(this, &sentinel);
+	}
+
 	friend class FGLObjectBinding<T1, T2>;
+	friend class FGLObjectBindingIterator<T1, T2>;
+
+	typedef FGLObjectBindingIterator<T1, T2> iterator;
 };
 
 #endif
