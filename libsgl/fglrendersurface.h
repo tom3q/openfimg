@@ -46,7 +46,6 @@ struct FGLRenderSurface
 	virtual bool		initCheck() const = 0;
 
 	virtual EGLBoolean	bindDrawSurface(FGLContext *gl);
-	virtual EGLBoolean	bindReadSurface(FGLContext *gl);
 	virtual EGLBoolean	connect() { return EGL_TRUE; }
 	virtual void		disconnect() {}
 	virtual EGLint		getWidth() const = 0;
