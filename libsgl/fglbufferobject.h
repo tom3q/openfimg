@@ -26,13 +26,44 @@
 #include <GLES/gl.h>
 #include "fglobject.h"
 
+struct FGLBuffer;
+
+class FGLBufferObjectBinding {
+	FGLObjectBinding<FGLBuffer, FGLBufferObjectBinding> binding;
+
+public:
+	FGLBufferObjectBinding() :
+		binding(this) {};
+
+	inline bool isBound(void)
+	{
+		return binding.isBound();
+	}
+
+	inline void bind(FGLObject<FGLBuffer, FGLBufferObjectBinding> *o)
+	{
+		binding.bind(o);
+	}
+
+	inline FGLBuffer *get(void)
+	{
+		return binding.get();
+	}
+};
+
 struct FGLBuffer {
 	void *memory;
 	int size;
 	GLenum usage;
+	unsigned int name;
+	FGLObject<FGLBuffer, FGLBufferObjectBinding> object;
 
-	FGLBuffer() :
-		memory(0), size(0), usage(GL_STATIC_DRAW) {};
+	FGLBuffer(unsigned int name) :
+		memory(0),
+		size(0),
+		usage(GL_STATIC_DRAW),
+		name(name),
+		object(this) {};
 
 	~FGLBuffer()
 	{
@@ -87,9 +118,11 @@ struct FGLBuffer {
 	{
 		return memory != 0;
 	}
-};
 
-typedef FGLObject<FGLBuffer> FGLBufferObject;
-typedef FGLObjectBinding<FGLBuffer> FGLBufferObjectBinding;
+	unsigned int getName(void) const
+	{
+		return name;
+	}
+};
 
 #endif

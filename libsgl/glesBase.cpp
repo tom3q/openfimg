@@ -141,7 +141,7 @@ GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target,
  * Buffer objects
  */
 
-FGLObjectManager<FGLBufferObject, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
+FGLObjectManager<FGLBuffer, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
 
 GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
 {
@@ -206,7 +206,7 @@ GL_API void GL_APIENTRY glBindBuffer (GLenum target, GLuint buffer)
 	}
 
 	if(buffer == 0) {
-		binding->unbind();
+		binding->bind(0);
 		return;
 	}
 
@@ -216,17 +216,17 @@ GL_API void GL_APIENTRY glBindBuffer (GLenum target, GLuint buffer)
 		return;
 	}
 
-	FGLBufferObject *obj = fglBufferObjects[buffer];
-	if(obj == NULL) {
-		obj = new FGLBufferObject(buffer);
-		if (obj == NULL) {
+	FGLBuffer *buf = fglBufferObjects[buffer];
+	if(buf == NULL) {
+		buf = new FGLBuffer(buffer);
+		if (buf == NULL) {
 			setError(GL_OUT_OF_MEMORY);
 			return;
 		}
-		fglBufferObjects[buffer] = obj;
+		fglBufferObjects[buffer] = buf;
 	}
 
-	obj->bind(binding);
+	binding->bind(&buf->object);
 }
 
 GL_API void GL_APIENTRY glBufferData (GLenum target, GLsizeiptr size,

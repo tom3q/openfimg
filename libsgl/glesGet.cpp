@@ -269,13 +269,13 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 	switch (pname) {
 	case GL_ARRAY_BUFFER_BINDING:
 		if (ctx->arrayBuffer.isBound())
-			state.putInteger(ctx->arrayBuffer.getName());
+			state.putInteger(ctx->arrayBuffer.get()->getName());
 		else
 			state.putInteger(0);
 		break;
 	case GL_ELEMENT_ARRAY_BUFFER_BINDING:
 		if (ctx->elementArrayBuffer.isBound())
-			state.putInteger(ctx->elementArrayBuffer.getName());
+			state.putInteger(ctx->elementArrayBuffer.get()->getName());
 		else
 			state.putInteger(0);
 		break;
