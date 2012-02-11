@@ -311,7 +311,7 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 		FGLTextureObjectBinding *b =
 				&ctx->texture[ctx->activeTexture].binding;
 		if (b->isBound())
-			state.putInteger(b->getName());
+			state.putInteger(b->get()->getName());
 		else
 			state.putInteger(0);
 		break; }

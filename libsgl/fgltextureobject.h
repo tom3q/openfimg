@@ -26,7 +26,16 @@
 #include "fglobject.h"
 #include "fglimage.h"
 
+struct FGLTexture;
+struct FGLTextureState;
+
+typedef FGLObject<FGLTexture, FGLTextureState> FGLTextureObject;
+typedef FGLObjectBinding<FGLTexture, FGLTextureState> FGLTextureObjectBinding;
+
 struct FGLTexture {
+	FGLTextureObject object;
+
+	unsigned int	name;
 	/* Memory surface */
 	FGLSurface	*surface;
 	/* GL state */
@@ -56,7 +65,8 @@ struct FGLTexture {
 	bool		dirty;
 	bool		swap;
 
-	FGLTexture() :
+	FGLTexture(unsigned int name = 0) :
+		object(this), name(name),
 		surface(0), compressed(0), maxLevel(0), format(GL_RGB),
 		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
 		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
@@ -92,9 +102,11 @@ struct FGLTexture {
 	{
 		return (surface != 0);
 	}
-};
 
-typedef FGLObject<FGLTexture> FGLTextureObject;
-typedef FGLObjectBinding<FGLTexture> FGLTextureObjectBinding;
+	virtual GLuint getName(void) const
+	{
+		return name;
+	}
+};
 
 #endif

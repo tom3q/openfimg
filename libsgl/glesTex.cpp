@@ -41,7 +41,7 @@
 	Texturing
 */
 
-FGLObjectManager<FGLTextureObject, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
+FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
 
 GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
 {
@@ -110,7 +110,7 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 	}
 
 	if(texture == 0) {
-		binding->unbind();
+		binding->bind(0);
 		return;
 	}
 
@@ -120,21 +120,21 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		return;
 	}
 
-	FGLTextureObject *obj = fglTextureObjects[texture];
-	if(obj == NULL) {
-		obj = new FGLTextureObject(texture);
-		if (obj == NULL) {
+	FGLTexture *tex = fglTextureObjects[texture];
+	if(tex == NULL) {
+		tex = new FGLTexture(texture);
+		if (tex == NULL) {
 			setError(GL_OUT_OF_MEMORY);
 			return;
 		}
-		fglTextureObjects[texture] = obj;
-		obj->object.target = target;
-	} else if (obj->object.target != target) {
+		fglTextureObjects[texture] = tex;
+		tex->target = target;
+	} else if (tex->target != target) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
 
-	obj->bind(binding);
+	binding->bind(&tex->object);
 }
 
 static int fglGetFormatInfo(GLenum format, GLenum type,
