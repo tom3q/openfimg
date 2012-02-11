@@ -22,7 +22,6 @@
 #ifndef _LIBSGL_FGLOBJECT_
 #define _LIBSGL_FGLOBJECT_
 
-#include <cassert>
 
 /*
  * FGLObjectBinding
