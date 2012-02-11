@@ -28,7 +28,7 @@ struct FGLImage {
 #define FGL_IMAGE_MAGIC 0x00474d49
 	uint32_t magic;
 	uint32_t pixelFormat;
-	uint32_t stride;
+	uint32_t width;
 	uint32_t height;
 	void *buffer;
 	FGLSurface *surface;

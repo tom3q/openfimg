@@ -1028,14 +1028,14 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->convert	= 0;
 	tex->maxLevel	= 0;
 	tex->dirty	= true;
-	tex->width	= image->stride;
+	tex->width	= image->width;
 	tex->height	= image->height;
 	tex->swap	= image->swapNeeded;
 
 	// Setup fimgTexture
 	fimgInitTexture(tex->fimg, (image->isARGB << 4) | tex->fglFormat,
 					tex->maxLevel, tex->surface->paddr);
-	fimgSetTex2DSize(tex->fimg, image->stride, image->height);
+	fimgSetTex2DSize(tex->fimg, image->width, image->height);
 	fimgSetTexMipmap(tex->fimg, FGTU_TSTA_MIPMAP_DISABLED);
 	if (target == GL_TEXTURE_EXTERNAL_OES)
 		fimgSetTexMinFilter(tex->fimg, FGTU_TSTA_FILTER_LINEAR);
