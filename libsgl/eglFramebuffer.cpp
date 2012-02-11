@@ -322,7 +322,6 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy, EGLConfig config,
 	ioctl(fd, FBIOGET_VSCREENINFO, &vinfo);
 	ioctl(fd, FBIOGET_FSCREENINFO, &finfo);
 
-	stride		= vinfo.xres;
 	width		= vinfo.xres;
 	height		= vinfo.yres;
 	bytesPerPixel	= vinfo.bits_per_pixel / 8;
@@ -364,7 +363,7 @@ FGLWindowSurface::~FGLWindowSurface()
 EGLBoolean FGLWindowSurface::connect()
 {
 	if (depthFormat) {
-		unsigned int size = stride * height * 4;
+		unsigned int size = width * height * 4;
 
 		delete depth;
 		depth = new FGLLocalSurface(size);

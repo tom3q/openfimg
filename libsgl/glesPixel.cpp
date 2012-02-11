@@ -87,7 +87,7 @@ static void convertToUByteRGBA555(FGLContext *ctx, uint8_t *dst,
 	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.stride;
+	unsigned srcStride = 2*ctx->surface.width;
 	unsigned xOffset = 2*x;
 	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
@@ -120,7 +120,7 @@ static void convertToUByteRGBA565(FGLContext *ctx, uint8_t *dst,
 	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.stride;
+	unsigned srcStride = 2*ctx->surface.width;
 	unsigned xOffset = 2*x;
 	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
@@ -153,7 +153,7 @@ static void convertToUByteRGBA4444(FGLContext *ctx, uint8_t *dst,
 	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.stride;
+	unsigned srcStride = 2*ctx->surface.width;
 	unsigned xOffset = 2*x;
 	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
@@ -186,7 +186,7 @@ static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.stride;
+	unsigned srcStride = 2*ctx->surface.width;
 	unsigned xOffset = 2*x;
 	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - 2*width;
@@ -226,7 +226,7 @@ static void convertToUByteBGRA8888(FGLContext *ctx, uint32_t *dst,
 	const uint32_t *src = (const uint32_t *)ctx->surface.draw->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = ((4*width + alignment - 1) & ~(alignment - 1)) / 4;
-	unsigned srcStride = ctx->surface.stride;
+	unsigned srcStride = ctx->surface.width;
 	unsigned xOffset = x;
 	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
 	unsigned srcPad = srcStride - width;
@@ -307,7 +307,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 	draw->flush();
 
 	unsigned srcBpp = fglColorConfigs[ctx->surface.format].pixelSize;
-	unsigned srcStride = srcBpp * ctx->surface.stride;
+	unsigned srcStride = srcBpp * ctx->surface.width;
 	unsigned alignment = ctx->packAlignment;
 
 	if (format == fglColorConfigs[ctx->surface.format].readFormat
@@ -682,7 +682,7 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
 	FUNCTION_TRACER;
 	FGLSurface *draw = ctx->surface.draw;
-	uint32_t stride = ctx->surface.stride;
+	uint32_t stride = ctx->surface.width;
 	bool lineByLine = false;
 	int32_t l, b, t, w, h;
 

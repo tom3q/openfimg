@@ -41,19 +41,18 @@
  */
 
 void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
-                unsigned int height, unsigned int stride, unsigned int format)
+                unsigned int height, unsigned int format)
 {
         if (!cbuf) {
                 gl->surface.draw = 0;
                 return;
         }
 
-        fimgSetFrameBufSize(gl->fimg, stride, height);
+        fimgSetFrameBufSize(gl->fimg, width, height);
         fimgSetFrameBufParams(gl->fimg, 1, 0, 255, (fimgColorMode)format);
         fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
         gl->surface.draw = cbuf;
         gl->surface.width = width;
-        gl->surface.stride = stride;
         gl->surface.height = height;
         gl->surface.format = format;
 }

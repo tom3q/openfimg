@@ -144,7 +144,6 @@ struct FGLSurfaceState {
 	FGLSurface *read;
 	FGLSurface *depth;
 	GLint width;
-	GLint stride;
 	GLint height;
 	unsigned int format;
 	unsigned int depthFormat;

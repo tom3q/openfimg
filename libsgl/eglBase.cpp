@@ -706,7 +706,7 @@ FGLRenderSurface::~FGLRenderSurface()
 
 EGLBoolean FGLRenderSurface::bindDrawSurface(FGLContext *gl)
 {
-	fglSetColorBuffer(gl, color, width, height, stride, format);
+	fglSetColorBuffer(gl, color, width, height, format);
 	fglSetDepthBuffer(gl, depth, depthFormat);
 
 	return EGL_TRUE;
@@ -791,7 +791,6 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 
 	width   = w;
 	height  = h;
-	stride  = w;
 
 	if (depthFormat) {
 		size = w * h * 4;

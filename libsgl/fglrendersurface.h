@@ -63,7 +63,6 @@ protected:
 	FGLSurface              *depth;
 	int32_t			depthFormat;
 	int			width;
-	int			stride;
 	int			height;
 	int32_t			format;
 };

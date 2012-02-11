@@ -567,9 +567,8 @@ EGLBoolean FGLWindowSurface::connect()
 	// allocate a corresponding depth-buffer
 	width = buffer->width;
 	height = buffer->height;
-	stride = buffer->stride;
 	if (depthFormat) {
-		unsigned int size = stride * height * 4;
+		unsigned int size = width * height * 4;
 
 		depth = new FGLLocalSurface(size);
 		if (!depth || !depth->isValid()) {
@@ -599,7 +598,7 @@ EGLBoolean FGLWindowSurface::connect()
 	delete color;
 	color = new FGLExternalSurface(bits,
 			fglGetBufferPhysicalAddress(buffer),
-			stride * height * bytesPerPixel);
+			width * height * bytesPerPixel);
 
 	return EGL_TRUE;
 }
@@ -759,17 +758,15 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	nativeWindow->lockBuffer(nativeWindow, buffer);
 
 	// reallocate the depth-buffer if needed
-	if ((width != buffer->width) || (height != buffer->height)
-		|| (stride != buffer->stride))
+	if ((width != buffer->width) || (height != buffer->height))
 	{
 		// TODO: we probably should reset the swap rect here
 		// if the window size has changed
 		width = buffer->width;
 		height = buffer->height;
-		stride = buffer->stride;
 
 		if (depthFormat) {
-			unsigned int size = stride * height * 4;
+			unsigned int size = width * height * 4;
 
 			delete depth;
 
@@ -799,7 +796,7 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	delete color;
 	color = new FGLExternalSurface(bits,
 			fglGetBufferPhysicalAddress(buffer),
-			stride * height * bytesPerPixel);
+			width * height * bytesPerPixel);
 
 	return EGL_TRUE;
 }
@@ -940,7 +937,7 @@ struct FGLAndroidImage : FGLImage {
 
 		android_native_buffer_t *native_buffer =
 						(android_native_buffer_t *)buf;
-		stride = native_buffer->stride;
+		width = native_buffer->stride;
 		height = native_buffer->height;
 
 		native_buffer->common.incRef(&native_buffer->common);
