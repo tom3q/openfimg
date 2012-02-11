@@ -27,6 +27,4 @@ extern void fglSetColorBuffer(FGLContext *, FGLSurface *, unsigned int,
 
 extern void fglSetDepthBuffer(FGLContext *, FGLSurface *, unsigned int);
 
-extern void fglSetReadBuffer(FGLContext *, FGLSurface *);
-
 #endif /* _GLESFRAMEBUFFER_H_ */

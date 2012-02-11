@@ -69,8 +69,3 @@ void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf, unsigned int format)
         gl->surface.depth = zbuf;
         gl->surface.depthFormat = format;
 }
-
-void fglSetReadBuffer(FGLContext *gl, FGLSurface *rbuf)
-{
-        gl->surface.read = rbuf;
-}
