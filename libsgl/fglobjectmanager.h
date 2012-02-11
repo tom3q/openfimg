@@ -27,7 +27,7 @@
 template<typename T, int size>
 class FGLObjectManager {
 	/* Array of pointers addressed by used names */
-	FGLObject<T>	**pool;
+	T		**pool;
 	void		**owners;
 	/* Stack of unused names */
 	unsigned	*unused;
@@ -43,7 +43,7 @@ public:
 		if(size <= 0)
 			return;
 
-		pool = new FGLObject<T>*[size];
+		pool = new T*[size];
 		if (pool == NULL)
 			return;
 
@@ -63,7 +63,7 @@ public:
 		write = size;
 
 		for(unsigned i = 0; i < size; i++) {
-			pool[i] = (FGLObject<T> *)i;
+			pool[i] = (T *)i;
 			owners[i] = 0;
 			unused[i] = i + 1;
 		}
@@ -120,7 +120,7 @@ public:
 
 		--write;
 		unused[pos] = unused[write];
-		pool[unused[write] - 1] = (FGLObject<T> *)pos;
+		pool[unused[write] - 1] = (T *)pos;
 		pool[name - 1] = NULL;
 		owners[name - 1] = owner;
 
@@ -134,7 +134,7 @@ public:
 		pthread_mutex_lock(&mutex);
 
 		owners[name - 1] = 0;
-		pool[name - 1] = (FGLObject<T> *)write;
+		pool[name - 1] = (T *)write;
 		unused[write] = name;
 		++write;
 
@@ -148,12 +148,10 @@ public:
 		for(unsigned i = 0; i < size; i++) {
 			if (owners[i] != owner)
 				continue;
-			if (pool[i]) {
-				pool[i]->unbindAll();
+			if (pool[i])
 				delete pool[i];
-			}
 			owners[i] = 0;
-			pool[i] = (FGLObject<T> *)write;
+			pool[i] = (T *)write;
 			unused[write] = i + 1;
 			++write;
 		}
@@ -161,12 +159,12 @@ public:
 		pthread_mutex_unlock(&mutex);
 	}
 
-	inline const FGLObject<T>* &operator[](unsigned name) const
+	inline const T* &operator[](unsigned name) const
 	{
 		return pool[name - 1];
 	}
 
-	inline FGLObject<T>* &operator[](unsigned name)
+	inline T* &operator[](unsigned name)
 	{
 		return pool[name - 1];
 	}

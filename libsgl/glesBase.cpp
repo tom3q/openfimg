@@ -141,7 +141,7 @@ GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target,
  * Buffer objects
  */
 
-FGLObjectManager<FGLBuffer, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
+FGLObjectManager<FGLBufferObject, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
 
 GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
 {

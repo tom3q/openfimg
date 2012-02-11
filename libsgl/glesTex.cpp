@@ -41,7 +41,7 @@
 	Texturing
 */
 
-FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
+FGLObjectManager<FGLTextureObject, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
 
 GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
 {
