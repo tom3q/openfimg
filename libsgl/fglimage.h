@@ -37,8 +37,13 @@ struct FGLImage {
 	bool terminated;
 	uint32_t refCount;
 
-	FGLImage() : magic(FGL_IMAGE_MAGIC), buffer(0), surface(0),
-					terminated(false), refCount(0) {}
+	FGLImage() :
+		magic(FGL_IMAGE_MAGIC),
+		buffer(0),
+		surface(0),
+		terminated(false),
+		refCount(0) {}
+
 	virtual ~FGLImage() {}
 
 	bool isValid()
