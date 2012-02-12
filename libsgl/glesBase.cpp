@@ -728,6 +728,53 @@ static inline void fglSetupTextures(FGLContext *ctx)
 		fimgInvalidateTextureCache(ctx->fimg);
 }
 
+static void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
+						GLsizei width, GLsizei height);
+static void fglSetBlending(FGLContext *ctx);
+
+static inline int fglSetupFramebuffer(FGLContext *ctx)
+{
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba;
+
+	if (!fb->isValid())
+		return -1;
+
+	if (ctx->framebuffer.current == fb && !fb->isDirty())
+		return 0;
+
+	fimgSetFrameBufSize(ctx->fimg, fb->getWidth(), fb->getHeight());
+	fimgSetFrameBufParams(ctx->fimg,
+				1, 0, 255, (fimgColorMode)fb->getColorFormat());
+
+	fba = fb->get(FGL_ATTACHMENT_COLOR);
+	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);
+
+	fba = fb->get(FGL_ATTACHMENT_DEPTH);
+	if (!fba)
+		fba = fb->get(FGL_ATTACHMENT_STENCIL);
+	if (fba)
+		fimgSetZBufBaseAddr(ctx->fimg, fba->surface->paddr);
+
+	if (ctx->enable.scissorTest)
+		fglSetScissor(ctx, ctx->perFragment.scissor.left,
+					ctx->perFragment.scissor.bottom,
+					ctx->perFragment.scissor.width,
+					ctx->perFragment.scissor.height);
+	else
+		fglSetScissor(ctx, 0, 0, fb->getWidth(), fb->getHeight());
+
+	fimgSetViewportParams(ctx->fimg, ctx->viewport.x, ctx->viewport.y,
+				ctx->viewport.width, ctx->viewport.height);
+
+	fglSetBlending(ctx);
+
+	ctx->framebuffer.current = fb;
+	fb->markClean();
+
+	return 0;
+}
+
 GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 {
 	uint32_t fglMode;
@@ -739,6 +786,11 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 
 	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
+
+	if (fglSetupFramebuffer(ctx)) {
+		setError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
+		return;
+	}
 
 	for(int i = 0; i < (4 + FGL_MAX_TEXTURE_UNITS); ++i) {
 		if(ctx->array[i].enabled) {
@@ -824,6 +876,11 @@ GL_API void GL_APIENTRY glDrawElements (GLenum mode, GLsizei count, GLenum type,
 	uint32_t fglMode;
 	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
 	FGLContext *ctx = getContext();
+
+	if (fglSetupFramebuffer(ctx)) {
+		setError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
+		return;
+	}
 
 	if(ctx->elementArrayBuffer.isBound())
 		indices = ctx->elementArrayBuffer.get()->getAddress(indices);
@@ -942,6 +999,11 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	GLboolean arrayEnabled[4 + FGL_MAX_TEXTURE_UNITS];
 	GLfloat vertices[3*4];
 	GLfloat texcoords[2][2*4];
+
+	if (fglSetupFramebuffer(ctx)) {
+		setError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
+		return;
+	}
 
 	// Save current state and prepare to drawing
 
@@ -1273,10 +1335,12 @@ GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
 static inline void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
 						GLsizei width, GLsizei height)
 {
-	unsigned int xmin = clamp(x, 0, ctx->surface.width);
-	unsigned int xmax = clamp(x + width, 0, ctx->surface.width);
-	unsigned int ymin = clamp(y, 0, ctx->surface.height);
-	unsigned int ymax = clamp(y + height, 0, ctx->surface.height);
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+
+	GLuint xmin = clamp(x,		0, (GLint)fb->getWidth());
+	GLuint xmax = clamp(x + width,	0, (GLint)fb->getWidth());
+	GLuint ymin = clamp(y,		0, (GLint)fb->getHeight());
+	GLuint ymax = clamp(y + height,	0, (GLint)fb->getHeight());
 
 	fimgSetXClip(ctx->fimg, xmin, xmax);
 	fimgSetYClip(ctx->fimg, ymin, ymax);
@@ -1507,7 +1571,9 @@ static void fglSetBlending(FGLContext *ctx)
 		return;
 	}
 
-	if (FGLColorConfigDesc::get(ctx->surface.format)->alpha)
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+
+	if (FGLColorConfigDesc::get(fb->getColorFormat())->alpha)
 		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
 	else
 		fimgSetBlendFuncNoAlpha(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
@@ -1674,20 +1740,22 @@ GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green,
 GL_API void GL_APIENTRY glDepthMask (GLboolean flag)
 {
 	FGLContext *ctx = getContext();
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 
 	ctx->perFragment.mask.depth = flag;
 
-	if (ctx->surface.depthFormat & 0xff)
+	if (fb->getDepthFormat() & 0xff)
 		fimgSetZBufWriteMask(ctx->fimg, flag);
 }
 
 GL_API void GL_APIENTRY glStencilMask (GLuint mask)
 {
 	FGLContext *ctx = getContext();
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 
 	ctx->perFragment.mask.stencil = mask & 0xff;
 
-	if (ctx->surface.depthFormat >> 8) {
+	if (fb->getDepthFormat() >> 8) {
 		fimgSetStencilBufWriteMask(ctx->fimg, 0, mask & 0xff);
 		fimgSetStencilBufWriteMask(ctx->fimg, 1, mask & 0xff);
 	}
@@ -1716,18 +1784,17 @@ static inline void fglSet(GLenum cap, bool state)
 		fimgEnableDepthOffset(ctx->fimg, state);
 		ctx->enable.polyOffFill = 1;
 		break;
-	case GL_SCISSOR_TEST:
+	case GL_SCISSOR_TEST: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 		ctx->enable.scissorTest = state;
-		if (state) {
+		if (state)
 			fglSetScissor(ctx, ctx->perFragment.scissor.left,
 					ctx->perFragment.scissor.bottom,
 					ctx->perFragment.scissor.width,
 					ctx->perFragment.scissor.height);
-		} else {
-			fglSetScissor(ctx, 0, 0, ctx->surface.width,
-							ctx->surface.height);
-		}
-		break;
+		else
+			fglSetScissor(ctx, 0, 0, fb->getWidth(), fb->getHeight());
+		break; }
 	case GL_ALPHA_TEST:
 		fimgSetAlphaEnable(ctx->fimg, state);
 		ctx->enable.alphaTest = state;

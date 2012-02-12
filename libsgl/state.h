@@ -148,18 +148,6 @@ struct FGLEGLState {
 		depth(0) {};
 };
 
-struct FGLSurfaceState {
-	FGLSurface *draw;
-	FGLSurface *read;
-	FGLSurface *depth;
-	GLint width;
-	GLint height;
-	unsigned int format;
-	unsigned int depthFormat;
-
-	FGLSurfaceState() : draw(0), read(0), depth(0) {};
-};
-
 struct FGLTextureState {
 	FGLTexture defTexture;
 	FGLTextureObjectBinding binding;
@@ -342,7 +330,6 @@ struct FGLContext {
 	FGLRenderbufferBinding renderbuffer;
 	/* EGL state */
 	FGLEGLState egl;
-	FGLSurfaceState surface;
 	bool finished;
 
 	/* Static initializers */

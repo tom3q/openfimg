@@ -84,12 +84,14 @@ static inline void unpackPixel555(uint8_t *dst, uint16_t src)
 static void convertToUByteRGBA555(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	const uint16_t *src = (const uint16_t *)fba->surface->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.width;
+	unsigned srcStride = 2*fb->getWidth();
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
+	unsigned yOffset = srcStride*(fb->getHeight() - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -117,12 +119,14 @@ static inline void unpackPixel565(uint8_t *dst, uint16_t src)
 static void convertToUByteRGBA565(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	const uint16_t *src = (const uint16_t *)fba->surface->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.width;
+	unsigned srcStride = 2*fb->getWidth();
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
+	unsigned yOffset = srcStride*(fb->getHeight() - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -150,12 +154,14 @@ static inline void unpackPixel4444(uint8_t *dst, uint16_t src)
 static void convertToUByteRGBA4444(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	const uint16_t *src = (const uint16_t *)fba->surface->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.width;
+	unsigned srcStride = 2*fb->getWidth();
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
+	unsigned yOffset = srcStride*(fb->getHeight() - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -183,12 +189,14 @@ static inline void unpackPixel1555(uint8_t *dst, uint16_t src)
 static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint16_t *src = (const uint16_t *)ctx->surface.draw->vaddr;
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	const uint16_t *src = (const uint16_t *)fba->surface->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = (4*width + alignment - 1) & ~(alignment - 1);
-	unsigned srcStride = 2*ctx->surface.width;
+	unsigned srcStride = 2*fb->getWidth();
 	unsigned xOffset = 2*x;
-	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
+	unsigned yOffset = srcStride*(fb->getHeight() - y - height);
 	unsigned srcPad = srcStride - 2*width;
 
 	src += yOffset + xOffset;
@@ -223,12 +231,14 @@ static inline void unpackPixel8888(uint32_t *dst, uint32_t src)
 static void convertToUByteBGRA8888(FGLContext *ctx, uint32_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
-	const uint32_t *src = (const uint32_t *)ctx->surface.draw->vaddr;
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	const uint32_t *src = (const uint32_t *)fba->surface->vaddr;
 	unsigned alignment = ctx->packAlignment;
 	unsigned dstStride = ((4*width + alignment - 1) & ~(alignment - 1)) / 4;
-	unsigned srcStride = ctx->surface.width;
+	unsigned srcStride = fb->getWidth();
 	unsigned xOffset = x;
-	unsigned yOffset = srcStride*(ctx->surface.height - y - height);
+	unsigned yOffset = srcStride*(fb->getHeight() - y - height);
 	unsigned srcPad = srcStride - width;
 
 	src += yOffset + xOffset;
@@ -288,8 +298,15 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 				GLenum type, GLvoid *pixels)
 {
 	FGLContext *ctx = getContext();
-	FGLSurface *draw = ctx->surface.draw;
 
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	if (!fb->isValid()) {
+		setError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
+		return;
+	}
+
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	FGLSurface *draw = fba->surface;
 	if (!draw || !draw->vaddr) {
 		setError(GL_INVALID_OPERATION);
 		return;
@@ -300,32 +317,32 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		return;
 	}
 
-	if (x >= ctx->surface.width || y >= ctx->surface.height)
+	if (x >= fb->getWidth() || y >= fb->getHeight())
 		// Nothing to copy
 		return;
 
 	draw->flush();
 
 	const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(ctx->surface.format);
+				FGLColorConfigDesc::get(fb->getColorFormat());
 	unsigned srcBpp = cfg->pixelSize;
-	unsigned srcStride = srcBpp * ctx->surface.width;
+	unsigned srcStride = srcBpp * fb->getWidth();
 	unsigned alignment = ctx->packAlignment;
 
 	if (format == cfg->readFormat
 		&& type == cfg->readType)
 	{
 		// No format conversion needed
-		unsigned yOffset = (ctx->surface.height - y - 1) * srcStride;
+		unsigned yOffset = (fb->getHeight() - y - 1) * srcStride;
 		const uint8_t *src = (const uint8_t *)draw->vaddr + yOffset;
 
 		unsigned dstStride = (srcBpp*width + alignment - 1) & ~(alignment - 1);
 		uint8_t *dst = (uint8_t *)pixels;
 
-		if (y + height > ctx->surface.height)
-			height = ctx->surface.height - y;
+		if (y + height > fb->getHeight())
+			height = fb->getHeight() - y;
 
-		if (!x && width == ctx->surface.width) {
+		if (!x && width == fb->getWidth()) {
 			// Copy whole lines line-by-line
 			if (srcStride < 32) {
 				do {
@@ -346,8 +363,8 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		}
 
 		// Copy line parts line-by-line
-		if (x + width > ctx->surface.width)
-			width = ctx->surface.width - x;
+		if (x + width > fb->getWidth())
+			width = fb->getWidth() - x;
 
 		unsigned xOffset = srcBpp * x;
 		unsigned srcWidth = srcBpp * width;
@@ -372,7 +389,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 
 	if (format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
 		// Convert to GL_RGBA and GL_UNSIGNED_BYTE
-		switch (ctx->surface.format) {
+		switch (fb->getColorFormat()) {
 		case FGPF_COLOR_MODE_555:
 			convertToUByteRGBA555(ctx, (uint8_t *)pixels,
 							x, y, width, height);
@@ -612,8 +629,9 @@ static uint32_t getFillColor(FGLContext *ctx,
 	uint32_t val = 0;
 	uint32_t mval = 0;
 
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 	const FGLColorConfigDesc *configDesc =
-				FGLColorConfigDesc::get(ctx->surface.format);
+				FGLColorConfigDesc::get(fb->getColorFormat());
 
 	r	= ubyteFromClampf(ctx->clear.red);
 	rMask	= 0xff;
@@ -681,35 +699,37 @@ static inline uint32_t getFillDepth(FGLContext *ctx,
 static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
 	FUNCTION_TRACER;
-	FGLSurface *draw = ctx->surface.draw;
-	uint32_t stride = ctx->surface.width;
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	FGLSurface *draw = fba->surface;
+	uint32_t stride = fb->getWidth();
 	bool lineByLine = false;
 	int32_t l, b, t, w, h;
 
 	l = 0;
 	b = 0;
-	w = ctx->surface.width;
-	h = ctx->surface.height;
+	w = fb->getWidth();
+	h = fb->getHeight();
 	if (ctx->enable.scissorTest) {
 		if (ctx->perFragment.scissor.left > 0)
 			l = ctx->perFragment.scissor.left;
 		if (ctx->perFragment.scissor.bottom > 0)
 			b = ctx->perFragment.scissor.bottom;
-		if (ctx->perFragment.scissor.left + ctx->perFragment.scissor.width <= ctx->surface.width)
+		if (ctx->perFragment.scissor.left + ctx->perFragment.scissor.width <= fb->getWidth())
 			w = ctx->perFragment.scissor.left + ctx->perFragment.scissor.width - l;
 		else
-			w = ctx->surface.width - l;
-		if (ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height <= ctx->surface.height)
+			w = fb->getWidth() - l;
+		if (ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height <= fb->getHeight())
 			h = ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height - b;
 		else
-			h = ctx->surface.height - b;
+			h = fb->getHeight() - b;
 	}
-	t = ctx->surface.height - b - h;
+	t = fb->getHeight() - b - h;
 
 	if (!h || !w)
 		return;
 
-	lineByLine |= (w < ctx->surface.width);
+	lineByLine |= (w < fb->getWidth());
 
 	if (mode & GL_COLOR_BUFFER_BIT) {
 		bool is32bpp = false;
@@ -772,10 +792,14 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 	}
 
 	if (mode & (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)) {
-		FGLSurface *depth = ctx->surface.depth;
-		if (!ctx->surface.depthFormat)
+		if (!fb->getDepthFormat())
 			return;
 
+		fba = fb->get(FGL_ATTACHMENT_DEPTH);
+		if (!fba)
+			fb->get(FGL_ATTACHMENT_STENCIL);
+
+		FGLSurface *depth = fba->surface;
 		uint32_t mask;
 		uint32_t val = getFillDepth(ctx, &mask, mode);
 
@@ -814,6 +838,12 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 GL_API void GL_APIENTRY glClear (GLbitfield mask)
 {
 	FGLContext *ctx = getContext();
+
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	if (!fb->isValid()) {
+		setError(GL_INVALID_FRAMEBUFFER_OPERATION_OES);
+		return;
+	}
 
 	if ((mask & FGL_CLEAR_MASK) == 0)
 		return;

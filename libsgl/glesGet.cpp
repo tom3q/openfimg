@@ -51,6 +51,7 @@ static char const * const gExtensionsString =
 	"GL_OES_draw_texture "
 	"GL_OES_EGL_image "
 	"GL_OES_EGL_image_external "
+	"GL_OES_framebuffer_object "
 	"GL_OES_packed_depth_stencil "
 	"GL_OES_texture_npot "
 	"GL_OES_point_size_array "
@@ -433,30 +434,58 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 	case GL_NUM_COMPRESSED_TEXTURE_FORMATS :
 		state.putInteger(NELEM(fglCompressedTextureFormats));
 		break;
-	case GL_RED_BITS :
-		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->red);
-		break;
-	case GL_GREEN_BITS:
-		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->green);
-		break;
-	case GL_BLUE_BITS :
-		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->blue);
-		break;
-	case GL_ALPHA_BITS :
-		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->alpha);
-		break;
-	case GL_DEPTH_BITS :
-		state.putInteger(ctx->surface.depthFormat & 0xff);
-		break;
-	case GL_STENCIL_BITS:
-		state.putInteger(ctx->surface.depthFormat >> 8);
-		break;
-	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->readType);
-		break;
-	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->readFormat);
-		break;
+	case GL_RED_BITS : {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		const FGLColorConfigDesc *cfg =
+				FGLColorConfigDesc::get(fb->getColorFormat());
+		state.putInteger(cfg->red);
+		break; }
+	case GL_GREEN_BITS: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		const FGLColorConfigDesc *cfg =
+				FGLColorConfigDesc::get(fb->getColorFormat());
+		state.putInteger(cfg->green);
+		break; }
+	case GL_BLUE_BITS : {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		const FGLColorConfigDesc *cfg =
+				FGLColorConfigDesc::get(fb->getColorFormat());
+		state.putInteger(cfg->blue);
+		break; }
+	case GL_ALPHA_BITS : {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		const FGLColorConfigDesc *cfg =
+				FGLColorConfigDesc::get(fb->getColorFormat());
+		state.putInteger(cfg->alpha);
+		break; }
+	case GL_DEPTH_BITS : {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		state.putInteger(fb->getDepthFormat() & 0xff);
+		break; }
+	case GL_STENCIL_BITS: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		state.putInteger(fb->getDepthFormat() >> 8);
+		break; }
+	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		const FGLColorConfigDesc *cfg =
+				FGLColorConfigDesc::get(fb->getColorFormat());
+		state.putEnum(cfg->readType);
+		break; }
+	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		fb->checkStatus();
+		const FGLColorConfigDesc *cfg =
+				FGLColorConfigDesc::get(fb->getColorFormat());
+		state.putEnum(cfg->readFormat);
+		break; }
 
 	/* Single boolean values */
 	case GL_CULL_FACE:

@@ -707,7 +707,7 @@ FGLRenderSurface::~FGLRenderSurface()
 EGLBoolean FGLRenderSurface::bindDrawSurface(FGLContext *gl)
 {
 	fglSetColorBuffer(gl, color, width, height, format);
-	fglSetDepthBuffer(gl, depth, depthFormat);
+	fglSetDepthStencilBuffer(gl, depth, width, height, depthFormat);
 
 	return EGL_TRUE;
 }

@@ -41,34 +41,23 @@
  * Buffers (render surfaces)
  */
 
-void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf, unsigned int width,
-                unsigned int height, unsigned int format)
+void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf,
+				unsigned int width, unsigned int height,
+				unsigned int format)
 {
-        if (!cbuf) {
-                gl->surface.draw = 0;
-                return;
-        }
+	FGLDefaultFramebuffer *fb = &gl->framebuffer.defFramebuffer;
 
-        fimgSetFrameBufSize(gl->fimg, width, height);
-        fimgSetFrameBufParams(gl->fimg, 1, 0, 255, (fimgColorMode)format);
-        fimgSetColorBufBaseAddr(gl->fimg, cbuf->paddr);
-        gl->surface.draw = cbuf;
-        gl->surface.width = width;
-        gl->surface.height = height;
-        gl->surface.format = format;
+	fb->setupSurface(FGL_ATTACHMENT_COLOR, cbuf, width, height, format);
 }
 
-void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf, unsigned int format)
+void fglSetDepthStencilBuffer(FGLContext *gl, FGLSurface *zbuf,
+				unsigned int width, unsigned int height,
+				unsigned int format)
 {
-        if (!zbuf || !format) {
-                gl->surface.depth = 0;
-                gl->surface.depthFormat = 0;
-                return;
-        }
+	FGLDefaultFramebuffer *fb = &gl->framebuffer.defFramebuffer;
 
-        fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
-        gl->surface.depth = zbuf;
-        gl->surface.depthFormat = format;
+	fb->setupSurface(FGL_ATTACHMENT_DEPTH, zbuf, width, height, format);
+	fb->setupSurface(FGL_ATTACHMENT_STENCIL, zbuf, width, height, format);
 }
 
 /*
