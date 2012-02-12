@@ -459,7 +459,7 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
 		return NULL;
 	}
 
-	FGLPixelFormat fmt;
+	FGLPixelFormatInfo fmt;
 	fmt.bpp		= vinfo.bits_per_pixel;
 	fmt.red		= vinfo.red.length;
 	fmt.green	= vinfo.green.length;

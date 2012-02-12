@@ -460,7 +460,7 @@ private:
 	Rect oldDirtyRegion;
 };
 
-static int nativeToFGLPixelFormat(int format, FGLPixelFormat *fglFormat)
+static int nativeToFGLPixelFormat(int format, FGLPixelFormatInfo *fglFormat)
 {
 	int bpp, r, g, b, a;
 
@@ -536,7 +536,7 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_HEIGHT, &height);
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_FORMAT, &format);
 
-	FGLPixelFormat fglFormat;
+	FGLPixelFormatInfo fglFormat;
 	nativeToFGLPixelFormat(format, &fglFormat);
 	bytesPerPixel = fglFormat.bpp * 8;
 }
@@ -859,7 +859,7 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
 
 	win->query(win, NATIVE_WINDOW_FORMAT, &format);
 
-	FGLPixelFormat fglFormat;
+	FGLPixelFormatInfo fglFormat;
 	ret = nativeToFGLPixelFormat(format, &fglFormat);
 	if (ret < 0) {
 		setError(EGL_BAD_MATCH);

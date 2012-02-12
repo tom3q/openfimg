@@ -42,14 +42,14 @@ struct FGLExtensionMap {
 	__eglMustCastToProperFunctionPointerType address;
 };
 
-struct FGLPixelFormat {
+struct FGLPixelFormatInfo {
 	int bpp;
 	int red;
 	int green;
 	int blue;
 	int alpha;
 
-	FGLPixelFormat() : bpp(0), red(0), green(0), blue(0), alpha(0) {}
+	FGLPixelFormatInfo() : bpp(0), red(0), green(0), blue(0), alpha(0) {}
 };
 
 #define EGL_ERR_DEBUG
@@ -75,6 +75,6 @@ extern FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 	int32_t pixelFormat);
 
 extern EGLBoolean fglEGLValidatePixelFormat(EGLConfig config,
-							FGLPixelFormat *fmt);
+						FGLPixelFormatInfo *fmt);
 
 #endif

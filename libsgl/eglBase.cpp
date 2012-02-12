@@ -462,7 +462,7 @@ static FGLint bppFromFormat(EGLint format)
 	}
 }
 
-EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, FGLPixelFormat *fmt)
+EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, FGLPixelFormatInfo *fmt)
 {
 	EGLBoolean ret;
 	EGLint bpp, red, green, blue, alpha;
