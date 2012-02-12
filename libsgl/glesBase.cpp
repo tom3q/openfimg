@@ -1952,10 +1952,13 @@ FGLContext *fglCreateContext(void)
 	return ctx;
 }
 
+extern FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
+
 void fglDestroyContext(FGLContext *ctx)
 {
 	fglBufferObjects.clean(ctx);
-	fglCleanTextureObjects(ctx);
+	fglTextureObjects.clean(ctx);
+
 	fimgDestroyContext(ctx->fimg);
 	delete ctx;
 }

@@ -149,6 +149,4 @@ private:
 	static const FGLColorConfigDesc table[];
 };
 
-extern void fglCleanTextureObjects(FGLContext *ctx);
-
 #endif

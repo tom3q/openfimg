@@ -87,11 +87,6 @@ GL_API void GL_APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures)
 	} while (--n);
 }
 
-void fglCleanTextureObjects(FGLContext *ctx)
-{
-	fglTextureObjects.clean(ctx);
-}
-
 GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 {
 	FGLTextureObjectBinding *binding;
