@@ -99,8 +99,27 @@ static const GLint fglCompressedTextureFormats[] = {
 #endif
 };
 
-const FGLColorConfigDesc fglColorConfigs[] = {
-	/* [FGPF_COLOR_MODE_555] */
+const FGLColorConfigDesc FGLColorConfigDesc::table[] = {
+	/*
+	 * Dummy
+	 */
+	{
+		0, 0, 0, 0,
+		0,
+		0,
+		0,
+		0, 0, 0, 0,
+		0,
+		0,
+	},
+	/*
+	 * [FGPF_COLOR_MODE_555]
+	 * -----------------------------------------
+	 * | 15 - 15 | 14 - 10 | 9  -  5 | 4  -  0 |
+	 * -----------------------------------------
+	 * |    X    |    R    |    G    |    B    |
+	 * -----------------------------------------
+	 */
 	{
 		5, 5, 5, 0,
 		GL_RGB,
@@ -110,7 +129,14 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_TRUE, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_1555,
 	},
-	/* [FGPF_COLOR_MODE_565] */
+	/*
+	 * [FGPF_COLOR_MODE_565]
+	 * -------------------------------
+	 * | 15 - 11 | 10 -  5 | 4  -  0 |
+	 * -------------------------------
+	 * |    R    |    G    |    B    |
+	 * -------------------------------
+	 */
 	{
 		5, 6, 5, 0,
 		GL_RGB,
@@ -120,7 +146,14 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_FALSE,
 		FGTU_TSTA_TEXTURE_FORMAT_565,
 	},
-	/* [FGPF_COLOR_MODE_4444] */
+	/*
+	 * [FGPF_COLOR_MODE_4444]
+	 * -----------------------------------------
+	 * | 15 - 12 | 11 -  8 | 7  -  4 | 3  -  0 |
+	 * -----------------------------------------
+	 * |    A    |    R    |    G    |    B    |
+	 * -----------------------------------------
+	 */
 	{
 		4, 4, 4, 4,
 		GL_RGBA,
@@ -130,7 +163,14 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_FALSE,
 		FGTU_TSTA_TEXTURE_FORMAT_4444,
 	},
-	/* [FGPF_COLOR_MODE_1555] */
+	/*
+	 * [FGPF_COLOR_MODE_1555]
+	 * -----------------------------------------
+	 * | 15 - 15 | 14 - 10 | 9  -  5 | 4  -  0 |
+	 * -----------------------------------------
+	 * |    A    |    R    |    G    |    B    |
+	 * -----------------------------------------
+	 */
 	{
 		5, 5, 5, 1,
 		GL_RGBA,
@@ -140,7 +180,14 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_FALSE,
 		FGTU_TSTA_TEXTURE_FORMAT_1555,
 	},
-	/* [FGPF_COLOR_MODE_0888] */
+	/*
+	 * [FGPF_COLOR_MODE_0888]
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    R    |    G    |    B    |    X    |
+	 * -----------------------------------------
+	 */
 	{
 		8, 8, 8, 8,
 		GL_BGRA_EXT,
@@ -150,7 +197,14 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		GL_TRUE, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_8888,
 	},
-	/* [FGPF_COLOR_MODE_8888] */
+	/*
+	 * FGPF_COLOR_MODE_8888
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    R    |    G    |    B    |    A    |
+	 * -----------------------------------------
+	 */
 	{
 		8, 8, 8, 8,
 		GL_BGRA_EXT,
@@ -161,13 +215,6 @@ const FGLColorConfigDesc fglColorConfigs[] = {
 		FGTU_TSTA_TEXTURE_FORMAT_8888,
 	},
 };
-
-const FGLColorConfigDesc *fglGetColorConfigDesc(unsigned int format)
-{
-	assert(format < NELEM(fglColorConfigs));
-
-	return &fglColorConfigs[format];
-}
 
 // ----------------------------------------------------------------------------
 
@@ -422,16 +469,16 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 		state.putInteger(NELEM(fglCompressedTextureFormats));
 		break;
 	case GL_RED_BITS :
-		state.putInteger(fglColorConfigs[ctx->surface.format].red);
+		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->red);
 		break;
 	case GL_GREEN_BITS:
-		state.putInteger(fglColorConfigs[ctx->surface.format].green);
+		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->green);
 		break;
 	case GL_BLUE_BITS :
-		state.putInteger(fglColorConfigs[ctx->surface.format].blue);
+		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->blue);
 		break;
 	case GL_ALPHA_BITS :
-		state.putInteger(fglColorConfigs[ctx->surface.format].alpha);
+		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->alpha);
 		break;
 	case GL_DEPTH_BITS :
 		state.putInteger(ctx->surface.depthFormat & 0xff);
@@ -440,10 +487,10 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 		state.putInteger(ctx->surface.depthFormat >> 8);
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES:
-		state.putEnum(fglColorConfigs[ctx->surface.format].readType);
+		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->readType);
 		break;
 	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES:
-		state.putEnum(fglColorConfigs[ctx->surface.format].readFormat);
+		state.putInteger(FGLColorConfigDesc::get(ctx->surface.format)->readFormat);
 		break;
 
 	/* Single boolean values */

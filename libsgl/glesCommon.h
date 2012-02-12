@@ -22,6 +22,8 @@
 #ifndef _GLESCOMMON_H_
 #define _GLESCOMMON_H_
 
+#include <cassert>
+
 #include "platform.h"
 #include "state.h"
 #include "types.h"
@@ -135,10 +137,18 @@ struct FGLColorConfigDesc {
 	uint8_t alphaPos;
 	GLboolean opaque;
 	GLint texFormat;
+
+	static const FGLColorConfigDesc *get(int format)
+	{
+		assert(format < (NELEM(table) - 1));
+
+		return &table[format + 1];
+	}
+
+private:
+	static const FGLColorConfigDesc table[];
 };
 
-extern const FGLColorConfigDesc fglColorConfigs[];
-extern const FGLColorConfigDesc *fglGetColorConfigDesc(unsigned int format);
 extern void fglCleanTextureObjects(FGLContext *ctx);
 
 #endif

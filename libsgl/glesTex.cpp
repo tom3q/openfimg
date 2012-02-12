@@ -1011,7 +1011,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	}
 
 	const FGLColorConfigDesc *cfg =
-				fglGetColorConfigDesc(image->pixelFormat);
+				FGLColorConfigDesc::get(image->pixelFormat);
 
 	if (tex->eglImage)
 		tex->eglImage->disconnect();

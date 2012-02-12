@@ -1507,7 +1507,7 @@ static void fglSetBlending(FGLContext *ctx)
 		return;
 	}
 
-	if (fglColorConfigs[ctx->surface.format].alpha)
+	if (FGLColorConfigDesc::get(ctx->surface.format)->alpha)
 		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
 	else
 		fimgSetBlendFuncNoAlpha(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);

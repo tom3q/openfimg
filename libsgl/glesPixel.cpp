@@ -306,12 +306,14 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 
 	draw->flush();
 
-	unsigned srcBpp = fglColorConfigs[ctx->surface.format].pixelSize;
+	const FGLColorConfigDesc *cfg =
+				FGLColorConfigDesc::get(ctx->surface.format);
+	unsigned srcBpp = cfg->pixelSize;
 	unsigned srcStride = srcBpp * ctx->surface.width;
 	unsigned alignment = ctx->packAlignment;
 
-	if (format == fglColorConfigs[ctx->surface.format].readFormat
-		&& type == fglColorConfigs[ctx->surface.format].readType)
+	if (format == cfg->readFormat
+		&& type == cfg->readType)
 	{
 		// No format conversion needed
 		unsigned yOffset = (ctx->surface.height - y - 1) * srcStride;
@@ -609,11 +611,9 @@ static uint32_t getFillColor(FGLContext *ctx,
 	uint8_t rMask, gMask, bMask, aMask;
 	uint32_t val = 0;
 	uint32_t mval = 0;
-	const FGLColorConfigDesc *configDesc;
 
-	configDesc = fglGetColorConfigDesc(ctx->surface.format);
-	if (!configDesc)
-		return 0;
+	const FGLColorConfigDesc *configDesc =
+				FGLColorConfigDesc::get(ctx->surface.format);
 
 	r	= ubyteFromClampf(ctx->clear.red);
 	rMask	= 0xff;
