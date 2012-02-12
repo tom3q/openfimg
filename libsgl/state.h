@@ -76,8 +76,12 @@ struct FGLArrayState {
 	FGLBuffer *buffer;
 
 	FGLArrayState() :
-		enabled(GL_FALSE), pointer(NULL), stride(0), width(4),
-		type(FGHI_ATTRIB_DT_FLOAT), size(FGHI_NUMCOMP(4)),
+		enabled(GL_FALSE),
+		pointer(NULL),
+		stride(0),
+		width(4),
+		type(FGHI_ATTRIB_DT_FLOAT),
+		size(FGHI_NUMCOMP(4)),
 		buffer(0) {};
 };
 
@@ -133,10 +137,13 @@ struct FGLEGLState {
 	EGLConfig config;
 	EGLSurface draw;
 	EGLSurface depth;
-	EGLSurface read;
 
 	FGLEGLState() :
-		flags(0), dpy(0), config(0), draw(0), depth(0), read(0) {};
+		flags(0),
+		dpy(0),
+		config(0),
+		draw(0),
+		depth(0) {};
 };
 
 struct FGLSurfaceState {
@@ -157,7 +164,9 @@ struct FGLTextureState {
 	bool enabled;
 
 	FGLTextureState() :
-		defTexture(), binding(), enabled(false) {};
+		defTexture(),
+		binding(this),
+		enabled(false) {};
 
 	inline FGLTexture *getTexture(void)
 	{
@@ -175,7 +184,10 @@ struct FGLScissorState {
 	GLint height;
 
 	FGLScissorState() :
-		left(0), bottom(0), width(2048), height(2048) {};
+		left(0),
+		bottom(0),
+		width(2048),
+		height(2048) {};
 };
 
 struct FGLMaskState {
@@ -187,7 +199,12 @@ struct FGLMaskState {
 	GLint stencil;
 
 	FGLMaskState() :
-		alpha(1), red(1), green(1), blue(1), depth(1), stencil(0xff) {};
+		alpha(1),
+		red(1),
+		green(1),
+		blue(1),
+		depth(1),
+		stencil(0xff) {};
 };
 
 struct FGLStencilState {
@@ -199,8 +216,12 @@ struct FGLStencilState {
 	GLenum passDepthPass;
 
 	FGLStencilState() :
-		mask(0xffffffff), ref(0), func(GL_ALWAYS), fail(GL_KEEP),
-		passDepthFail(GL_KEEP), passDepthPass(GL_KEEP) {};
+		mask(0xffffffff),
+		ref(0),
+		func(GL_ALWAYS),
+		fail(GL_KEEP),
+		passDepthFail(GL_KEEP),
+		passDepthPass(GL_KEEP) {};
 };
 
 struct FGLPerFragmentState {
@@ -216,8 +237,11 @@ struct FGLPerFragmentState {
 	fimgBlendFunction fglBlendDst;
 
 	FGLPerFragmentState() :
-		blendSrc(GL_ONE), blendDst(GL_ZERO), logicOp(GL_COPY),
-		masked(false), fglBlendSrc(FGPF_BLEND_FUNC_ONE),
+		blendSrc(GL_ONE),
+		blendDst(GL_ZERO),
+		logicOp(GL_COPY),
+		masked(false),
+		fglBlendSrc(FGPF_BLEND_FUNC_ONE),
 		fglBlendDst(FGPF_BLEND_FUNC_ZERO) {};
 };
 
@@ -242,8 +266,12 @@ struct FGLRasterizerState {
 	GLfloat polyOffUnits;
 
 	FGLRasterizerState() :
-		lineWidth(1.0f), pointSize(1.0f), cullFace(GL_BACK),
-		frontFace(GL_CCW), polyOffFactor(0.0f), polyOffUnits(0.0f) {};
+		lineWidth(1.0f),
+		pointSize(1.0f),
+		cullFace(GL_BACK),
+		frontFace(GL_CCW),
+		polyOffFactor(0.0f),
+		polyOffUnits(0.0f) {};
 };
 
 struct FGLEnableState {
@@ -258,8 +286,14 @@ struct FGLEnableState {
 	unsigned alphaTest	:1;
 
 	FGLEnableState() :
-		cullFace(0), polyOffFill(0), scissorTest(0), stencilTest(0),
-		depthTest(0), blend(0), dither(1), colorLogicOp(0) {};
+		cullFace(0),
+		polyOffFill(0),
+		scissorTest(0),
+		stencilTest(0),
+		depthTest(0),
+		blend(0),
+		dither(1),
+		colorLogicOp(0) {};
 };
 
 struct FGLContext {
@@ -292,8 +326,12 @@ struct FGLContext {
 	static FGLvec4f defaultVertex[4 + FGL_MAX_TEXTURE_UNITS];
 
 	FGLContext(fimgContext *fctx) :
-		fimg(fctx), activeTexture(0), clientActiveTexture(0),
-		unpackAlignment(4), packAlignment(4), finished(true)
+		fimg(fctx),
+		activeTexture(0),
+		clientActiveTexture(0),
+		unpackAlignment(4),
+		packAlignment(4),
+		finished(true)
 	{
 		memcpy(vertex, defaultVertex, (4 + FGL_MAX_TEXTURE_UNITS) * sizeof(FGLvec4f));
 		for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i) {
