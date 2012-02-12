@@ -27,6 +27,19 @@
 #include "fglframebufferattachable.h"
 
 /*
+ * FGLFramebufferAttachable
+ */
+
+void FGLFramebufferAttachable::markFramebufferDirty(void)
+{
+	FGLFramebufferAttachableObject::iterator i = object.begin();
+	for (i = object.begin(); i != object.end(); ++i) {
+		FGLFramebuffer *fb = i.get();
+		fb->markDirty();
+	}
+}
+
+/*
  * FGLFramebuffer
  */
 

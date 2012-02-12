@@ -65,6 +65,8 @@ struct FGLFramebufferAttachable {
 	{
 		return GL_NONE_OES;
 	}
+
+	void markFramebufferDirty(void);
 };
 
 #endif /* _FGLFRAMEBUFFERATTACHABLE_H_ */

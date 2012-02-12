@@ -707,6 +707,10 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->surface = 0;
 	}
 
+	if (width != obj->width || height != obj->height
+	    || format != obj->format)
+		obj->markFramebufferDirty();
+
 	if (!width || !height)
 		return;
 

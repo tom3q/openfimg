@@ -264,8 +264,14 @@ GL_API void GL_APIENTRY glRenderbufferStorageOES (GLenum target,
 	obj->width = width;
 	obj->height = height;
 
-	if (!size)
+	if (obj->width != width || obj->height != height
+	    || obj->format != internalformat)
+		obj->markFramebufferDirty();
+
+	if (!size) {
+		obj->mask = 0;
 		return;
+	}
 
 	if (!obj->surface) {
 		obj->surface = new FGLLocalSurface(size);
