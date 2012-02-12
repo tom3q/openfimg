@@ -170,10 +170,10 @@ struct FGLTextureState {
 
 	inline FGLTexture *getTexture(void)
 	{
-		if(binding.isBound())
-			return binding.get();
-		else
-			return &defTexture;
+		FGLTexture *tex = binding.get();
+		if (!tex)
+			tex = &defTexture;
+		return tex;
 	}
 };
 
