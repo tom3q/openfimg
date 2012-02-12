@@ -36,6 +36,7 @@
 #include "fgltextureobject.h"
 #include "fglbufferobject.h"
 #include "fglobject.h"
+#include "fglframebuffer.h"
 #include "fglrenderbuffer.h"
 
 enum {
@@ -297,6 +298,25 @@ struct FGLEnableState {
 		colorLogicOp(0) {};
 };
 
+struct FGLFramebufferState {
+	FGLDefaultFramebuffer defFramebuffer;
+	FGLFramebufferObjectBinding binding;
+	FGLAbstractFramebuffer *current;
+
+	FGLFramebufferState() :
+		defFramebuffer(),
+		binding(this),
+		current(0) {};
+
+	inline FGLAbstractFramebuffer *get(void)
+	{
+		FGLAbstractFramebuffer *fb = binding.get();
+		if (!fb)
+			fb = &defFramebuffer;
+		return fb;
+	}
+};
+
 struct FGLContext {
 	/* HW state */
 	fimgContext *fimg;
@@ -318,6 +338,7 @@ struct FGLContext {
 	FGLClearState clear;
 	FGLTexture *busyTexture[FGL_MAX_TEXTURE_UNITS];
 	FGLEnableState enable;
+	FGLFramebufferState framebuffer;
 	FGLRenderbufferBinding renderbuffer;
 	/* EGL state */
 	FGLEGLState egl;

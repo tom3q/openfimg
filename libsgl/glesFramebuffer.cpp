@@ -361,3 +361,313 @@ GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum p
 
 	setError(GL_INVALID_ENUM);
 }
+
+/*
+ * Framebuffer Objects
+ */
+
+FGLObjectManager<FGLFramebuffer, FGL_MAX_FRAMEBUFFER_OBJECTS> fglFramebufferObjects;
+
+GL_API void GL_APIENTRY glGenFramebuffersOES (GLsizei n, GLuint* framebuffers)
+{
+	if(n <= 0)
+		return;
+
+	int name;
+	GLsizei i = n;
+	GLuint *cur = framebuffers;
+	FGLContext *ctx = getContext();
+
+	do {
+		name = fglFramebufferObjects.get(ctx);
+		if(name < 0) {
+			glDeleteFramebuffersOES (n - i, framebuffers);
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+		fglFramebufferObjects[name] = NULL;
+		*cur = name;
+		cur++;
+	} while (--i);
+}
+
+GL_API void GL_APIENTRY glDeleteFramebuffersOES (GLsizei n, const GLuint* framebuffers)
+{
+	unsigned name;
+
+	if(n <= 0)
+		return;
+
+	while(n--) {
+		name = *framebuffers;
+		framebuffers++;
+
+		if(!fglFramebufferObjects.isValid(name)) {
+			LOGD("Tried to free invalid framebuffer %d", name);
+			continue;
+		}
+
+		delete (fglFramebufferObjects[name]);
+		fglFramebufferObjects.put(name);
+	}
+}
+
+GL_API void GL_APIENTRY glBindFramebufferOES (GLenum target, GLuint framebuffer)
+{
+	FGLFramebufferObjectBinding *binding;
+
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_FRAMEBUFFER_OES:
+		binding = &ctx->framebuffer.binding;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if(framebuffer == 0) {
+		binding->bind(0);
+		return;
+	}
+
+	if(!fglFramebufferObjects.isValid(framebuffer)
+	    && fglFramebufferObjects.get(framebuffer, ctx) < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLFramebuffer *fb = fglFramebufferObjects[framebuffer];
+	if(fb == NULL) {
+		fb = new FGLFramebuffer(framebuffer);
+		if (fb == NULL) {
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+		fglFramebufferObjects[framebuffer] = fb;
+	}
+
+	binding->bind(&fb->object);
+}
+
+GL_API GLboolean GL_APIENTRY glIsFramebufferOES (GLuint framebuffer)
+{
+	if (framebuffer == 0 || !fglFramebufferObjects.isValid(framebuffer))
+		return GL_FALSE;
+
+	return GL_TRUE;
+}
+
+GL_API GLenum GL_APIENTRY glCheckFramebufferStatusOES (GLenum target)
+{
+	if(target != GL_FRAMEBUFFER_OES) {
+		setError(GL_INVALID_ENUM);
+		return 0;
+	}
+
+	FGLContext *ctx = getContext();
+
+	if (!ctx->framebuffer.binding.isBound()) {
+		setError(GL_INVALID_OPERATION);
+		return 0;
+	}
+
+	FGLFramebuffer *fb = ctx->framebuffer.binding.get();
+	return fb->checkStatus();
+}
+
+GL_API void GL_APIENTRY glFramebufferRenderbufferOES(GLenum target,
+				GLenum attachment, GLenum renderbuffertarget,
+				GLuint renderbuffer)
+{
+	if(target != GL_FRAMEBUFFER_OES) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLRenderbuffer *rb = NULL;
+	if (renderbuffer != 0) {
+		if (renderbuffertarget != GL_RENDERBUFFER_OES) {
+			setError(GL_INVALID_OPERATION);
+			return;
+		}
+
+		if(!fglRenderbufferObjects.isValid(renderbuffer)) {
+			setError(GL_INVALID_OPERATION);
+			return;
+		}
+
+		rb = fglRenderbufferObjects[renderbuffer];
+		if(rb == NULL) {
+			rb = new FGLRenderbuffer(renderbuffer);
+			if (rb == NULL) {
+				setError(GL_OUT_OF_MEMORY);
+				return;
+			}
+			fglRenderbufferObjects[renderbuffer] = rb;
+		}
+	}
+
+	FGLContext *ctx = getContext();
+
+	if (!ctx->framebuffer.binding.isBound()) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLFramebuffer *fb = ctx->framebuffer.binding.get();
+
+	FGLAttachmentIndex index;
+	switch (attachment)
+	{
+	case GL_COLOR_ATTACHMENT0_OES:
+		index = FGL_ATTACHMENT_COLOR;
+		break;
+	case GL_DEPTH_ATTACHMENT_OES:
+		index = FGL_ATTACHMENT_DEPTH;
+		break;
+	case GL_STENCIL_ATTACHMENT_OES:
+		index = FGL_ATTACHMENT_STENCIL;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	fb->attach(index, rb);
+}
+
+extern FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
+
+GL_API void GL_APIENTRY glFramebufferTexture2DOES (GLenum target,
+					GLenum attachment, GLenum textarget,
+					GLuint texture, GLint level)
+{
+	if(target != GL_FRAMEBUFFER_OES) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLTexture *tex = NULL;
+	if (texture != 0) {
+		if (textarget != GL_TEXTURE_2D) {
+			setError(GL_INVALID_OPERATION);
+			return;
+		}
+
+		if (level != 0) {
+			setError(GL_INVALID_VALUE);
+			return;
+		}
+
+		if(!fglTextureObjects.isValid(texture)) {
+			setError(GL_INVALID_OPERATION);
+			return;
+		}
+
+		tex = fglTextureObjects[texture];
+		if(tex == NULL) {
+			tex = new FGLTexture(texture);
+			if (tex == NULL) {
+				setError(GL_OUT_OF_MEMORY);
+				return;
+			}
+			fglTextureObjects[texture] = tex;
+			tex->target = textarget;
+		}
+	}
+
+	FGLContext *ctx = getContext();
+
+	if (!ctx->framebuffer.binding.isBound()) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLFramebuffer *fb = ctx->framebuffer.binding.get();
+	FGLAttachmentIndex index;
+	switch (attachment)
+	{
+	case GL_COLOR_ATTACHMENT0_OES:
+		index = FGL_ATTACHMENT_COLOR;
+		break;
+	case GL_DEPTH_ATTACHMENT_OES:
+		index = FGL_ATTACHMENT_DEPTH;
+		break;
+	case GL_STENCIL_ATTACHMENT_OES:
+		index = FGL_ATTACHMENT_STENCIL;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	fb->attach(index, tex);
+}
+
+GL_API void GL_APIENTRY glGetFramebufferAttachmentParameterivOES (GLenum target, GLenum attachment, GLenum pname, GLint* params)
+{
+	if(target != GL_FRAMEBUFFER_OES) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	if (!ctx->framebuffer.binding.isBound()) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLAttachmentIndex index;
+	switch (attachment)
+	{
+	case GL_COLOR_ATTACHMENT0_OES:
+		index = FGL_ATTACHMENT_COLOR;
+		break;
+	case GL_DEPTH_ATTACHMENT_OES:
+		index = FGL_ATTACHMENT_DEPTH;
+		break;
+	case GL_STENCIL_ATTACHMENT_OES:
+		index = FGL_ATTACHMENT_STENCIL;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLFramebuffer *fb = ctx->framebuffer.binding.get();
+	FGLFramebufferAttachable *fba = fb->get(index);
+
+	if (fba) {
+		switch(pname)
+		{
+		case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_OES:
+			*params = fba->getType();
+			break;
+		case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_OES:
+			*params = fba->getName();
+			break;
+		case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL_OES:
+			if (fba->getType() != GL_TEXTURE_2D) {
+				setError(GL_INVALID_ENUM);
+				return;
+			}
+			*params = 0;
+			break;
+		default:
+			setError(GL_INVALID_ENUM);
+		}
+		return;
+	}
+
+	switch(pname)
+	{
+	case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_OES:
+		*params = GL_NONE_OES;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+	}
+}

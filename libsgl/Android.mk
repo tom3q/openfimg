@@ -26,6 +26,7 @@ LOCAL_SRC_FILES:= \
 	glesPixel.cpp \
 	glesTex.cpp \
 	fglmatrix.cpp \
+	fglframebuffer.cpp \
 	fglsurface.cpp
 
 LOCAL_C_INCLUDES := \
