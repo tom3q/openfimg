@@ -1266,7 +1266,7 @@ GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
 	glPolygonOffset(floatFromFixed(factor), floatFromFixed(units));
 }
 
-/**
+/*
 	Per-fragment operations
 */
 
