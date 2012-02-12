@@ -35,6 +35,7 @@
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
 #include "libfimg/fimg.h"
+#include "fglrenderbuffer.h"
 
 /*
  * Buffers (render surfaces)
@@ -68,4 +69,295 @@ void fglSetDepthBuffer(FGLContext *gl, FGLSurface *zbuf, unsigned int format)
         fimgSetZBufBaseAddr(gl->fimg, zbuf->paddr);
         gl->surface.depth = zbuf;
         gl->surface.depthFormat = format;
+}
+
+/*
+ * Renderbuffers
+ */
+
+static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
+								GLenum format)
+{
+	switch (format) {
+	case GL_RGBA4_OES:
+		/* Using ARGB4444 physical representation */
+		fba->bpp = 2;
+		fba->swap = false;
+		fba->rgba = true;
+		fba->pixFormat = FGPF_COLOR_MODE_4444;
+		break;
+	case GL_RGB5_A1_OES:
+		/* Using ARGB1555 physical representation */
+		fba->bpp = 2;
+		fba->swap = false;
+		fba->rgba = true;
+		fba->pixFormat = FGPF_COLOR_MODE_1555;
+		break;
+	case GL_RGB565_OES:
+		/* Using RGB565 physical representation */
+		fba->bpp = 2;
+		fba->swap = false;
+		fba->rgba = false;
+		fba->pixFormat = FGPF_COLOR_MODE_565;
+		break;
+	case GL_RGBA:
+	case GL_RGBA8_OES:
+	case GL_BGRA_EXT:
+		/* Using BGRA8888 physical representation */
+		fba->bpp = 4;
+		fba->swap = false;
+		fba->rgba = false;
+		fba->pixFormat = FGPF_COLOR_MODE_8888;
+		break;
+	case GL_DEPTH_COMPONENT16_OES:
+	case GL_DEPTH_COMPONENT24_OES:
+		/* Using DEPTH_STENCIL_24_8 physical representation */
+		fba->bpp = 4;
+		fba->pixFormat = 24;
+		break;
+	case GL_STENCIL_INDEX8_OES:
+		/* Using DEPTH_STENCIL_24_8 physical representation */
+		fba->bpp = 4;
+		fba->pixFormat = (8 << 8);
+		break;
+	case GL_DEPTH_STENCIL_OES:
+		/* Using DEPTH_STENCIL_24_8 physical representation */
+		fba->bpp = 4;
+		fba->pixFormat = (8 << 8) | 24;
+		break;
+	default:
+		return -1;
+	}
+
+	fba->format = format;
+	return 0;
+}
+
+FGLObjectManager<FGLRenderbuffer, FGL_MAX_RENDERBUFFER_OBJECTS> fglRenderbufferObjects;
+
+GL_API void GL_APIENTRY glGenRenderbuffersOES (GLsizei n, GLuint* renderbuffers)
+{
+	if(n <= 0)
+		return;
+
+	int name;
+	GLsizei i = n;
+	GLuint *cur = renderbuffers;
+	FGLContext *ctx = getContext();
+
+	do {
+		name = fglRenderbufferObjects.get(ctx);
+		if(name < 0) {
+			glDeleteRenderbuffersOES (n - i, renderbuffers);
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+		fglRenderbufferObjects[name] = NULL;
+		*cur = name;
+		cur++;
+	} while (--i);
+}
+
+
+GL_API void GL_APIENTRY glDeleteRenderbuffersOES (GLsizei n, const GLuint* renderbuffers)
+{
+	unsigned name;
+
+	if(n <= 0)
+		return;
+
+	do {
+		name = *renderbuffers;
+		renderbuffers++;
+
+		if(!fglRenderbufferObjects.isValid(name)) {
+			LOGD("Tried to free invalid renderbuffer %d", name);
+			continue;
+		}
+
+		delete (fglRenderbufferObjects[name]);
+		fglRenderbufferObjects.put(name);
+	} while (--n);
+}
+
+GL_API void GL_APIENTRY glBindRenderbufferOES (GLenum target, GLuint renderbuffer)
+{
+	FGLRenderbufferBinding *binding;
+
+	FGLContext *ctx = getContext();
+
+	switch (target) {
+	case GL_RENDERBUFFER_OES:
+		binding = &ctx->renderbuffer;
+		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if(renderbuffer == 0) {
+		binding->bind(0);
+		return;
+	}
+
+	if(!fglRenderbufferObjects.isValid(renderbuffer)
+	    && fglRenderbufferObjects.get(renderbuffer, ctx) < 0) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLRenderbuffer *rb = fglRenderbufferObjects[renderbuffer];
+	if(rb == NULL) {
+		rb = new FGLRenderbuffer(renderbuffer);
+		if (rb == NULL) {
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+		fglRenderbufferObjects[renderbuffer] = rb;
+	}
+
+	binding->bind(&rb->object);
+}
+
+GL_API GLboolean GL_APIENTRY glIsRenderbufferOES (GLuint renderbuffer)
+{
+	if (renderbuffer == 0 || !fglRenderbufferObjects.isValid(renderbuffer))
+		return GL_FALSE;
+
+	return GL_TRUE;
+}
+
+GL_API void GL_APIENTRY glRenderbufferStorageOES (GLenum target,
+			GLenum internalformat, GLsizei width, GLsizei height)
+{
+	if (target != GL_RENDERBUFFER_OES) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	if (width > FGL_MAX_TEXTURE_SIZE || height > FGL_MAX_TEXTURE_SIZE) {
+		setError(GL_INVALID_VALUE);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	FGLRenderbuffer *obj = ctx->renderbuffer.get();
+	if (!obj) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	unsigned oldSize = obj->width * obj->height * obj->bpp;
+	int ret = fglSetRenderbufferFormatInfo(obj, internalformat);
+	if (ret < 0) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	unsigned size = width * height * obj->bpp;
+	if (size != oldSize) {
+		delete obj->surface;
+		obj->surface = 0;
+	}
+
+	obj->width = width;
+	obj->height = height;
+
+	if (!size)
+		return;
+
+	if (!obj->surface) {
+		obj->surface = new FGLLocalSurface(size);
+		if(!obj->surface || !obj->surface->isValid()) {
+			delete obj->surface;
+			obj->surface = 0;
+			setError(GL_OUT_OF_MEMORY);
+			return;
+		}
+	}
+}
+
+GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum pname, GLint* params)
+{
+	if(target != GL_FRAMEBUFFER_OES) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	if(!ctx->renderbuffer.isBound()) {
+		setError(GL_INVALID_OPERATION);
+		return;
+	}
+
+	FGLRenderbuffer *obj = ctx->renderbuffer.get();
+
+	switch (pname) {
+	case GL_RENDERBUFFER_WIDTH_OES:
+		*params = obj->width;
+		return;
+	case GL_RENDERBUFFER_HEIGHT_OES:
+		*params = obj->height;
+		return;
+	case GL_RENDERBUFFER_INTERNAL_FORMAT_OES:
+		*params = obj->format;
+		return;
+	}
+
+	if (0 /* Color attachable */) {
+		const FGLColorConfigDesc *cfg =
+					FGLColorConfigDesc::get(obj->pixFormat);
+		switch (pname) {
+		case GL_RENDERBUFFER_RED_SIZE_OES:
+			*params = cfg->red;
+			return;
+		case GL_RENDERBUFFER_GREEN_SIZE_OES:
+			*params = cfg->green;
+			return;
+		case GL_RENDERBUFFER_BLUE_SIZE_OES:
+			*params = cfg->blue;
+			return;
+		case GL_RENDERBUFFER_ALPHA_SIZE_OES:
+			*params = cfg->alpha;
+			return;
+		case GL_RENDERBUFFER_DEPTH_SIZE_OES:
+		case GL_RENDERBUFFER_STENCIL_SIZE_OES:
+			*params = 0;
+			return;
+		}
+	}
+
+	if (0 /* Depth or stencil attachable */) {
+		switch (pname)
+		{
+		case GL_RENDERBUFFER_RED_SIZE_OES:
+		case GL_RENDERBUFFER_GREEN_SIZE_OES:
+		case GL_RENDERBUFFER_BLUE_SIZE_OES:
+		case GL_RENDERBUFFER_ALPHA_SIZE_OES:
+			*params = 0;
+			return;
+		case GL_RENDERBUFFER_DEPTH_SIZE_OES:
+			*params = obj->pixFormat & 0xff;
+			return;
+		case GL_RENDERBUFFER_STENCIL_SIZE_OES:
+			*params = obj->pixFormat >> 8;
+			return;
+		}
+	}
+
+	/* Renderbuffer without storage */
+	switch (pname) {
+	case GL_RENDERBUFFER_RED_SIZE_OES:
+	case GL_RENDERBUFFER_GREEN_SIZE_OES:
+	case GL_RENDERBUFFER_BLUE_SIZE_OES:
+	case GL_RENDERBUFFER_ALPHA_SIZE_OES:
+	case GL_RENDERBUFFER_DEPTH_SIZE_OES:
+	case GL_RENDERBUFFER_STENCIL_SIZE_OES:
+		*params = 0;
+		return;
+	}
+
+	setError(GL_INVALID_ENUM);
 }

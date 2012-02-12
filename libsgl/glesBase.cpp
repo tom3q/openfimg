@@ -1953,11 +1953,13 @@ FGLContext *fglCreateContext(void)
 }
 
 extern FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
+extern FGLObjectManager<FGLRenderbuffer, FGL_MAX_RENDERBUFFER_OBJECTS> fglRenderbufferObjects;
 
 void fglDestroyContext(FGLContext *ctx)
 {
 	fglBufferObjects.clean(ctx);
 	fglTextureObjects.clean(ctx);
+	fglRenderbufferObjects.clean(ctx);
 
 	fimgDestroyContext(ctx->fimg);
 	delete ctx;

@@ -36,6 +36,7 @@
 #include "fgltextureobject.h"
 #include "fglbufferobject.h"
 #include "fglobject.h"
+#include "fglrenderbuffer.h"
 
 enum {
 	FGL_COMP_RED = 0,
@@ -317,6 +318,7 @@ struct FGLContext {
 	FGLClearState clear;
 	FGLTexture *busyTexture[FGL_MAX_TEXTURE_UNITS];
 	FGLEnableState enable;
+	FGLRenderbufferBinding renderbuffer;
 	/* EGL state */
 	FGLEGLState egl;
 	FGLSurfaceState surface;
