@@ -1138,12 +1138,12 @@ GL_API void GL_APIENTRY glViewport (GLint x, GLint y, GLsizei width, GLsizei hei
 	FGLContext *ctx = getContext();
 
 	// Clamp the width
-	if (width > ctx->surface.width)
-		width = ctx->surface.width;
+	if (width > FGL_MAX_VIEWPORT_DIMS)
+		width = FGL_MAX_VIEWPORT_DIMS;
 
 	// Clamp the height
-	if (height > ctx->surface.height)
-		height = ctx->surface.height;
+	if (height > FGL_MAX_VIEWPORT_DIMS)
+		height = FGL_MAX_VIEWPORT_DIMS;
 
 	ctx->viewport.x = x;
 	ctx->viewport.y = y;
