@@ -25,6 +25,7 @@
 #include "fglsurface.h"
 #include "fglobject.h"
 #include "fglimage.h"
+#include "fglframebufferattachable.h"
 
 struct FGLTexture;
 struct FGLTextureState;
@@ -32,18 +33,18 @@ struct FGLTextureState;
 typedef FGLObject<FGLTexture, FGLTextureState> FGLTextureObject;
 typedef FGLObjectBinding<FGLTexture, FGLTextureState> FGLTextureObjectBinding;
 
-struct FGLTexture {
+struct FGLTexture : public FGLFramebufferAttachable {
 	FGLTextureObject object;
 
 	unsigned int	name;
 	/* Memory surface */
-	FGLSurface	*surface;
+	using FGLFramebufferAttachable::surface;
 	/* GL state */
-	GLint		width;
-	GLint		height;
+	using FGLFramebufferAttachable::width;
+	using FGLFramebufferAttachable::height;
 	GLboolean	compressed;
 	GLint		maxLevel;
-	GLenum		format;
+	using FGLFramebufferAttachable::format;
 	GLenum		type;
 	GLenum		minFilter;
 	GLenum		magFilter;
@@ -68,10 +69,8 @@ struct FGLTexture {
 	FGLTexture(unsigned int name = 0) :
 		object(this),
 		name(name),
-		surface(0),
 		compressed(0),
 		maxLevel(0),
-		format(GL_RGB),
 		type(GL_UNSIGNED_BYTE),
 		minFilter(GL_NEAREST_MIPMAP_LINEAR),
 		magFilter(GL_LINEAR),
@@ -113,6 +112,11 @@ struct FGLTexture {
 	inline bool isComplete(void)
 	{
 		return (surface != 0);
+	}
+
+	virtual GLenum getType(void) const
+	{
+		return GL_TEXTURE;
 	}
 
 	virtual GLuint getName(void) const
