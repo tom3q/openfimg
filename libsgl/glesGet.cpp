@@ -44,59 +44,24 @@ static char const * const gVendorString     = "OpenFIMG";
 static char const * const gRendererString   = "FIMG-3DSE";
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
 static char const * const gExtensionsString =
-#if 0
-	"GL_OES_point_sprite "                  // TODO
-	"GL_ARB_texture_env_combine "		// TODO
-	"GL_ARB_texture_env_crossbar "		// TODO
-	"GL_ARB_texture_env_dot3 "		// TODO
-	"GL_ARB_texture_mirrored_repeat "	// TODO
-	"GL_ARB_vertex_buffer_object "		// TODO
-	"GL_ATI_texture_compression_atitc "	// TODO
-	"GL_EXT_blend_equation_separate "	// TODO
-	"GL_EXT_blend_func_separate "		// TODO
-	"GL_EXT_blend_minmax "			// TODO
-	"GL_EXT_blend_subtract "		// TODO
-	"GL_EXT_stencil_wrap "			// TODO
-	"GL_OES_matrix_palette "		// TODO
-	"GL_OES_vertex_buffer_object "		// TODO
-	"GL_QUALCOMM_vertex_buffer_object "	// TODO
-	"GL_QUALCOMM_direct_texture "		// TODO
-#endif
 	"GL_OES_byte_coordinates "
 	"GL_OES_fixed_point "
 	"GL_OES_single_precision "
 	"GL_OES_read_format "
-	//"GL_OES_compressed_paletted_texture "   // TODO
 	"GL_OES_draw_texture "
-	//"GL_OES_matrix_get "                    // TODO
-	//"GL_OES_query_matrix "                  // TODO
 	"GL_OES_EGL_image "
 	"GL_OES_EGL_image_external "
+	"GL_OES_packed_depth_stencil "
+	"GL_OES_texture_npot "
+	"GL_OES_point_size_array "
+	"GL_OES_rgb8_rgba8 "
+	"GL_OES_depth24 "
+	"GL_OES_stencil8 "
 	"GL_EXT_texture_format_BGRA8888 "
-	//"GL_OES_compressed_ETC1_RGB8_texture "  // TODO
-	//"GL_ARB_texture_compression "           // TODO IMPORTANT
-	"GL_ARB_texture_non_power_of_two "
-	//"GL_ANDROID_user_clip_plane "           // TODO
-	//"GL_ANDROID_vertex_buffer_object "      // TODO
-	//"GL_ANDROID_generate_mipmap "           // TODO
-	"GL_OES_point_size_array"
+	"GL_ARB_texture_non_power_of_two"
 ;
 
 static const GLint fglCompressedTextureFormats[] = {
-#if 0
-	GL_PALETTE4_RGB8_OES,
-	GL_PALETTE4_RGBA8_OES,
-	GL_PALETTE4_R5_G6_B5_OES,
-	GL_PALETTE4_RGBA4_OES,
-	GL_PALETTE4_RGB5_A1_OES,
-	GL_PALETTE8_RGB8_OES,
-	GL_PALETTE8_RGBA8_OES,
-	GL_PALETTE8_R5_G6_B5_OES,
-	GL_PALETTE8_RGBA4_OES,
-	GL_PALETTE8_RGB5_A1_OES,
-	GL_RGB_S3TC_OES,
-	GL_RGBA_S3TC_OES
-#endif
 };
 
 const FGLColorConfigDesc FGLColorConfigDesc::table[] = {
