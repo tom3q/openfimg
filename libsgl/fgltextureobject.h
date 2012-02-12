@@ -66,12 +66,24 @@ struct FGLTexture {
 	bool		swap;
 
 	FGLTexture(unsigned int name = 0) :
-		object(this), name(name),
-		surface(0), compressed(0), maxLevel(0), format(GL_RGB),
-		type(GL_UNSIGNED_BYTE), minFilter(GL_NEAREST_MIPMAP_LINEAR),
-		magFilter(GL_LINEAR), sWrap(GL_REPEAT), tWrap(GL_REPEAT),
-		genMipmap(0), eglImage(0), invReady(false),
-		fimg(NULL), valid(false), dirty(false), swap(false)
+		object(this),
+		name(name),
+		surface(0),
+		compressed(0),
+		maxLevel(0),
+		format(GL_RGB),
+		type(GL_UNSIGNED_BYTE),
+		minFilter(GL_NEAREST_MIPMAP_LINEAR),
+		magFilter(GL_LINEAR),
+		sWrap(GL_REPEAT),
+		tWrap(GL_REPEAT),
+		genMipmap(0),
+		eglImage(0),
+		invReady(false),
+		fimg(NULL),
+		valid(false),
+		dirty(false),
+		swap(false)
 	{
 		fimg = fimgCreateTexture();
 		if(fimg == NULL)
