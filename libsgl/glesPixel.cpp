@@ -323,8 +323,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 
 	draw->flush();
 
-	const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(fb->getColorFormat());
+	const FGLPixelFormat *cfg = FGLPixelFormat::get(fb->getColorFormat());
 	unsigned srcBpp = cfg->pixelSize;
 	unsigned srcStride = srcBpp * fb->getWidth();
 	unsigned alignment = ctx->packAlignment;
@@ -630,45 +629,45 @@ static uint32_t getFillColor(FGLContext *ctx,
 	uint32_t mval = 0;
 
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
-	const FGLColorConfigDesc *configDesc =
-				FGLColorConfigDesc::get(fb->getColorFormat());
+	const FGLPixelFormat *configDesc =
+				FGLPixelFormat::get(fb->getColorFormat());
 
 	r	= ubyteFromClampf(ctx->clear.red);
 	rMask	= 0xff;
-	r	>>= (8 - configDesc->red);
-	rMask	>>= (8 - configDesc->red);
+	r	>>= (8 - configDesc->comp[FGL_COMP_RED].size);
+	rMask	>>= (8 - configDesc->comp[FGL_COMP_RED].size);
 
 	g	= ubyteFromClampf(ctx->clear.green);
 	gMask	= 0xff;
-	g	>>= (8 - configDesc->green);
-	gMask	>>= (8 - configDesc->green);
+	g	>>= (8 - configDesc->comp[FGL_COMP_GREEN].size);
+	gMask	>>= (8 - configDesc->comp[FGL_COMP_GREEN].size);
 
 	b	= ubyteFromClampf(ctx->clear.blue);
 	bMask	= 0xff;
-	b	>>= (8 - configDesc->blue);
-	bMask	>>= (8 - configDesc->blue);
+	b	>>= (8 - configDesc->comp[FGL_COMP_BLUE].size);
+	bMask	>>= (8 - configDesc->comp[FGL_COMP_BLUE].size);
 
 	if (configDesc->opaque)
 		a = 0xff;
 	else
 		a = ubyteFromClampf(ctx->clear.alpha);
 	aMask	= 0xff;
-	a	>>= (8 - configDesc->alpha);
-	aMask	>>= (8 - configDesc->alpha);
+	a	>>= (8 - configDesc->comp[FGL_COMP_ALPHA].size);
+	aMask	>>= (8 - configDesc->comp[FGL_COMP_ALPHA].size);
 
-	val |= r << configDesc->redPos;
-	val |= g << configDesc->greenPos;
-	val |= b << configDesc->bluePos;
-	val |= a << configDesc->alphaPos;
+	val |= r << configDesc->comp[FGL_COMP_RED].pos;
+	val |= g << configDesc->comp[FGL_COMP_GREEN].pos;
+	val |= b << configDesc->comp[FGL_COMP_BLUE].pos;
+	val |= a << configDesc->comp[FGL_COMP_ALPHA].pos;
 
 	if (!ctx->perFragment.mask.red)
-		mval |= rMask << configDesc->redPos;
+		mval |= rMask << configDesc->comp[FGL_COMP_RED].pos;
 	if (!ctx->perFragment.mask.green)
-		mval |= gMask << configDesc->greenPos;
+		mval |= gMask << configDesc->comp[FGL_COMP_GREEN].pos;
 	if (!ctx->perFragment.mask.blue)
-		mval |= bMask << configDesc->bluePos;
+		mval |= bMask << configDesc->comp[FGL_COMP_BLUE].pos;
 	if (!ctx->perFragment.mask.alpha)
-		mval |= aMask << configDesc->alphaPos;
+		mval |= aMask << configDesc->comp[FGL_COMP_ALPHA].pos;
 
 	*is32bpp = (configDesc->pixelSize == 4);
 	*mask = mval;

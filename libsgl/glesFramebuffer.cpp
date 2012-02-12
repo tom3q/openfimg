@@ -310,20 +310,19 @@ GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum p
 	}
 
 	if (obj->mask & FGL_ATTACHMENT_COLOR) {
-		const FGLColorConfigDesc *cfg =
-					FGLColorConfigDesc::get(obj->pixFormat);
+		const FGLPixelFormat *cfg = FGLPixelFormat::get(obj->pixFormat);
 		switch (pname) {
 		case GL_RENDERBUFFER_RED_SIZE_OES:
-			*params = cfg->red;
+			*params = cfg->comp[FGL_COMP_RED].size;
 			return;
 		case GL_RENDERBUFFER_GREEN_SIZE_OES:
-			*params = cfg->green;
+			*params = cfg->comp[FGL_COMP_GREEN].size;
 			return;
 		case GL_RENDERBUFFER_BLUE_SIZE_OES:
-			*params = cfg->blue;
+			*params = cfg->comp[FGL_COMP_BLUE].size;
 			return;
 		case GL_RENDERBUFFER_ALPHA_SIZE_OES:
-			*params = cfg->alpha;
+			*params = cfg->comp[FGL_COMP_ALPHA].size;
 			return;
 		case GL_RENDERBUFFER_DEPTH_SIZE_OES:
 		case GL_RENDERBUFFER_STENCIL_SIZE_OES:

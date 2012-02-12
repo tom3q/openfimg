@@ -1572,8 +1572,9 @@ static void fglSetBlending(FGLContext *ctx)
 	}
 
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	const FGLPixelFormat *fmt = FGLPixelFormat::get(fb->getColorFormat());
 
-	if (FGLColorConfigDesc::get(fb->getColorFormat())->alpha)
+	if (fmt->comp[FGL_COMP_ALPHA].size)
 		fimgSetBlendFunc(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);
 	else
 		fimgSetBlendFuncNoAlpha(ctx->fimg, fglSrc, fglSrc, fglDest, fglDest);

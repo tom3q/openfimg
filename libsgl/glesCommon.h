@@ -123,30 +123,77 @@ static inline void setError(GLenum error)
 		errorCode = error;
 }
 
-struct FGLColorConfigDesc {
-	uint8_t red;
-	uint8_t green;
-	uint8_t blue;
-	uint8_t alpha;
+enum {
+	FGL_COMP_LUM = 0,
+
+	FGL_COMP_IDX = 0,
+
+	FGL_COMP_C0 = 0,
+	FGL_COMP_C1 = 1,
+	FGL_COMP_LUT = 2,
+
+	FGL_COMP_Y0 = 0,
+	FGL_COMP_U = 1,
+	FGL_COMP_Y1 = 2,
+	FGL_COMP_V = 3
+};
+
+enum {
+	/* Unspecified format */
+	FGL_PIXFMT_NONE = 0,
+	/* Renderable formats */
+	FGL_PIXFMT_XRGB1555,
+	FGL_PIXFMT_RGB565,
+	FGL_PIXFMT_ARGB4444,
+	FGL_PIXFMT_ARGB1555,
+	FGL_PIXFMT_XRGB8888,
+	FGL_PIXFMT_ARGB8888,
+	FGL_PIXFMT_XBGR8888,
+	FGL_PIXFMT_ABGR8888,
+	/* Non-renderable formats */
+	FGL_PIXFMT_RGBA4444,
+	FGL_PIXFMT_RGBA1555,
+	FGL_PIXFMT_DEPTH16,
+	FGL_PIXFMT_LA88,
+	FGL_PIXFMT_L8,
+	/* Compressed formats */
+	FGL_PIXFMT_1BPP,
+	FGL_PIXFMT_2BPP,
+	FGL_PIXFMT_4BPP,
+	FGL_PIXFMT_8BPP,
+	FGL_PIXFMT_S3TC,
+	/* YUV formats */
+	FGL_PIXFMT_Y1VY0U,
+	FGL_PIXFMT_VY1UY0,
+	FGL_PIXFMT_Y1UY0V,
+	FGL_PIXFMT_UY1VY0,
+};
+
+struct FGLPixelFormat {
+	struct {
+		uint8_t pos;
+		uint8_t size;
+	} comp[4];
+
 	GLenum readType;
+
 	GLenum readFormat;
-	GLint pixelSize;
-	uint8_t redPos;
-	uint8_t greenPos;
-	uint8_t bluePos;
-	uint8_t alphaPos;
-	GLboolean opaque;
-	GLint texFormat;
 
-	static const FGLColorConfigDesc *get(int format)
-	{
-		assert(format < (NELEM(table) - 1));
+	uint32_t pixelSize;
 
-		return &table[format + 1];
-	}
+	bool opaque;
+
+	uint32_t texFormat;
+
+	uint32_t pixFormat;
+
+	bool swapNeeded;
+	bool isRGBA;
+
+	static const FGLPixelFormat *get(unsigned int format);
 
 private:
-	static const FGLColorConfigDesc table[];
+	static const FGLPixelFormat table[];
 };
 
 #endif

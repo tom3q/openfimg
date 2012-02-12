@@ -65,21 +65,30 @@ static char const * const gExtensionsString =
 static const GLint fglCompressedTextureFormats[] = {
 };
 
-const FGLColorConfigDesc FGLColorConfigDesc::table[] = {
+const FGLPixelFormat FGLPixelFormat::table[] = {
 	/*
-	 * Dummy
+	 * FGL_PIXFMT_NONE
+	 *
+	 * Dummy format used when format is unspecified
 	 */
 	{
-		0, 0, 0, 0,
+		{ { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },
 		0,
 		0,
 		0,
-		0, 0, 0, 0,
-		0,
-		0,
+		false,
+		-1,
+		-1,
+		false,
+		false,
 	},
+
 	/*
-	 * [FGPF_COLOR_MODE_555]
+	 * Renderable formats follow
+	 */
+
+	/*
+	 * FGL_PIXFMT_XRGB1555
 	 * -----------------------------------------
 	 * | 15 - 15 | 14 - 10 | 9  -  5 | 4  -  0 |
 	 * -----------------------------------------
@@ -87,16 +96,18 @@ const FGLColorConfigDesc FGLColorConfigDesc::table[] = {
 	 * -----------------------------------------
 	 */
 	{
-		5, 5, 5, 0,
+		{ { 10, 5 }, { 5, 5 }, { 0, 5 }, { 15, 0 } },
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_5_5_1,
 		2,
-		10, 5, 0, 0,
-		GL_TRUE, /* Force opaque */
+		true, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_1555,
+		FGPF_COLOR_MODE_555,
+		false,
+		false,
 	},
 	/*
-	 * [FGPF_COLOR_MODE_565]
+	 * FGL_PIXFMT_RGB565
 	 * -------------------------------
 	 * | 15 - 11 | 10 -  5 | 4  -  0 |
 	 * -------------------------------
@@ -104,16 +115,18 @@ const FGLColorConfigDesc FGLColorConfigDesc::table[] = {
 	 * -------------------------------
 	 */
 	{
-		5, 6, 5, 0,
+		{ { 11, 5 }, { 5, 6 }, { 0, 5 }, { 0, 0 } },
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_6_5,
 		2,
-		11, 5, 0, 0,
-		GL_FALSE,
+		false,
 		FGTU_TSTA_TEXTURE_FORMAT_565,
+		FGPF_COLOR_MODE_565,
+		false,
+		false,
 	},
 	/*
-	 * [FGPF_COLOR_MODE_4444]
+	 * FGL_PIXFMT_ARGB4444
 	 * -----------------------------------------
 	 * | 15 - 12 | 11 -  8 | 7  -  4 | 3  -  0 |
 	 * -----------------------------------------
@@ -121,16 +134,18 @@ const FGLColorConfigDesc FGLColorConfigDesc::table[] = {
 	 * -----------------------------------------
 	 */
 	{
-		4, 4, 4, 4,
+		{ { 8, 4 }, { 4, 4 }, { 0, 4 }, { 12, 4 } },
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_4_4_4_4,
 		2,
-		12, 8, 4, 0,
-		GL_FALSE,
+		false,
 		FGTU_TSTA_TEXTURE_FORMAT_4444,
+		FGPF_COLOR_MODE_4444,
+		false,
+		false,
 	},
 	/*
-	 * [FGPF_COLOR_MODE_1555]
+	 * FGL_PIXFMT_ARGB1555
 	 * -----------------------------------------
 	 * | 15 - 15 | 14 - 10 | 9  -  5 | 4  -  0 |
 	 * -----------------------------------------
@@ -138,49 +153,382 @@ const FGLColorConfigDesc FGLColorConfigDesc::table[] = {
 	 * -----------------------------------------
 	 */
 	{
-		5, 5, 5, 1,
+		{ { 10, 5 }, { 5, 5 }, { 0, 5 }, { 15, 1 } },
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_5_5_5_1,
 		2,
-		10, 5, 0, 15,
-		GL_FALSE,
+		false,
 		FGTU_TSTA_TEXTURE_FORMAT_1555,
+		FGPF_COLOR_MODE_1555,
+		false,
+		false,
 	},
 	/*
-	 * [FGPF_COLOR_MODE_0888]
+	 * FGL_PIXFMT_XRGB8888
 	 * -----------------------------------------
 	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
 	 * -----------------------------------------
-	 * |    R    |    G    |    B    |    X    |
+	 * |    X    |    R    |    G    |    B    |
 	 * -----------------------------------------
 	 */
 	{
-		8, 8, 8, 8,
+		{ { 16, 8 }, { 8, 8 }, { 0, 8 }, { 24, 0 } },
 		GL_BGRA_EXT,
 		GL_UNSIGNED_BYTE,
 		4,
-		16, 8, 0, 24,
-		GL_TRUE, /* Force opaque */
+		true, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_8888,
+		FGPF_COLOR_MODE_0888,
+		false,
+		false,
 	},
 	/*
-	 * FGPF_COLOR_MODE_8888
+	 * FGL_PIXFMT_ARGB8888
 	 * -----------------------------------------
 	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    A    |    R    |    G    |    B    |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 16, 8 }, { 8, 8 }, { 0, 8 }, { 24, 8 } },
+		GL_BGRA_EXT,
+		GL_UNSIGNED_BYTE,
+		4,
+		false, /* Force opaque */
+		FGTU_TSTA_TEXTURE_FORMAT_8888,
+		FGPF_COLOR_MODE_8888,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_XBGR8888
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    X    |    B    |    G    |    R    |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 0, 8 }, { 8, 8 }, { 16, 8 }, { 24, 0 } },
+		GL_RGBA,
+		GL_UNSIGNED_BYTE,
+		4,
+		true, /* Force opaque */
+		FGTU_TSTA_TEXTURE_FORMAT_8888,
+		FGPF_COLOR_MODE_0888,
+		true,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_ABGR8888
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    A    |    B    |    G    |    R    |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 0, 8 }, { 8, 8 }, { 16, 8 }, { 24, 8 } },
+		GL_RGBA,
+		GL_UNSIGNED_BYTE,
+		4,
+		false, /* Force opaque */
+		FGTU_TSTA_TEXTURE_FORMAT_8888,
+		FGPF_COLOR_MODE_8888,
+		true,
+		false,
+	},
+
+	/*
+	 * Non-renderable formats follow
+	 */
+
+	/*
+	 * FGL_PIXFMT_RGBA4444
+	 * -----------------------------------------
+	 * | 15 - 12 | 11 -  8 | 7  -  4 | 3  -  0 |
 	 * -----------------------------------------
 	 * |    R    |    G    |    B    |    A    |
 	 * -----------------------------------------
 	 */
 	{
-		8, 8, 8, 8,
-		GL_BGRA_EXT,
-		GL_UNSIGNED_BYTE,
+		{ { 12, 4 }, { 8, 4 }, { 4, 4 }, { 0, 4 } },
+		0,
+		0,
+		2,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_4444,
+		-1,
+		false,
+		true,
+	},
+	/*
+	 * FGL_PIXFMT_RGBA1555
+	 * -----------------------------------------
+	 * | 15 - 11 | 10 -  6 | 5  -  1 | 0  -  0 |
+	 * -----------------------------------------
+	 * |    R    |    G    |    B    |    A    |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 11, 5 }, { 6, 5 }, { 1, 5 }, { 0, 1 } },
+		0,
+		0,
+		2,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_1555,
+		-1,
+		false,
+		true,
+	},
+	/*
+	 * FGL_PIXFMT_DEPTH16
+	 * -----------
+	 * | 15 -  0 |
+	 * -----------
+	 * |    D    |
+	 * -----------
+	 */
+	{
+		{ { 0, 16 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },
+		0,
+		0,
+		2,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_DEPTHCOMP16,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_LA88
+	 * ---------------------
+	 * | 15 -  8 | 7  -  0 |
+	 * ---------------------
+	 * |    A    |    L    |
+	 * ---------------------
+	 */
+	{
+		{ { 0, 8 }, { 0, 0 }, { 0, 0 }, { 8, 8 } },
+		0,
+		0,
+		2,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_88,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_L8
+	 * -----------
+	 * | 7  -  0 |
+	 * -----------
+	 * |    L    |
+	 * -----------
+	 */
+	{
+		{ { 0, 8 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },
+		0,
+		0,
+		1,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_8,
+		-1,
+		false,
+		false,
+	},
+
+	/*
+	 * Compressed formats follow
+	 */
+
+	/*
+	 * FGL_PIXFMT_1BPP
+	 * ---------------------------------
+	 * | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+	 * ---------------------------------
+	 * | P | P | P | P | P | P | P | P |
+	 * ---------------------------------
+	 */
+	{
+		{ { 0, 1 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },
+		0,
+		0,
+		0,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_1BPP,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_2BPP
+	 * ---------------------------------
+	 * | 7 - 6 | 5 - 4 | 3 - 2 | 1 - 0 |
+	 * ---------------------------------
+	 * |   P   |   P   |   P   |   P   |
+	 * ---------------------------------
+	 */
+	{
+		{ { 0, 2 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },
+		0,
+		0,
+		0,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_2BPP,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_4BPP
+	 * -----------------
+	 * | 7 - 4 | 3 - 0 |
+	 * -----------------
+	 * |   P   |   P   |
+	 * -----------------
+	 */
+	{
+		{ { 0, 4 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },
+		0,
+		0,
+		0,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_4BPP,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_8BPP
+	 * ---------
+	 * | 7 - 0 |
+	 * ---------
+	 * |   P   |
+	 * ---------
+	 */
+	{
+		{ { 0, 8 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },
+		0,
+		0,
+		0,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_8BPP,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_S3TC
+	 * -------------------------------
+	 * | 63 - 32 | 31 - 16 | 15 -  0 |
+	 * -------------------------------
+	 * |    L    |    C1   |    C0   |
+	 * -------------------------------
+	 */
+	{
+		{ { 0, 16 }, { 16, 16 }, { 32, 32 }, { 0, 0 } },
+		0,
+		0,
+		0,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_S3TC,
+		-1,
+		false,
+		false,
+	},
+
+	/*
+	 * YUV formats follow
+	 */
+
+	/*
+	 * FGL_PIXFMT_Y1VY0U
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    Y1   |    V    |    Y0   |    U    |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 8, 8 }, { 0, 8 }, { 24, 8 }, { 16, 8 } },
+		0,
+		0,
 		4,
-		16, 8, 0, 24,
-		GL_FALSE,
-		FGTU_TSTA_TEXTURE_FORMAT_8888,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_Y1VY0U,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_VY1UY0
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    V    |    Y1   |    U    |    Y0   |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 0, 8 }, { 8, 8 }, { 16, 8 }, { 24, 8 } },
+		0,
+		0,
+		4,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_VY1UY0,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_Y1UY0V
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    Y1   |    U    |    Y0   |    V    |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 8, 8 }, { 16, 8 }, { 24, 8 }, { 0, 8 } },
+		0,
+		0,
+		4,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_Y1UY0V,
+		-1,
+		false,
+		false,
+	},
+	/*
+	 * FGL_PIXFMT_UY1VY0
+	 * -----------------------------------------
+	 * | 31 - 24 | 23 - 16 | 15 -  8 | 7  -  0 |
+	 * -----------------------------------------
+	 * |    U    |    Y1   |    V    |    Y0   |
+	 * -----------------------------------------
+	 */
+	{
+		{ { 0, 8 }, { 24, 8 }, { 16, 8 }, { 8, 8 } },
+		0,
+		0,
+		4,
+		false,
+		FGTU_TSTA_TEXTURE_FORMAT_UY1VY0,
+		-1,
+		false,
+		false,
 	},
 };
+
+const FGLPixelFormat *FGLPixelFormat::get(unsigned int format)
+{
+	const FGLPixelFormat *desc = &table[FGL_PIXFMT_NONE];
+	if (format < NELEM(table))
+		desc = &table[format];
+	return desc;
+}
 
 // ----------------------------------------------------------------------------
 
@@ -437,30 +785,30 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 	case GL_RED_BITS : {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 		fb->checkStatus();
-		const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(fb->getColorFormat());
-		state.putInteger(cfg->red);
+		const FGLPixelFormat *cfg =
+				FGLPixelFormat::get(fb->getColorFormat());
+		state.putInteger(cfg->comp[FGL_COMP_RED].size);
 		break; }
 	case GL_GREEN_BITS: {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 		fb->checkStatus();
-		const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(fb->getColorFormat());
-		state.putInteger(cfg->green);
+		const FGLPixelFormat *cfg =
+				FGLPixelFormat::get(fb->getColorFormat());
+		state.putInteger(cfg->comp[FGL_COMP_GREEN].size);
 		break; }
 	case GL_BLUE_BITS : {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 		fb->checkStatus();
-		const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(fb->getColorFormat());
-		state.putInteger(cfg->blue);
+		const FGLPixelFormat *cfg =
+				FGLPixelFormat::get(fb->getColorFormat());
+		state.putInteger(cfg->comp[FGL_COMP_BLUE].size);
 		break; }
 	case GL_ALPHA_BITS : {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 		fb->checkStatus();
-		const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(fb->getColorFormat());
-		state.putInteger(cfg->alpha);
+		const FGLPixelFormat *cfg =
+				FGLPixelFormat::get(fb->getColorFormat());
+		state.putInteger(cfg->comp[FGL_COMP_ALPHA].size);
 		break; }
 	case GL_DEPTH_BITS : {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
@@ -475,15 +823,15 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 	case GL_IMPLEMENTATION_COLOR_READ_TYPE_OES: {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 		fb->checkStatus();
-		const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(fb->getColorFormat());
+		const FGLPixelFormat *cfg =
+				FGLPixelFormat::get(fb->getColorFormat());
 		state.putEnum(cfg->readType);
 		break; }
 	case GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES: {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 		fb->checkStatus();
-		const FGLColorConfigDesc *cfg =
-				FGLColorConfigDesc::get(fb->getColorFormat());
+		const FGLPixelFormat *cfg =
+				FGLPixelFormat::get(fb->getColorFormat());
 		state.putEnum(cfg->readFormat);
 		break; }
 
