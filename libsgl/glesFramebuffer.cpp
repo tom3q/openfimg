@@ -84,6 +84,7 @@ static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 		fba->bpp = 2;
 		fba->swap = false;
 		fba->rgba = true;
+		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
 		fba->pixFormat = FGPF_COLOR_MODE_4444;
 		break;
 	case GL_RGB5_A1_OES:
@@ -91,6 +92,7 @@ static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 		fba->bpp = 2;
 		fba->swap = false;
 		fba->rgba = true;
+		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
 		fba->pixFormat = FGPF_COLOR_MODE_1555;
 		break;
 	case GL_RGB565_OES:
@@ -98,6 +100,7 @@ static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 		fba->bpp = 2;
 		fba->swap = false;
 		fba->rgba = false;
+		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
 		fba->pixFormat = FGPF_COLOR_MODE_565;
 		break;
 	case GL_RGBA:
@@ -107,22 +110,27 @@ static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 		fba->bpp = 4;
 		fba->swap = false;
 		fba->rgba = false;
+		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
 		fba->pixFormat = FGPF_COLOR_MODE_8888;
 		break;
 	case GL_DEPTH_COMPONENT16_OES:
 	case GL_DEPTH_COMPONENT24_OES:
 		/* Using DEPTH_STENCIL_24_8 physical representation */
 		fba->bpp = 4;
+		fba->mask = (1 << FGL_ATTACHMENT_DEPTH);
 		fba->pixFormat = 24;
 		break;
 	case GL_STENCIL_INDEX8_OES:
 		/* Using DEPTH_STENCIL_24_8 physical representation */
 		fba->bpp = 4;
+		fba->mask = (1 << FGL_ATTACHMENT_STENCIL);
 		fba->pixFormat = (8 << 8);
 		break;
 	case GL_DEPTH_STENCIL_OES:
 		/* Using DEPTH_STENCIL_24_8 physical representation */
 		fba->bpp = 4;
+		fba->mask = (1 << FGL_ATTACHMENT_DEPTH);
+		fba->mask |= (1 << FGL_ATTACHMENT_STENCIL);
 		fba->pixFormat = (8 << 8) | 24;
 		break;
 	default:
@@ -312,7 +320,7 @@ GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum p
 		return;
 	}
 
-	if (0 /* Color attachable */) {
+	if (obj->mask & FGL_ATTACHMENT_COLOR) {
 		const FGLColorConfigDesc *cfg =
 					FGLColorConfigDesc::get(obj->pixFormat);
 		switch (pname) {
@@ -335,7 +343,7 @@ GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum p
 		}
 	}
 
-	if (0 /* Depth or stencil attachable */) {
+	if (obj->mask & (FGL_ATTACHMENT_DEPTH | FGL_ATTACHMENT_STENCIL)) {
 		switch (pname)
 		{
 		case GL_RENDERBUFFER_RED_SIZE_OES:
