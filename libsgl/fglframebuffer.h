@@ -28,6 +28,7 @@
 
 #include "fglobject.h"
 #include "fglframebufferattachable.h"
+#include "fglpixelformat.h"
 
 enum FGLAttachmentIndex {
 	FGL_ATTACHMENT_COLOR = 0,
@@ -43,7 +44,7 @@ protected:
 
 	uint32_t width;
 	uint32_t height;
-	int32_t colorFormat;
+	uint32_t colorFormat;
 	uint32_t depthFormat;
 
 public:
@@ -51,7 +52,7 @@ public:
 		dirty(true),
 		width(0),
 		height(0),
-		colorFormat(-1),
+		colorFormat(FGL_PIXFMT_NONE),
 		depthFormat(0) {};
 
 	virtual ~FGLAbstractFramebuffer() {}
@@ -162,7 +163,7 @@ public:
 
 	virtual bool isValid(void)
 	{
-		return colorFormat != -1;
+		return colorFormat != FGL_PIXFMT_NONE;
 	}
 
 	virtual GLenum checkStatus(void)

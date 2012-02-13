@@ -735,6 +735,7 @@ static void fglSetBlending(FGLContext *ctx);
 static inline int fglSetupFramebuffer(FGLContext *ctx)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	const FGLPixelFormat *pix = FGLPixelFormat::get(fb->getColorFormat());
 	FGLFramebufferAttachable *fba;
 
 	if (!fb->isValid())
@@ -745,7 +746,7 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 
 	fimgSetFrameBufSize(ctx->fimg, fb->getWidth(), fb->getHeight());
 	fimgSetFrameBufParams(ctx->fimg,
-				1, 0, 255, (fimgColorMode)fb->getColorFormat());
+				1, 0, 255, (fimgColorMode)pix->pixFormat);
 
 	fba = fb->get(FGL_ATTACHMENT_COLOR);
 	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);

@@ -70,54 +70,39 @@ static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 	switch (format) {
 	case GL_RGBA4_OES:
 		/* Using ARGB4444 physical representation */
-		fba->bpp = 2;
-		fba->swap = false;
-		fba->rgba = true;
 		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
-		fba->pixFormat = FGPF_COLOR_MODE_4444;
+		fba->pixFormat = FGL_PIXFMT_ARGB4444;
 		break;
 	case GL_RGB5_A1_OES:
 		/* Using ARGB1555 physical representation */
-		fba->bpp = 2;
-		fba->swap = false;
-		fba->rgba = true;
 		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
-		fba->pixFormat = FGPF_COLOR_MODE_1555;
+		fba->pixFormat = FGL_PIXFMT_ARGB1555;
 		break;
 	case GL_RGB565_OES:
 		/* Using RGB565 physical representation */
-		fba->bpp = 2;
-		fba->swap = false;
-		fba->rgba = false;
 		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
-		fba->pixFormat = FGPF_COLOR_MODE_565;
+		fba->pixFormat = FGL_PIXFMT_RGB565;
 		break;
 	case GL_RGBA:
 	case GL_RGBA8_OES:
 	case GL_BGRA_EXT:
-		/* Using BGRA8888 physical representation */
-		fba->bpp = 4;
-		fba->swap = false;
-		fba->rgba = false;
+		/* Using ARGB8888 physical representation */
 		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
-		fba->pixFormat = FGPF_COLOR_MODE_8888;
+		fba->pixFormat = FGL_PIXFMT_ARGB8888;
 		break;
 	case GL_DEPTH_COMPONENT16_OES:
 	case GL_DEPTH_COMPONENT24_OES:
 		/* Using DEPTH_STENCIL_24_8 physical representation */
-		fba->bpp = 4;
 		fba->mask = (1 << FGL_ATTACHMENT_DEPTH);
 		fba->pixFormat = 24;
 		break;
 	case GL_STENCIL_INDEX8_OES:
 		/* Using DEPTH_STENCIL_24_8 physical representation */
-		fba->bpp = 4;
 		fba->mask = (1 << FGL_ATTACHMENT_STENCIL);
 		fba->pixFormat = (8 << 8);
 		break;
 	case GL_DEPTH_STENCIL_OES:
 		/* Using DEPTH_STENCIL_24_8 physical representation */
-		fba->bpp = 4;
 		fba->mask = (1 << FGL_ATTACHMENT_DEPTH);
 		fba->mask |= (1 << FGL_ATTACHMENT_STENCIL);
 		fba->pixFormat = (8 << 8) | 24;
@@ -245,14 +230,16 @@ GL_API void GL_APIENTRY glRenderbufferStorageOES (GLenum target,
 		return;
 	}
 
-	unsigned oldSize = obj->width * obj->height * obj->bpp;
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned oldSize = obj->width * obj->height * pix->pixelSize;
 	int ret = fglSetRenderbufferFormatInfo(obj, internalformat);
 	if (ret < 0) {
 		setError(GL_INVALID_ENUM);
 		return;
 	}
 
-	unsigned size = width * height * obj->bpp;
+	pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned size = width * height * pix->pixelSize;
 	if (size != oldSize) {
 		delete obj->surface;
 		obj->surface = 0;

@@ -447,6 +447,70 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 	return EGL_TRUE;
 }
 
+static uint32_t framebufferFormats32bpp[] = {
+	FGL_PIXFMT_XRGB8888,
+	FGL_PIXFMT_ARGB8888,
+	FGL_PIXFMT_XBGR8888,
+	FGL_PIXFMT_ABGR8888
+};
+
+static uint32_t framebufferFormats16bpp[] = {
+	FGL_PIXFMT_XRGB1555,
+	FGL_PIXFMT_RGB565,
+	FGL_PIXFMT_ARGB4444,
+	FGL_PIXFMT_ARGB1555
+};
+
+static EGLBoolean fglFindCompatiblePixelFormat(const fb_var_screeninfo *vinfo,
+		uint32_t *fglFormat, const uint32_t *formats, uint32_t count)
+{
+	while (count--) {
+		uint32_t fmt = *(formats++);
+		const FGLPixelFormat *pix = FGLPixelFormat::get(fmt);
+
+		if (vinfo->red.offset != pix->comp[FGL_COMP_RED].pos)
+			continue;
+		if (vinfo->red.length != pix->comp[FGL_COMP_RED].size)
+			continue;
+		if (vinfo->green.offset != pix->comp[FGL_COMP_GREEN].pos)
+			continue;
+		if (vinfo->green.length != pix->comp[FGL_COMP_GREEN].size)
+			continue;
+		if (vinfo->blue.offset != pix->comp[FGL_COMP_BLUE].pos)
+			continue;
+		if (vinfo->blue.length != pix->comp[FGL_COMP_BLUE].size)
+			continue;
+		if (vinfo->transp.offset != pix->comp[FGL_COMP_ALPHA].pos)
+			continue;
+		if (vinfo->transp.length != pix->comp[FGL_COMP_ALPHA].size)
+			continue;
+
+		*fglFormat = fmt;
+		return EGL_TRUE;
+	}
+
+	return EGL_FALSE;
+}
+
+static EGLBoolean fglNativeToFGLPixelFormat(const fb_var_screeninfo *vinfo,
+							uint32_t *fglFormat)
+{
+	switch(vinfo->bits_per_pixel) {
+	case 32:
+		return fglFindCompatiblePixelFormat(vinfo,
+					fglFormat, framebufferFormats32bpp,
+					NELEM(framebufferFormats32bpp));
+	case 16:
+		return fglFindCompatiblePixelFormat(vinfo,
+					fglFormat, framebufferFormats16bpp,
+					NELEM(framebufferFormats16bpp));
+	default:
+		break;
+	}
+
+	return EGL_FALSE;
+}
+
 FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
 	uint32_t depthFormat, EGLNativeWindowType window, uint32_t pixelFormat)
 {
@@ -459,14 +523,12 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
 		return NULL;
 	}
 
-	FGLPixelFormatInfo fmt;
-	fmt.bpp		= vinfo.bits_per_pixel;
-	fmt.red		= vinfo.red.length;
-	fmt.green	= vinfo.green.length;
-	fmt.blue	= vinfo.blue.length;
-	fmt.alpha	= vinfo.transp.length;
+	if (fglNativeToFGLPixelFormat(&vinfo, &pixelFormat) != EGL_TRUE) {
+		setError(EGL_BAD_MATCH);
+		return NULL;
+	}
 
-	if (fglEGLValidatePixelFormat(config, &fmt) != EGL_TRUE) {
+	if (fglEGLValidatePixelFormat(config, pixelFormat) != EGL_TRUE) {
 		setError(EGL_BAD_MATCH);
 		return NULL;
 	}

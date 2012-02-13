@@ -63,7 +63,7 @@ void FGLFramebuffer::updateStatus(void)
 
 	this->width = 0;
 	this->height = 0;
-	this->colorFormat = -1;
+	this->colorFormat = FGL_PIXFMT_NONE;
 	this->depthFormat = 0;
 
 	for (i = 0; i < FGL_ATTACHMENT_NUM; ++i) {

@@ -460,60 +460,29 @@ private:
 	Rect oldDirtyRegion;
 };
 
-static int nativeToFGLPixelFormat(int format, FGLPixelFormatInfo *fglFormat)
+static EGLBoolean fglNativeToFGLPixelFormat(int format, uint32_t *fglFormat)
 {
-	int bpp, r, g, b, a;
+	uint32_t fmt;
 
 	switch(format) {
 	case HAL_PIXEL_FORMAT_BGRA_8888:
+		fmt = FGL_PIXFMT_ARGB8888;
+		break;
 	case HAL_PIXEL_FORMAT_RGBA_8888:
-		bpp = 32;
-		r = 8;
-		g = 8;
-		b = 8;
-		a = 8;
+		fmt = FGL_PIXFMT_ABGR8888;
 		break;
 	case HAL_PIXEL_FORMAT_RGBX_8888:
-		bpp = 32;
-		r = 8;
-		g = 8;
-		b = 8;
-		a = 0;
+		fmt = FGL_PIXFMT_XBGR8888;
 		break;
 	case HAL_PIXEL_FORMAT_RGB_565:
-		bpp = 16;
-		r = 5;
-		g = 6;
-		b = 5;
-		a = 0;
-		break;
-	case HAL_PIXEL_FORMAT_RGBA_4444:
-		bpp = 16;
-		r = 4;
-		g = 4;
-		b = 4;
-		a = 4;
-		break;
-	case HAL_PIXEL_FORMAT_RGBA_5551:
-		bpp = 16;
-		r = 5;
-		g = 5;
-		b = 5;
-		a = 1;
+		fmt = FGL_PIXFMT_RGB565;
 		break;
 	default:
-		return -1;
+		return EGL_FALSE;
 	}
 
-	if (fglFormat) {
-		fglFormat->bpp		= bpp;
-		fglFormat->red		= r;
-		fglFormat->green	= g;
-		fglFormat->blue		= b;
-		fglFormat->alpha	= a;
-	}
-
-	return 0;
+	*fglFormat = fmt;
+	return EGL_TRUE;
 }
 
 FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
@@ -536,9 +505,8 @@ FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_HEIGHT, &height);
 	nativeWindow->query(nativeWindow, NATIVE_WINDOW_FORMAT, &format);
 
-	FGLPixelFormatInfo fglFormat;
-	nativeToFGLPixelFormat(format, &fglFormat);
-	bytesPerPixel = fglFormat.bpp * 8;
+	const FGLPixelFormat *pix = FGLPixelFormat::get(pixelFormat);
+	bytesPerPixel = pix->pixelSize;
 }
 
 FGLWindowSurface::~FGLWindowSurface()
@@ -847,7 +815,6 @@ EGLint FGLWindowSurface::getSwapBehavior() const
 FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
 	uint32_t depthFormat, EGLNativeWindowType window, uint32_t pixelFormat)
 {
-	int ret;
 	int format;
 	android_native_window_t *win = 
 				static_cast<android_native_window_t *>(window);
@@ -859,14 +826,12 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
 
 	win->query(win, NATIVE_WINDOW_FORMAT, &format);
 
-	FGLPixelFormatInfo fglFormat;
-	ret = nativeToFGLPixelFormat(format, &fglFormat);
-	if (ret < 0) {
+	if (fglNativeToFGLPixelFormat(format, &pixelFormat) != EGL_TRUE) {
 		setError(EGL_BAD_MATCH);
 		return NULL;
 	}
 
-	if (fglEGLValidatePixelFormat(config, &fglFormat) != EGL_TRUE) {
+	if (fglEGLValidatePixelFormat(config, pixelFormat) != EGL_TRUE) {
 		setError(EGL_BAD_MATCH);
 		return NULL;
 	}

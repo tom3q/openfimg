@@ -59,8 +59,6 @@ struct FGLTexture : public FGLFramebufferAttachable {
 	GLenum		target;
 	/* HW state */
 	fimgTexture	*fimg;
-	uint32_t	fglFormat;
-	uint32_t	bpp;
 	bool		convert;
 	bool		valid;
 	bool		dirty;

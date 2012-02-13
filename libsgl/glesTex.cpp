@@ -132,63 +132,51 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 	binding->bind(&tex->object);
 }
 
-static int fglGetFormatInfo(GLenum format, GLenum type,
-					unsigned *bpp, bool *conv, bool *swap)
+static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 {
 	*conv = 0;
-	*swap = 0;
 	switch (type) {
 	case GL_UNSIGNED_BYTE:
 		switch (format) {
 		case GL_RGB:
 		/* Needs conversion */
 			*conv = 1;
-			*bpp = 4;
-			return FGTU_TSTA_TEXTURE_FORMAT_8888;
+			return FGL_PIXFMT_XRGB8888;
 		case GL_RGBA:
-		/* Needs swapping in pixel shader */
-			*swap = 1;
-		/* Fall through */
+			return FGL_PIXFMT_ABGR8888;
 		case GL_BGRA_EXT:
-			*bpp = 4;
-			return FGTU_TSTA_TEXTURE_FORMAT_8888;
+			return FGL_PIXFMT_ARGB8888;
 		case GL_ALPHA:
-			*bpp = 1;
-			return FGTU_TSTA_TEXTURE_FORMAT_8;
+			return FGL_PIXFMT_L8;
 		case GL_LUMINANCE:
-		/* Needs conversion */
-			*conv = 1;
-		/* Fall through */
+			return FGL_PIXFMT_L8;
 		case GL_LUMINANCE_ALPHA:
-			*bpp = 2;
-			return FGTU_TSTA_TEXTURE_FORMAT_88;
+			return FGL_PIXFMT_LA88;
 		default:
 			return -1;
 		}
 	case GL_UNSIGNED_SHORT_5_6_5:
 		if (format != GL_RGB)
 			return -1;
-		*bpp = 2;
-		return FGTU_TSTA_TEXTURE_FORMAT_565;
+		return FGL_PIXFMT_RGB565;
 	case GL_UNSIGNED_SHORT_4_4_4_4:
 		if (format != GL_RGBA)
 			return -1;
-		*bpp = 2;
-		return FGTU_TSTA_TEXTURE_FORMAT_4444;
+		return FGL_PIXFMT_RGBA4444;
 	case GL_UNSIGNED_SHORT_5_5_5_1:
 		if (format != GL_RGBA)
 			return -1;
-		*bpp = 2;
-		return FGTU_TSTA_TEXTURE_FORMAT_1555;
+		return FGL_PIXFMT_RGBA5551;
 	default:
 		return -1;
 	}
 }
 
-static void fglGenerateMipmapsSW(FGLTexture *obj)
+static void fglGenerateMipmaps(FGLTexture *obj)
 {
  FUNCTION_TRACER;
 	int level = 0;
+	int skip = 1;
 
 	int w = obj->width;
 	int h = obj->height;
@@ -198,226 +186,146 @@ static void fglGenerateMipmapsSW(FGLTexture *obj)
 	w = (w>>1) ? : 1;
 	h = (h>>1) ? : 1;
 
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
 	void *curLevel = obj->surface->vaddr;
 	void *nextLevel = (uint8_t *)obj->surface->vaddr
-				+ obj->bpp*fimgGetTexMipmapOffset(obj->fimg, 1);
+			+ pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, 1);
 
-	while(true) {
-		++level;
-		int stride = w;
-		int bs = w;
-
-		if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_565) {
-			uint16_t const * src = (uint16_t const *)curLevel;
-			uint16_t* dst = (uint16_t*)nextLevel;
-			const uint32_t mask = 0x07E0F81F;
-			for (int y=0 ; y<h ; y++) {
-				size_t offset = (y*2) * bs;
-				for (int x=0 ; x<w ; x++) {
-					uint32_t p00 = src[offset];
-					uint32_t p10 = src[offset+1];
-					uint32_t p01 = src[offset+bs];
-					uint32_t p11 = src[offset+bs+1];
-					p00 = (p00 | (p00 << 16)) & mask;
-					p01 = (p01 | (p01 << 16)) & mask;
-					p10 = (p10 | (p10 << 16)) & mask;
-					p11 = (p11 | (p11 << 16)) & mask;
-					uint32_t grb = ((p00 + p10 + p01 + p11) >> 2) & mask;
-					uint32_t rgb = (grb & 0xFFFF) | (grb >> 16);
-					dst[x + y*stride] = rgb;
-					offset += 2;
-				}
+processNextLevel:
+	++level;
+	int stride = w;
+	int bs = w;
+	switch (obj->pixFormat) {
+	case FGL_PIXFMT_RGB565: {
+		uint16_t const * src = (uint16_t const *)curLevel;
+		uint16_t* dst = (uint16_t*)nextLevel;
+		const uint32_t mask = 0x07E0F81F;
+		for (int y=0 ; y<h ; y++) {
+			size_t offset = (y*2) * bs;
+			for (int x=0 ; x<w ; x++) {
+				uint32_t p00 = src[offset];
+				uint32_t p10 = src[offset+1];
+				uint32_t p01 = src[offset+bs];
+				uint32_t p11 = src[offset+bs+1];
+				p00 = (p00 | (p00 << 16)) & mask;
+				p01 = (p01 | (p01 << 16)) & mask;
+				p10 = (p10 | (p10 << 16)) & mask;
+				p11 = (p11 | (p11 << 16)) & mask;
+				uint32_t grb = ((p00 + p10 + p01 + p11) >> 2) & mask;
+				uint32_t rgb = (grb & 0xFFFF) | (grb >> 16);
+				dst[x + y*stride] = rgb;
+				offset += 2;
 			}
-		} else if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_1555) {
-			uint16_t const * src = (uint16_t const *)curLevel;
-			uint16_t* dst = (uint16_t*)nextLevel;
-			for (int y=0 ; y<h ; y++) {
-				size_t offset = (y*2) * bs;
-				for (int x=0 ; x<w ; x++) {
-					uint32_t p00 = src[offset];
-					uint32_t p10 = src[offset+1];
-					uint32_t p01 = src[offset+bs];
-					uint32_t p11 = src[offset+bs+1];
-					uint32_t r = ((p00>>11)+(p10>>11)+(p01>>11)+(p11>>11)+2)>>2;
-					uint32_t g = (((p00>>6)+(p10>>6)+(p01>>6)+(p11>>6)+2)>>2)&0x3F;
-					uint32_t b = ((p00&0x3E)+(p10&0x3E)+(p01&0x3E)+(p11&0x3E)+4)>>3;
-					uint32_t a = ((p00&1)+(p10&1)+(p01&1)+(p11&1)+2)>>2;
-					dst[x + y*stride] = (r<<11)|(g<<6)|(b<<1)|a;
-					offset += 2;
-				}
-			}
-		} else if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_8888) {
-			uint32_t const * src = (uint32_t const *)curLevel;
-			uint32_t* dst = (uint32_t*)nextLevel;
-			for (int y=0 ; y<h ; y++) {
-				size_t offset = (y*2) * bs;
-				for (int x=0 ; x<w ; x++) {
-					uint32_t p00 = src[offset];
-					uint32_t p10 = src[offset+1];
-					uint32_t p01 = src[offset+bs];
-					uint32_t p11 = src[offset+bs+1];
-					uint32_t rb00 = p00 & 0x00FF00FF;
-					uint32_t rb01 = p01 & 0x00FF00FF;
-					uint32_t rb10 = p10 & 0x00FF00FF;
-					uint32_t rb11 = p11 & 0x00FF00FF;
-					uint32_t ga00 = (p00 >> 8) & 0x00FF00FF;
-					uint32_t ga01 = (p01 >> 8) & 0x00FF00FF;
-					uint32_t ga10 = (p10 >> 8) & 0x00FF00FF;
-					uint32_t ga11 = (p11 >> 8) & 0x00FF00FF;
-					uint32_t rb = (rb00 + rb01 + rb10 + rb11)>>2;
-					uint32_t ga = (ga00 + ga01 + ga10 + ga11)>>2;
-					uint32_t rgba = (rb & 0x00FF00FF) | ((ga & 0x00FF00FF)<<8);
-					dst[x + y*stride] = rgba;
-					offset += 2;
-				}
-			}
-		} else if ((obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_88) ||
-		(obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_8)) {
-			int skip;
-			switch (obj->fglFormat) {
-			case FGTU_TSTA_TEXTURE_FORMAT_88:	skip = 2;   break;
-			default:				skip = 1;   break;
-			}
-			uint8_t const * src = (uint8_t const *)curLevel;
-			uint8_t* dst = (uint8_t*)nextLevel;
-			bs *= skip;
-			stride *= skip;
-			for (int y=0 ; y<h ; y++) {
-				size_t offset = (y*2) * bs;
-				for (int x=0 ; x<w ; x++) {
-					for (int c=0 ; c<skip ; c++) {
-						uint32_t p00 = src[c+offset];
-						uint32_t p10 = src[c+offset+skip];
-						uint32_t p01 = src[c+offset+bs];
-						uint32_t p11 = src[c+offset+bs+skip];
-						dst[x + y*stride + c] = (p00 + p10 + p01 + p11) >> 2;
-					}
-					offset += 2*skip;
-				}
-			}
-		} else if (obj->fglFormat == FGTU_TSTA_TEXTURE_FORMAT_4444) {
-			uint16_t const * src = (uint16_t const *)curLevel;
-			uint16_t* dst = (uint16_t*)nextLevel;
-			for (int y=0 ; y<h ; y++) {
-				size_t offset = (y*2) * bs;
-				for (int x=0 ; x<w ; x++) {
-					uint32_t p00 = src[offset];
-					uint32_t p10 = src[offset+1];
-					uint32_t p01 = src[offset+bs];
-					uint32_t p11 = src[offset+bs+1];
-					p00 = ((p00 << 12) & 0x0F0F0000) | (p00 & 0x0F0F);
-					p10 = ((p10 << 12) & 0x0F0F0000) | (p10 & 0x0F0F);
-					p01 = ((p01 << 12) & 0x0F0F0000) | (p01 & 0x0F0F);
-					p11 = ((p11 << 12) & 0x0F0F0000) | (p11 & 0x0F0F);
-					uint32_t rbga = (p00 + p10 + p01 + p11) >> 2;
-					uint32_t rgba = (rbga & 0x0F0F) | ((rbga>>12) & 0xF0F0);
-					dst[x + y*stride] = rgba;
-					offset += 2;
-				}
-			}
-		} else {
-			LOGE("Unsupported format (%d)", obj->fglFormat);
-			return;
 		}
-
-		// exit condition: we just processed the 1x1 LODs
-		if ((w&h) == 1)
-		break;
-
-		w = (w>>1) ? : 1;
-		h = (h>>1) ? : 1;
-
-		curLevel = nextLevel;
-		nextLevel = (uint8_t *)obj->surface->vaddr
-			+ obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level + 1);
-	}
-}
-#if 0
-static int fglGenerateMipmapsG2D(FGLTexture *obj, unsigned int format)
-{
- FUNCTION_TRACER;
-	int fd;
-	struct s3c_g2d_req req;
-
-	// Setup source image (level 0 image)
-	req.src.base	= obj->surface->paddr;
-	req.src.offs	= 0;
-	req.src.w	= obj->width;
-	req.src.h	= obj->height;
-	req.src.l	= 0;
-	req.src.t	= 0;
-	req.src.r	= obj->width - 1;
-	req.src.b	= obj->height - 1;
-	req.src.fmt	= format;
-
-	// Setup destination image template for generated mipmaps
-	req.dst.base	= obj->surface->paddr;
-	req.dst.l	= 0;
-	req.dst.t	= 0;
-	req.dst.fmt	= format;
-
-	fd = open("/dev/s3c-g2d", O_RDWR, 0);
-	if (fd < 0) {
-		LOGW("Failed to open G2D device. Falling back to software.");
-		return -1;
-	}
-
-	if (ioctl(fd, S3C_G2D_SET_BLENDING, G2D_NO_ALPHA) < 0) {
-		LOGW("Failed to set G2D parameters. Falling back to software.");
-		close(fd);
-		return -1;
-	}
-
-	unsigned width = obj->width;
-	unsigned height = obj->height;
-
-	for (int lvl = 1; lvl <= obj->maxLevel; lvl++) {
-		if (width > 1)
-			width /= 2;
-
-		if (height > 1)
-			height /= 2;
-
-		req.dst.offs	= obj->bpp*fimgGetTexMipmapOffset(obj->fimg, lvl);
-		req.dst.w	= width;
-		req.dst.h	= height;
-		req.dst.r	= width - 1;
-		req.dst.b	= height - 1;
-
-		if (ioctl(fd, S3C_G2D_BITBLT, &req) < 0) {
-			LOGW("Failed to perform G2D blit operation. "
-			     "Falling back to software.");
-			close(fd);
-			return -1;
+		break; }
+	case FGL_PIXFMT_RGBA5551: {
+		uint16_t const * src = (uint16_t const *)curLevel;
+		uint16_t* dst = (uint16_t*)nextLevel;
+		for (int y=0 ; y<h ; y++) {
+			size_t offset = (y*2) * bs;
+			for (int x=0 ; x<w ; x++) {
+				uint32_t p00 = src[offset];
+				uint32_t p10 = src[offset+1];
+				uint32_t p01 = src[offset+bs];
+				uint32_t p11 = src[offset+bs+1];
+				uint32_t r = ((p00>>11)+(p10>>11)+(p01>>11)+(p11>>11)+2)>>2;
+				uint32_t g = (((p00>>6)+(p10>>6)+(p01>>6)+(p11>>6)+2)>>2)&0x3F;
+				uint32_t b = ((p00&0x3E)+(p10&0x3E)+(p01&0x3E)+(p11&0x3E)+4)>>3;
+				uint32_t a = ((p00&1)+(p10&1)+(p01&1)+(p11&1)+2)>>2;
+				dst[x + y*stride] = (r<<11)|(g<<6)|(b<<1)|a;
+				offset += 2;
+			}
 		}
+		break; }
+	case FGL_PIXFMT_XRGB8888:
+	case FGL_PIXFMT_ARGB8888:
+	case FGL_PIXFMT_XBGR8888:
+	case FGL_PIXFMT_ABGR8888: {
+		uint32_t const * src = (uint32_t const *)curLevel;
+		uint32_t* dst = (uint32_t*)nextLevel;
+		for (int y=0 ; y<h ; y++) {
+			size_t offset = (y*2) * bs;
+			for (int x=0 ; x<w ; x++) {
+				uint32_t p00 = src[offset];
+				uint32_t p10 = src[offset+1];
+				uint32_t p01 = src[offset+bs];
+				uint32_t p11 = src[offset+bs+1];
+				uint32_t rb00 = p00 & 0x00FF00FF;
+				uint32_t rb01 = p01 & 0x00FF00FF;
+				uint32_t rb10 = p10 & 0x00FF00FF;
+				uint32_t rb11 = p11 & 0x00FF00FF;
+				uint32_t ga00 = (p00 >> 8) & 0x00FF00FF;
+				uint32_t ga01 = (p01 >> 8) & 0x00FF00FF;
+				uint32_t ga10 = (p10 >> 8) & 0x00FF00FF;
+				uint32_t ga11 = (p11 >> 8) & 0x00FF00FF;
+				uint32_t rb = (rb00 + rb01 + rb10 + rb11)>>2;
+				uint32_t ga = (ga00 + ga01 + ga10 + ga11)>>2;
+				uint32_t rgba = (rb & 0x00FF00FF) | ((ga & 0x00FF00FF)<<8);
+				dst[x + y*stride] = rgba;
+				offset += 2;
+			}
+		}
+		break; }
+	case FGL_PIXFMT_LA88:
+		skip = 2;
+		/* Fall-through */
+	case FGL_PIXFMT_L8: {
+		uint8_t const * src = (uint8_t const *)curLevel;
+		uint8_t* dst = (uint8_t*)nextLevel;
+		bs *= skip;
+		stride *= skip;
+		for (int y=0 ; y<h ; y++) {
+			size_t offset = (y*2) * bs;
+			for (int x=0 ; x<w ; x++) {
+				for (int c=0 ; c<skip ; c++) {
+					uint32_t p00 = src[c+offset];
+					uint32_t p10 = src[c+offset+skip];
+					uint32_t p01 = src[c+offset+bs];
+					uint32_t p11 = src[c+offset+bs+skip];
+					dst[x + y*stride + c] = (p00 + p10 + p01 + p11) >> 2;
+				}
+				offset += 2*skip;
+			}
+		}
+		break; }
+	case FGL_PIXFMT_RGBA4444: {
+		uint16_t const * src = (uint16_t const *)curLevel;
+		uint16_t* dst = (uint16_t*)nextLevel;
+		for (int y=0 ; y<h ; y++) {
+			size_t offset = (y*2) * bs;
+			for (int x=0 ; x<w ; x++) {
+				uint32_t p00 = src[offset];
+				uint32_t p10 = src[offset+1];
+				uint32_t p01 = src[offset+bs];
+				uint32_t p11 = src[offset+bs+1];
+				p00 = ((p00 << 12) & 0x0F0F0000) | (p00 & 0x0F0F);
+				p10 = ((p10 << 12) & 0x0F0F0000) | (p10 & 0x0F0F);
+				p01 = ((p01 << 12) & 0x0F0F0000) | (p01 & 0x0F0F);
+				p11 = ((p11 << 12) & 0x0F0F0000) | (p11 & 0x0F0F);
+				uint32_t rbga = (p00 + p10 + p01 + p11) >> 2;
+				uint32_t rgba = (rbga & 0x0F0F) | ((rbga>>12) & 0xF0F0);
+				dst[x + y*stride] = rgba;
+				offset += 2;
+			}
+		}
+		break; }
+	default:
+		LOGE("Unsupported format (%d)", obj->pixFormat);
+		return;
 	}
 
-	close(fd);
-	return 0;
-}
-#endif
-static void fglGenerateMipmaps(FGLTexture *obj)
-{
- FUNCTION_TRACER;
-#if 0
-	/* Handle cases supported by G2D hardware */
-	switch (obj->fglFormat) {
-	case FGTU_TSTA_TEXTURE_FORMAT_565:
-		if(fglGenerateMipmapsG2D(obj, G2D_RGB16))
-			break;
+	// exit condition: we just processed the 1x1 LODs
+	if ((w&h) == 1)
 		return;
-	case FGTU_TSTA_TEXTURE_FORMAT_1555:
-		if(fglGenerateMipmapsG2D(obj, G2D_RGBA16))
-			break;
-		return;
-	case FGTU_TSTA_TEXTURE_FORMAT_8888:
-		if(fglGenerateMipmapsG2D(obj, G2D_ARGB32))
-			break;
-		return;
-	}
-#endif
-	/* Handle other cases (including G2D failure) */
-	fglGenerateMipmapsSW(obj);
+
+	w = (w>>1) ? : 1;
+	h = (h>>1) ? : 1;
+
+	curLevel = nextLevel;
+	nextLevel = (uint8_t *)obj->surface->vaddr
+		+ pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level + 1);
+
+	goto processNextLevel;
 }
 
 static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
@@ -461,7 +369,8 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
  FUNCTION_TRACER;
-	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -471,7 +380,7 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 	if (!height)
 		height = 1;
 
-	size_t size = width*height*obj->bpp;
+	size_t size = width*height*pix->pixelSize;
 
 	memcpy((uint8_t *)obj->surface->vaddr + offset, pixels, size);
 }
@@ -480,7 +389,8 @@ static void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
  FUNCTION_TRACER;
-	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -490,7 +400,7 @@ static void fglLoadTexture(FGLTexture *obj, unsigned level,
 	if (!height)
 		height = 1;
 
-	size_t line = width*obj->bpp;
+	size_t line = width*pix->pixelSize;
 	size_t stride = (line + alignment - 1) & ~(alignment - 1);
 	const uint8_t *src8 = (const uint8_t *)pixels;
 	uint8_t *dst8 = (uint8_t *)obj->surface->vaddr + offset;
@@ -517,7 +427,8 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
  FUNCTION_TRACER;
-	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -662,13 +573,15 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 
 		// Copy the image (with conversion if needed)
 		if (pixels != NULL) {
+			const FGLPixelFormat *pix =
+					FGLPixelFormat::get(obj->pixFormat);
 			fglWaitForTexture(ctx, obj);
 
 			if (obj->convert) {
 				fglConvertTexture(obj, level, pixels,
 							ctx->unpackAlignment);
 			} else {
-				if (ctx->unpackAlignment <= obj->bpp)
+				if (ctx->unpackAlignment <= pix->pixelSize)
 					fglLoadTextureDirect(obj, level, pixels);
 				else
 					fglLoadTexture(obj, level, pixels,
@@ -682,16 +595,17 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 
 	// level == 0
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned int oldSize = obj->width*obj->height*pix->pixelSize;
 
 	// Get format information
-	unsigned bpp;
 	bool convert;
-	bool swap;
-	int fglFormat = fglGetFormatInfo(format, type, &bpp, &convert, &swap);
-	if (fglFormat < 0) {
+	int pixFormat = fglGetFormatInfo(format, type, &convert);
+	if (pixFormat < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
+	pix = FGLPixelFormat::get(pixFormat);
 
 	fglWaitForTexture(ctx, obj);
 
@@ -701,8 +615,9 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->surface = 0;
 	}
 
+	unsigned int newSize = width*height*pix->pixelSize;
 	// Level 0 with different size or bpp means dropping whole texture
-	if (width != obj->width || height != obj->height || bpp != obj->bpp) {
+	if (newSize != oldSize) {
 		delete obj->surface;
 		obj->surface = 0;
 	}
@@ -721,14 +636,14 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->height = height;
 		obj->format = format;
 		obj->type = type;
-		obj->fglFormat = fglFormat;
-		obj->bpp = bpp;
+		obj->pixFormat = pixFormat;
 		obj->convert = convert;
-		obj->swap = swap;
+		obj->swap = pix->swapNeeded;
 
 		// Calculate mipmaps
 		unsigned size;
-		size = bpp*fglCalculateMipmaps(obj, width, height, bpp);
+		size = pix->pixelSize*fglCalculateMipmaps(obj,
+						width, height, pix->pixelSize);
 
 		// Setup surface
 		obj->surface = new FGLLocalSurface(size);
@@ -739,7 +654,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 			return;
 		}
 
-		fimgInitTexture(obj->fimg, obj->fglFormat, obj->maxLevel,
+		const FGLPixelFormat *pix = FGLPixelFormat::get(pixFormat);
+		fimgInitTexture(obj->fimg, pix->texFormat, obj->maxLevel,
 							obj->surface->paddr);
 		fimgSetTex2DSize(obj->fimg, width, height);
 	}
@@ -750,7 +666,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 			fglConvertTexture(obj, level, pixels,
 						ctx->unpackAlignment);
 		} else {
-			if (ctx->unpackAlignment <= bpp)
+			if (ctx->unpackAlignment <= pix->pixelSize)
 				fglLoadTextureDirect(obj, level, pixels);
 			else
 				fglLoadTexture(obj, level, pixels,
@@ -769,7 +685,8 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
  FUNCTION_TRACER;
-	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -778,10 +695,10 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 	if (!height)
 		height = 1;
 
-	size_t line = w*obj->bpp;
+	size_t line = w*pix->pixelSize;
 	size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
-	size_t dstStride = width*obj->bpp;
-	size_t xoffset = x*obj->bpp;
+	size_t dstStride = width*pix->pixelSize;
+	size_t xoffset = x*pix->pixelSize;
 	size_t yoffset = y*dstStride;
 	const uint8_t *src8 = (const uint8_t *)pixels;
 	uint8_t *dst8 = (uint8_t *)obj->surface->vaddr
@@ -798,7 +715,8 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
  FUNCTION_TRACER;
-	unsigned offset = obj->bpp*fimgGetTexMipmapOffset(obj->fimg, level);
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
 	unsigned width = obj->width >> level;
 	if (!width)
@@ -1021,8 +939,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->eglImage	= image;
 	tex->format	= cfg->readFormat;
 	tex->type	= cfg->readType;
-	tex->fglFormat	= cfg->texFormat;
-	tex->bpp	= cfg->pixelSize;
+	tex->pixFormat	= image->pixelFormat;
 	tex->convert	= 0;
 	tex->maxLevel	= 0;
 	tex->dirty	= true;
@@ -1031,7 +948,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->swap	= cfg->swapNeeded;
 
 	// Setup fimgTexture
-	fimgInitTexture(tex->fimg, (!cfg->isRGBA << 4) | tex->fglFormat,
+	fimgInitTexture(tex->fimg, (!cfg->isRGBA << 4) | cfg->texFormat,
 					tex->maxLevel, tex->surface->paddr);
 	fimgSetTex2DSize(tex->fimg, image->width, image->height);
 	fimgSetTexMipmap(tex->fimg, FGTU_TSTA_MIPMAP_DISABLED);

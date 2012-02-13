@@ -47,9 +47,6 @@ struct FGLFramebufferAttachable {
 	GLenum		format;
 
 	uint32_t	pixFormat;
-	bool		rgba;
-	bool		swap;
-	uint32_t	bpp;
 
 	uint32_t	mask;
 

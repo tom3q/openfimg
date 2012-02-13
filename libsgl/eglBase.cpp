@@ -434,13 +434,13 @@ static EGLBoolean getConfigFormatInfo(EGLint configID,
 	switch (color) {
 	case 32:
 		if (alpha)
-			*pixelFormat = FGPF_COLOR_MODE_8888;
+			*pixelFormat = FGL_PIXFMT_ARGB8888;
 		else
-			*pixelFormat = FGPF_COLOR_MODE_0888;
+			*pixelFormat = FGL_PIXFMT_XRGB8888;
 		break;
 	case 16:
 	default:
-		*pixelFormat = FGPF_COLOR_MODE_565;
+		*pixelFormat = FGL_PIXFMT_RGB565;
 		break;
 	}
 
@@ -449,20 +449,7 @@ static EGLBoolean getConfigFormatInfo(EGLint configID,
 	return EGL_TRUE;
 }
 
-static FGLint bppFromFormat(EGLint format)
-{
-	switch(format) {
-	case FGPF_COLOR_MODE_565:
-		return 2;
-	case FGPF_COLOR_MODE_0888:
-	case FGPF_COLOR_MODE_8888:
-		return 4;
-	default:
-		return 0;
-	}
-}
-
-EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, FGLPixelFormatInfo *fmt)
+EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, uint32_t fmt)
 {
 	EGLBoolean ret;
 	EGLint bpp, red, green, blue, alpha;
@@ -490,19 +477,20 @@ EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, FGLPixelFormatInfo *fmt)
 	if (ret == EGL_FALSE)
 		return EGL_FALSE;
 
-	if (fmt->bpp != bpp)
+	const FGLPixelFormat *pix = FGLPixelFormat::get(fmt);
+	if (8*pix->pixelSize != (unsigned)bpp)
 		return EGL_FALSE;
 
-	if (fmt->red != red)
+	if (pix->comp[FGL_COMP_RED].size != red)
 		return EGL_FALSE;
 
-	if (fmt->green != green)
+	if (pix->comp[FGL_COMP_GREEN].size != green)
 		return EGL_FALSE;
 
-	if (fmt->blue != blue)
+	if (pix->comp[FGL_COMP_BLUE].size != blue)
 		return EGL_FALSE;
 
-	if (fmt->alpha != alpha)
+	if (pix->comp[FGL_COMP_ALPHA].size != alpha)
 		return EGL_FALSE;
 
 	return EGL_TRUE;
@@ -781,7 +769,8 @@ FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
 	int32_t w, int32_t h, uint32_t f)
 : FGLRenderSurface(dpy, config, f, depthFormat)
 {
-	unsigned int size = w * h * bppFromFormat(f);
+	const FGLPixelFormat *fmt = FGLPixelFormat::get(f);
+	unsigned int size = w * h * fmt->pixelSize;
 
 	color = new FGLLocalSurface(size);
 	if (!color || !color->isValid()) {

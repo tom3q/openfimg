@@ -389,25 +389,25 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 	if (format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
 		// Convert to GL_RGBA and GL_UNSIGNED_BYTE
 		switch (fb->getColorFormat()) {
-		case FGPF_COLOR_MODE_555:
+		case FGL_PIXFMT_XRGB1555:
 			convertToUByteRGBA555(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
-		case FGPF_COLOR_MODE_565:
+		case FGL_PIXFMT_RGB565:
 			convertToUByteRGBA565(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
-		case FGPF_COLOR_MODE_4444:
+		case FGL_PIXFMT_ARGB4444:
 			convertToUByteRGBA4444(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
-		case FGPF_COLOR_MODE_1555:
+		case FGL_PIXFMT_ARGB1555:
 			convertToUByteRGBA1555(ctx, (uint8_t *)pixels,
 							x, y, width, height);
 			break;
 		/* BGRX8888 -> RGBX8888 */
-		case FGPF_COLOR_MODE_0888:
-		case FGPF_COLOR_MODE_8888:
+		case FGL_PIXFMT_XRGB8888:
+		case FGL_PIXFMT_ARGB8888:
 			convertToUByteBGRA8888(ctx, (uint32_t *)pixels,
 							x, y, width, height);
 			break;
