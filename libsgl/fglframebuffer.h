@@ -54,6 +54,8 @@ public:
 		colorFormat(-1),
 		depthFormat(0) {};
 
+	virtual ~FGLAbstractFramebuffer() {}
+
 	inline uint32_t getWidth(void) const { return width; }
 	inline uint32_t getHeight(void) const { return height; }
 	inline uint32_t getColorFormat(void) const { return colorFormat; }
