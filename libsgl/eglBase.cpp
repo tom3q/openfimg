@@ -691,7 +691,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
  */
 
 FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
-	EGLConfig config, int32_t pixelFormat, int32_t depthFormat) :
+	EGLConfig config, uint32_t pixelFormat, uint32_t depthFormat) :
 magic(MAGIC), flags(0), dpy(dpy), config(config), ctx(0), color(0), depth(0),
 depthFormat(depthFormat), format(pixelFormat)
 {
@@ -763,8 +763,8 @@ EGLClientBuffer FGLRenderSurface::getRenderBuffer() const {
 struct FGLPbufferSurface : public FGLRenderSurface
 {
 	FGLPbufferSurface(
-		EGLDisplay dpy, EGLConfig config, int32_t depthFormat,
-		int32_t w, int32_t h, int32_t f);
+		EGLDisplay dpy, EGLConfig config, uint32_t depthFormat,
+		int32_t w, int32_t h, uint32_t f);
 
 	virtual ~FGLPbufferSurface();
 
@@ -777,8 +777,8 @@ struct FGLPbufferSurface : public FGLRenderSurface
 };
 
 FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
-	EGLConfig config, int32_t depthFormat,
-	int32_t w, int32_t h, int32_t f)
+	EGLConfig config, uint32_t depthFormat,
+	int32_t w, int32_t h, uint32_t f)
 : FGLRenderSurface(dpy, config, f, depthFormat)
 {
 	unsigned int size = w * h * bppFromFormat(f);

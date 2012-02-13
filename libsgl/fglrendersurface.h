@@ -37,8 +37,8 @@ struct FGLRenderSurface
 	EGLConfig	config;
 	EGLContext	ctx;
 
-	FGLRenderSurface(EGLDisplay dpy, EGLConfig config, int32_t pixelFormat,
-							int32_t depthFormat);
+	FGLRenderSurface(EGLDisplay dpy, EGLConfig config,
+				uint32_t pixelFormat, uint32_t depthFormat);
 	virtual 		~FGLRenderSurface();
 		bool		isValid() const;
 		void		terminate();
@@ -50,7 +50,7 @@ struct FGLRenderSurface
 	virtual void		disconnect() {}
 	virtual EGLint		getWidth() const = 0;
 	virtual EGLint		getHeight() const = 0;
-	virtual int32_t		getDepthFormat() { return depthFormat; }
+	virtual uint32_t	getDepthFormat() { return depthFormat; }
 
 	virtual EGLint		getHorizontalResolution() const;
 	virtual EGLint		getVerticalResolution() const;
@@ -62,10 +62,10 @@ struct FGLRenderSurface
 protected:
 	FGLSurface		*color;
 	FGLSurface              *depth;
-	int32_t			depthFormat;
+	uint32_t		depthFormat;
 	int			width;
 	int			height;
-	int32_t			format;
+	uint32_t		format;
 };
 
 #endif /* _FGLRENDERSURFACE_H_ */

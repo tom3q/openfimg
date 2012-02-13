@@ -270,7 +270,7 @@ int FGLFramebufferManager::get(void)
 
 struct FGLWindowSurface : public FGLRenderSurface {
 	FGLWindowSurface(EGLDisplay dpy, EGLConfig config,
-			int32_t depthFormat, int fileDesc, int32_t pixelFormat);
+		uint32_t depthFormat, int fileDesc, uint32_t pixelFormat);
 	~FGLWindowSurface();
 
 	virtual EGLBoolean swapBuffers();
@@ -312,7 +312,7 @@ private:
 };
 
 FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy, EGLConfig config,
-		int32_t depthFormat, int fileDesc, int32_t pixelFormat) :
+		uint32_t depthFormat, int fileDesc, uint32_t pixelFormat) :
 	FGLRenderSurface(dpy, config, pixelFormat, depthFormat),
 	bytesPerPixel(0), fd(fileDesc)
 {
@@ -448,7 +448,7 @@ EGLBoolean FGLWindowSurface::swapBuffers()
 }
 
 FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
-	int32_t depthFormat, EGLNativeWindowType window, int32_t pixelFormat)
+	uint32_t depthFormat, EGLNativeWindowType window, uint32_t pixelFormat)
 {
 	fb_var_screeninfo vinfo;
 	int fd = (int)window;

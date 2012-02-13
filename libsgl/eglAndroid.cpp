@@ -328,9 +328,9 @@ struct FGLWindowSurface : public FGLRenderSurface
 {
 	FGLWindowSurface(
 		EGLDisplay dpy, EGLConfig config,
-		int32_t depthFormat,
+		uint32_t depthFormat,
 		android_native_window_t *window,
-		int32_t pixelFormat);
+		uint32_t pixelFormat);
 
 	~FGLWindowSurface();
 
@@ -518,9 +518,9 @@ static int nativeToFGLPixelFormat(int format, FGLPixelFormatInfo *fglFormat)
 
 FGLWindowSurface::FGLWindowSurface(EGLDisplay dpy,
 	EGLConfig config,
-	int32_t depthFormat,
+	uint32_t depthFormat,
 	android_native_window_t *window,
-	int32_t pixelFormat)
+	uint32_t pixelFormat)
 	: FGLRenderSurface(dpy, config, pixelFormat, depthFormat),
 	nativeWindow(window), buffer(0), previousBuffer(0), module(0),
 	bits(0)
@@ -845,7 +845,7 @@ EGLint FGLWindowSurface::getSwapBehavior() const
 }
 
 FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy, EGLConfig config,
-	int32_t depthFormat, EGLNativeWindowType window, int32_t pixelFormat)
+	uint32_t depthFormat, EGLNativeWindowType window, uint32_t pixelFormat)
 {
 	int ret;
 	int format;
