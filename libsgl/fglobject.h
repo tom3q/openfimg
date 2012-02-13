@@ -99,6 +99,8 @@ public:
 	{
 		if (ptr != &object->sentinel)
 			ptr = ptr->next;
+
+		return *this;
 	}
 
 	FGLObjectBindingIterator<T1, T2> &operator++(int)
