@@ -317,7 +317,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		return;
 	}
 
-	if (x >= fb->getWidth() || y >= fb->getHeight())
+	if ((GLuint)x >= fb->getWidth() || (GLuint)y >= fb->getHeight())
 		// Nothing to copy
 		return;
 
@@ -338,10 +338,10 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		unsigned dstStride = (srcBpp*width + alignment - 1) & ~(alignment - 1);
 		uint8_t *dst = (uint8_t *)pixels;
 
-		if (y + height > fb->getHeight())
+		if ((GLuint)y + height > fb->getHeight())
 			height = fb->getHeight() - y;
 
-		if (!x && width == fb->getWidth()) {
+		if (!x && (GLuint)width == fb->getWidth()) {
 			// Copy whole lines line-by-line
 			if (srcStride < 32) {
 				do {
@@ -362,7 +362,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		}
 
 		// Copy line parts line-by-line
-		if (x + width > fb->getWidth())
+		if ((GLuint)(x + width) > fb->getWidth())
 			width = fb->getWidth() - x;
 
 		unsigned xOffset = srcBpp * x;
@@ -714,11 +714,11 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 			l = ctx->perFragment.scissor.left;
 		if (ctx->perFragment.scissor.bottom > 0)
 			b = ctx->perFragment.scissor.bottom;
-		if (ctx->perFragment.scissor.left + ctx->perFragment.scissor.width <= fb->getWidth())
+		if ((GLuint)(ctx->perFragment.scissor.left + ctx->perFragment.scissor.width) <= fb->getWidth())
 			w = ctx->perFragment.scissor.left + ctx->perFragment.scissor.width - l;
 		else
 			w = fb->getWidth() - l;
-		if (ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height <= fb->getHeight())
+		if ((GLuint)(ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height) <= fb->getHeight())
 			h = ctx->perFragment.scissor.bottom + ctx->perFragment.scissor.height - b;
 		else
 			h = fb->getHeight() - b;
@@ -728,7 +728,7 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 	if (!h || !w)
 		return;
 
-	lineByLine |= (w < fb->getWidth());
+	lineByLine |= ((GLuint)w < fb->getWidth());
 
 	if (mode & GL_COLOR_BUFFER_BIT) {
 		bool is32bpp = false;
