@@ -24,6 +24,7 @@
 
 #include <pthread.h>
 #include "common.h"
+#include "fglpixelformat.h"
 
 struct FGLRenderSurface;
 

@@ -32,8 +32,6 @@ struct FGLImage {
 	uint32_t height;
 	void *buffer;
 	FGLSurface *surface;
-	bool swapNeeded;
-	bool isARGB;
 	bool terminated;
 	uint32_t refCount;
 

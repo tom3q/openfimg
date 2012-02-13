@@ -1028,10 +1028,10 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->dirty	= true;
 	tex->width	= image->width;
 	tex->height	= image->height;
-	tex->swap	= image->swapNeeded;
+	tex->swap	= cfg->swapNeeded;
 
 	// Setup fimgTexture
-	fimgInitTexture(tex->fimg, (image->isARGB << 4) | tex->fglFormat,
+	fimgInitTexture(tex->fimg, (!cfg->isRGBA << 4) | tex->fglFormat,
 					tex->maxLevel, tex->surface->paddr);
 	fimgSetTex2DSize(tex->fimg, image->width, image->height);
 	fimgSetTexMipmap(tex->fimg, FGTU_TSTA_MIPMAP_DISABLED);

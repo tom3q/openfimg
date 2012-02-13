@@ -928,12 +928,10 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 }
 
 struct FGLAndroidImage : FGLImage {
-	FGLAndroidImage(void *buf, uint32_t fmt, bool swap, bool argb)
+	FGLAndroidImage(void *buf, uint32_t fmt)
 	{
 		pixelFormat	= fmt;
 		buffer		= buf;
-		swapNeeded	= swap;
-		isARGB		= argb;
 
 		android_native_buffer_t *native_buffer =
 						(android_native_buffer_t *)buf;
@@ -986,39 +984,33 @@ EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
 		return EGL_NO_IMAGE_KHR;
 	}
 
-	bool swapNeeded = false;
-	bool isARGB = false;
 	uint32_t pixelFormat;
 
 	switch (native_buffer->format) {
 	case HAL_PIXEL_FORMAT_RGBA_8888:
-		swapNeeded = true;
-		pixelFormat = FGPF_COLOR_MODE_8888;
+		pixelFormat = FGL_PIXFMT_ABGR8888;
 		break;
 	case HAL_PIXEL_FORMAT_RGBX_8888:
-		swapNeeded = true;
-		pixelFormat = FGPF_COLOR_MODE_0888;
+		pixelFormat = FGL_PIXFMT_XBGR8888;
 		break;
 	case HAL_PIXEL_FORMAT_BGRA_8888:
-		isARGB = true;
-		pixelFormat = FGPF_COLOR_MODE_8888;
+		pixelFormat = FGL_PIXFMT_ARGB8888;
 		break;
 	case HAL_PIXEL_FORMAT_RGB_565:
-		pixelFormat = FGPF_COLOR_MODE_565;
+		pixelFormat = FGL_PIXFMT_RGB565;
 		break;
 	case HAL_PIXEL_FORMAT_RGBA_5551:
-		pixelFormat = FGPF_COLOR_MODE_1555;
+		pixelFormat = FGL_PIXFMT_RGBA5551;
 		break;
 	case HAL_PIXEL_FORMAT_RGBA_4444:
-		pixelFormat = FGPF_COLOR_MODE_4444;
+		pixelFormat = FGL_PIXFMT_RGBA4444;
 		break;
 	default:
 		setError(EGL_BAD_PARAMETER);
 		return EGL_NO_IMAGE_KHR;
 	}
 
-	FGLImage *image = new FGLAndroidImage(native_buffer, pixelFormat,
-							swapNeeded, isARGB);
+	FGLImage *image = new FGLAndroidImage(native_buffer, pixelFormat);
 	if (!image || !image->isValid()) {
 		delete image;
 		setError(EGL_BAD_ALLOC);
