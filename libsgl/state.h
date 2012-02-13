@@ -40,13 +40,6 @@
 #include "fglrenderbuffer.h"
 
 enum {
-	FGL_COMP_RED = 0,
-	FGL_COMP_GREEN,
-	FGL_COMP_BLUE,
-	FGL_COMP_ALPHA
-};
-
-enum {
 	FGL_COMP_NX = 0,
 	FGL_COMP_NY,
 	FGL_COMP_NZ
