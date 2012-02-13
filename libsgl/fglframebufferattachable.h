@@ -56,6 +56,8 @@ struct FGLFramebufferAttachable {
 	FGLFramebufferAttachable() :
 		object(this) {}
 
+	virtual ~FGLFramebufferAttachable() {}
+
 	virtual GLuint getName(void) const
 	{
 		return 0;
