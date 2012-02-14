@@ -399,9 +399,6 @@ bool fglEGLValidatePixelFormat(uint32_t config, uint32_t fmt)
 {
 	EGLint bpp, red, green, blue, alpha;
 
-	if (!fmt)
-		return false;
-
 	if (!fglGetConfigAttrib(config, EGL_BUFFER_SIZE, &bpp))
 		return false;
 
