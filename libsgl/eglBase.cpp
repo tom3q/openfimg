@@ -326,68 +326,56 @@ static const FGLConfigPair defaultConfigAttributes[] = {
  * Internal configuration management
  */
 
-static EGLBoolean getConfigAttrib(EGLConfig config,
-						EGLint attribute, EGLint *value)
+static bool fglGetConfigAttrib(uint32_t config, EGLint attribute, EGLint *value)
 {
 	size_t numConfigs =  gPlatformConfigsNum;
-	int index = (int)config;
 
-	if (uint32_t(index) >= numConfigs) {
+	if (config >= numConfigs) {
 		setError(EGL_BAD_CONFIG);
-		return EGL_FALSE;
+		return false;
 	}
 
 	if (attribute == EGL_CONFIG_ID) {
-		*value = index;
-		return EGL_TRUE;
+		*value = config;
+		return true;
 	}
 
-	int attrIndex;
-	attrIndex = binarySearch<FGLConfigPair>(
-		gPlatformConfigs[index].array,
-		0, gPlatformConfigs[index].size-1,
-		attribute);
+	int attrIndex = binarySearch(gPlatformConfigs[config].array, 0,
+				gPlatformConfigs[config].size - 1, attribute);
 
 	if (attrIndex>=0) {
-		*value = gPlatformConfigs[index].array[attrIndex].value;
-		return EGL_TRUE;
+		*value = gPlatformConfigs[config].array[attrIndex].value;
+		return true;
 	}
 
-	attrIndex = binarySearch<FGLConfigPair>(
-		baseConfigAttributes,
-		0, NELEM(baseConfigAttributes)-1,
-		attribute);
+	attrIndex = binarySearch(baseConfigAttributes, 0,
+				NELEM(baseConfigAttributes) - 1, attribute);
 
 	if (attrIndex>=0) {
 		*value = baseConfigAttributes[attrIndex].value;
-		return EGL_TRUE;
+		return true;
 	}
 
 	setError(EGL_BAD_ATTRIBUTE);
-	return EGL_FALSE;
+	return false;
 }
 
-static EGLBoolean getConfigFormatInfo(EGLint configID,
-				int32_t *pixelFormat, int32_t *depthFormat)
+static bool fglGetConfigFormatInfo(uint32_t config,
+				uint32_t *pixelFormat, uint32_t *depthFormat)
 {
 	EGLint color, alpha, depth, stencil;
-	EGLBoolean ret;
 
-	ret = getConfigAttrib((EGLConfig)configID, EGL_BUFFER_SIZE, &color);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_BUFFER_SIZE, &color))
+		return false;
 
-	ret = getConfigAttrib((EGLConfig)configID, EGL_ALPHA_SIZE, &alpha);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_ALPHA_SIZE, &alpha))
+		return false;
 
-	ret = getConfigAttrib((EGLConfig)configID, EGL_DEPTH_SIZE, &depth);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_DEPTH_SIZE, &depth))
+		return false;
 
-	ret = getConfigAttrib((EGLConfig)configID, EGL_STENCIL_SIZE, &stencil);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_STENCIL_SIZE, &stencil))
+		return false;
 
 	switch (color) {
 	case 32:
@@ -404,54 +392,48 @@ static EGLBoolean getConfigFormatInfo(EGLint configID,
 
 	*depthFormat = (stencil << 8) | depth;
 
-	return EGL_TRUE;
+	return true;
 }
 
-EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, uint32_t fmt)
+bool fglEGLValidatePixelFormat(uint32_t config, uint32_t fmt)
 {
-	EGLBoolean ret;
 	EGLint bpp, red, green, blue, alpha;
 
 	if (!fmt)
-		return EGL_FALSE;
+		return false;
 
-	ret = getConfigAttrib(config, EGL_BUFFER_SIZE, &bpp);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_BUFFER_SIZE, &bpp))
+		return false;
 
-	ret = getConfigAttrib(config, EGL_RED_SIZE, &red);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_RED_SIZE, &red))
+		return false;
 
-	ret = getConfigAttrib(config, EGL_GREEN_SIZE, &green);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_GREEN_SIZE, &green))
+		return false;
 
-	ret = getConfigAttrib(config, EGL_BLUE_SIZE, &blue);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_BLUE_SIZE, &blue))
+		return false;
 
-	ret = getConfigAttrib(config, EGL_ALPHA_SIZE, &alpha);
-	if (ret == EGL_FALSE)
-		return EGL_FALSE;
+	if (!fglGetConfigAttrib(config, EGL_ALPHA_SIZE, &alpha))
+		return false;
 
 	const FGLPixelFormat *pix = FGLPixelFormat::get(fmt);
 	if (8*pix->pixelSize != (unsigned)bpp)
-		return EGL_FALSE;
+		return false;
 
 	if (pix->comp[FGL_COMP_RED].size != red)
-		return EGL_FALSE;
+		return false;
 
 	if (pix->comp[FGL_COMP_GREEN].size != green)
-		return EGL_FALSE;
+		return false;
 
 	if (pix->comp[FGL_COMP_BLUE].size != blue)
-		return EGL_FALSE;
+		return false;
 
 	if (pix->comp[FGL_COMP_ALPHA].size != alpha)
-		return EGL_FALSE;
+		return false;
 
-	return EGL_TRUE;
+	return true;
 }
 
 static int isAttributeMatching(int i, EGLint attr, EGLint val)
@@ -630,7 +612,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 		return EGL_FALSE;
 	}
 
-	return getConfigAttrib(config, attribute, value);
+	if (!fglGetConfigAttrib((uint32_t)config, attribute, value))
+		return EGL_FALSE;
+
+	return EGL_TRUE;
 }
 
 /*
@@ -698,7 +683,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	}
 
 	EGLint surfaceType;
-	if (getConfigAttrib(config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
+	if (!fglGetConfigAttrib(configID, EGL_SURFACE_TYPE, &surfaceType))
 		return EGL_NO_SURFACE;
 
 	if (!(surfaceType & EGL_WINDOW_BIT)) {
@@ -706,9 +691,9 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 		return EGL_NO_SURFACE;
 	}
 
-	int32_t depthFormat;
-	int32_t pixelFormat;
-	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) == EGL_FALSE) {
+	uint32_t depthFormat;
+	uint32_t pixelFormat;
+	if (!fglGetConfigFormatInfo(configID, &pixelFormat, &depthFormat)) {
 		setError(EGL_BAD_MATCH);
 		return EGL_NO_SURFACE;
 	}
@@ -737,7 +722,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 	}
 
 	EGLint surfaceType;
-	if (getConfigAttrib(config, EGL_SURFACE_TYPE, &surfaceType) == EGL_FALSE)
+	if (!fglGetConfigAttrib(configID, EGL_SURFACE_TYPE, &surfaceType))
 		return EGL_NO_SURFACE;
 
 	if (!(surfaceType & EGL_PBUFFER_BIT)) {
@@ -745,9 +730,9 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 		return EGL_NO_SURFACE;
 	}
 
-	int32_t depthFormat;
-	int32_t pixelFormat;
-	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) == EGL_FALSE) {
+	uint32_t depthFormat;
+	uint32_t pixelFormat;
+	if (!fglGetConfigFormatInfo(configID, &pixelFormat, &depthFormat)) {
 		setError(EGL_BAD_MATCH);
 		return EGL_NO_SURFACE;
 	}
@@ -844,7 +829,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 
 	switch (attribute) {
 		case EGL_CONFIG_ID:
-			ret = getConfigAttrib((EGLConfig)fglSurface->config,
+			ret = fglGetConfigAttrib(fglSurface->config,
 							EGL_CONFIG_ID, value);
 			break;
 		case EGL_WIDTH:
@@ -1238,7 +1223,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 		 * Returns the ID of the EGL frame buffer configuration with
 		 * respect to which the context was created.
 		 */
-		return getConfigAttrib(c->egl.config, EGL_CONFIG_ID, value);
+		return fglGetConfigAttrib((uint32_t)c->egl.config, EGL_CONFIG_ID, value);
 	}
 
 	setError(EGL_BAD_ATTRIBUTE);
@@ -1283,7 +1268,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 	}
 
 	/* post the surface */
-	if (d->swapBuffers() != EGL_TRUE)
+	if (!d->swapBuffers())
 		/* Error code should have been set */
 		return EGL_FALSE;
 

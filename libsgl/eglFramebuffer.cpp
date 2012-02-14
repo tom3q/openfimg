@@ -450,7 +450,7 @@ static uint32_t framebufferFormats16bpp[] = {
 	FGL_PIXFMT_ARGB1555
 };
 
-static EGLBoolean fglFindCompatiblePixelFormat(const fb_var_screeninfo *vinfo,
+static bool fglFindCompatiblePixelFormat(const fb_var_screeninfo *vinfo,
 		uint32_t *fglFormat, const uint32_t *formats, uint32_t count)
 {
 	while (count--) {
@@ -475,13 +475,13 @@ static EGLBoolean fglFindCompatiblePixelFormat(const fb_var_screeninfo *vinfo,
 			continue;
 
 		*fglFormat = fmt;
-		return EGL_TRUE;
+		return true;
 	}
 
-	return EGL_FALSE;
+	return false;
 }
 
-static EGLBoolean fglNativeToFGLPixelFormat(const fb_var_screeninfo *vinfo,
+static bool fglNativeToFGLPixelFormat(const fb_var_screeninfo *vinfo,
 							uint32_t *fglFormat)
 {
 	switch(vinfo->bits_per_pixel) {
@@ -513,12 +513,12 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 		return NULL;
 	}
 
-	if (fglNativeToFGLPixelFormat(&vinfo, &pixelFormat) != EGL_TRUE) {
+	if (!fglNativeToFGLPixelFormat(&vinfo, &pixelFormat)) {
 		setError(EGL_BAD_MATCH);
 		return NULL;
 	}
 
-	if (fglEGLValidatePixelFormat((EGLConfig)config, pixelFormat) != EGL_TRUE) {
+	if (!fglEGLValidatePixelFormat(config, pixelFormat)) {
 		setError(EGL_BAD_MATCH);
 		return NULL;
 	}

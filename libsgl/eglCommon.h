@@ -71,6 +71,6 @@ extern FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 			uint32_t config, uint32_t pixelFormat,
 			uint32_t depthFormat, EGLNativeWindowType window);
 
-extern EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, uint32_t fmt);
+extern bool fglEGLValidatePixelFormat(uint32_t config, uint32_t fmt);
 
 #endif

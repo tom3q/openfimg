@@ -861,12 +861,12 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 
 	win->query(win, NATIVE_WINDOW_FORMAT, &format);
 
-	if (fglNativeToFGLPixelFormat(format, &pixelFormat) != EGL_TRUE) {
+	if (!fglNativeToFGLPixelFormat(format, &pixelFormat)) {
 		setError(EGL_BAD_MATCH);
 		return NULL;
 	}
 
-	if (fglEGLValidatePixelFormat((EGLConfig)config, pixelFormat) != EGL_TRUE) {
+	if (!fglEGLValidatePixelFormat(config, pixelFormat)) {
 		setError(EGL_BAD_MATCH);
 		return NULL;
 	}
