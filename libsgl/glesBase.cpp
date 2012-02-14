@@ -754,7 +754,7 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 	fba = fb->get(FGL_ATTACHMENT_DEPTH);
 	if (!fba)
 		fba = fb->get(FGL_ATTACHMENT_STENCIL);
-	if (fba)
+	if (fba && fba->surface)
 		fimgSetZBufBaseAddr(ctx->fimg, fba->surface->paddr);
 
 	if (ctx->enable.scissorTest)
