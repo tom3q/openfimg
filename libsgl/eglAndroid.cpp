@@ -1,9 +1,9 @@
 /*
- * libsgl/eglBase.cpp
+ * libsgl/eglAndroid.cpp
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) EGL IMPLEMENTATION
  *
- * Copyrights:	2010 by Tomasz Figa < tomasz.figa at gmail.com >
+ * Copyrights:	2010-2012 by Tomasz Figa < tomasz.figa at gmail.com >
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -61,15 +61,16 @@ using namespace android;
  */
 
 /*
-* In the lists below, attributes names MUST be sorted.
-* Additionally, all configs must be sorted according to
-* the EGL specification.
-*/
+ * In the lists below, attributes names MUST be sorted.
+ * Additionally, all configs must be sorted according to
+ * the EGL specification.
+ */
 
-// These configs can override the base attribute list
-// NOTE: when adding a config here, don't forget to update eglCreate*Surface()
+/*
+ * These configs can override the base attribute list
+ */
 
-// RGB 565 configs
+/* RGB 565 configs */
 static const FGLConfigPair configAttributes0[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -92,7 +93,7 @@ static const FGLConfigPair configAttributes1[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
 };
 
-// RGB 888 configs
+/* XBGR 888 configs */
 static const FGLConfigPair configAttributes2[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -115,7 +116,7 @@ static const FGLConfigPair configAttributes3[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
 };
 
-// ARGB 8888 configs
+/* ABGR 8888 configs */
 static const FGLConfigPair configAttributes4[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -138,6 +139,7 @@ static const FGLConfigPair configAttributes5[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
 };
 
+/* ARGB 8888 configs */
 static const FGLConfigPair configAttributes6[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -160,6 +162,7 @@ static const FGLConfigPair configAttributes7[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
 };
 
+/* Exported to platform-independent EGL code */
 const FGLConfigs gPlatformConfigs[] = {
 	{ configAttributes0, NELEM(configAttributes0) },
 	{ configAttributes1, NELEM(configAttributes1) },
@@ -171,10 +174,12 @@ const FGLConfigs gPlatformConfigs[] = {
 	{ configAttributes7, NELEM(configAttributes7) },
 };
 
+/* Exported to platform-independent EGL code */
 const int gPlatformConfigsNum = NELEM(gPlatformConfigs);
 
 /*
  * Android buffers
+ * FIXME: Get framebuffer addresses properly.
  */
 
 #define FB_DEVICE_NAME "/dev/graphics/fb0"
@@ -213,16 +218,16 @@ static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer
 
 	//LOGD("fglGetBufferPhysicalAddress");
 
-	// this pointer came from framebuffer
+	/* this pointer came from framebuffer */
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
 		return getFramebufferAddress() + hnd->offset;
 
-	// this pointer came from pmem domain
+	/* this pointer came from pmem domain */
 	pmem_region region;
 	if (ioctl(hnd->fd, PMEM_GET_PHYS, &region) >= 0)
 		return region.offset + hnd->offset;
 
-	// otherwise we failed
+	/* otherwise we can't do anything, but fail */
 	LOGE("EGL: fglGetBufferPhysicalAddress failed");
 	return 0;
 }

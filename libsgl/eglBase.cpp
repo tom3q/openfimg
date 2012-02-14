@@ -3,7 +3,7 @@
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) EGL IMPLEMENTATION
  *
- * Copyrights:	2010 by Tomasz Figa < tomasz.figa at gmail.com >
+ * Copyrights:	2010-2012 by Tomasz Figa < tomasz.figa at gmail.com >
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -268,10 +268,10 @@ struct FGLConfigMatcher {
 };
 
 /*
-* In the lists below, attributes names MUST be sorted.
-* Additionally, all configs must be sorted according to
-* the EGL specification.
-*/
+ * In the lists below, attributes names MUST be sorted.
+ * Additionally, all configs must be sorted according to
+ * the EGL specification.
+ */
 
 #define FGL_MAX_VIEWPORT_PIXELS \
 				(FGL_MAX_VIEWPORT_DIMS*FGL_MAX_VIEWPORT_DIMS)
@@ -341,9 +341,11 @@ static const FGLConfigMatcher gConfigManagement[] = {
 };
 
 static const FGLConfigPair defaultConfigAttributes[] = {
-// attributes that are not specified are simply ignored, if a particular
-// one needs not be ignored, it must be specified here, eg:
-// { EGL_SURFACE_TYPE, EGL_WINDOW_BIT },
+/*
+ * attributes that are not specified are simply ignored, if a particular
+ * one needs not be ignored, it must be specified here, eg:
+ * { EGL_SURFACE_TYPE, EGL_WINDOW_BIT },
+ */
 };
 
 /*
@@ -575,9 +577,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 
 	if (unlikely(attrib_list==0)) {
 		/*
-		 * A NULL attrib_list should be treated as though it was an empty
-		 * one (terminated with EGL_NONE) as defined in
-		 * section 3.4.1 "Querying Configurations" in the EGL specification.
+		 * A NULL attrib_list should be treated as though it was
+		 * an empty one (terminated with EGL_NONE) as defined in
+		 * section 3.4.1 "Querying Configurations" in the EGL
+		 * specification.
 		 */
 		static const EGLint dummy = EGL_NONE;
 		attrib_list = &dummy;
@@ -1046,7 +1049,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglReleaseThread(void)
 	return EGL_TRUE;
 }
 
-// TODO: Implement following functions
+/*
+ * TODO: Unimplemented functions
+ */
+
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferFromClientBuffer(
 	EGLDisplay dpy, EGLenum buftype, EGLClientBuffer buffer,
 	EGLConfig config, const EGLint *attrib_list)
@@ -1082,6 +1088,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval)
 	FUNC_UNIMPLEMENTED;
 	return EGL_FALSE;
 }
+
+/*
+ * Context management
+ */
 
 extern FGLContext *fglCreateContext(void);
 extern void fglDestroyContext(FGLContext *ctx);
@@ -1335,8 +1345,10 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 
 	switch (attribute) {
 	case EGL_CONFIG_ID:
-		// Returns the ID of the EGL frame buffer configuration with
-		// respect to which the context was created
+		/*
+		 * Returns the ID of the EGL frame buffer configuration with
+		 * respect to which the context was created.
+		 */
 		return getConfigAttrib(c->egl.config, EGL_CONFIG_ID, value);
 	}
 
@@ -1381,12 +1393,12 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 			glFinish();
 	}
 
-	// post the surface
+	/* post the surface */
 	if (d->swapBuffers() != EGL_TRUE)
 		/* Error code should have been set */
 		return EGL_FALSE;
 
-	// if it's bound to a context, update the buffer
+	/* if it's bound to a context, update the buffer */
 	if (d->ctx != EGL_NO_CONTEXT) {
 		FGLContext *c = (FGLContext *)d->ctx;
 		d->bindDrawSurface(c);

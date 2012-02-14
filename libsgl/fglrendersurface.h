@@ -1,9 +1,9 @@
 /*
- * libsgl/eglCommon.h
+ * libsgl/fglrendersurface.h
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION
  *
- * Copyrights:	2011 by Tomasz Figa < tomasz.figa at gmail.com >
+ * Copyrights:	2011-2012 by Tomasz Figa < tomasz.figa at gmail.com >
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
