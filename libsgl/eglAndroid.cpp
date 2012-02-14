@@ -232,98 +232,76 @@ static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer
 	return 0;
 }
 
+/*
+ * Android image surface
+ */
+
 class FGLImageSurface : public FGLSurface {
-	gralloc_module_t const* module;
-	EGLImageKHR	image;
+	const gralloc_module_t	*module;
+	EGLImageKHR		image;
+	android_native_buffer_t	*buffer;
+	const private_handle_t	*handle;
+
 public:
-			FGLImageSurface(EGLClientBuffer img);
-	virtual		~FGLImageSurface();
+	FGLImageSurface(EGLClientBuffer img) :
+		image(0)
+	{
+		android_native_buffer_t *b = (android_native_buffer_t *)img;
 
-	virtual void	flush(void);
-	virtual int	lock(int usage = 0);
-	virtual int	unlock(void);
+		if (!b || b->common.magic != ANDROID_NATIVE_BUFFER_MAGIC
+		    || b->common.version != sizeof(android_native_buffer_t)) {
+			LOGE("%s: Invalid EGLClientBuffer", __func__);
+			return;
+		}
 
-	virtual bool	isValid(void) { return image != 0; };
+		const private_handle_t *hnd =
+				(const private_handle_t *)b->handle;
+		if (!hnd) {
+			LOGE("%s: Invalid buffer handle", __func__);
+			return;
+		}
+
+		const hw_module_t *pModule;
+		if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule)) {
+			LOGE("%s: Could not get gralloc module", __func__);
+			return;
+		}
+
+		module	= (const gralloc_module_t *)pModule;
+		vaddr	= 0; /* Needs locking */
+		paddr	= fglGetBufferPhysicalAddress(b);
+		size	= hnd->size;;
+		image	= img;
+		buffer	= b;
+		handle	= hnd;
+	}
+
+	virtual ~FGLImageSurface() {}
+
+	virtual void flush(void)
+	{
+		struct pmem_region region;
+
+		region.offset	= 0;
+		region.len	= size;
+
+		if (ioctl(handle->fd, PMEM_CACHE_FLUSH, &region) != 0)
+			LOGW("Could not flush PMEM surface %d", handle->fd);
+	}
+
+	virtual int lock(int usage = 0)
+	{
+		return module->lock(module, handle, usage,
+				0, 0, buffer->width, buffer->height, &vaddr);
+	}
+
+	virtual int unlock(void)
+	{
+		return module->unlock(module, handle);
+	}
+
+	virtual bool isValid(void) { return image != 0; };
 };
-
-FGLImageSurface::FGLImageSurface(EGLClientBuffer img)
-	: image(0)
-{
-	android_native_buffer_t *buffer = (android_native_buffer_t *)img;
-
-	if (buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC
-	    || buffer->common.version != sizeof(android_native_buffer_t)) {
-		LOGE("%s: Invalid EGLClientBuffer", __func__);
-		return;
-	}
-
-	const private_handle_t* hnd =
-			static_cast<const private_handle_t*>(buffer->handle);
-	if (!hnd) {
-		LOGE("%s: Invalid buffer handle", __func__);
-		return;
-	}
-
-	hw_module_t const* pModule;
-	if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &pModule)) {
-		LOGE("%s: Could not get gralloc module", __func__);
-		return;
-	}
-
-	module = reinterpret_cast<gralloc_module_t const*>(pModule);
-
-	vaddr = 0; /* Needs locking */
-	paddr = fglGetBufferPhysicalAddress(buffer);
-	size = hnd->size;;
-	image = img;
-
-	//LOGD("FGLImageSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, paddr, size);
-}
-
-FGLImageSurface::~FGLImageSurface()
-{
-	//LOGD("~FGLImageSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, paddr, size);
-}
-
-int FGLImageSurface::lock(int usage)
-{
-	android_native_buffer_t *buf = (android_native_buffer_t *)image;
-	int err;
-
-	err = module->lock(module, buf->handle,
-		usage, 0, 0, buf->width, buf->height, &vaddr);
-
-	return err;
-}
-
-int FGLImageSurface::unlock(void)
-{
-	int err = 0;
-	android_native_buffer_t *buf = (android_native_buffer_t *)image;
-
-	if (!buf)
-		return BAD_VALUE;
-
-	err = module->unlock(module, buf->handle);
-
-	return err;
-}
-
-void FGLImageSurface::flush(void)
-{
-	android_native_buffer_t *buffer = (android_native_buffer_t *)image;
-	const private_handle_t* hnd =
-			static_cast<const private_handle_t*>(buffer->handle);
-	struct pmem_region region;
-
-	region.offset = 0;
-	region.len = size;
-
-	if (ioctl(hnd->fd, PMEM_CACHE_FLUSH, &region) != 0)
-		LOGW("Could not flush PMEM surface %d", hnd->fd);
-}
 
 /*
  * Android native window surface
