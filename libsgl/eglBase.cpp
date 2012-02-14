@@ -780,12 +780,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 
 	FGLRenderSurface *fglSurface = (FGLRenderSurface *)surface;
 
-	if (fglSurface->isTerminated()) {
-		setError(EGL_BAD_SURFACE);
-		return EGL_FALSE;
-	}
-
-	if (!fglSurface->isValid()) {
+	if (!fglSurface->isValid() || fglSurface->isTerminated()) {
 		setError(EGL_BAD_SURFACE);
 		return EGL_FALSE;
 	}
@@ -810,7 +805,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 
 	FGLRenderSurface *fglSurface = static_cast<FGLRenderSurface *>(surface);
 
-	if (!fglSurface->isValid()) {
+	if (!fglSurface->isValid() || fglSurface->isTerminated()) {
 		setError(EGL_BAD_SURFACE);
 		return EGL_FALSE;
 	}
@@ -1116,20 +1111,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 		return EGL_FALSE;
 	}
 
-	if (draw) {
-		FGLRenderSurface *s = (FGLRenderSurface *)draw;
-
-		if (s->isTerminated()) {
-			setError(EGL_BAD_SURFACE);
-			return EGL_FALSE;
-		}
-
-		if (!s->isValid()) {
-			setError(EGL_BAD_SURFACE);
-			return EGL_FALSE;
-		}
-	}
-
 	if (draw == EGL_NO_SURFACE && ctx != EGL_NO_CONTEXT) {
 		setError(EGL_BAD_MATCH);
 		return EGL_FALSE;
@@ -1140,10 +1121,15 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 		return EGL_FALSE;
 	}
 
-	if (ctx != EGL_NO_CONTEXT) {
-		FGLRenderSurface *d = (FGLRenderSurface *)draw;
+	FGLRenderSurface *surface = (FGLRenderSurface *)draw;
 
-		if (d->ctx && d->ctx != ctx) {
+	if (ctx != EGL_NO_CONTEXT) {
+		if (surface->isTerminated() || !surface->isValid()) {
+			setError(EGL_BAD_SURFACE);
+			return EGL_FALSE;
+		}
+
+		if (surface->ctx && surface->ctx != ctx) {
 			// already bound to another thread
 			setError(EGL_BAD_ACCESS);
 			return EGL_FALSE;
@@ -1153,10 +1139,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 	/*
 	 * Proceed with the main part
 	 */
-
-	FGLContext *gl = (FGLContext *)ctx;
-	FGLRenderSurface *d = (FGLRenderSurface *)draw;
-	return fglMakeCurrent(gl, d);
+	return fglMakeCurrent((FGLContext *)ctx, surface);
 }
 
 EGLAPI EGLContext EGLAPIENTRY eglGetCurrentContext(void)
@@ -1235,7 +1218,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
 	FGLRenderSurface *d = static_cast<FGLRenderSurface *>(surface);
 
-	if (!d->isValid()) {
+	if (!d->isValid() || d->isTerminated()) {
 		setError(EGL_BAD_SURFACE);
 		return EGL_FALSE;
 	}

@@ -908,7 +908,7 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 
 	FGLRenderSurface *d = (FGLRenderSurface *)draw;
 
-	if (!d->isValid()) {
+	if (!d->isValid() || d->isTerminated()) {
 		setError(EGL_BAD_SURFACE);
 		return (EGLClientBuffer)0;
 	}
