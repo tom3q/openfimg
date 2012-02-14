@@ -58,7 +58,10 @@ struct FGLFramebufferAttachable {
 		pixFormat(0),
 		mask(0) {}
 
-	virtual ~FGLFramebufferAttachable() {}
+	virtual ~FGLFramebufferAttachable()
+	{
+		markFramebufferDirty();
+	}
 
 	virtual GLuint getName(void) const
 	{
