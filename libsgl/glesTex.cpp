@@ -595,8 +595,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 
 	// level == 0
-	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
-	unsigned int oldSize = obj->width*obj->height*pix->pixelSize;
 
 	// Get format information
 	bool convert;
@@ -605,7 +603,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		setError(GL_INVALID_VALUE);
 		return;
 	}
-	pix = FGLPixelFormat::get(pixFormat);
 
 	fglWaitForTexture(ctx, obj);
 
@@ -615,51 +612,61 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		obj->surface = 0;
 	}
 
-	unsigned int newSize = width*height*pix->pixelSize;
-	// Level 0 with different size or bpp means dropping whole texture
-	if (newSize != oldSize) {
-		delete obj->surface;
-		obj->surface = 0;
-	}
-
 	if (width != obj->width || height != obj->height
-	    || format != obj->format)
+	    || (uint32_t)pixFormat != obj->pixFormat)
 		obj->markFramebufferDirty();
 
-	if (!width || !height)
+	const FGLPixelFormat *pix = FGLPixelFormat::get(pixFormat);
+	obj->invReady = false;
+	obj->width = width;
+	obj->height = height;
+	obj->format = format;
+	obj->type = type;
+	obj->pixFormat = pixFormat;
+	obj->convert = convert;
+	obj->swap = pix->swapNeeded;
+	obj->mask = 0;
+	if (pix->pixFormat != (uint32_t)-1)
+		obj->mask = BIT_VAL(FGL_ATTACHMENT_COLOR);
+
+	if (!width || !height) {
+		delete obj->surface;
+		obj->surface = 0;
 		return;
+	}
+
+	// Calculate mipmaps
+	uint32_t size = pix->pixelSize*fglCalculateMipmaps(obj,
+						width, height, pix->pixelSize);
+
+	if (obj->surface) {
+		int32_t delta = obj->surface->size - size;
+		if (delta < 0 || delta > 16384) {
+			delete obj->surface;
+			obj->surface = 0;
+		}
+	}
 
 	// (Re)allocate the texture
 	if (!obj->surface) {
-		obj->invReady = false;
-		obj->width = width;
-		obj->height = height;
-		obj->format = format;
-		obj->type = type;
-		obj->pixFormat = pixFormat;
-		obj->convert = convert;
-		obj->swap = pix->swapNeeded;
-
-		// Calculate mipmaps
-		unsigned size;
-		size = pix->pixelSize*fglCalculateMipmaps(obj,
-						width, height, pix->pixelSize);
-
 		// Setup surface
 		obj->surface = new FGLLocalSurface(size);
 		if(!obj->surface || !obj->surface->isValid()) {
 			delete obj->surface;
 			obj->surface = 0;
+			obj->width = 0;
+			obj->height = 0;
+			obj->format = 0;
+			obj->type = 0;
+			obj->pixFormat = 0;
 			setError(GL_OUT_OF_MEMORY);
 			return;
 		}
-
-		const FGLPixelFormat *pix = FGLPixelFormat::get(pixFormat);
-		fimgInitTexture(obj->fimg,
-				(pix->alphaInLSB << 4) | pix->texFormat,
-				obj->maxLevel, obj->surface->paddr);
-		fimgSetTex2DSize(obj->fimg, width, height);
 	}
+
+	fimgInitTexture(obj->fimg, (pix->alphaInLSB << 4) | pix->texFormat,
+					obj->maxLevel, obj->surface->paddr);
+	fimgSetTex2DSize(obj->fimg, width, height);
 
 	// Copy the image (with conversion if needed)
 	if (pixels != NULL) {
