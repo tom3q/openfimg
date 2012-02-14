@@ -53,8 +53,14 @@ struct FGLExtensionMap {
 #define setError fglEGLSetError
 #endif
 
+#define FGL_DISPLAY_MAGIC	0x444c4746 /* FGLD */
+
+static inline bool fglEGLValidateDisplay(EGLDisplay dpy)
+{
+	return (uint32_t)dpy == FGL_DISPLAY_MAGIC;
+}
+
 extern void fglEGLSetError(EGLint error);
-extern EGLBoolean fglEGLValidateDisplay(EGLDisplay dpy);
 
 extern const FGLConfigs gPlatformConfigs[];
 extern const int gPlatformConfigsNum;

@@ -71,45 +71,22 @@ struct FGLDisplay {
 	EGLBoolean initialized;
 	pthread_mutex_t lock;
 
-	FGLDisplay() : initialized(0)
+	FGLDisplay() :
+		initialized(0)
 	{
 		pthread_mutex_init(&lock, NULL);
-	};
+	}
 };
 
-#define FGL_MAX_DISPLAYS	1
-static FGLDisplay displays[FGL_MAX_DISPLAYS];
+static FGLDisplay display;
 
-static inline EGLBoolean isDisplayValid(EGLDisplay dpy)
-{
-	EGLint disp = (EGLint)dpy;
-
-	if(likely(disp == 1))
-		return EGL_TRUE;
-
-	return EGL_FALSE;
-}
-
-EGLBoolean fglEGLValidateDisplay(EGLDisplay dpy)
-{
-	return isDisplayValid(dpy);
-}
-
-static inline FGLDisplay *getDisplay(EGLDisplay dpy)
-{
-	EGLint disp = (EGLint)dpy;
-
-	return &displays[disp - 1];
-}
-
-static inline EGLBoolean isDisplayInitialized(EGLDisplay dpy)
+static inline EGLBoolean fglIsDisplayInitialized(EGLDisplay dpy)
 {
 	EGLBoolean ret;
-	FGLDisplay *disp = getDisplay(dpy);
 
-	pthread_mutex_lock(&disp->lock);
-	ret = disp->initialized;
-	pthread_mutex_unlock(&disp->lock);
+	pthread_mutex_lock(&display.lock);
+	ret = display.initialized;
+	pthread_mutex_unlock(&display.lock);
 
 	return ret;
 }
@@ -152,14 +129,15 @@ EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id)
 	if(display_id != EGL_DEFAULT_DISPLAY)
 		return EGL_NO_DISPLAY;
 
-	return (EGLDisplay)1;
+	return (EGLDisplay)FGL_DISPLAY_MAGIC;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
+EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy,
+						EGLint *major, EGLint *minor)
 {
 	EGLBoolean ret = EGL_TRUE;
 
-	if(!isDisplayValid(dpy)) {
+	if(!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -170,21 +148,19 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLin
 	if(minor != NULL)
 		*minor = FGL_EGL_MINOR;
 
-	FGLDisplay *disp = getDisplay(dpy);
+	pthread_mutex_lock(&display.lock);
 
-	pthread_mutex_lock(&disp->lock);
-
-	if(likely(disp->initialized))
+	if(likely(display.initialized))
 		goto finish;
 
 #ifndef PLATFORM_HAS_FAST_TLS
 	pthread_key_create(&eglContextKey, NULL);
 #endif
 
-	disp->initialized = EGL_TRUE;
+	display.initialized = EGL_TRUE;
 
 finish:
-	pthread_mutex_unlock(&disp->lock);
+	pthread_mutex_unlock(&display.lock);
 	return ret;
 }
 
@@ -195,33 +171,31 @@ finish:
  */
 EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy)
 {
-	if(!isDisplayValid(dpy)) {
+	if(!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
 
-	FGLDisplay *disp = getDisplay(dpy);
+	pthread_mutex_lock(&display.lock);
 
-	pthread_mutex_lock(&disp->lock);
-
-	if(unlikely(!disp->initialized))
+	if(unlikely(!display.initialized))
 		goto finish;
 
-	disp->initialized = EGL_FALSE;
+	display.initialized = EGL_FALSE;
 
 finish:
-	pthread_mutex_unlock(&disp->lock);
+	pthread_mutex_unlock(&display.lock);
 	return EGL_TRUE;
 }
 
 EGLAPI const char *EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name)
 {
-	if(!isDisplayValid(dpy)) {
+	if(!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return NULL;
 	}
 
-	if(!isDisplayInitialized(dpy)) {
+	if(!fglIsDisplayInitialized(dpy)) {
 		setError(EGL_NOT_INITIALIZED);
 		return NULL;
 	}
@@ -528,12 +502,12 @@ static int isAttributeMatching(int i, EGLint attr, EGLint val)
 EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
 			EGLint config_size, EGLint *num_config)
 {
-	if(unlikely(!isDisplayValid(dpy))) {
+	if (unlikely(!fglEGLValidateDisplay(dpy))) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
 
-	if(unlikely(!isDisplayInitialized(dpy))) {
+	if (unlikely(!fglIsDisplayInitialized(dpy))) {
 		setError(EGL_NOT_INITIALIZED);
 		return EGL_FALSE;
 	}
@@ -565,7 +539,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 			EGLConfig *configs, EGLint config_size,
 			EGLint *num_config)
 {
-	if (unlikely(!isDisplayValid(dpy))) {
+	if (unlikely(!fglEGLValidateDisplay(dpy))) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -651,7 +625,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config,
 			EGLint attribute, EGLint *value)
 {
-	if (unlikely(!isDisplayValid(dpy))) {
+	if (unlikely(!fglEGLValidateDisplay(dpy))) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -788,7 +762,7 @@ FGLPbufferSurface::~FGLPbufferSurface()
 EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	EGLConfig config, EGLNativeWindowType win, const EGLint *attrib_list)
 {
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_NO_SURFACE;
 	}
@@ -837,7 +811,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig config,
 				const EGLint *attrib_list)
 {
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_NO_SURFACE;
 	}
@@ -899,7 +873,7 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy, EGLConfig c
 
 EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surface)
 {
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -937,7 +911,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface,
 			EGLint attribute, EGLint *value)
 {
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -1101,7 +1075,7 @@ EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config,
 			EGLContext share_context,
 			const EGLint *attrib_list)
 {
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_NO_SURFACE;
 	}
@@ -1123,7 +1097,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 {
 	FGLContext *c = (FGLContext *)ctx;
 
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -1242,8 +1216,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 	/*
 	 * Do all the EGL sanity checks
 	 */
-
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -1336,7 +1309,7 @@ EGLAPI EGLDisplay EGLAPIENTRY eglGetCurrentDisplay(void)
 EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 			EGLint attribute, EGLint *value)
 {
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
@@ -1370,7 +1343,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglWaitNative(EGLint engine)
 
 EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 {
-	if (!isDisplayValid(dpy)) {
+	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
