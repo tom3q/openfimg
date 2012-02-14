@@ -65,7 +65,7 @@ label start
 # Texture 0
 	texld r1, v1, s0
 	bf noswap0, b0
-	mov r1.xyzw, r1.wzyx
+	mov r1.xyzw, r1.zyxw
 label noswap0
 	mov r2, c4
 	mov r3, c5
@@ -79,7 +79,7 @@ label noswap0
 # Texture 1
 	texld r1, v2, s1
 	bf noswap1, b1
-	mov r1.xyzw, r1.wzyx
+	mov r1.xyzw, r1.zyxw
 label noswap1
 	mov r2, c6
 	mov r3, c7

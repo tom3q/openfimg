@@ -103,7 +103,7 @@ void fimgInitTexture(fimgTexture *texture, unsigned int format,
 			unsigned int maxLevel, unsigned long addr)
 {
 	texture->control.textureFmt = format & 0xf;
-	texture->control.alphaFmt = !(format >> 4);
+	texture->control.alphaFmt = !!(format >> 4);
 	texture->maxLevel = maxLevel;
 	texture->baseAddr = addr;
 }
