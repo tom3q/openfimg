@@ -350,24 +350,6 @@ static const FGLConfigPair defaultConfigAttributes[] = {
  * Internal configuration management
  */
 
-template<typename T>
-static int binarySearch(const T sortedArray[], int first, int last, EGLint key)
-{
-	while (first <= last) {
-		int mid = (first + last) / 2;
-
-		if (key > sortedArray[mid].key) {
-			first = mid + 1;
-		} else if (key < sortedArray[mid].key) {
-			last = mid - 1;
-		} else {
-			return mid;
-		}
-	}
-
-	return -1;
-}
-
 static EGLBoolean getConfigAttrib(EGLConfig config,
 						EGLint attribute, EGLint *value)
 {
