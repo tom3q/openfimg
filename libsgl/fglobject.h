@@ -48,6 +48,11 @@ public:
 		next(this),
 		prev(this) {};
 
+	~FGLObjectBinding()
+	{
+		bind(0);
+	}
+
 	inline bool isBound(void)
 	{
 		return object != 0;
