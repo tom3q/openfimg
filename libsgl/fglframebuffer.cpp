@@ -46,6 +46,9 @@ void FGLFramebufferAttachable::markFramebufferDirty(void)
 bool FGLFramebuffer::checkAttachment(FGLAttachmentIndex index,
 						FGLFramebufferAttachable *fba)
 {
+	if (!fba->surface)
+		return false;
+
 	if (!(fba->mask && (1 << index)))
 		return false;
 
