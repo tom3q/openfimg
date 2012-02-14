@@ -749,11 +749,12 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 	const FGLPixelFormat *pix = FGLPixelFormat::get(colorFormat);
 
 	fba = fb->get(FGL_ATTACHMENT_COLOR);
-	int flipY = (fba->getType() != GL_TEXTURE);
-	fimgSetFrameBufSize(ctx->fimg, fb->getWidth(), fb->getHeight(), flipY);
-	fimgSetFrameBufParams(ctx->fimg,
-				1, 0, 255, (fimgColorMode)pix->pixFormat);
 
+	int flipY = (fba->getType() != GL_TEXTURE);
+
+	fimgSetFrameBufSize(ctx->fimg, width, height, flipY);
+	fimgSetFrameBufParams(ctx->fimg,
+				0, 0, 255, (fimgColorMode)pix->pixFormat);
 	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);
 
 	int depthMask = 0, depthTest = 0;
