@@ -893,7 +893,6 @@ EGLBoolean eglSetSwapRectangleANDROID(EGLDisplay dpy, EGLSurface draw,
 		return EGL_FALSE;
 	}
 
-	// post the surface
 	d->setSwapRectangle(left, top, width, height);
 
 	return EGL_TRUE;
@@ -913,7 +912,6 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 		return (EGLClientBuffer)0;
 	}
 
-	// post the surface
 	return d->getRenderBuffer();
 }
 

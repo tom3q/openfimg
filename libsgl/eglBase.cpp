@@ -873,8 +873,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 }
 
 /*
-	Client APIs
-*/
+ * Client APIs
+ */
 
 EGLAPI EGLBoolean EGLAPIENTRY eglBindAPI(EGLenum api)
 {
@@ -990,13 +990,13 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 	}
 
 	if (c->egl.flags & FGL_TERMINATE) {
-		// already scheduled for deletion
+		/* already scheduled for deletion */
 		setError(EGL_BAD_CONTEXT);
 		return EGL_FALSE;
 	}
 
 	if (c->egl.flags & FGL_IS_CURRENT) {
-		// mark the context for deletion on context switch
+		/* mark the context for deletion on context switch */
 		c->egl.flags |= FGL_TERMINATE;
 		return EGL_TRUE;
 	}
@@ -1067,7 +1067,7 @@ static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 	/* Attach draw surface */
 	gl->egl.draw = (EGLSurface)d;
 	if (d->connect() == EGL_FALSE) {
-		// connect() already set the error
+		/* Error should have been set for us. */
 		return EGL_FALSE;
 	}
 	d->ctx = (EGLContext)gl;
