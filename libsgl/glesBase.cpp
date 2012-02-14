@@ -744,11 +744,12 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 	if (ctx->framebuffer.current == fb && !fb->isDirty())
 		return 0;
 
-	fimgSetFrameBufSize(ctx->fimg, fb->getWidth(), fb->getHeight());
+	fba = fb->get(FGL_ATTACHMENT_COLOR);
+	int flipY = (fba->getType() != GL_TEXTURE);
+	fimgSetFrameBufSize(ctx->fimg, fb->getWidth(), fb->getHeight(), flipY);
 	fimgSetFrameBufParams(ctx->fimg,
 				1, 0, 255, (fimgColorMode)pix->pixFormat);
 
-	fba = fb->get(FGL_ATTACHMENT_COLOR);
 	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);
 
 	fba = fb->get(FGL_ATTACHMENT_DEPTH);

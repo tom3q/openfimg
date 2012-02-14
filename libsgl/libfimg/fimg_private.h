@@ -505,6 +505,7 @@ struct _fimgContext {
 	unsigned int invalTexCache;
 	unsigned int numAttribs;
 	unsigned int fbHeight;
+	int flipY;
 	/* Register queue */
 	unsigned int *queueStart;
 	unsigned int *queue;

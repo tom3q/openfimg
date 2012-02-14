@@ -536,7 +536,7 @@ void fimgSetFrameBufParams(fimgContext *ctx,
 void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetFrameBufSize(fimgContext *ctx,
-				unsigned int width, unsigned int height);
+			unsigned int width, unsigned int height, int flipY);
 
 enum {
 	FIMG_SCISSOR_TEST,

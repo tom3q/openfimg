@@ -76,20 +76,20 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 {
 	// local variable declaration
 	float half_px = px * 0.5f;
-#ifdef FIMG_COORD_FLIP_Y
-	float half_py = -py * 0.5f;
-#else
-	float half_py = py * 0.5f;
-#endif
+	float half_py;
 
 	// ox: x-coordinate of viewport center
 	float ox = x0 + half_px;
 	// oy: y-coordindate of viewport center
-#ifdef FIMG_COORD_FLIP_Y
-	float oy = (ctx->fbHeight - y0) + half_py;
-#else
-	float oy = y0 + half_py;
-#endif
+	float oy;
+
+	if (ctx->flipY) {
+		half_py = -py * 0.5f;
+		oy = (ctx->fbHeight - y0) + half_py;
+	} else {
+		half_py = py * 0.5f;
+		oy = y0 + half_py;
+	}
 
 	ctx->primitive.ox = ox;
 	ctx->primitive.oy = oy;
