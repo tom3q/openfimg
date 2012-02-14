@@ -790,11 +790,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 		return EGL_FALSE;
 	}
 
-	if (fglSurface->dpy != dpy) {
-		setError(EGL_BAD_DISPLAY);
-		return EGL_FALSE;
-	}
-
 	if (fglSurface->ctx) {
 		// Mark the surface for destruction on context detach
 		fglSurface->terminate();
@@ -817,11 +812,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 
 	if (!fglSurface->isValid()) {
 		setError(EGL_BAD_SURFACE);
-		return EGL_FALSE;
-	}
-
-	if (fglSurface->dpy != dpy) {
-		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
 
@@ -1139,11 +1129,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
 			setError(EGL_BAD_SURFACE);
 			return EGL_FALSE;
 		}
-
-		if (s->dpy != dpy) {
-			setError(EGL_BAD_DISPLAY);
-			return EGL_FALSE;
-		}
 	}
 
 	if (draw == EGL_NO_SURFACE && ctx != EGL_NO_CONTEXT) {
@@ -1253,11 +1238,6 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
 	if (!d->isValid()) {
 		setError(EGL_BAD_SURFACE);
-		return EGL_FALSE;
-	}
-
-	if (d->dpy != dpy) {
-		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
 

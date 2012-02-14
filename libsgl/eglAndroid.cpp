@@ -893,11 +893,6 @@ EGLBoolean eglSetSwapRectangleANDROID(EGLDisplay dpy, EGLSurface draw,
 		return EGL_FALSE;
 	}
 
-	if (d->dpy != dpy) {
-		setError(EGL_BAD_DISPLAY);
-		return EGL_FALSE;
-	}
-
 	// post the surface
 	d->setSwapRectangle(left, top, width, height);
 
@@ -915,11 +910,6 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 
 	if (!d->isValid()) {
 		setError(EGL_BAD_SURFACE);
-		return (EGLClientBuffer)0;
-	}
-
-	if (d->dpy != dpy) {
-		setError(EGL_BAD_DISPLAY);
 		return (EGLClientBuffer)0;
 	}
 
