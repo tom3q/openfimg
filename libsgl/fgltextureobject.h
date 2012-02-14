@@ -89,7 +89,7 @@ struct FGLTexture : public FGLFramebufferAttachable {
 		valid = true;
 	}
 
-	~FGLTexture()
+	virtual ~FGLTexture()
 	{
 		if(!isValid())
 			return;
