@@ -68,8 +68,8 @@ extern const int gPlatformConfigsNum;
 extern const FGLExtensionMap gPlatformExtensionMap[];
 
 extern FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
-			EGLConfig config, uint32_t depthFormat,
-			EGLNativeWindowType window, uint32_t pixelFormat);
+			uint32_t config, uint32_t pixelFormat,
+			uint32_t depthFormat, EGLNativeWindowType window);
 
 extern EGLBoolean fglEGLValidatePixelFormat(EGLConfig config, uint32_t fmt);
 

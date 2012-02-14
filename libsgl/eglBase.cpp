@@ -634,126 +634,49 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig confi
 }
 
 /*
- * Render surface base class
- */
-
-FGLRenderSurface::FGLRenderSurface(EGLDisplay dpy,
-	EGLConfig config, uint32_t pixelFormat, uint32_t depthFormat) :
-magic(MAGIC), flags(0), dpy(dpy), config(config), ctx(0), color(0), depth(0),
-depthFormat(depthFormat), format(pixelFormat)
-{
-}
-
-FGLRenderSurface::~FGLRenderSurface()
-{
-	magic = 0;
-	delete depth;
-	delete color;
-}
-
-EGLBoolean FGLRenderSurface::bindDrawSurface(FGLContext *gl)
-{
-	fglSetColorBuffer(gl, color, width, height, format);
-	fglSetDepthStencilBuffer(gl, depth, width, height, depthFormat);
-
-	return EGL_TRUE;
-}
-
-bool FGLRenderSurface::isValid() const {
-	if (magic != MAGIC)
-		LOGE("invalid EGLSurface (%p)", this);
-	return magic == MAGIC;
-}
-
-void FGLRenderSurface::terminate() {
-	flags |= TERMINATED;
-}
-
-bool FGLRenderSurface::isTerminated() const {
-	return flags & TERMINATED;
-}
-
-EGLBoolean FGLRenderSurface::swapBuffers() {
-	return EGL_FALSE;
-}
-
-EGLint FGLRenderSurface::getHorizontalResolution() const {
-	return (0 * EGL_DISPLAY_SCALING) * (1.0f / 25.4f);
-}
-
-EGLint FGLRenderSurface::getVerticalResolution() const {
-	return (0 * EGL_DISPLAY_SCALING) * (1.0f / 25.4f);
-}
-
-EGLint FGLRenderSurface::getRefreshRate() const {
-	return (60 * EGL_DISPLAY_SCALING);
-}
-
-EGLint FGLRenderSurface::getSwapBehavior() const {
-	return EGL_BUFFER_PRESERVED;
-}
-
-EGLBoolean FGLRenderSurface::setSwapRectangle(
-	EGLint l, EGLint t, EGLint w, EGLint h)
-{
-	return EGL_FALSE;
-}
-
-EGLClientBuffer FGLRenderSurface::getRenderBuffer() const {
-	return 0;
-}
-
-/*
  * EGL PBuffer surface
  */
 
-struct FGLPbufferSurface : public FGLRenderSurface
-{
-	FGLPbufferSurface(
-		EGLDisplay dpy, EGLConfig config, uint32_t depthFormat,
-		int32_t w, int32_t h, uint32_t f);
-
-	virtual ~FGLPbufferSurface();
-
-	virtual     bool        initCheck() const
+class FGLPbufferSurface : public FGLRenderSurface {
+public:
+	FGLPbufferSurface(EGLDisplay dpy, uint32_t config,
+				uint32_t colorFormat, uint32_t depthFormat,
+				uint32_t width, uint32_t height) :
+		FGLRenderSurface(dpy, config, colorFormat, depthFormat)
 	{
-		return color && color->isValid() && (!depth || depth->isValid());
-	}
-	virtual     EGLint      getWidth() const    { return width;  }
-	virtual     EGLint      getHeight() const   { return height; }
-};
+		const FGLPixelFormat *fmt = FGLPixelFormat::get(colorFormat);
+		unsigned int size = width * height * fmt->pixelSize;
 
-FGLPbufferSurface::FGLPbufferSurface(EGLDisplay dpy,
-	EGLConfig config, uint32_t depthFormat,
-	int32_t w, int32_t h, uint32_t f)
-: FGLRenderSurface(dpy, config, f, depthFormat)
-{
-	const FGLPixelFormat *fmt = FGLPixelFormat::get(f);
-	unsigned int size = w * h * fmt->pixelSize;
+		this->width = width;
+		this->height = height;
 
-	color = new FGLLocalSurface(size);
-	if (!color || !color->isValid()) {
-		setError(EGL_BAD_ALLOC);
-		return;
-	}
-
-	width   = w;
-	height  = h;
-
-	if (depthFormat) {
-		size = w * h * 4;
-
-		depth = new FGLLocalSurface(size);
-		if (!depth || !depth->isValid()) {
+		color = new FGLLocalSurface(size);
+		if (!color || !color->isValid()) {
 			setError(EGL_BAD_ALLOC);
 			return;
 		}
-	}
-}
 
-FGLPbufferSurface::~FGLPbufferSurface()
-{
-}
+		if (depthFormat) {
+			size = width * height * 4;
+
+			depth = new FGLLocalSurface(size);
+			if (!depth || !depth->isValid()) {
+				setError(EGL_BAD_ALLOC);
+				return;
+			}
+		}
+	}
+
+	virtual ~FGLPbufferSurface() {}
+
+	virtual bool initCheck() const
+	{
+		if (depthFormat && (!depth || !depth->isValid()))
+			return false;
+
+		return color && color->isValid();
+	}
+};
 
 /*
  * EGL surface management
@@ -762,6 +685,8 @@ FGLPbufferSurface::~FGLPbufferSurface()
 EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	EGLConfig config, EGLNativeWindowType win, const EGLint *attrib_list)
 {
+	uint32_t configID = (uint32_t)config;
+
 	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_NO_SURFACE;
@@ -781,10 +706,6 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 		return EGL_NO_SURFACE;
 	}
 
-	EGLint configID;
-	if (getConfigAttrib(config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
-		return EGL_NO_SURFACE;
-
 	int32_t depthFormat;
 	int32_t pixelFormat;
 	if (getConfigFormatInfo(configID, &pixelFormat, &depthFormat) == EGL_FALSE) {
@@ -793,14 +714,11 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	}
 
 	FGLRenderSurface *surface = platformCreateWindowSurface(dpy,
-					config, depthFormat, win, pixelFormat);
-	if (surface == NULL)
-		/* platform code should have set error value for us */
-		return EGL_NO_SURFACE;
-
-	if (!surface->initCheck()) {
-		// there was a problem in the ctor, the error
-		// flag has been set.
+				configID, pixelFormat, depthFormat, win);
+	if (!surface || !surface->initCheck()) {
+		if (!surface)
+			setError(EGL_BAD_ALLOC);
+		/* otherwise platform code should have set error value for us */
 		delete surface;
 		return EGL_NO_SURFACE;
 	}
@@ -811,6 +729,8 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig config,
 				const EGLint *attrib_list)
 {
+	uint32_t configID = (uint32_t)config;
+
 	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_NO_SURFACE;
@@ -824,10 +744,6 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 		setError(EGL_BAD_MATCH);
 		return EGL_NO_SURFACE;
 	}
-
-	EGLint configID;
-	if (getConfigAttrib(config, EGL_CONFIG_ID, &configID) == EGL_FALSE)
-		return EGL_NO_SURFACE;
 
 	int32_t depthFormat;
 	int32_t pixelFormat;
@@ -846,21 +762,17 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 		}
 	}
 
-	FGLRenderSurface *surface;
-	surface = new FGLPbufferSurface(dpy, config, depthFormat, w, h,
-								pixelFormat);
-	if (surface == NULL) {
-		setError(EGL_BAD_ALLOC);
+	FGLRenderSurface *surface = new FGLPbufferSurface(dpy,
+			configID, pixelFormat, depthFormat, w, h);
+	if (!surface || !surface->initCheck()) {
+		if (!surface)
+			setError(EGL_BAD_ALLOC);
+		/* otherwise constructor should have set error value for us */
+		delete surface;
 		return EGL_NO_SURFACE;
 	}
 
-	if (!surface->initCheck()) {
-		// there was a problem in the ctor, the error
-		// flag has been set.
-		delete surface;
-		surface = 0;
-	}
-	return surface;
+	return (EGLSurface)surface;
 }
 
 EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy, EGLConfig config,
@@ -932,7 +844,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 
 	switch (attribute) {
 		case EGL_CONFIG_ID:
-			ret = getConfigAttrib(fglSurface->config,
+			ret = getConfigAttrib((EGLConfig)fglSurface->config,
 							EGL_CONFIG_ID, value);
 			break;
 		case EGL_WIDTH:

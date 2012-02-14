@@ -22,50 +22,112 @@
 #ifndef _FGLRENDERSURFACE_H_
 #define _FGLRENDERSURFACE_H_
 
-struct FGLSurface;
+#include "fglsurface.h"
+#include "glesFramebuffer.h"
 
-struct FGLRenderSurface
-{
+/*
+ * Render surface base class
+ */
+
+class FGLRenderSurface {
 	enum {
-		TERMINATED = 0x80000000,
-		MAGIC     = 0x31415265
+		TERMINATED	= 0x80000000,
+		MAGIC		= 0x524c4746 /* FGLR */
 	};
 
 	uint32_t	magic;
 	uint32_t	flags;
+
+protected:
+	FGLSurface	*color;
+	FGLSurface	*depth;
+	uint32_t	colorFormat;
+	uint32_t	depthFormat;
+	uint32_t	width;
+	uint32_t	height;
+
+public:
 	EGLDisplay	dpy;
-	EGLConfig	config;
+	uint32_t	config;
 	EGLContext	ctx;
 
-	FGLRenderSurface(EGLDisplay dpy, EGLConfig config,
-				uint32_t pixelFormat, uint32_t depthFormat);
-	virtual 		~FGLRenderSurface();
-		bool		isValid() const;
-		void		terminate();
-		bool		isTerminated() const;
-	virtual bool		initCheck() const = 0;
+	FGLRenderSurface(EGLDisplay dpy, uint32_t config,
+				uint32_t colorFormat, uint32_t depthFormat) :
+		magic(MAGIC),
+		flags(0),
+		color(0),
+		depth(0),
+		colorFormat(colorFormat),
+		depthFormat(depthFormat),
+		dpy(dpy),
+		config(config),
+		ctx(0) {}
 
-	virtual EGLBoolean	bindDrawSurface(FGLContext *gl);
-	virtual EGLBoolean	connect() { return EGL_TRUE; }
-	virtual void		disconnect() {}
-	virtual EGLint		getWidth() const = 0;
-	virtual EGLint		getHeight() const = 0;
-	virtual uint32_t	getDepthFormat() { return depthFormat; }
+	virtual ~FGLRenderSurface()
+	{
+		magic = 0;
+		delete depth;
+		delete color;
+	}
 
-	virtual EGLint		getHorizontalResolution() const;
-	virtual EGLint		getVerticalResolution() const;
-	virtual EGLint		getRefreshRate() const;
-	virtual EGLint		getSwapBehavior() const;
-	virtual EGLBoolean	swapBuffers();
-	virtual EGLBoolean	setSwapRectangle(EGLint l, EGLint t, EGLint w, EGLint h);
-	virtual EGLClientBuffer	getRenderBuffer() const;
-protected:
-	FGLSurface		*color;
-	FGLSurface              *depth;
-	uint32_t		depthFormat;
-	int			width;
-	int			height;
-	uint32_t		format;
+	virtual bool bindDrawSurface(FGLContext *gl)
+	{
+		fglSetColorBuffer(gl, color, width, height, colorFormat);
+		fglSetDepthStencilBuffer(gl, depth, width, height, depthFormat);
+
+		return EGL_TRUE;
+	}
+
+	virtual EGLint getHorizontalResolution() const
+	{
+		return (0 * EGL_DISPLAY_SCALING) * (1.0f / 25.4f);
+	}
+
+	virtual EGLint getVerticalResolution() const
+	{
+		return (0 * EGL_DISPLAY_SCALING) * (1.0f / 25.4f);
+	}
+
+	virtual EGLint getRefreshRate() const
+	{
+		return (60 * EGL_DISPLAY_SCALING);
+	}
+
+	virtual bool setSwapRectangle(EGLint l,
+						EGLint t, EGLint w, EGLint h)
+	{
+		return EGL_FALSE;
+	}
+
+	virtual bool connect() { return EGL_TRUE; }
+	virtual void disconnect() {}
+	virtual EGLint getSwapBehavior() const  { return EGL_BUFFER_PRESERVED; }
+	virtual bool swapBuffers()  { return EGL_FALSE; }
+	virtual EGLClientBuffer getRenderBuffer() const { return 0; }
+
+	virtual bool initCheck() const = 0;
+
+	bool isValid() const
+	{
+		if (magic != MAGIC)
+			LOGE("invalid EGLSurface (%p)", this);
+		return magic == MAGIC;
+	}
+
+	void terminate()
+	{
+		flags |= TERMINATED;
+	}
+
+	bool isTerminated() const
+	{
+		return flags & TERMINATED;
+	}
+
+	uint32_t getDepthFormat() const { return depthFormat; }
+	uint32_t getColorFormat() const { return colorFormat; }
+	uint32_t getWidth() const { return width; }
+	uint32_t getHeight() const { return height; }
 };
 
 #endif /* _FGLRENDERSURFACE_H_ */
