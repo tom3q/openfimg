@@ -283,11 +283,19 @@ struct FGLFramebufferState {
 	FGLDefaultFramebuffer defFramebuffer;
 	FGLFramebufferObjectBinding binding;
 	FGLAbstractFramebuffer *current;
+	uint32_t curWidth;
+	uint32_t curHeight;
+	uint32_t curColorFormat;
+	int curFlipY;
 
 	FGLFramebufferState() :
 		defFramebuffer(),
 		binding(this),
-		current(0) {};
+		current(0),
+		curWidth(0),
+		curHeight(0),
+		curColorFormat(0),
+		curFlipY(-1) {};
 
 	inline FGLAbstractFramebuffer *get(void)
 	{

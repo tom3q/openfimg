@@ -735,7 +735,6 @@ static void fglSetBlending(FGLContext *ctx);
 static inline int fglSetupFramebuffer(FGLContext *ctx)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
-	const FGLPixelFormat *pix = FGLPixelFormat::get(fb->getColorFormat());
 	FGLFramebufferAttachable *fba;
 
 	if (!fb->isValid())
@@ -743,6 +742,11 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 
 	if (ctx->framebuffer.current == fb && !fb->isDirty())
 		return 0;
+
+	uint32_t width = fb->getWidth();
+	uint32_t height = fb->getHeight();
+	uint32_t colorFormat = fb->getColorFormat();
+	const FGLPixelFormat *pix = FGLPixelFormat::get(colorFormat);
 
 	fba = fb->get(FGL_ATTACHMENT_COLOR);
 	int flipY = (fba->getType() != GL_TEXTURE);
@@ -752,24 +756,37 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 
 	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);
 
+	int depthMask = 1;
+	int stencilMask = 0xff;
 	fba = fb->get(FGL_ATTACHMENT_DEPTH);
 	if (!fba)
 		fba = fb->get(FGL_ATTACHMENT_STENCIL);
 	if (fba && fba->surface)
 		fimgSetZBufBaseAddr(ctx->fimg, fba->surface->paddr);
 
-	if (ctx->enable.scissorTest)
-		fglSetScissor(ctx, ctx->perFragment.scissor.left,
+	if (ctx->framebuffer.curFlipY != flipY
+	    || ctx->framebuffer.curWidth != width
+	    || ctx->framebuffer.curHeight != height) {
+		if (ctx->enable.scissorTest)
+			fglSetScissor(ctx, ctx->perFragment.scissor.left,
 					ctx->perFragment.scissor.bottom,
 					ctx->perFragment.scissor.width,
 					ctx->perFragment.scissor.height);
-	else
-		fglSetScissor(ctx, 0, 0, fb->getWidth(), fb->getHeight());
+		else
+			fglSetScissor(ctx, 0, 0, width, height);
 
-	fimgSetViewportParams(ctx->fimg, ctx->viewport.x, ctx->viewport.y,
-				ctx->viewport.width, ctx->viewport.height);
+		fimgSetViewportParams(ctx->fimg, ctx->viewport.x,
+					ctx->viewport.y,ctx->viewport.width,
+					ctx->viewport.height);
+	}
 
-	fglSetBlending(ctx);
+	if (ctx->framebuffer.curColorFormat != colorFormat)
+		fglSetBlending(ctx);
+
+	ctx->framebuffer.curWidth = width;
+	ctx->framebuffer.curHeight = height;
+	ctx->framebuffer.curColorFormat = colorFormat;
+	ctx->framebuffer.curFlipY = flipY;
 
 	ctx->framebuffer.current = fb;
 	fb->markClean();
