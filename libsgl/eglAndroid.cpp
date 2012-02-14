@@ -212,8 +212,7 @@ static inline unsigned long getFramebufferAddress(void)
 
 static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer)
 {
-	const private_handle_t* hnd =
-			static_cast<const private_handle_t*>(buffer->handle);
+	const private_handle_t *hnd = (const private_handle_t *)buffer->handle;
 
 	/* this pointer came from framebuffer */
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)
@@ -853,8 +852,7 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 		EGLNativeWindowType window)
 {
 	int format;
-	android_native_window_t *win = 
-				static_cast<android_native_window_t *>(window);
+	android_native_window_t *win = (android_native_window_t *)window;
 
 	if (win->common.magic != ANDROID_NATIVE_WINDOW_MAGIC) {
 		setError(EGL_BAD_NATIVE_WINDOW);
@@ -881,14 +879,14 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
  */
 
 EGLBoolean eglSetSwapRectangleANDROID(EGLDisplay dpy, EGLSurface draw,
-	EGLint left, EGLint top, EGLint width, EGLint height)
+			EGLint left, EGLint top, EGLint width, EGLint height)
 {
 	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
 		return EGL_FALSE;
 	}
 
-	FGLRenderSurface *d = static_cast<FGLRenderSurface *>(draw);
+	FGLRenderSurface *d = (FGLRenderSurface *)draw;
 
 	if (!d->isValid()) {
 		setError(EGL_BAD_SURFACE);
@@ -913,7 +911,7 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 		return (EGLClientBuffer)0;
 	}
 
-	FGLRenderSurface *d = static_cast<FGLRenderSurface *>(draw);
+	FGLRenderSurface *d = (FGLRenderSurface *)draw;
 
 	if (!d->isValid()) {
 		setError(EGL_BAD_SURFACE);
@@ -956,8 +954,9 @@ struct FGLAndroidImage : FGLImage {
 	}
 };
 
-EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
-        EGLClientBuffer buffer, const EGLint *attrib_list)
+EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx,
+					EGLenum target, EGLClientBuffer buffer,
+					const EGLint *attrib_list)
 {
 	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
@@ -974,7 +973,8 @@ EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target,
 		return EGL_NO_IMAGE_KHR;
 	}
 
-	android_native_buffer_t *native_buffer = (android_native_buffer_t *)buffer;
+	android_native_buffer_t *native_buffer =
+					(android_native_buffer_t *)buffer;
 
 	if (native_buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC) {
 		setError(EGL_BAD_PARAMETER);
