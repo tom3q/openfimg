@@ -808,57 +808,56 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface
 	}
 
 	EGLBoolean ret = EGL_TRUE;
-
 	switch (attribute) {
-		case EGL_CONFIG_ID:
-			ret = fglGetConfigAttrib(fglSurface->config,
-							EGL_CONFIG_ID, value);
-			break;
-		case EGL_WIDTH:
-			*value = fglSurface->getWidth();
-			break;
-		case EGL_HEIGHT:
-			*value = fglSurface->getHeight();
-			break;
-		case EGL_LARGEST_PBUFFER:
-			// not modified for a window or pixmap surface
-			break;
-		case EGL_TEXTURE_FORMAT:
-			*value = EGL_NO_TEXTURE;
-			break;
-		case EGL_TEXTURE_TARGET:
-			*value = EGL_NO_TEXTURE;
-			break;
-		case EGL_MIPMAP_TEXTURE:
-			*value = EGL_FALSE;
-			break;
-		case EGL_MIPMAP_LEVEL:
-			*value = 0;
-			break;
-		case EGL_RENDER_BUFFER:
-			// TODO: return the real RENDER_BUFFER here
-			*value = EGL_BACK_BUFFER;
-			break;
-		case EGL_HORIZONTAL_RESOLUTION:
-			// pixel/mm * EGL_DISPLAY_SCALING
-			*value = fglSurface->getHorizontalResolution();
-			break;
-		case EGL_VERTICAL_RESOLUTION:
-			// pixel/mm * EGL_DISPLAY_SCALING
-			*value = fglSurface->getVerticalResolution();
-			break;
-		case EGL_PIXEL_ASPECT_RATIO: {
-			// w/h * EGL_DISPLAY_SCALING
-			int wr = fglSurface->getHorizontalResolution();
-			int hr = fglSurface->getVerticalResolution();
-			*value = (wr * EGL_DISPLAY_SCALING) / hr;
-			} break;
-		case EGL_SWAP_BEHAVIOR:
-			*value = fglSurface->getSwapBehavior();
-			break;
-		default:
-			setError(EGL_BAD_ATTRIBUTE);
+	case EGL_CONFIG_ID:
+		if (!fglGetConfigAttrib((uint32_t)fglSurface->config,
+							EGL_CONFIG_ID, value))
 			ret = EGL_FALSE;
+		break;
+	case EGL_WIDTH:
+		*value = fglSurface->getWidth();
+		break;
+	case EGL_HEIGHT:
+		*value = fglSurface->getHeight();
+		break;
+	case EGL_LARGEST_PBUFFER:
+		/* FIXME: Return something */
+		break;
+	case EGL_TEXTURE_FORMAT:
+		*value = EGL_NO_TEXTURE;
+		break;
+	case EGL_TEXTURE_TARGET:
+		*value = EGL_NO_TEXTURE;
+		break;
+	case EGL_MIPMAP_TEXTURE:
+		*value = EGL_FALSE;
+		break;
+	case EGL_MIPMAP_LEVEL:
+		*value = 0;
+		break;
+	case EGL_RENDER_BUFFER:
+		*value = EGL_BACK_BUFFER;
+		break;
+	case EGL_HORIZONTAL_RESOLUTION:
+		/* pixel/mm * EGL_DISPLAY_SCALING */
+		*value = fglSurface->getHorizontalResolution();
+		break;
+	case EGL_VERTICAL_RESOLUTION:
+		/* pixel/mm * EGL_DISPLAY_SCALING */
+		*value = fglSurface->getVerticalResolution();
+		break;
+	case EGL_PIXEL_ASPECT_RATIO: {
+		/* w/h * EGL_DISPLAY_SCALING */
+		int wr = fglSurface->getHorizontalResolution();
+		int hr = fglSurface->getVerticalResolution();
+		*value = (wr * EGL_DISPLAY_SCALING) / hr;
+		break; }
+	case EGL_SWAP_BEHAVIOR:
+		*value = fglSurface->getSwapBehavior();
+		break;
+	default:
+		setError(EGL_BAD_ATTRIBUTE);
+		ret = EGL_FALSE;
 	}
 
 	return ret;
