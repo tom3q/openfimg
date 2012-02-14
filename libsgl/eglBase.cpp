@@ -290,11 +290,11 @@ static const FGLConfigMatcher gConfigManagement[] = {
 	{ EGL_CONFIG_CAVEAT,              FGLConfigMatcher::exact   },
 	{ EGL_CONFIG_ID,                  FGLConfigMatcher::exact   },
 	{ EGL_LEVEL,                      FGLConfigMatcher::exact   },
-	{ EGL_MAX_PBUFFER_HEIGHT,         FGLConfigMatcher::ignore   },
-	{ EGL_MAX_PBUFFER_PIXELS,         FGLConfigMatcher::ignore   },
-	{ EGL_MAX_PBUFFER_WIDTH,          FGLConfigMatcher::ignore   },
+	{ EGL_MAX_PBUFFER_HEIGHT,         FGLConfigMatcher::ignore  },
+	{ EGL_MAX_PBUFFER_PIXELS,         FGLConfigMatcher::ignore  },
+	{ EGL_MAX_PBUFFER_WIDTH,          FGLConfigMatcher::ignore  },
 	{ EGL_NATIVE_RENDERABLE,          FGLConfigMatcher::exact   },
-	{ EGL_NATIVE_VISUAL_ID,           FGLConfigMatcher::ignore   },
+	{ EGL_NATIVE_VISUAL_ID,           FGLConfigMatcher::ignore  },
 	{ EGL_NATIVE_VISUAL_TYPE,         FGLConfigMatcher::exact   },
 	{ EGL_SAMPLES,                    FGLConfigMatcher::exact   },
 	{ EGL_SAMPLE_BUFFERS,             FGLConfigMatcher::exact   },
@@ -1032,19 +1032,22 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 
 static void fglUnbindContext(FGLContext *c)
 {
-	// mark the current context as not current, and flush
+	/* Make sure all the work finished */
 	glFinish();
+
+	/* Mark the context as not current anymore */
 	c->egl.flags &= ~FGL_IS_CURRENT;
 
-	// Unbind the draw surface
+	/* Unbind draw surface */
 	FGLRenderSurface *d = (FGLRenderSurface *)c->egl.draw;
 	d->disconnect();
 	d->ctx = EGL_NO_CONTEXT;
 	c->egl.draw = EGL_NO_SURFACE;
-	// Delete it if it's terminated
+	/* Delete it if it's terminated */
 	if(d->isTerminated())
 		delete d;
 
+	/* Delete the context if it's terminated */
 	if (c->egl.flags & FGL_TERMINATE)
 		fglDestroyContext(c);
 }
@@ -1053,39 +1056,40 @@ static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 {
 	FGLContext *current = getGlThreadSpecific();
 
-	// Current context (if available) should get detached
+	/* Current context (if available) should get detached */
 	if (!gl) {
-		if (!current) {
-			// Nothing changed
+		if (!current)
+			/* Nothing changed */
 			return EGL_TRUE;
-		}
 
 		fglUnbindContext(current);
 
-		// this thread has no context attached to it from now on
+		/* this thread has no context attached to it from now on */
 		setGlThreadSpecific(0);
 
 		return EGL_TRUE;
 	}
 
-	// New context should get attached
+	/* New context should get attached */
 	if (gl->egl.flags & FGL_IS_CURRENT) {
 		if (current != gl) {
-			// it is an error to set a context current, if it's
-			// already current to another thread
+			/*
+			 * it is an error to set a context current,
+			 * if it's already current to another thread
+			 */
 			setError(EGL_BAD_ACCESS);
 			return EGL_FALSE;
 		}
 
-		// Nothing changed
+		/* Nothing changed */
 		return EGL_TRUE;
 	}
 
-	// Detach old context if present
+	/* Detach old context if present */
 	if (current)
 		fglUnbindContext(current);
 
-	// Attach draw surface
+	/* Attach draw surface */
 	gl->egl.draw = (EGLSurface)d;
 	if (d->connect() == EGL_FALSE) {
 		// connect() already set the error
@@ -1094,11 +1098,11 @@ static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 	d->ctx = (EGLContext)gl;
 	d->bindDrawSurface(gl);
 
-	// Make the new context current
+	/* Make the new context current */
 	setGlThreadSpecific(gl);
 	gl->egl.flags |= FGL_IS_CURRENT;
 
-	// Perform first time initialization if needed
+	/* Perform first time initialization if needed */
 	if (gl->egl.flags & FGL_NEVER_CURRENT) {
 		gl->egl.flags &= ~FGL_NEVER_CURRENT;
 		GLint w = 0;
@@ -1303,7 +1307,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers(EGLDisplay dpy, EGLSurface surface,
  * Extension management
  */
 
-#define EGLFunc	__eglMustCastToProperFunctionPointerType
+#define EGLFunc		__eglMustCastToProperFunctionPointerType
 
 static const FGLExtensionMap gExtensionMap[] = {
 	{ "glDrawTexsOES",

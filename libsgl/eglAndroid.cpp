@@ -182,7 +182,8 @@ const int gPlatformConfigsNum = NELEM(gPlatformConfigs);
  * FIXME: Get framebuffer addresses properly.
  */
 
-#define FB_DEVICE_NAME "/dev/graphics/fb0"
+#define FB_DEVICE_NAME	"/dev/graphics/fb0"
+
 static inline unsigned long getFramebufferAddress(void)
 {
 	static unsigned long address = 0;
