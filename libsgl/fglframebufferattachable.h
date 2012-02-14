@@ -51,7 +51,12 @@ struct FGLFramebufferAttachable {
 	uint32_t	mask;
 
 	FGLFramebufferAttachable() :
-		object(this) {}
+		object(this),
+		surface(0),
+		width(0),
+		height(0),
+		pixFormat(0),
+		mask(0) {}
 
 	virtual ~FGLFramebufferAttachable() {}
 
