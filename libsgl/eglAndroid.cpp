@@ -1046,9 +1046,13 @@ EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
 #define EGLFunc	__eglMustCastToProperFunctionPointerType
 
 const FGLExtensionMap gPlatformExtensionMap[] = {
-	{ "eglCreateImageKHR", (EGLFunc)&eglCreateImageKHR },
-	{ "eglDestroyImageKHR", (EGLFunc)&eglDestroyImageKHR },
-	{ "eglSetSwapRectangleANDROID", (EGLFunc)&eglSetSwapRectangleANDROID },
-	{ "eglGetRenderBufferANDROID", (EGLFunc)&eglGetRenderBufferANDROID },
+	{ "eglCreateImageKHR",
+		(EGLFunc)&eglCreateImageKHR },
+	{ "eglDestroyImageKHR",
+		(EGLFunc)&eglDestroyImageKHR },
+	{ "eglSetSwapRectangleANDROID",
+		(EGLFunc)&eglSetSwapRectangleANDROID },
+	{ "eglGetRenderBufferANDROID",
+		(EGLFunc)&eglGetRenderBufferANDROID },
 	{ NULL, NULL },
 };
