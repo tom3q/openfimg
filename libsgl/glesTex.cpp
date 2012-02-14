@@ -655,8 +655,9 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		}
 
 		const FGLPixelFormat *pix = FGLPixelFormat::get(pixFormat);
-		fimgInitTexture(obj->fimg, pix->texFormat, obj->maxLevel,
-							obj->surface->paddr);
+		fimgInitTexture(obj->fimg,
+				(pix->alphaInLSB << 4) | pix->texFormat,
+				obj->maxLevel, obj->surface->paddr);
 		fimgSetTex2DSize(obj->fimg, width, height);
 	}
 
@@ -948,7 +949,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->swap	= cfg->swapNeeded;
 
 	// Setup fimgTexture
-	fimgInitTexture(tex->fimg, (!cfg->isRGBA << 4) | cfg->texFormat,
+	fimgInitTexture(tex->fimg, (cfg->alphaInLSB << 4) | cfg->texFormat,
 					tex->maxLevel, tex->surface->paddr);
 	fimgSetTex2DSize(tex->fimg, image->width, image->height);
 	fimgSetTexMipmap(tex->fimg, FGTU_TSTA_MIPMAP_DISABLED);

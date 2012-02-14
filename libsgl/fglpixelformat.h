@@ -98,7 +98,7 @@ struct FGLPixelFormat {
 	uint32_t pixFormat;
 
 	bool swapNeeded;
-	bool isRGBA;
+	bool alphaInLSB;
 
 	static const FGLPixelFormat *get(unsigned int format);
 
