@@ -187,8 +187,6 @@ static inline unsigned long getFramebufferAddress(void)
 {
 	static unsigned long address = 0;
 
-	//LOGD("getFramebufferAddress");
-
 	if (address != 0)
 		return address;
 
@@ -215,8 +213,6 @@ static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer
 {
 	const private_handle_t* hnd =
 			static_cast<const private_handle_t*>(buffer->handle);
-
-	//LOGD("fglGetBufferPhysicalAddress");
 
 	/* this pointer came from framebuffer */
 	if (hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)

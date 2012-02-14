@@ -1352,7 +1352,5 @@ eglGetProcAddress(const char *procname)
 			return map->address;
 	}
 
-	//LOGE("Requested not implemented function %s address", procname);
-
 	return NULL;
 }
