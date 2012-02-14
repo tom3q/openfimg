@@ -893,7 +893,8 @@ EGLBoolean eglSetSwapRectangleANDROID(EGLDisplay dpy, EGLSurface draw,
 		return EGL_FALSE;
 	}
 
-	d->setSwapRectangle(left, top, width, height);
+	if(!d->setSwapRectangle(left, top, width, height))
+		return EGL_FALSE;
 
 	return EGL_TRUE;
 }

@@ -1066,10 +1066,9 @@ static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 
 	/* Attach draw surface */
 	gl->egl.draw = (EGLSurface)d;
-	if (d->connect() == EGL_FALSE) {
+	if (!d->connect())
 		/* Error should have been set for us. */
 		return EGL_FALSE;
-	}
 	d->ctx = (EGLContext)gl;
 	d->bindDrawSurface(gl);
 
