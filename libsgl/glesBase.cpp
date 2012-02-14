@@ -756,13 +756,29 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 
 	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);
 
-	int depthMask = 1;
-	int stencilMask = 0xff;
+	int depthMask = 0, depthTest = 0;
+	int stencilMask = 0, stencilTest = 0;
+
 	fba = fb->get(FGL_ATTACHMENT_DEPTH);
-	if (!fba)
+
+	if (!fba) {
 		fba = fb->get(FGL_ATTACHMENT_STENCIL);
-	if (fba && fba->surface)
+	} else {
+		depthMask = ctx->perFragment.mask.depth;
+		depthTest = ctx->enable.depthTest;
+	}
+
+	if (fba && fba->surface) {
 		fimgSetZBufBaseAddr(ctx->fimg, fba->surface->paddr);
+		stencilMask = ctx->perFragment.mask.stencil;
+		stencilTest = ctx->enable.stencilTest;
+	}
+
+	fimgSetZBufWriteMask(ctx->fimg, depthMask);
+	fimgSetDepthEnable(ctx->fimg, depthTest);
+	fimgSetStencilBufWriteMask(ctx->fimg, 0, stencilMask);
+	fimgSetStencilBufWriteMask(ctx->fimg, 1, stencilMask);
+	fimgSetStencilEnable(ctx->fimg, stencilTest);
 
 	if (ctx->framebuffer.curFlipY != flipY
 	    || ctx->framebuffer.curWidth != width
@@ -1819,14 +1835,18 @@ static inline void fglSet(GLenum cap, bool state)
 		fimgSetAlphaEnable(ctx->fimg, state);
 		ctx->enable.alphaTest = state;
 		break;
-	case GL_STENCIL_TEST:
-		fimgSetStencilEnable(ctx->fimg, state);
+	case GL_STENCIL_TEST: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		if (fb->getDepthFormat() >> 8)
+			fimgSetStencilEnable(ctx->fimg, state);
 		ctx->enable.stencilTest = state;
-		break;
-	case GL_DEPTH_TEST:
-		fimgSetDepthEnable(ctx->fimg, state);
+		break; }
+	case GL_DEPTH_TEST: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		if (fb->getDepthFormat() & 0xff)
+			fimgSetDepthEnable(ctx->fimg, state);
 		ctx->enable.depthTest = state;
-		break;
+		break; }
 	case GL_BLEND:
 		ctx->enable.blend = state;
 		fglSetBlending(ctx);
