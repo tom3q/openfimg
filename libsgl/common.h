@@ -77,6 +77,9 @@ public:
 #undef NELEM
 #define NELEM(x) (sizeof(x)/sizeof(*(x)))
 
+#define BIT_MASK(x)	((1UL << (x)) - 1)
+#define BIT_VAL(x)	(1UL << (x))
+
 template<typename T>
 static inline T max(T a, T b)
 {

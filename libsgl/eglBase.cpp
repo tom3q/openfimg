@@ -328,7 +328,7 @@ static const FGLConfigPair defaultConfigAttributes[] = {
 
 static bool fglGetConfigAttrib(uint32_t config, EGLint attribute, EGLint *value)
 {
-	size_t numConfigs =  gPlatformConfigsNum;
+	size_t numConfigs = gPlatformConfigsNum;
 
 	if (config >= numConfigs) {
 		setError(EGL_BAD_CONFIG);
@@ -343,7 +343,7 @@ static bool fglGetConfigAttrib(uint32_t config, EGLint attribute, EGLint *value)
 	int attrIndex = binarySearch(gPlatformConfigs[config].array, 0,
 				gPlatformConfigs[config].size - 1, attribute);
 
-	if (attrIndex>=0) {
+	if (attrIndex >= 0) {
 		*value = gPlatformConfigs[config].array[attrIndex].value;
 		return true;
 	}
@@ -351,7 +351,7 @@ static bool fglGetConfigAttrib(uint32_t config, EGLint attribute, EGLint *value)
 	attrIndex = binarySearch(baseConfigAttributes, 0,
 				NELEM(baseConfigAttributes) - 1, attribute);
 
-	if (attrIndex>=0) {
+	if (attrIndex >= 0) {
 		*value = baseConfigAttributes[attrIndex].value;
 		return true;
 	}
@@ -433,45 +433,31 @@ bool fglEGLValidatePixelFormat(uint32_t config, uint32_t fmt)
 	return true;
 }
 
-static int isAttributeMatching(int i, EGLint attr, EGLint val)
+static int fglIsAttributeMatching(int i, EGLint attr, EGLint val)
 {
-	// look for the attribute in all of our configs
+	/* look for the attribute in all of our configs */
 	const FGLConfigPair *configFound = gPlatformConfigs[i].array;
-	int index = binarySearch<FGLConfigPair>(
-		gPlatformConfigs[i].array,
-		0, gPlatformConfigs[i].size-1,
-		attr);
-
+	int index = binarySearch(gPlatformConfigs[i].array, 0,
+					gPlatformConfigs[i].size - 1, attr);
 	if (index < 0) {
+		/* look in base attributes */
 		configFound = baseConfigAttributes;
-		index = binarySearch<FGLConfigPair>(
-			baseConfigAttributes,
-			0, NELEM(baseConfigAttributes)-1,
-			attr);
+		index = binarySearch(baseConfigAttributes, 0,
+					NELEM(baseConfigAttributes) - 1, attr);
 	}
+	if (index < 0)
+		/* error, this attribute doesn't exist */
+		return 0;
 
-	if (index >= 0) {
-		// attribute found, check if this config could match
-		int cfgMgtIndex = binarySearch<FGLConfigMatcher>(
-			gConfigManagement,
-			0, NELEM(gConfigManagement)-1,
-			attr);
+	/* attribute found, check if this config could match */
+	int cfgMgtIndex = binarySearch(gConfigManagement, 0,
+					NELEM(gConfigManagement) - 1, attr);
+	if (cfgMgtIndex < 0)
+		/* attribute not found. this should NEVER happen. */
+		return 0;
 
-		if (cfgMgtIndex >= 0) {
-			bool match = gConfigManagement[cfgMgtIndex].match(
-				val, configFound[index].value);
-			if (match) {
-				// this config matches
-				return 1;
-			}
-		} else {
-		// attribute not found. this should NEVER happen.
-		}
-	} else {
-		// error, this attribute doesn't exist
-	}
-
-	return 0;
+	return gConfigManagement[cfgMgtIndex].match(val,
+						configFound[index].value);
 }
 
 /*
@@ -491,32 +477,29 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
 		return EGL_FALSE;
 	}
 
-	if(unlikely(!num_config)) {
+	if (unlikely(!num_config)) {
 		setError(EGL_BAD_PARAMETER);
 		return EGL_FALSE;
 	}
 
-	EGLint num = gPlatformConfigsNum;
-
-	if(!configs) {
-		*num_config = num;
+	if (!configs) {
+		*num_config = gPlatformConfigsNum;
 		return EGL_TRUE;
 	}
 
-	num = min(num, config_size);
+	EGLint num = min(gPlatformConfigsNum, config_size);
+	for(EGLint i = 0; i < num; ++i)
+		*(configs++) = (EGLConfig)i;
 
-	EGLint i;
-	for(i = 0; i < num; i++)
-		*(configs)++ = (EGLConfig)i;
-
-	*num_config = i;
-
+	*num_config = num;
 	return EGL_TRUE;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list,
-			EGLConfig *configs, EGLint config_size,
-			EGLint *num_config)
+static const EGLint dummyAttribList = EGL_NONE;
+
+EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy,
+				const EGLint *attrib_list, EGLConfig *configs,
+				EGLint config_size, EGLint *num_config)
 {
 	if (unlikely(!fglEGLValidateDisplay(dpy))) {
 		setError(EGL_BAD_DISPLAY);
@@ -528,81 +511,100 @@ EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attr
 		return EGL_FALSE;
 	}
 
-	if (unlikely(attrib_list==0)) {
+	if (unlikely(!attrib_list)) {
 		/*
 		 * A NULL attrib_list should be treated as though it was
 		 * an empty one (terminated with EGL_NONE) as defined in
 		 * section 3.4.1 "Querying Configurations" in the EGL
 		 * specification.
 		 */
-		static const EGLint dummy = EGL_NONE;
-		attrib_list = &dummy;
+		attrib_list = &dummyAttribList;
 	}
 
-	int numAttributes = 0;
-	int numConfigs = gPlatformConfigsNum;
-	uint32_t possibleMatch = (1<<numConfigs)-1;
-	while(possibleMatch && *attrib_list != EGL_NONE) {
-		numAttributes++;
-		EGLint attr = *attrib_list++;
-		EGLint val  = *attrib_list++;
-		for (int i=0 ; possibleMatch && i<numConfigs ; i++) {
-			if (!(possibleMatch & (1<<i)))
+	uint32_t numAttributes = 0;
+	uint32_t numConfigs = gPlatformConfigsNum;
+	uint32_t possibleMatch = BIT_MASK(numConfigs);
+
+	while (possibleMatch && *attrib_list != EGL_NONE) {
+		EGLint attr = *(attrib_list++);
+		EGLint val  = *(attrib_list++);
+
+		for (uint32_t i = 0; i < numConfigs; ++i) {
+			if (!possibleMatch)
+				break;
+
+			if (!(possibleMatch & BIT_VAL(i)))
 				continue;
-			if (isAttributeMatching(i, attr, val) == 0) {
-				possibleMatch &= ~(1<<i);
-			}
+
+			if (!fglIsAttributeMatching(i, attr, val))
+				possibleMatch &= ~BIT_VAL(i);
+		}
+
+		++numAttributes;
+	}
+
+	uint32_t numDefaults = NELEM(defaultConfigAttributes);
+	/* now, handle the attributes which have a useful default value */
+	for (uint32_t j = 0; j < numDefaults; ++j) {
+		if (!possibleMatch)
+			break;
+		/*
+		 * see if this attribute was specified,
+		 * if not, apply its default value
+		 */
+		const FGLConfigPair *array = (const FGLConfigPair *)attrib_list;
+		int index = binarySearch(array, 0, numAttributes - 1,
+						defaultConfigAttributes[j].key);
+		if (index >= 0)
+			continue;
+
+		for (uint32_t i = 0; i < numConfigs; ++i) {
+			if (!possibleMatch)
+				break;
+
+			if (!(possibleMatch & BIT_VAL(i)))
+				continue;
+
+			const FGLConfigPair *tmp = &defaultConfigAttributes[i];
+			int matched = fglIsAttributeMatching(i,
+							tmp->key, tmp->value);
+			if (!matched)
+				possibleMatch &= ~BIT_VAL(i);
 		}
 	}
 
-	// now, handle the attributes which have a useful default value
-	for (int j=0 ; possibleMatch && j<(int)NELEM(defaultConfigAttributes) ; j++) {
-		// see if this attribute was specified, if not, apply its
-		// default value
-		if (binarySearch<FGLConfigPair>(
-			(const FGLConfigPair *)attrib_list,
-			0, numAttributes-1,
-			defaultConfigAttributes[j].key) < 0)
-		{
-			for (int i=0 ; possibleMatch && i<numConfigs ; i++) {
-				if (!(possibleMatch & (1<<i)))
-					continue;
-				if (isAttributeMatching(i,
-					defaultConfigAttributes[j].key,
-					defaultConfigAttributes[j].value) == 0)
-				{
-					possibleMatch &= ~(1<<i);
-				}
-			}
-		}
+	/* return the configurations found */
+	if (!possibleMatch) {
+		*num_config = 0;
+		return EGL_TRUE;
 	}
 
-	// return the configurations found
-	int n=0;
-	if (possibleMatch) {
-		if (configs) {
-			for (int i=0 ; config_size && i<numConfigs ; i++) {
-				if (possibleMatch & (1<<i)) {
-					*configs++ = (EGLConfig)i;
-					config_size--;
-					n++;
-				}
-			}
-		} else {
-			for (int i=0 ; i<numConfigs ; i++) {
-				if (possibleMatch & (1<<i)) {
-					n++;
-				}
-			}
+	uint32_t n = 0;
+
+	if (!configs) {
+		while (possibleMatch) {
+			n += possibleMatch & 1;
+			possibleMatch >>= 1;
 		}
+		*num_config = n;
+		return EGL_TRUE;
+	}
+
+	for (uint32_t i = 0; config_size && i < numConfigs; ++i) {
+		if (!(possibleMatch & BIT_VAL(i)))
+			continue;
+
+		*(configs++) = (EGLConfig)i;
+		--config_size;
+		++n;
 	}
 
 	*num_config = n;
 	return EGL_TRUE;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config,
-			EGLint attribute, EGLint *value)
+EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy,
+			EGLConfig config, EGLint attribute, EGLint *value)
 {
 	if (unlikely(!fglEGLValidateDisplay(dpy))) {
 		setError(EGL_BAD_DISPLAY);
@@ -708,8 +710,8 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy,
 	return (EGLSurface)surface;
 }
 
-EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig config,
-				const EGLint *attrib_list)
+EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy,
+				EGLConfig config, const EGLint *attrib_list)
 {
 	uint32_t configID = (uint32_t)config;
 
@@ -734,18 +736,28 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 		return EGL_NO_SURFACE;
 	}
 
-	int32_t w = 0;
-	int32_t h = 0;
-	if(attrib_list) {
-		while (attrib_list[0]) {
-			if (attrib_list[0] == EGL_WIDTH)  w = attrib_list[1];
-			if (attrib_list[0] == EGL_HEIGHT) h = attrib_list[1];
-			attrib_list+=2;
-		}
+	if (unlikely(!attrib_list))
+		attrib_list = &dummyAttribList;
+
+	int32_t width = 0;
+	int32_t height = 0;
+	while (attrib_list[0] != EGL_NONE) {
+		if (attrib_list[0] == EGL_WIDTH)
+			width = attrib_list[1];
+
+		if (attrib_list[0] == EGL_HEIGHT)
+			height = attrib_list[1];
+
+		attrib_list += 2;
+	}
+
+	if (width <= 0 || height <= 0) {
+		setError(EGL_BAD_PARAMETER);
+		return EGL_NO_SURFACE;
 	}
 
 	FGLRenderSurface *surface = new FGLPbufferSurface(dpy,
-			configID, pixelFormat, depthFormat, w, h);
+			configID, pixelFormat, depthFormat, width, height);
 	if (!surface || !surface->initCheck()) {
 		if (!surface)
 			setError(EGL_BAD_ALLOC);
@@ -757,15 +769,17 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferSurface(EGLDisplay dpy, EGLConfig 
 	return (EGLSurface)surface;
 }
 
-EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy, EGLConfig config,
-				EGLNativePixmapType pixmap,
+EGLAPI EGLSurface EGLAPIENTRY eglCreatePixmapSurface(EGLDisplay dpy,
+				EGLConfig config, EGLNativePixmapType pixmap,
 				const EGLint *attrib_list)
 {
 	FUNC_UNIMPLEMENTED;
+	setError(EGL_BAD_MATCH);
 	return EGL_NO_SURFACE;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surface)
+EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy,
+							EGLSurface surface)
 {
 	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
@@ -792,8 +806,8 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay dpy, EGLSurface surfa
 	return EGL_TRUE;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface,
-			EGLint attribute, EGLint *value)
+EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy,
+			EGLSurface surface, EGLint attribute, EGLint *value)
 {
 	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
@@ -882,21 +896,25 @@ EGLAPI EGLenum EGLAPIENTRY eglQueryAPI(void)
 	return EGL_OPENGL_ES_API;
 }
 
-
 EGLAPI EGLBoolean EGLAPIENTRY eglWaitClient(void)
 {
-	glFinish();
+	EGLContext ctx = eglGetCurrentContext();
+
+	if (ctx != EGL_NO_CONTEXT)
+		glFinish();
+
 	return EGL_TRUE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglReleaseThread(void)
 {
 	EGLContext ctx = eglGetCurrentContext();
-	if (ctx != EGL_NO_CONTEXT) {
-		EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-		eglMakeCurrent(dpy, EGL_NO_CONTEXT, EGL_NO_SURFACE,
-								EGL_NO_SURFACE);
-	}
+
+	if (ctx == EGL_NO_CONTEXT)
+		return EGL_TRUE;
+
+	EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+	eglMakeCurrent(dpy, EGL_NO_CONTEXT, EGL_NO_SURFACE, EGL_NO_SURFACE);
 
 	return EGL_TRUE;
 }
@@ -910,28 +928,31 @@ EGLAPI EGLSurface EGLAPIENTRY eglCreatePbufferFromClientBuffer(
 	EGLConfig config, const EGLint *attrib_list)
 {
 	FUNC_UNIMPLEMENTED;
+	setError(EGL_BAD_MATCH);
 	return EGL_NO_SURFACE;
 }
 
-
-EGLAPI EGLBoolean EGLAPIENTRY eglSurfaceAttrib(EGLDisplay dpy, EGLSurface surface,
-			EGLint attribute, EGLint value)
+EGLAPI EGLBoolean EGLAPIENTRY eglSurfaceAttrib(EGLDisplay dpy,
+			EGLSurface surface, EGLint attribute, EGLint value)
 {
 	FUNC_UNIMPLEMENTED;
+	setError(EGL_BAD_MATCH);
 	return EGL_FALSE;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglBindTexImage(EGLDisplay dpy, EGLSurface surface, EGLint buffer)
+EGLAPI EGLBoolean EGLAPIENTRY eglBindTexImage(EGLDisplay dpy,
+					EGLSurface surface, EGLint buffer)
 {
 	FUNC_UNIMPLEMENTED;
-	setError(EGL_BAD_SURFACE);
+	setError(EGL_BAD_MATCH);
 	return EGL_FALSE;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglReleaseTexImage(EGLDisplay dpy, EGLSurface surface, EGLint buffer)
+EGLAPI EGLBoolean EGLAPIENTRY eglReleaseTexImage(EGLDisplay dpy,
+					EGLSurface surface, EGLint buffer)
 {
 	FUNC_UNIMPLEMENTED;
-	setError(EGL_BAD_SURFACE);
+	setError(EGL_BAD_MATCH);
 	return EGL_FALSE;
 }
 
@@ -948,10 +969,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval)
 extern FGLContext *fglCreateContext(void);
 extern void fglDestroyContext(FGLContext *ctx);
 
-
-EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config,
-			EGLContext share_context,
-			const EGLint *attrib_list)
+EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy,
+				EGLConfig config, EGLContext share_context,
+				const EGLint *attrib_list)
 {
 	if (!fglEGLValidateDisplay(dpy)) {
 		setError(EGL_BAD_DISPLAY);
@@ -1009,8 +1029,9 @@ static void fglUnbindContext(FGLContext *c)
 	d->disconnect();
 	d->ctx = EGL_NO_CONTEXT;
 	c->egl.draw = EGL_NO_SURFACE;
+
 	/* Delete it if it's terminated */
-	if(d->isTerminated())
+	if (d->isTerminated())
 		delete d;
 
 	/* Delete the context if it's terminated */
@@ -1018,7 +1039,7 @@ static void fglUnbindContext(FGLContext *c)
 		fglDestroyContext(c);
 }
 
-static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
+static EGLBoolean fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 {
 	FGLContext *current = getGlThreadSpecific();
 
@@ -1069,12 +1090,8 @@ static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 
 	/* Perform first time initialization if needed */
 	if (gl->egl.flags & FGL_NEVER_CURRENT) {
-		gl->egl.flags &= ~FGL_NEVER_CURRENT;
-		GLint w = 0;
-		GLint h = 0;
-
-		w = d->getWidth();
-		h = d->getHeight();
+		GLint w = d->getWidth();
+		GLint h = d->getHeight();
 
 		uint32_t depth = (d->getDepthFormat() & 0xff) ? 1 : 0;
 		uint32_t stencil = (d->getDepthFormat() >> 8) ? 0xff : 0;
@@ -1086,13 +1103,15 @@ static int fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 		glViewport(0, 0, w, h);
 		glScissor(0, 0, w, h);
 		glDisable(GL_SCISSOR_TEST);
+
+		gl->egl.flags &= ~FGL_NEVER_CURRENT;
 	}
 
 	return EGL_TRUE;
 }
 
-EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw,
-			EGLSurface read, EGLContext ctx)
+EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy,
+			EGLSurface draw, EGLSurface read, EGLContext ctx)
 {
 	/*
 	 * Do all the EGL sanity checks
@@ -1186,16 +1205,23 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 		 * Returns the ID of the EGL frame buffer configuration with
 		 * respect to which the context was created.
 		 */
-		return fglGetConfigAttrib((uint32_t)c->egl.config, EGL_CONFIG_ID, value);
+		*value = (EGLint)c->egl.config;
+		break;
+	default:
+		setError(EGL_BAD_ATTRIBUTE);
+		return EGL_FALSE;
 	}
 
-	setError(EGL_BAD_ATTRIBUTE);
-	return EGL_FALSE;
+	return EGL_TRUE;
 }
 
 EGLAPI EGLBoolean EGLAPIENTRY eglWaitGL(void)
 {
-	glFinish();
+	EGLContext ctx = (EGLContext)getGlThreadSpecific();
+
+	if (ctx == EGL_NO_CONTEXT)
+		glFinish();
+
 	return EGL_TRUE;
 }
 
@@ -1212,18 +1238,17 @@ EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 		return EGL_FALSE;
 	}
 
-	FGLRenderSurface *d = static_cast<FGLRenderSurface *>(surface);
+	FGLRenderSurface *d = (FGLRenderSurface *)surface;
 
 	if (!d->isValid() || d->isTerminated()) {
 		setError(EGL_BAD_SURFACE);
 		return EGL_FALSE;
 	}
 
-	if (d->ctx != EGL_NO_CONTEXT) {
-		FGLContext *c = (FGLContext *)d->ctx;
-		if (c->egl.flags & FGL_IS_CURRENT)
-			glFinish();
-	}
+	/* Flush the context attached to the surface if it's current */
+	FGLContext *ctx = getGlThreadSpecific();
+	if ((FGLContext *)d->ctx == ctx)
+		glFinish();
 
 	/* post the surface */
 	if (!d->swapBuffers())
