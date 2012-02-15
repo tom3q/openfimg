@@ -151,7 +151,7 @@ static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 		case GL_LUMINANCE:
 			return FGL_PIXFMT_L8;
 		case GL_LUMINANCE_ALPHA:
-			return FGL_PIXFMT_LA88;
+			return FGL_PIXFMT_AL88;
 		default:
 			return -1;
 		}
@@ -266,7 +266,7 @@ processNextLevel:
 			}
 		}
 		break; }
-	case FGL_PIXFMT_LA88:
+	case FGL_PIXFMT_AL88:
 		skip = 2;
 		/* Fall-through */
 	case FGL_PIXFMT_L8: {

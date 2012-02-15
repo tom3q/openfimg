@@ -278,7 +278,7 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0
 	},
 	/*
-	 * FGL_PIXFMT_LA88
+	 * FGL_PIXFMT_AL88
 	 * ---------------------
 	 * | 15 -  8 | 7  -  0 |
 	 * ---------------------
