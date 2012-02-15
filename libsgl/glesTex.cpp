@@ -149,7 +149,8 @@ static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 		case GL_ALPHA:
 			return FGL_PIXFMT_L8;
 		case GL_LUMINANCE:
-			return FGL_PIXFMT_L8;
+			*conv = 1;
+			/* Fall through */
 		case GL_LUMINANCE_ALPHA:
 			return FGL_PIXFMT_AL88;
 		default:
