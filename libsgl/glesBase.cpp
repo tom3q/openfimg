@@ -716,8 +716,7 @@ static inline void fglSetupTextures(FGLContext *ctx)
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 			ctx->busyTexture[i] = tex;
 			flush = true;
-			if (!tex->eglImage)
-				tex->dirty = 0;
+			tex->dirty = 0;
 		} else {
 			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);

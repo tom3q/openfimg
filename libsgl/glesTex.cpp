@@ -983,7 +983,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->pixFormat	= image->pixelFormat;
 	tex->convert	= 0;
 	tex->maxLevel	= 0;
-	tex->dirty	= true;
+	tex->dirty	= false;
 	tex->width	= image->width;
 	tex->height	= image->height;
 
@@ -996,6 +996,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 		fimgSetTexMinFilter(tex->fimg, FGTU_TSTA_FILTER_LINEAR);
 
 	tex->eglImage->connect();
+	tex->surface->flush();
 }
 
 #if 0
