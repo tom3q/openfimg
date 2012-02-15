@@ -1762,17 +1762,17 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 }
 
 static const int componentPositionsRGBA[] = {
-	0,	/* FGL_COMP_RED */
-	1,	/* FGL_COMP_GREEN */
-	2,	/* FGL_COMP_BLUE */
-	3	/* FGL_COMP_ALPHA */
+	3,	/* FGL_COMP_RED */
+	2,	/* FGL_COMP_GREEN */
+	1,	/* FGL_COMP_BLUE */
+	0	/* FGL_COMP_ALPHA */
 };
 
 static const int componentPositionsBGRA[] = {
-	2,	/* FGL_COMP_RED */
-	1,	/* FGL_COMP_GREEN */
-	0,	/* FGL_COMP_BLUE */
-	3	/* FGL_COMP_ALPHA */
+	1,	/* FGL_COMP_RED */
+	2,	/* FGL_COMP_GREEN */
+	3,	/* FGL_COMP_BLUE */
+	0	/* FGL_COMP_ALPHA */
 };
 
 static const int *componentPositions[] = {
