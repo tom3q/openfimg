@@ -519,8 +519,6 @@ struct _fimgContext {
 	size_t vertexDataSize;
 };
 
-#define FIMG_DEBUG_HW_LOCK
-
 /* Registry accessors */
 static inline void fimgWrite(fimgContext *ctx, unsigned int data, unsigned int addr)
 {

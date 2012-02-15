@@ -52,4 +52,7 @@
 /* Dump file path */
 #define FIMG_DUMP_FILE_PATH	"/tmp"
 
+/* Check for hardware lock before register access */
+//#define FIMG_DEBUG_HW_LOCK
+
 #endif /* _FIMG_CONFIG_H_ */
