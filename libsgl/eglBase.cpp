@@ -824,9 +824,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy,
 	EGLBoolean ret = EGL_TRUE;
 	switch (attribute) {
 	case EGL_CONFIG_ID:
-		if (!fglGetConfigAttrib((uint32_t)fglSurface->config,
-							EGL_CONFIG_ID, value))
-			ret = EGL_FALSE;
+		*value = (EGLint)fglSurface->config;
 		break;
 	case EGL_WIDTH:
 		*value = fglSurface->getWidth();
