@@ -542,7 +542,7 @@ void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
 	ctx->compat.texture[unit].texture = tex;
 	if (tex)
 		ctx->compat.texture[unit].swap =
-					!!(tex->reserved2 && FGTU_TEX_BGR);
+					!!(tex->reserved2 & FGTU_TEX_BGR);
 }
 
 void fimgCreateCompatContext(fimgContext *ctx)
