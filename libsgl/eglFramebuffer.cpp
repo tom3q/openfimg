@@ -81,12 +81,32 @@ static const FGLConfigPair configAttributes1[] = {
 	{ EGL_BLUE_SIZE,        5 },
 	{ EGL_GREEN_SIZE,       6 },
 	{ EGL_RED_SIZE,         5 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     8 },
+};
+
+static const FGLConfigPair configAttributes2[] = {
+	{ EGL_BUFFER_SIZE,     16 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        5 },
+	{ EGL_GREEN_SIZE,       6 },
+	{ EGL_RED_SIZE,         5 },
+	{ EGL_DEPTH_SIZE,      24 },
+	{ EGL_STENCIL_SIZE,     0 },
+};
+
+static const FGLConfigPair configAttributes3[] = {
+	{ EGL_BUFFER_SIZE,     16 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        5 },
+	{ EGL_GREEN_SIZE,       6 },
+	{ EGL_RED_SIZE,         5 },
 	{ EGL_DEPTH_SIZE,      24 },
 	{ EGL_STENCIL_SIZE,     8 },
 };
 
 /* RGB 888 configs */
-static const FGLConfigPair configAttributes2[] = {
+static const FGLConfigPair configAttributes4[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -96,7 +116,27 @@ static const FGLConfigPair configAttributes2[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
-static const FGLConfigPair configAttributes3[] = {
+static const FGLConfigPair configAttributes5[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     8 },
+};
+
+static const FGLConfigPair configAttributes6[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,      24 },
+	{ EGL_STENCIL_SIZE,     0 },
+};
+
+static const FGLConfigPair configAttributes7[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -107,7 +147,7 @@ static const FGLConfigPair configAttributes3[] = {
 };
 
 /* ARGB 8888 configs */
-static const FGLConfigPair configAttributes4[] = {
+static const FGLConfigPair configAttributes8[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -117,27 +157,27 @@ static const FGLConfigPair configAttributes4[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
-static const FGLConfigPair configAttributes5[] = {
+static const FGLConfigPair configAttributes9[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       8 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     8 },
+};
+
+static const FGLConfigPair configAttributes10[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
 	{ EGL_BLUE_SIZE,        8 },
 	{ EGL_GREEN_SIZE,       8 },
 	{ EGL_RED_SIZE,         8 },
 	{ EGL_DEPTH_SIZE,      24 },
-	{ EGL_STENCIL_SIZE,     8 },
-};
-
-static const FGLConfigPair configAttributes6[] = {
-	{ EGL_BUFFER_SIZE,     32 },
-	{ EGL_ALPHA_SIZE,       8 },
-	{ EGL_BLUE_SIZE,        8 },
-	{ EGL_GREEN_SIZE,       8 },
-	{ EGL_RED_SIZE,         8 },
-	{ EGL_DEPTH_SIZE,       0 },
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
-static const FGLConfigPair configAttributes7[] = {
+static const FGLConfigPair configAttributes11[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -148,14 +188,18 @@ static const FGLConfigPair configAttributes7[] = {
 };
 
 const FGLConfigs gPlatformConfigs[] = {
-	{ configAttributes0, NELEM(configAttributes0) },
-	{ configAttributes1, NELEM(configAttributes1) },
-	{ configAttributes2, NELEM(configAttributes2) },
-	{ configAttributes3, NELEM(configAttributes3) },
-	{ configAttributes4, NELEM(configAttributes4) },
-	{ configAttributes5, NELEM(configAttributes5) },
-	{ configAttributes6, NELEM(configAttributes6) },
-	{ configAttributes7, NELEM(configAttributes7) },
+	{ configAttributes0, NELEM(configAttributes0)   },
+	{ configAttributes1, NELEM(configAttributes1)   },
+	{ configAttributes2, NELEM(configAttributes2)   },
+	{ configAttributes3, NELEM(configAttributes3)   },
+	{ configAttributes4, NELEM(configAttributes4)   },
+	{ configAttributes5, NELEM(configAttributes5)   },
+	{ configAttributes6, NELEM(configAttributes6)   },
+	{ configAttributes7, NELEM(configAttributes7)   },
+	{ configAttributes8, NELEM(configAttributes8)   },
+	{ configAttributes9, NELEM(configAttributes9)   },
+	{ configAttributes10, NELEM(configAttributes10) },
+	{ configAttributes11, NELEM(configAttributes11) },
 };
 
 const int gPlatformConfigsNum = NELEM(gPlatformConfigs);
