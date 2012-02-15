@@ -79,6 +79,7 @@ enum {
 	FGL_PIXFMT_UY1VY0,
 };
 
+/* Defined to be equal to respective FGPF_ and FGTU_ flags in fimg.h */
 enum {
 	FGL_PIX_ALPHA_LSB	= (1 << 0),
 	FGL_PIX_BGR		= (1 << 1),
