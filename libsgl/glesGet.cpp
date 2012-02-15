@@ -76,11 +76,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		0,
-		false,
 		-1,
 		-1,
-		false,
-		false,
+		0
 	},
 
 	/*
@@ -100,11 +98,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_5_5_1,
 		2,
-		true, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_1555,
 		FGPF_COLOR_MODE_555,
-		false,
-		false,
+		FGL_PIX_OPAQUE
 	},
 	/*
 	 * FGL_PIXFMT_RGB565
@@ -119,11 +115,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_RGB,
 		GL_UNSIGNED_SHORT_5_6_5,
 		2,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_565,
 		FGPF_COLOR_MODE_565,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_ARGB4444
@@ -138,11 +132,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_4_4_4_4,
 		2,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_4444,
 		FGPF_COLOR_MODE_4444,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_ARGB1555
@@ -157,11 +149,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_RGBA,
 		GL_UNSIGNED_SHORT_5_5_5_1,
 		2,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_1555,
 		FGPF_COLOR_MODE_1555,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_XRGB8888
@@ -176,11 +166,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_BGRA_EXT,
 		GL_UNSIGNED_BYTE,
 		4,
-		true, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_8888,
 		FGPF_COLOR_MODE_0888,
-		false,
-		false,
+		FGL_PIX_OPAQUE
 	},
 	/*
 	 * FGL_PIXFMT_ARGB8888
@@ -195,11 +183,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_BGRA_EXT,
 		GL_UNSIGNED_BYTE,
 		4,
-		false, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_8888,
 		FGPF_COLOR_MODE_8888,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_XBGR8888
@@ -214,11 +200,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_RGBA,
 		GL_UNSIGNED_BYTE,
 		4,
-		true, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_8888,
 		FGPF_COLOR_MODE_0888,
-		true,
-		false,
+		FGL_PIX_OPAQUE | FGL_PIX_BGR
 	},
 	/*
 	 * FGL_PIXFMT_ABGR8888
@@ -233,11 +217,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		GL_RGBA,
 		GL_UNSIGNED_BYTE,
 		4,
-		false, /* Force opaque */
 		FGTU_TSTA_TEXTURE_FORMAT_8888,
 		FGPF_COLOR_MODE_8888,
-		true,
-		false,
+		FGL_PIX_BGR
 	},
 
 	/*
@@ -257,11 +239,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		2,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_4444,
 		-1,
-		false,
-		true,
+		FGL_PIX_ALPHA_LSB
 	},
 	/*
 	 * FGL_PIXFMT_RGBA1555
@@ -276,11 +256,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		2,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_1555,
 		-1,
-		false,
-		true,
+		FGL_PIX_ALPHA_LSB
 	},
 	/*
 	 * FGL_PIXFMT_DEPTH16
@@ -295,11 +273,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		2,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_DEPTHCOMP16,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_LA88
@@ -314,11 +290,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		2,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_88,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_L8
@@ -333,11 +307,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		1,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_8,
 		-1,
-		false,
-		false,
+		0
 	},
 
 	/*
@@ -357,11 +329,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		0,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_1BPP,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_2BPP
@@ -376,11 +346,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		0,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_2BPP,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_4BPP
@@ -395,11 +363,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		0,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_4BPP,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_8BPP
@@ -414,11 +380,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		0,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_8BPP,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_S3TC
@@ -433,11 +397,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		0,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_S3TC,
 		-1,
-		false,
-		false,
+		0
 	},
 
 	/*
@@ -457,11 +419,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		4,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_Y1VY0U,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_VY1UY0
@@ -476,11 +436,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		4,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_VY1UY0,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_Y1UY0V
@@ -495,11 +453,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		4,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_Y1UY0V,
 		-1,
-		false,
-		false,
+		0
 	},
 	/*
 	 * FGL_PIXFMT_UY1VY0
@@ -514,11 +470,9 @@ const FGLPixelFormat FGLPixelFormat::table[] = {
 		0,
 		0,
 		4,
-		false,
 		FGTU_TSTA_TEXTURE_FORMAT_UY1VY0,
 		-1,
-		false,
-		false,
+		0
 	},
 };
 

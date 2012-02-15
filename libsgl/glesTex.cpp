@@ -624,7 +624,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	obj->type = type;
 	obj->pixFormat = pixFormat;
 	obj->convert = convert;
-	obj->swap = pix->swapNeeded;
 	obj->mask = 0;
 	if (pix->pixFormat != (uint32_t)-1)
 		obj->mask = BIT_VAL(FGL_ATTACHMENT_COLOR);
@@ -664,9 +663,9 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		}
 	}
 
-	fimgInitTexture(obj->fimg, (pix->alphaInLSB << 4) | pix->texFormat,
-					obj->maxLevel, obj->surface->paddr);
-	fimgSetTex2DSize(obj->fimg, width, height);
+	fimgInitTexture(obj->fimg, pix->flags,
+					pix->texFormat, obj->surface->paddr);
+	fimgSetTex2DSize(obj->fimg, width, height, obj->maxLevel);
 
 	// Copy the image (with conversion if needed)
 	if (pixels != NULL) {
@@ -953,12 +952,11 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 	tex->dirty	= true;
 	tex->width	= image->width;
 	tex->height	= image->height;
-	tex->swap	= cfg->swapNeeded;
 
 	// Setup fimgTexture
-	fimgInitTexture(tex->fimg, (cfg->alphaInLSB << 4) | cfg->texFormat,
-					tex->maxLevel, tex->surface->paddr);
-	fimgSetTex2DSize(tex->fimg, image->width, image->height);
+	fimgInitTexture(tex->fimg,
+			cfg->flags, cfg->texFormat, tex->surface->paddr);
+	fimgSetTex2DSize(tex->fimg, image->width, image->height, tex->maxLevel);
 	fimgSetTexMipmap(tex->fimg, FGTU_TSTA_MIPMAP_DISABLED);
 	if (target == GL_TEXTURE_EXTERNAL_OES)
 		fimgSetTexMinFilter(tex->fimg, FGTU_TSTA_FILTER_LINEAR);

@@ -361,7 +361,8 @@ struct _fimgTexture {
 	unsigned int minLevel;
 	unsigned int maxLevel;
 	unsigned int baseAddr;
-	unsigned int padding[2];
+	unsigned int reserved1;
+	unsigned int reserved2;
 };
 
 /*

@@ -62,7 +62,6 @@ struct FGLTexture : public FGLFramebufferAttachable {
 	bool		convert;
 	bool		valid;
 	bool		dirty;
-	bool		swap;
 
 	FGLTexture(unsigned int name = 0) :
 		object(this),
@@ -79,8 +78,7 @@ struct FGLTexture : public FGLFramebufferAttachable {
 		invReady(false),
 		fimg(NULL),
 		valid(false),
-		dirty(false),
-		swap(false)
+		dirty(false)
 	{
 		fimg = fimgCreateTexture();
 		if(fimg == NULL)

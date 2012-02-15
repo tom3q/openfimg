@@ -295,14 +295,19 @@ enum {
 	FGTU_VTSTA_MOD_CLAMP
 };
 
+enum {
+	FGTU_TEX_RGBA	= (1 << 0),
+	FGTU_TEX_BGR	= (1 << 1)
+};
+
 struct _fimgTexture;
 typedef struct _fimgTexture fimgTexture;
 
 /* Functions */
 fimgTexture *fimgCreateTexture(void);
 void fimgDestroyTexture(fimgTexture *texture);
-void fimgInitTexture(fimgTexture *texture, unsigned int format,
-			unsigned int maxLevel, unsigned long addr);
+void fimgInitTexture(fimgTexture *texture, unsigned int flags,
+				unsigned int format, unsigned long addr);
 void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
 						unsigned int offset);
 unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level);
@@ -310,7 +315,7 @@ void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit);
 void fimgSetTexMipmapLevel(fimgTexture *texture, int level);
 void fimgSetTexBaseAddr(fimgTexture *texture, unsigned int addr);
 void fimgSetTex2DSize(fimgTexture *texture,
-	unsigned int uSize, unsigned int vSize);
+		unsigned int uSize, unsigned int vSize, unsigned int maxLevel);
 void fimgSetTex3DSize(fimgTexture *texture, unsigned int vSize,
 				unsigned int uSize, unsigned int pSize);
 void fimgSetTexUAddrMode(fimgTexture *texture, unsigned mode);
@@ -393,8 +398,7 @@ void fimgCompatSetColorScale(fimgContext *ctx, unsigned unit, float scale);
 void fimgCompatSetAlphaScale(fimgContext *ctx, unsigned unit, float scale);
 void fimgCompatSetEnvColor(fimgContext *ctx, unsigned unit,
 					float r, float g, float b, float a);
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
-						uint32_t unit, int swap);
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit);
 
 #endif
 

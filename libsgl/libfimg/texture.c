@@ -99,12 +99,12 @@ void fimgDestroyTexture(fimgTexture *texture)
 	free(texture);
 }
 
-void fimgInitTexture(fimgTexture *texture, unsigned int format,
-			unsigned int maxLevel, unsigned long addr)
+void fimgInitTexture(fimgTexture *texture, unsigned int flags,
+				unsigned int format, unsigned long addr)
 {
+	texture->reserved2 = flags;
 	texture->control.textureFmt = format & 0xf;
-	texture->control.alphaFmt = !!(format >> 4);
-	texture->maxLevel = maxLevel;
+	texture->control.alphaFmt = !!(flags & FGTU_TEX_RGBA);
 	texture->baseAddr = addr;
 }
 
@@ -177,10 +177,11 @@ void fimgSetTexBaseAddr(fimgTexture *texture, unsigned int addr)
 *		[IN]	unsigned int uSize: texture u size (0~2047)
 *****************************************************************************/
 void fimgSetTex2DSize(fimgTexture *texture,
-	unsigned int uSize, unsigned int vSize)
+		unsigned int uSize, unsigned int vSize, unsigned int maxLevel)
 {
 	texture->uSize = uSize;
 	texture->vSize = vSize;
+	texture->maxLevel = maxLevel;
 }
 
 /*****************************************************************************

@@ -647,7 +647,7 @@ static uint32_t getFillColor(FGLContext *ctx,
 	b	>>= (8 - configDesc->comp[FGL_COMP_BLUE].size);
 	bMask	>>= (8 - configDesc->comp[FGL_COMP_BLUE].size);
 
-	if (configDesc->opaque)
+	if (configDesc->flags & FGL_PIX_OPAQUE)
 		a = 0xff;
 	else
 		a = ubyteFromClampf(ctx->clear.alpha);

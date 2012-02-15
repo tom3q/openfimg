@@ -537,11 +537,12 @@ void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
 	ctx->compat.texture[unit].dirty = 1;
 }
 
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
-						uint32_t unit, int swap)
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
 {
 	ctx->compat.texture[unit].texture = tex;
-	ctx->compat.texture[unit].swap = swap;
+	if (tex)
+		ctx->compat.texture[unit].swap =
+					!!(tex->reserved2 && FGTU_TEX_BGR);
 }
 
 void fimgCreateCompatContext(fimgContext *ctx)

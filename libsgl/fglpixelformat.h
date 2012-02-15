@@ -79,26 +79,23 @@ enum {
 	FGL_PIXFMT_UY1VY0,
 };
 
+enum {
+	FGL_PIX_ALPHA_LSB	= (1 << 0),
+	FGL_PIX_BGR		= (1 << 1),
+	FGL_PIX_OPAQUE		= (1 << 2)
+};
+
 struct FGLPixelFormat {
 	struct {
 		uint8_t pos;
 		uint8_t size;
 	} comp[4];
-
 	GLenum readType;
-
 	GLenum readFormat;
-
 	uint32_t pixelSize;
-
-	bool opaque;
-
 	uint32_t texFormat;
-
 	uint32_t pixFormat;
-
-	bool swapNeeded;
-	bool alphaInLSB;
+	uint32_t flags;
 
 	static const FGLPixelFormat *get(unsigned int format);
 
