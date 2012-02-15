@@ -687,7 +687,8 @@ void fimgCompatFlush(fimgContext *ctx)
 		ctx->compat.texture[i].dirty = 0;
 	}
 
-	setPSConstBool(ctx, ctx->colormodeBGR, FIMG_NUM_TEXTURE_UNITS);
+	setPSConstBool(ctx, !!(ctx->fbFlags & FGPF_COLOR_MODE_BGR),
+							FIMG_NUM_TEXTURE_UNITS);
 
 	setPixelShaderState(ctx, 1);
 }

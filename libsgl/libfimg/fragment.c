@@ -420,14 +420,13 @@ void fimgSetZBufWriteMask(fimgContext *ctx, int enable)
 *		[IN] format - specifies the format used for the frame buffer.
 *****************************************************************************/
 void fimgSetFrameBufParams(fimgContext *ctx,
-			   int opaqueAlpha, unsigned int thresholdAlpha,
-			   unsigned int constAlpha, unsigned int format)
+				unsigned int flags, unsigned int format)
 {
-	ctx->fragment.fbctl.opaque = !!opaqueAlpha;
-	ctx->fragment.fbctl.alphathreshold = thresholdAlpha;
-	ctx->fragment.fbctl.alphaconst = constAlpha;
-	ctx->fragment.fbctl.colormode = format & 7;
-	ctx->colormodeBGR = !!(format & FGPF_COLOR_MODE_BGR);
+	ctx->fragment.fbctl.opaque = 0;
+	ctx->fragment.fbctl.alphathreshold = 0;
+	ctx->fragment.fbctl.alphaconst = 255;
+	ctx->fragment.fbctl.colormode = format;
+	ctx->fbFlags = flags;
 	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 

@@ -499,7 +499,7 @@ typedef enum {
 } fimgColorMode;
 
 enum {
-	FGPF_COLOR_MODE_BGR = (1 << 8)
+	FGPF_COLOR_MODE_BGR = (1 << 1)
 };
 
 /* Functions */
@@ -539,8 +539,7 @@ void fimgSetColorBufWriteMask(fimgContext *ctx, unsigned int mask);
 void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask);
 void fimgSetZBufWriteMask(fimgContext *ctx, int enable);
 void fimgSetFrameBufParams(fimgContext *ctx,
-			   int opaqueAlpha, unsigned int thresholdAlpha,
-			   unsigned int constAlpha, unsigned int format);
+				unsigned int flags, unsigned int format);
 void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetFrameBufSize(fimgContext *ctx,

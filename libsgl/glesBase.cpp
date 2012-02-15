@@ -754,8 +754,7 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 	int flipY = (fba->getType() != GL_TEXTURE);
 
 	fimgSetFrameBufSize(ctx->fimg, width, height, flipY);
-	fimgSetFrameBufParams(ctx->fimg,
-				0, 0, 255, (fimgColorMode)pix->pixFormat);
+	fimgSetFrameBufParams(ctx->fimg, pix->flags, pix->pixFormat);
 	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);
 
 	int depthMask = 0, depthTest = 0;
