@@ -147,7 +147,6 @@ static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 		case GL_BGRA_EXT:
 			return FGL_PIXFMT_ARGB8888;
 		case GL_ALPHA:
-			return FGL_PIXFMT_L8;
 		case GL_LUMINANCE:
 			*conv = 1;
 			/* Fall through */
@@ -487,6 +486,20 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		} while (--height);
 		break;
 	}
+	case GL_ALPHA: {
+		size_t stride = (width + alignment - 1) & ~(alignment - 1);
+		size_t padding = stride - width;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface->vaddr + offset);
+		do {
+			unsigned x = width;
+			do {
+				*(dst16++) = fglPackAL88(0, *(src8++));
+			} while (--x);
+			src8 += padding;
+		} while (--height);
+		break;
+	}
 	default:
 		LOGW("Unsupported texture conversion %d", obj->format);
 		return;
@@ -795,6 +808,27 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 			unsigned x = w;
 			do {
 				*(dst16++) = fglPackAL88(*(src8++), 255);
+			} while (--x);
+			src8 += srcPad;
+			dst16 += dstPad;
+		} while (--h);
+		break;
+	}
+	case GL_ALPHA: {
+		size_t line = w;
+		size_t srcStride = (line + alignment - 1) & ~(alignment - 1);
+		size_t dstStride = 2*width;
+		size_t xOffset = 2*x;
+		size_t yOffset = y*dstStride;
+		size_t srcPad = srcStride - line;
+		size_t dstPad = width - w;
+		const uint8_t *src8 = (const uint8_t *)pixels;
+		uint16_t *dst16 = (uint16_t *)((uint8_t *)obj->surface->vaddr
+						+ offset + yOffset + xOffset);
+		do {
+			unsigned x = w;
+			do {
+				*(dst16++) = fglPackAL88(0, *(src8++));
 			} while (--x);
 			src8 += srcPad;
 			dst16 += dstPad;
