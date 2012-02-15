@@ -88,13 +88,35 @@ static const FGLConfigPair configAttributes1[] = {
 	{ EGL_BLUE_SIZE,        5 },
 	{ EGL_GREEN_SIZE,       6 },
 	{ EGL_RED_SIZE,         5 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
+};
+
+static const FGLConfigPair configAttributes2[] = {
+	{ EGL_BUFFER_SIZE,     16 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        5 },
+	{ EGL_GREEN_SIZE,       6 },
+	{ EGL_RED_SIZE,         5 },
+	{ EGL_DEPTH_SIZE,      24 },
+	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
+};
+
+static const FGLConfigPair configAttributes3[] = {
+	{ EGL_BUFFER_SIZE,     16 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        5 },
+	{ EGL_GREEN_SIZE,       6 },
+	{ EGL_RED_SIZE,         5 },
 	{ EGL_DEPTH_SIZE,      24 },
 	{ EGL_STENCIL_SIZE,     8 },
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
 };
 
 /* XBGR 888 configs */
-static const FGLConfigPair configAttributes2[] = {
+static const FGLConfigPair configAttributes4[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -105,7 +127,29 @@ static const FGLConfigPair configAttributes2[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
 };
 
-static const FGLConfigPair configAttributes3[] = {
+static const FGLConfigPair configAttributes5[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
+};
+
+static const FGLConfigPair configAttributes6[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       0 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,      24 },
+	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
+};
+
+static const FGLConfigPair configAttributes7[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -117,7 +161,7 @@ static const FGLConfigPair configAttributes3[] = {
 };
 
 /* ABGR 8888 configs */
-static const FGLConfigPair configAttributes4[] = {
+static const FGLConfigPair configAttributes8[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -128,7 +172,29 @@ static const FGLConfigPair configAttributes4[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
 };
 
-static const FGLConfigPair configAttributes5[] = {
+static const FGLConfigPair configAttributes9[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       8 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
+};
+
+static const FGLConfigPair configAttributes10[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       8 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,      24 },
+	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
+};
+
+static const FGLConfigPair configAttributes11[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -140,7 +206,7 @@ static const FGLConfigPair configAttributes5[] = {
 };
 
 /* ARGB 8888 configs */
-static const FGLConfigPair configAttributes6[] = {
+static const FGLConfigPair configAttributes12[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -151,7 +217,29 @@ static const FGLConfigPair configAttributes6[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
 };
 
-static const FGLConfigPair configAttributes7[] = {
+static const FGLConfigPair configAttributes13[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       8 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,       0 },
+	{ EGL_STENCIL_SIZE,     8 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
+};
+
+static const FGLConfigPair configAttributes14[] = {
+	{ EGL_BUFFER_SIZE,     32 },
+	{ EGL_ALPHA_SIZE,       8 },
+	{ EGL_BLUE_SIZE,        8 },
+	{ EGL_GREEN_SIZE,       8 },
+	{ EGL_RED_SIZE,         8 },
+	{ EGL_DEPTH_SIZE,      24 },
+	{ EGL_STENCIL_SIZE,     0 },
+	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
+};
+
+static const FGLConfigPair configAttributes15[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
 	{ EGL_BLUE_SIZE,        8 },
@@ -164,14 +252,22 @@ static const FGLConfigPair configAttributes7[] = {
 
 /* Exported to platform-independent EGL code */
 const FGLConfigs gPlatformConfigs[] = {
-	{ configAttributes0, NELEM(configAttributes0) },
-	{ configAttributes1, NELEM(configAttributes1) },
-	{ configAttributes2, NELEM(configAttributes2) },
-	{ configAttributes3, NELEM(configAttributes3) },
-	{ configAttributes4, NELEM(configAttributes4) },
-	{ configAttributes5, NELEM(configAttributes5) },
-	{ configAttributes6, NELEM(configAttributes6) },
-	{ configAttributes7, NELEM(configAttributes7) },
+	{ configAttributes0, NELEM(configAttributes0)   },
+	{ configAttributes1, NELEM(configAttributes1)   },
+	{ configAttributes2, NELEM(configAttributes2)   },
+	{ configAttributes3, NELEM(configAttributes3)   },
+	{ configAttributes4, NELEM(configAttributes4)   },
+	{ configAttributes5, NELEM(configAttributes5)   },
+	{ configAttributes6, NELEM(configAttributes6)   },
+	{ configAttributes7, NELEM(configAttributes7)   },
+	{ configAttributes8, NELEM(configAttributes8)   },
+	{ configAttributes9, NELEM(configAttributes9)   },
+	{ configAttributes10, NELEM(configAttributes10) },
+	{ configAttributes11, NELEM(configAttributes11) },
+	{ configAttributes12, NELEM(configAttributes12) },
+	{ configAttributes13, NELEM(configAttributes13) },
+	{ configAttributes14, NELEM(configAttributes14) },
+	{ configAttributes15, NELEM(configAttributes15) },
 };
 
 /* Exported to platform-independent EGL code */
