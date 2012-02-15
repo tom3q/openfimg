@@ -373,12 +373,9 @@ void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
 *		[IN] b - whether blue can or cannot be written into the frame buffer.
 *		[IN] a - whether alpha can or cannot be written into the frame buffer.
 *****************************************************************************/
-void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a)
+void fimgSetColorBufWriteMask(fimgContext *ctx, unsigned int mask)
 {
-	ctx->fragment.mask.r = !r;
-	ctx->fragment.mask.g = !g;
-	ctx->fragment.mask.b = !b;
-	ctx->fragment.mask.a = !a;
+	ctx->fragment.mask.val = mask & 0xf;
 	fimgQueue(ctx, ctx->fragment.mask.val, FGPF_CBMSK);
 }
 
@@ -424,12 +421,13 @@ void fimgSetZBufWriteMask(fimgContext *ctx, int enable)
 *****************************************************************************/
 void fimgSetFrameBufParams(fimgContext *ctx,
 			   int opaqueAlpha, unsigned int thresholdAlpha,
-			   unsigned int constAlpha, fimgColorMode format)
+			   unsigned int constAlpha, unsigned int format)
 {
 	ctx->fragment.fbctl.opaque = !!opaqueAlpha;
 	ctx->fragment.fbctl.alphathreshold = thresholdAlpha;
 	ctx->fragment.fbctl.alphaconst = constAlpha;
-	ctx->fragment.fbctl.colormode = format;
+	ctx->fragment.fbctl.colormode = format & 7;
+	ctx->colormodeBGR = !!(format & FGPF_COLOR_MODE_BGR);
 	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 

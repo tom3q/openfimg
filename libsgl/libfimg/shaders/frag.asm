@@ -645,6 +645,9 @@ label noswap1
 
 # Shader footer
 	# Emit the pixel
+	bf noswapout, b2
+	mov r0.xyzw, r0.zyxw
+label noswapout
 	mov oColor, r0
 	# Return
 	ret

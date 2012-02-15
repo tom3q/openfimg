@@ -498,6 +498,10 @@ typedef enum {
 	FGPF_COLOR_MODE_8888
 } fimgColorMode;
 
+enum {
+	FGPF_COLOR_MODE_BGR = (1 << 8)
+};
+
 /* Functions */
 void fimgSetScissorParams(fimgContext *ctx,
 			  unsigned int xMax, unsigned int xMin,
@@ -531,12 +535,12 @@ void fimgSetDitherEnable(fimgContext *ctx, int enable);
 void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
 			    fimgLogicalOperation color);
 void fimgSetLogicalOpEnable(fimgContext *ctx, int enable);
-void fimgSetColorBufWriteMask(fimgContext *ctx, int r, int g, int b, int a);
+void fimgSetColorBufWriteMask(fimgContext *ctx, unsigned int mask);
 void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask);
 void fimgSetZBufWriteMask(fimgContext *ctx, int enable);
 void fimgSetFrameBufParams(fimgContext *ctx,
 			   int opaqueAlpha, unsigned int thresholdAlpha,
-			   unsigned int constAlpha, fimgColorMode format);
+			   unsigned int constAlpha, unsigned int format);
 void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetFrameBufSize(fimgContext *ctx,

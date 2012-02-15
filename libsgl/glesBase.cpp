@@ -731,6 +731,7 @@ static inline void fglSetupTextures(FGLContext *ctx)
 static void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
 						GLsizei width, GLsizei height);
 static void fglSetBlending(FGLContext *ctx);
+static void fglSetColorMask(FGLContext *ctx);
 
 static inline int fglSetupFramebuffer(FGLContext *ctx)
 {
@@ -797,8 +798,10 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 					ctx->viewport.height);
 	}
 
-	if (ctx->framebuffer.curColorFormat != colorFormat)
+	if (ctx->framebuffer.curColorFormat != colorFormat) {
 		fglSetBlending(ctx);
+		fglSetColorMask(ctx);
+	}
 
 	ctx->framebuffer.curWidth = width;
 	ctx->framebuffer.curHeight = height;
@@ -1759,6 +1762,40 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 	ctx->perFragment.logicOp = opcode;
 }
 
+static const int componentPositionsRGBA[] = {
+	0,	/* FGL_COMP_RED */
+	1,	/* FGL_COMP_GREEN */
+	2,	/* FGL_COMP_BLUE */
+	3	/* FGL_COMP_ALPHA */
+};
+
+static const int componentPositionsBGRA[] = {
+	2,	/* FGL_COMP_RED */
+	1,	/* FGL_COMP_GREEN */
+	0,	/* FGL_COMP_BLUE */
+	3	/* FGL_COMP_ALPHA */
+};
+
+static const int *componentPositions[] = {
+	componentPositionsRGBA,
+	componentPositionsBGRA
+};
+
+static inline void fglSetColorMask(FGLContext *ctx)
+{
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	const FGLPixelFormat *pix = FGLPixelFormat::get(fb->getColorFormat());
+	const int *pos = componentPositions[!!(pix->flags & FGL_PIX_BGR)];
+	unsigned int mask = 0;
+
+	mask |= !ctx->perFragment.mask.red << pos[FGL_COMP_RED];
+	mask |= !ctx->perFragment.mask.green << pos[FGL_COMP_GREEN];
+	mask |= !ctx->perFragment.mask.blue << pos[FGL_COMP_BLUE];
+	mask |= !ctx->perFragment.mask.alpha << pos[FGL_COMP_ALPHA];
+
+	fimgSetColorBufWriteMask(ctx->fimg, mask);
+}
+
 GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green,
 						GLboolean blue, GLboolean alpha)
 {
@@ -1771,7 +1808,7 @@ GL_API void GL_APIENTRY glColorMask (GLboolean red, GLboolean green,
 	ctx->perFragment.masked = (!red || !green || !blue || !alpha);
 
 	fglSetBlending(ctx);
-	fimgSetColorBufWriteMask(ctx->fimg, red, green, blue, alpha);
+	fglSetColorMask(ctx);
 }
 
 GL_API void GL_APIENTRY glDepthMask (GLboolean flag)
