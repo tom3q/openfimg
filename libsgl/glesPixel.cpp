@@ -790,9 +790,22 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 		draw->flush();
 	}
 
-	if (mode & (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)) {
-		if (!fb->getDepthFormat())
+	mode &= (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	if (mode) {
+		uint32_t depthFormat = fb->getDepthFormat();
+
+		if (!(depthFormat & 0xff))
+			mode &= ~GL_DEPTH_BUFFER_BIT;
+		if (!(depthFormat >> 8))
+			mode &= ~GL_STENCIL_BUFFER_BIT;
+
+		if (!mode)
 			return;
+
+		if (!(depthFormat & 0xff))
+			mode |= GL_DEPTH_BUFFER_BIT;
+		if (!(depthFormat >> 8))
+			mode |= GL_STENCIL_BUFFER_BIT;
 
 		fba = fb->get(FGL_ATTACHMENT_DEPTH);
 		if (!fba)
