@@ -710,13 +710,14 @@ static inline void fglSetupTextures(FGLContext *ctx)
 
 		if(enabled && tex->surface && tex->isComplete()) {
 			/* Texture is ready */
-			if (tex->dirty)
+			if (tex->dirty) {
 				tex->surface->flush();
+				tex->dirty = false;
+				flush = true;
+			}
 			fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
 			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
 			ctx->busyTexture[i] = tex;
-			flush = true;
-			tex->dirty = 0;
 		} else {
 			/* Texture is not ready */
 			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
