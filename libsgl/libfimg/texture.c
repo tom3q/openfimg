@@ -103,7 +103,7 @@ void fimgInitTexture(fimgTexture *texture, unsigned int flags,
 				unsigned int format, unsigned long addr)
 {
 	texture->reserved2 = flags;
-	texture->control.textureFmt = format & 0xf;
+	texture->control.textureFmt = format;
 	texture->control.alphaFmt = !!(flags & FGTU_TEX_RGBA);
 	texture->baseAddr = addr;
 }
