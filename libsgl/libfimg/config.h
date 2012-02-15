@@ -52,6 +52,9 @@
 /* Dump file path */
 #define FIMG_DUMP_FILE_PATH	"/tmp"
 
+/* Map/unmap memory when locking/unlocking */
+//#define FIMG_DEBUG_IOMEM_ACCESS
+
 /* Check for hardware lock before register access */
 //#define FIMG_DEBUG_HW_LOCK
 

@@ -52,7 +52,7 @@ int fimgDeviceOpen(fimgContext *ctx)
 		LOGE("Couldn't open /dev/s3c-g3d (%s).", strerror(errno));
 		return -errno;
 	}
-
+#ifndef FIMG_DEBUG_IOMEM_ACCESS
 	ctx->base = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ,
 					MAP_SHARED, ctx->fd, 0);
 	if(ctx->base == MAP_FAILED) {
@@ -60,7 +60,7 @@ int fimgDeviceOpen(fimgContext *ctx)
 		close(ctx->fd);
 		return -errno;
 	}
-
+#endif
 	LOGD("Opened /dev/s3c-g3d (%d).", ctx->fd);
 
 	return 0;
@@ -72,7 +72,9 @@ int fimgDeviceOpen(fimgContext *ctx)
  *****************************************************************************/
 void fimgDeviceClose(fimgContext *ctx)
 {
+#ifndef FIMG_DEBUG_IOMEM_ACCESS
 	munmap((void *)ctx->base, FIMG_SFR_SIZE);
+#endif
 	close(ctx->fd);
 
 	LOGD("fimg3D: Closed /dev/s3c-g3d (%d).", ctx->fd);
@@ -181,7 +183,15 @@ int fimgAcquireHardwareLock(fimgContext *ctx)
 		LOGE("Could not acquire the hardware lock");
 		return -1;
 	}
-
+#ifdef FIMG_DEBUG_IOMEM_ACCESS
+	ctx->base = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ,
+					MAP_SHARED, ctx->fd, 0);
+	if(ctx->base == MAP_FAILED) {
+		LOGE("Couldn't mmap FIMG registers (%s).", strerror(errno));
+		close(ctx->fd);
+		return -errno;
+	}
+#endif
 	ctx->locked = 1;
 
 	return ret;
@@ -195,6 +205,9 @@ int fimgAcquireHardwareLock(fimgContext *ctx)
  *****************************************************************************/
 int fimgReleaseHardwareLock(fimgContext *ctx)
 {
+#ifdef FIMG_DEBUG_IOMEM_ACCESS
+	munmap((void *)ctx->base, FIMG_SFR_SIZE);
+#endif
 	if(ioctl(ctx->fd, S3C_G3D_UNLOCK, 0)) {
 		LOGE("Could not release the hardware lock");
 		return -1;
