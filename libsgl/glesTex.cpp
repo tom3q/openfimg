@@ -129,6 +129,9 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 		return;
 	}
 
+	if (tex->eglImage)
+		tex->dirty = true;
+
 	binding->bind(&tex->object);
 }
 
