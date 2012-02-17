@@ -705,6 +705,4 @@ void fimgRestoreCompatState(fimgContext *ctx)
 
 	ctx->compat.vsDirty = 1;
 	ctx->compat.psDirty = 1;
-
-	fimgCompatFlush(ctx);
 }
