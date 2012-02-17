@@ -85,6 +85,10 @@ static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 		break;
 	case GL_RGBA:
 	case GL_RGBA8_OES:
+		/* Using ABGR8888 physical representation */
+		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
+		fba->pixFormat = FGL_PIXFMT_ABGR8888;
+		break;
 	case GL_BGRA_EXT:
 		/* Using ARGB8888 physical representation */
 		fba->mask = (1 << FGL_ATTACHMENT_COLOR);
