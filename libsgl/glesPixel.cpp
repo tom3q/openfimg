@@ -317,6 +317,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 		// Nothing to copy
 		return;
 
+	glFinish();
 	draw->flush();
 
 	const FGLPixelFormat *cfg = FGLPixelFormat::get(fb->getColorFormat());
