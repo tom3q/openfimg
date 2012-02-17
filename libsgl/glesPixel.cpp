@@ -97,6 +97,7 @@ static void convertToUByteRGBA555(FGLContext *ctx, uint8_t *dst,
 	src += yOffset + xOffset;
 	dst += height*dstStride;
 	do {
+		dst -= dstStride;
 		unsigned w = width;
 		uint8_t *line = dst;
 		do {
@@ -104,7 +105,6 @@ static void convertToUByteRGBA555(FGLContext *ctx, uint8_t *dst,
 			line += 4;
 		} while (--w);
 		src += srcPad;
-		dst -= dstStride;
 	} while (--height);
 }
 
@@ -132,6 +132,7 @@ static void convertToUByteRGBA565(FGLContext *ctx, uint8_t *dst,
 	src += yOffset + xOffset;
 	dst += height*dstStride;
 	do {
+		dst -= dstStride;
 		unsigned w = width;
 		uint8_t *line = dst;
 		do {
@@ -139,7 +140,6 @@ static void convertToUByteRGBA565(FGLContext *ctx, uint8_t *dst,
 			line += 4;
 		} while (--w);
 		src += srcPad;
-		dst -= dstStride;
 	} while (--height);
 }
 
@@ -167,6 +167,7 @@ static void convertToUByteRGBA4444(FGLContext *ctx, uint8_t *dst,
 	src += yOffset + xOffset;
 	dst += height*dstStride;
 	do {
+		dst -= dstStride;
 		unsigned w = width;
 		uint8_t *line = dst;
 		do {
@@ -174,7 +175,6 @@ static void convertToUByteRGBA4444(FGLContext *ctx, uint8_t *dst,
 			line += 4;
 		} while (--w);
 		src += srcPad;
-		dst -= dstStride;
 	} while (--height);
 }
 
@@ -202,6 +202,7 @@ static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 	src += yOffset + xOffset;
 	dst += height*dstStride;
 	do {
+		dst -= dstStride;
 		unsigned w = width;
 		uint8_t *line = dst;
 		do {
@@ -209,7 +210,6 @@ static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 			line += 4;
 		} while (--w);
 		src += srcPad;
-		dst -= dstStride;
 	} while (--height);
 }
 
@@ -244,13 +244,13 @@ static void convertToUByteBGRA8888(FGLContext *ctx, uint32_t *dst,
 	src += yOffset + xOffset;
 	dst += height*dstStride;
 	do {
+		dst -= dstStride;
 		unsigned w = width;
 		uint32_t *line = dst;
 		do {
 			unpackPixel8888(line++, *src++);
 		} while (--w);
 		src += srcPad;
-		dst -= dstStride;
 	} while (--height);
 }
 
