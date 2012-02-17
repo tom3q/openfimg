@@ -467,13 +467,17 @@ static void *fillBurst32(void *buf, uint32_t val, size_t cnt)
 		"mov r1, %1\n\t"
 		"mov r2, %1\n\t"
 		"mov r3, %1\n\t"
+		"mov r4, %1\n\t"
+		"mov r5, %1\n\t"
+		"mov r6, %1\n\t"
+		"mov r7, %1\n\t"
 		"1:\n\t"
-		"stmia %0!, {r0-r3}\n\t"
+		"stmia %0!, {r0-r7}\n\t"
 		"subs %2, %2, $1\n\t"
 		"bne 1b\n\t"
 		: "+r"(buf)
 		: "r"(val), "r"(cnt)
-		: "r0", "r1", "r2", "r3"
+		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"
 	);
 
 	return buf;
@@ -496,26 +500,30 @@ static void *fillSingle32masked(void *buf, uint32_t val, uint32_t mask, size_t c
 static void *fillBurst32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
 {
 	asm volatile (
-		"mov r0, %1\n\t"
-		"mov r1, %1\n\t"
-		"mov r2, %1\n\t"
-		"mov r3, %1\n\t"
 		"1:\n\t"
-		"ldmia %0, {r0-r3}\n\t"
+		"ldmia %0, {r0-r7}\n\t"
 		"and r0, r0, %2\n\t"
 		"and r1, r1, %2\n\t"
 		"and r2, r2, %2\n\t"
 		"and r3, r3, %2\n\t"
+		"and r4, r4, %2\n\t"
+		"and r5, r5, %2\n\t"
+		"and r6, r6, %2\n\t"
+		"and r7, r7, %2\n\t"
 		"orr r0, r0, %1\n\t"
 		"orr r1, r1, %1\n\t"
 		"orr r2, r2, %1\n\t"
 		"orr r3, r3, %1\n\t"
-		"stmia %0!, {r0-r3}\n\t"
+		"orr r4, r4, %1\n\t"
+		"orr r5, r5, %1\n\t"
+		"orr r6, r6, %1\n\t"
+		"orr r7, r7, %1\n\t"
+		"stmia %0!, {r0-r7}\n\t"
 		"subs %3, %3, $1\n\t"
 		"bne 1b\n\t"
 		: "+r"(buf)
 		: "r"(val), "r"(mask), "r"(cnt)
-		: "r0", "r1", "r2", "r3"
+		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"
 	);
 
 	return buf;
@@ -537,11 +545,11 @@ static void fill32(void *buf, uint32_t val, size_t cnt)
 		cnt -= align;
 	}
 
-	if(cnt / 4)
-		buf32 = (uint32_t *)fillBurst32(buf32, val, cnt / 4);
+	if(cnt / 8)
+		buf32 = (uint32_t *)fillBurst32(buf32, val, cnt / 8);
 
-	if(cnt % 4)
-		fillSingle32(buf32, val, cnt % 4);
+	if(cnt % 8)
+		fillSingle32(buf32, val, cnt % 8);
 }
 
 static void fill32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
@@ -563,11 +571,11 @@ static void fill32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
 		cnt -= align;
 	}
 
-	if(cnt / 4)
-		buf32 = (uint32_t *)fillBurst32masked(buf32, val, mask, cnt / 4);
+	if(cnt / 8)
+		buf32 = (uint32_t *)fillBurst32masked(buf32, val, mask, cnt / 8);
 
-	if(cnt % 4)
-		fillSingle32masked(buf32, val, mask, cnt % 4);
+	if(cnt % 8)
+		fillSingle32masked(buf32, val, mask, cnt % 8);
 }
 
 static void fill16(void *buf, uint16_t val, size_t cnt)
@@ -586,11 +594,11 @@ static void fill16(void *buf, uint16_t val, size_t cnt)
 		cnt -= align;
 	}
 
-	if(cnt / 8)
-		buf16 = (uint16_t *)fillBurst32(buf16, (val << 16) | val, cnt / 8);
+	if(cnt / 16)
+		buf16 = (uint16_t *)fillBurst32(buf16, (val << 16) | val, cnt / 16);
 
-	if(cnt % 8)
-		fillSingle16(buf16, val, cnt % 8);
+	if(cnt % 16)
+		fillSingle16(buf16, val, cnt % 16);
 }
 
 static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
@@ -612,12 +620,12 @@ static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
 		cnt -= align;
 	}
 
-	if(cnt / 8)
+	if(cnt / 16)
 		buf16 = (uint16_t *)fillBurst32masked(buf16, (val << 16) | val,
-						(mask << 16) | mask, cnt / 8);
+						(mask << 16) | mask, cnt / 16);
 
-	if(cnt % 8)
-		fillSingle16masked(buf16, val, mask, cnt % 8);
+	if(cnt % 16)
+		fillSingle16masked(buf16, val, mask, cnt % 16);
 }
 
 static uint32_t getFillColor(FGLContext *ctx,
