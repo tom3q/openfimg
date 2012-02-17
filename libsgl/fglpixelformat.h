@@ -91,8 +91,8 @@ struct FGLPixelFormat {
 		uint8_t pos;
 		uint8_t size;
 	} comp[4];
-	GLenum readType;
 	GLenum readFormat;
+	GLenum readType;
 	uint32_t pixelSize;
 	uint32_t texFormat;
 	uint32_t pixFormat;
