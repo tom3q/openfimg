@@ -215,17 +215,13 @@ static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 
 static inline void unpackPixel8888(uint32_t *dst, uint32_t src)
 {
-	uint8_t r, g, b, a;
+	register uint32_t rgba;
 
-	b = src & 0xff;
-	src >>= 8;
-	g = src & 0xff;
-	src >>= 8;
-	r = src & 0xff;
-	src >>= 8;
-	a = src;
+	rgba = src & 0xff00ff00;
+	src = (src >> 16) | (src << 16);
+	rgba |= src & 0x00ff00ff;
 
-	*dst = (a << 24) | (b << 16) | (g << 8) | r;
+	*dst = rgba;
 }
 
 static void convertToUByteBGRA8888(FGLContext *ctx, uint32_t *dst,
