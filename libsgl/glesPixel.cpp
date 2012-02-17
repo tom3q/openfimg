@@ -325,9 +325,7 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 	unsigned srcStride = srcBpp * fb->getWidth();
 	unsigned alignment = ctx->packAlignment;
 
-	if (format == cfg->readFormat
-		&& type == cfg->readType)
-	{
+	if (format == cfg->readFormat && type == cfg->readType) {
 		// No format conversion needed
 		unsigned yOffset = (fb->getHeight() - y - 1) * srcStride;
 		const uint8_t *src = (const uint8_t *)draw->vaddr + yOffset;
