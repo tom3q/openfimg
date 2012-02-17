@@ -406,6 +406,9 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 			convertToUByteBGRA8888(ctx, (uint32_t *)pixels,
 							x, y, width, height);
 			break;
+		default:
+			LOGW("Unsupported pixel format %d in glReadPixels.",
+							fb->getColorFormat());
 		}
 		// We are done
 		return;
