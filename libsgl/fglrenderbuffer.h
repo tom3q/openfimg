@@ -62,6 +62,11 @@ struct FGLRenderbuffer : public FGLFramebufferAttachable {
 		object(this),
 		name(name) {}
 
+	virtual ~FGLRenderbuffer()
+	{
+		delete surface;
+	}
+
 	virtual GLenum getType(void) const
 	{
 		return GL_RENDERBUFFER_OES;
