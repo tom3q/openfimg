@@ -747,6 +747,7 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 	uint32_t width = fb->getWidth();
 	uint32_t height = fb->getHeight();
 	uint32_t colorFormat = fb->getColorFormat();
+	uint32_t depthFormat = fb->getDepthFormat();
 	const FGLPixelFormat *pix = FGLPixelFormat::get(colorFormat);
 
 	fba = fb->get(FGL_ATTACHMENT_COLOR);
@@ -761,19 +762,23 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 	int stencilMask = 0, stencilTest = 0;
 
 	fba = fb->get(FGL_ATTACHMENT_DEPTH);
-
-	if (!fba) {
+	if (!fba)
 		fba = fb->get(FGL_ATTACHMENT_STENCIL);
-	} else {
+
+	if (depthFormat & 0xff) {
 		depthMask = ctx->perFragment.mask.depth;
 		depthTest = ctx->enable.depthTest;
 	}
 
-	if (fba && fba->surface) {
-		fimgSetZBufBaseAddr(ctx->fimg, fba->surface->paddr);
+	if (depthFormat >> 8) {
 		stencilMask = ctx->perFragment.mask.stencil;
 		stencilTest = ctx->enable.stencilTest;
 	}
+
+	if (depthFormat)
+		fimgSetZBufBaseAddr(ctx->fimg, fba->surface->paddr);
+	else
+		fimgSetZBufBaseAddr(ctx->fimg, 0);
 
 	fimgSetZBufWriteMask(ctx->fimg, depthMask);
 	fimgSetDepthEnable(ctx->fimg, depthTest);
