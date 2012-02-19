@@ -192,7 +192,7 @@ label noswap1
 	# Here go argument modifier functions for color combiner
 	# Here goes combine function for color combiner
 
-	mul_sat r0.xyz, r4, r3
+	mul r0.xyz, r4, r3
 
 % f combine_a
 
@@ -210,7 +210,7 @@ label noswap1
 	# Here go argument modifier functions for alpha combiner
 	# Here goes combine function for alpha combiner
 
-	mul_sat r0.w, r4, r3
+	mul r0.w, r4, r3
 
 % f combine_uni
 
@@ -228,7 +228,7 @@ label noswap1
 	# Here go argument modifier functions for unified combiner
 	# Here goes combine function for unified combiner
 
-	mul_sat r0, r4, r3
+	mul r0, r4, r3
 
 ################################################################################
 

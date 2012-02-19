@@ -58,15 +58,15 @@ static const unsigned int frag_combine[] = {
 };
 
 static const unsigned int frag_combine_col[] = {
-	0x03000000, 0x0104e401, 0x033a20e4, 0x00000000,
+	0x03000000, 0x0104e401, 0x033820e4, 0x00000000,
 };
 
 static const unsigned int frag_combine_a[] = {
-	0x03000000, 0x0104e401, 0x034220e4, 0x00000000,
+	0x03000000, 0x0104e401, 0x034020e4, 0x00000000,
 };
 
 static const unsigned int frag_combine_uni[] = {
-	0x03000000, 0x0104e401, 0x037a20e4, 0x00000000,
+	0x03000000, 0x0104e401, 0x037820e4, 0x00000000,
 };
 
 static const unsigned int frag_combine_arg0tex[] = {
