@@ -682,7 +682,7 @@ static uint32_t getFillColor(FGLContext *ctx,
 }
 
 static inline uint32_t getFillDepth(FGLContext *ctx,
-					uint32_t *mask, GLbitfield mode)
+			uint32_t *mask, GLbitfield mode, uint32_t depthFormat)
 {
 	uint32_t mval = 0xffffffff;
 	uint32_t val = 0;
@@ -693,9 +693,20 @@ static inline uint32_t getFillDepth(FGLContext *ctx,
 	}
 
 	if (mode & GL_STENCIL_BUFFER_BIT) {
-		mval &= ~ctx->perFragment.mask.stencil << 24;
+		mval &= ~(ctx->perFragment.mask.stencil << 24);
 		val |= ctx->clear.stencil << 24;
 	}
+
+	if (mval == 0xffffffff) {
+		*mask = mval;
+		return val;
+	}
+
+	if (!(depthFormat & 0xff))
+		mval &= ~0x00ffffff;
+
+	if (!(depthFormat >> 8))
+		mval &= ~0xff000000;
 
 	*mask = mval;
 	return val;
@@ -799,27 +810,19 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 	mode &= (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	if (mode) {
 		uint32_t depthFormat = fb->getDepthFormat();
-
-		if (!(depthFormat & 0xff))
-			mode &= ~GL_DEPTH_BUFFER_BIT;
-		if (!(depthFormat >> 8))
-			mode &= ~GL_STENCIL_BUFFER_BIT;
-
-		if (!mode)
+		if (!depthFormat)
 			return;
-
-		if (!(depthFormat & 0xff))
-			mode |= GL_DEPTH_BUFFER_BIT;
-		if (!(depthFormat >> 8))
-			mode |= GL_STENCIL_BUFFER_BIT;
 
 		fba = fb->get(FGL_ATTACHMENT_DEPTH);
 		if (!fba)
-			fb->get(FGL_ATTACHMENT_STENCIL);
+			fba = fb->get(FGL_ATTACHMENT_STENCIL);
 
 		FGLSurface *depth = fba->surface;
 		uint32_t mask;
-		uint32_t val = getFillDepth(ctx, &mask, mode);
+		uint32_t val = getFillDepth(ctx, &mask, mode, depthFormat);
+
+		if (mask == 0xffffffff)
+			return;
 
 		if (lineByLine) {
 			uint32_t *buf32 = (uint32_t *)depth->vaddr;
