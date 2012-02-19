@@ -1091,13 +1091,6 @@ static EGLBoolean fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 		GLint w = d->getWidth();
 		GLint h = d->getHeight();
 
-		uint32_t depth = (d->getDepthFormat() & 0xff) ? 1 : 0;
-		uint32_t stencil = (d->getDepthFormat() >> 8) ? 0xff : 0;
-
-		fimgSetZBufWriteMask(gl->fimg, depth);
-		fimgSetStencilBufWriteMask(gl->fimg, 0, stencil);
-		fimgSetStencilBufWriteMask(gl->fimg, 1, stencil);
-
 		glViewport(0, 0, w, h);
 		glScissor(0, 0, w, h);
 		glDisable(GL_SCISSOR_TEST);
