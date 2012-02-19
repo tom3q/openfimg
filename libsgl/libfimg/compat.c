@@ -561,7 +561,7 @@ void fimgCreateCompatContext(fimgContext *ctx)
 		texture->combc.arg[1].src = FGFP_COMBARG_PREV;
 		texture->combc.arg[1].mod = FGFP_COMBARG_SRC_COLOR;
 		texture->combc.arg[2].src = FGFP_COMBARG_CONST;
-		texture->combc.arg[2].mod = FGFP_COMBARG_SRC_COLOR;
+		texture->combc.arg[2].mod = FGFP_COMBARG_SRC_ALPHA;
 
 		texture->combc.func = FGFP_COMBFUNC_MODULATE;
 		texture->comba.arg[0].src = FGFP_COMBARG_TEX;
