@@ -1013,6 +1013,9 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 	uint32_t instrCount;
 	volatile uint32_t *reg;
 	struct shaderBlock blk;
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Loading pixel shader");
+#endif
 	texture = ctx->compat.texture;
 
 	if (!ctx->compat.shaderBuf) {
@@ -1025,6 +1028,9 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 	}
 
 	addr = ctx->compat.shaderBuf;
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Generating basic shader code");
+#endif
 	addr += loadShaderBlock(&pixelHeader, addr);
 
 	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
@@ -1077,7 +1083,13 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 		addr += loadShaderBlock(&out_swap, addr);
 
 	addr += loadShaderBlock(&pixelFooter, addr);
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Optimizing pixel shader");
+#endif
 	instrCount = optimizeShader(ctx->compat.shaderBuf, addr);
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Loading optimized shader");
+#endif
 	reg = psInstAddr(ctx, 0);
 	blk.data = ctx->compat.shaderBuf;
 	blk.len = instrCount;
@@ -1085,8 +1097,14 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 
 	ctx->compat.pshaderEnd = instrCount - 1;
 	setPixelShaderRange(ctx, 0, ctx->compat.pshaderEnd);
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Loading const float");
+#endif
 	reg = (volatile uint32_t *)(ctx->base + FGPS_CFLOAT_START);
 	loadShaderBlock(&pixelConstFloat, reg);
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Loaded pixel shader");
+#endif
 }
 
 void fimgCompatSetTextureEnable(fimgContext *ctx, uint32_t unit, int enable)
