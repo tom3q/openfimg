@@ -716,11 +716,13 @@ static inline void fglSetupTextures(FGLContext *ctx)
 				flush = true;
 			}
 			fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
-			fimgCompatSetTextureEnable(ctx->fimg, i, 1);
+			fimgCompatSetTextureFunc(ctx->fimg,
+						i, ctx->texture[i].fglFunc);
 			ctx->busyTexture[i] = tex;
 		} else {
 			/* Texture is not ready */
-			fimgCompatSetTextureEnable(ctx->fimg, i, 0);
+			fimgCompatSetTextureFunc(ctx->fimg,
+							i, FGFP_TEXFUNC_NONE);
 		}
 	} while (i--);
 

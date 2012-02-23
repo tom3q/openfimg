@@ -1226,28 +1226,22 @@ GL_API void GL_APIENTRY glTexEnvi (GLenum target, GLenum pname, GLint param)
 	case GL_TEXTURE_ENV_MODE:
 		switch (param) {
 		case GL_REPLACE:
-			fimgCompatSetTextureFunc(ctx->fimg,
-						unit, FGFP_TEXFUNC_REPLACE);
+			ctx->texture[unit].fglFunc = FGFP_TEXFUNC_REPLACE;
 			break;
 		case GL_MODULATE:
-			fimgCompatSetTextureFunc(ctx->fimg,
-						unit, FGFP_TEXFUNC_MODULATE);
+			ctx->texture[unit].fglFunc = FGFP_TEXFUNC_MODULATE;
 			break;
 		case GL_DECAL:
-			fimgCompatSetTextureFunc(ctx->fimg,
-						unit, FGFP_TEXFUNC_DECAL);
+			ctx->texture[unit].fglFunc = FGFP_TEXFUNC_DECAL;
 			break;
 		case GL_BLEND:
-			fimgCompatSetTextureFunc(ctx->fimg,
-						unit, FGFP_TEXFUNC_BLEND);
+			ctx->texture[unit].fglFunc = FGFP_TEXFUNC_BLEND;
 			break;
 		case GL_ADD:
-			fimgCompatSetTextureFunc(ctx->fimg,
-						unit, FGFP_TEXFUNC_ADD);
+			ctx->texture[unit].fglFunc = FGFP_TEXFUNC_ADD;
 			break;
 		case GL_COMBINE:
- 			fimgCompatSetTextureFunc(ctx->fimg,
-						unit, FGFP_TEXFUNC_COMBINE);
+			ctx->texture[unit].fglFunc = FGFP_TEXFUNC_COMBINE;
 			break;
 		default:
 			setError(GL_INVALID_ENUM);

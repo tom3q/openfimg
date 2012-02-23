@@ -427,8 +427,8 @@ void fimgSetFrameBufParams(fimgContext *ctx,
 	ctx->fragment.fbctl.alphaconst = 255;
 	ctx->fragment.fbctl.colormode = format;
 #ifdef FIMG_FIXED_PIPELINE
-	if (ctx->fbFlags != flags)
-		ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET(ctx->compat.psState.ps,
+			PS_SWAP, !!(flags & FGPF_COLOR_MODE_BGR));
 #endif
 	ctx->fbFlags = flags;
 	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);

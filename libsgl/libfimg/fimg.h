@@ -343,7 +343,8 @@ typedef enum {
 #define FGFP_MATRIX_TEXTURE(i)	(FGFP_MATRIX_TEXTURE + (i))
 
 typedef enum {
-	FGFP_TEXFUNC_REPLACE = 0,
+	FGFP_TEXFUNC_NONE = 0,
+	FGFP_TEXFUNC_REPLACE,
 	FGFP_TEXFUNC_MODULATE,
 	FGFP_TEXFUNC_DECAL,
 	FGFP_TEXFUNC_BLEND,
@@ -380,7 +381,6 @@ void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, const float *pData);
 void fimgEnableTexture(fimgContext *ctx, unsigned int unit);
 void fimgDisableTexture(fimgContext *ctx, unsigned int unit);
 void fimgCompatLoadPixelShader(fimgContext *ctx);
-void fimgCompatSetTextureEnable(fimgContext *ctx, unsigned unit, int enable);
 void fimgCompatSetTextureFunc(fimgContext *ctx, unsigned unit, fimgTexFunc func);
 void fimgCompatSetColorCombiner(fimgContext *ctx, unsigned unit,
 							fimgCombFunc func);

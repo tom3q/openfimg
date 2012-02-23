@@ -137,6 +137,7 @@ static const struct shaderBlock textureUnit[] = {
 };
 
 static const struct shaderBlock textureFunc[] = {
+	{ 0, 0 },
 	SHADER_BLOCK(frag_replace),
 	SHADER_BLOCK(frag_modulate),
 	SHADER_BLOCK(frag_decal),
@@ -974,19 +975,25 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
  * Shader generation code
  */
 
-void fimgCompatLoadVertexShader(fimgContext *ctx)
+void fimgCompatBuildVertexShader(fimgContext *ctx)
 {
 	uint32_t unit;
-	volatile uint32_t *addr;
-	fimgTextureCompat *texture;
+	uint32_t *addr;
 
-	texture = ctx->compat.texture;
-	addr = vsInstAddr(ctx, 0);
+	addr = ctx->compat.vshaderBuf;
+	if (!addr) {
+		addr = malloc(64 * sizeof(fimgShaderInstruction));
+		if (!addr) {
+			LOGE("Failed to allocate memory for shader buffer, terminating.");
+			exit(1);
+		}
+		ctx->compat.vshaderBuf = addr;
+	}
 
 	addr += loadShaderBlock(&vertexHeader, addr);
 
-	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
-		if (!texture->enabled)
+	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++) {
+		if (!FGFP_BITFIELD_GET_IDX(ctx->compat.vsState.vs, VS_TEX_EN, unit))
 			continue;
 
 		addr += loadShaderBlock(&texcoordTransform[unit], addr);
@@ -994,66 +1001,81 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 
 	addr += loadShaderBlock(&vertexFooter, addr);
 
-	ctx->compat.vshaderEnd = vsInstLen(ctx, addr) - 1;
+	ctx->compat.vshaderEnd = (addr - ctx->compat.vshaderBuf) / 4;
 
-	setVertexShaderRange(ctx, 0, ctx->compat.vshaderEnd);
-
-	addr = (volatile uint32_t *)(ctx->base + FGVS_CFLOAT_START);
-
-	loadShaderBlock(&vertexConstFloat, addr);
+	FGFP_BITFIELD_SET(ctx->compat.vsState.vs, VS_INVALID, 0);
 }
 
-void fimgCompatLoadPixelShader(fimgContext *ctx)
+void fimgCompatLoadVertexShader(fimgContext *ctx)
 {
-	uint32_t unit, arg;
-	uint32_t *addr;
-	fimgTextureCompat *texture;
-	uint32_t instrCount;
 	volatile uint32_t *reg;
 	struct shaderBlock blk;
 #ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Loading optimized shader");
+#endif
+	reg = vsInstAddr(ctx, 0);
+	blk.data = ctx->compat.vshaderBuf;
+	blk.len = ctx->compat.vshaderEnd + 1;
+	loadShaderBlock(&blk, reg);
+
+	setVertexShaderRange(ctx, 0, ctx->compat.vshaderEnd);
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Loading const float");
+#endif
+	reg = (volatile uint32_t *)(ctx->base + FGVS_CFLOAT_START);
+	loadShaderBlock(&vertexConstFloat, reg);
+#ifdef FIMG_DYNSHADER_DEBUG
+	LOGD("Loaded pixel shader");
+#endif
+}
+
+void fimgCompatBuildPixelShader(fimgContext *ctx)
+{
+	uint32_t unit, arg;
+	uint32_t *addr;
+	uint32_t instrCount;
+#ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading pixel shader");
 #endif
-	texture = ctx->compat.texture;
-
-	if (!ctx->compat.shaderBuf) {
+	addr = ctx->compat.pshaderBuf;
+	if (!addr) {
 		addr = malloc(64 * sizeof(fimgShaderInstruction));
 		if (!addr) {
 			LOGE("Failed to allocate memory for shader buffer, terminating.");
 			exit(1);
 		}
-		ctx->compat.shaderBuf = addr;
+		ctx->compat.pshaderBuf = addr;
 	}
 
-	addr = ctx->compat.shaderBuf;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Generating basic shader code");
 #endif
 	addr += loadShaderBlock(&pixelHeader, addr);
 
-	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
-		if (!texture->enabled)
+	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++) {
+		uint32_t reg = ctx->compat.psState.tex[unit];
+		if (!FGFP_BITFIELD_GET(reg, TEX_MODE))
 			continue;
 
 		addr += loadShaderBlock(&textureUnit[unit], addr);
-		if (texture->swap)
+		if (FGFP_BITFIELD_GET(reg, TEX_SWAP))
 			addr += loadShaderBlock(&tex_swap, addr);
-		addr += loadShaderBlock(&textureFunc[texture->func], addr);
+		addr += loadShaderBlock(&textureFunc[FGFP_BITFIELD_GET(reg, TEX_MODE)], addr);
 
-		if (texture->func != FGFP_TEXFUNC_COMBINE)
+		if (FGFP_BITFIELD_GET(reg, TEX_MODE) != FGFP_TEXFUNC_COMBINE)
 			continue;
 
 		for (arg = 0; arg < 3; arg++) {
 			addr += loadShaderBlock(&combineArg[arg]
-					[texture->combc.arg[arg].src], addr);
+					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBC_SRC, arg)], addr);
 			addr += loadShaderBlock(&combineArgMod[arg]
-					[texture->combc.arg[arg].mod], addr);
+					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBC_MOD, arg)], addr);
 		}
 
-		addr += loadShaderBlock(&combineFunc[texture->combc.func],
+		addr += loadShaderBlock(&combineFunc[FGFP_BITFIELD_GET(reg, TEX_COMBC_FUNC)],
 									addr);
 
-		if (texture->combc.func == FGFP_COMBFUNC_DOT3_RGBA) {
+		if (FGFP_BITFIELD_GET(reg, TEX_COMBC_FUNC) == FGFP_COMBFUNC_DOT3_RGBA) {
 			addr += loadShaderBlock(&combine_u, addr);
 			continue;
 		}
@@ -1062,33 +1084,41 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 
 		for (arg = 0; arg < 3; arg++) {
 			addr += loadShaderBlock(&combineArg[arg]
-					[texture->comba.arg[arg].src], addr);
+					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBA_SRC, arg) + 2], addr);
 			addr += loadShaderBlock(&combineArgMod[arg]
-					[texture->comba.arg[arg].mod], addr);
+					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBA_MOD, arg) + 2], addr);
 		}
 
-		addr += loadShaderBlock(&combineFunc[texture->comba.func],
+		addr += loadShaderBlock(&combineFunc[FGFP_BITFIELD_GET(reg, TEX_COMBA_FUNC)],
 									addr);
 		addr += loadShaderBlock(&combine_a, addr);
 	}
 
-	if (ctx->fbFlags & FGPF_COLOR_MODE_BGR)
+	if (FGFP_BITFIELD_GET(ctx->compat.psState.ps, PS_SWAP))
 		addr += loadShaderBlock(&out_swap, addr);
 
 	addr += loadShaderBlock(&pixelFooter, addr);
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Optimizing pixel shader");
 #endif
-	instrCount = optimizeShader(ctx->compat.shaderBuf, addr);
+	instrCount = optimizeShader(ctx->compat.pshaderBuf, addr);
+	ctx->compat.pshaderEnd = instrCount - 1;
+
+	FGFP_BITFIELD_SET(ctx->compat.psState.ps, PS_INVALID, 0);
+}
+
+void fimgCompatLoadPixelShader(fimgContext *ctx)
+{
+	volatile uint32_t *reg;
+	struct shaderBlock blk;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
 	reg = psInstAddr(ctx, 0);
-	blk.data = ctx->compat.shaderBuf;
-	blk.len = instrCount;
+	blk.data = ctx->compat.pshaderBuf;
+	blk.len = ctx->compat.pshaderEnd + 1;
 	loadShaderBlock(&blk, reg);
 
-	ctx->compat.pshaderEnd = instrCount - 1;
 	setPixelShaderRange(ctx, 0, ctx->compat.pshaderEnd);
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
@@ -1100,103 +1130,59 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 #endif
 }
 
-void fimgCompatSetTextureEnable(fimgContext *ctx, uint32_t unit, int enable)
-{
-	if (ctx->compat.texture[unit].enabled == !!enable)
-		return;
-
-	ctx->compat.texture[unit].enabled = !!enable;
-	ctx->compat.vsDirty = 1;
-	ctx->compat.psDirty = 1;
-}
-
 void fimgCompatSetTextureFunc(fimgContext *ctx, uint32_t unit, fimgTexFunc func)
 {
-	if (ctx->compat.texture[unit].func == func)
-		return;
+	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_MODE, func);
+	FGFP_BITFIELD_SET_IDX(ctx->compat.vsState.vs, VS_TEX_EN,
+					unit, func != FGFP_TEXFUNC_NONE);
 
-	ctx->compat.texture[unit].func = func;
-
-	if (ctx->compat.texture[unit].enabled)
-		ctx->compat.psDirty = 1;
+	switch (func) {
+	case FGFP_TEXFUNC_NONE:
+		ctx->compat.psMask[unit] = FGFP_TEX_MODE_MASK;
+		break;
+	case FGFP_TEXFUNC_COMBINE:
+		ctx->compat.psMask[unit] = ~0UL;
+		break;
+	default:
+		ctx->compat.psMask[unit] =
+				FGFP_TEX_MODE_MASK | FGFP_TEX_SWAP_MASK;
+	}
 }
 
 void fimgCompatSetColorCombiner(fimgContext *ctx, uint32_t unit,
 							fimgCombFunc func)
 {
-	if (ctx->compat.texture[unit].combc.func == func)
-		return;
-
-	ctx->compat.texture[unit].combc.func = func;
-
-	if (ctx->compat.texture[unit].enabled
-	&& ctx->compat.texture[unit].func == FGFP_TEXFUNC_COMBINE)
-		ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_COMBC_FUNC, func);
 }
 
 void fimgCompatSetAlphaCombiner(fimgContext *ctx, uint32_t unit,
 							fimgCombFunc func)
 {
-	if (ctx->compat.texture[unit].comba.func == func)
-		return;
-
-	ctx->compat.texture[unit].comba.func = func;
-
-	if (ctx->compat.texture[unit].enabled
-	&& ctx->compat.texture[unit].func == FGFP_TEXFUNC_COMBINE)
-		ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_COMBA_FUNC, func);
 }
 
 void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, uint32_t unit,
 					uint32_t arg, fimgCombArgSrc src)
 {
-	if (ctx->compat.texture[unit].combc.arg[arg].src == src)
-		return;
-
-	ctx->compat.texture[unit].combc.arg[arg].src = src;
-
-	if (ctx->compat.texture[unit].enabled
-	&& ctx->compat.texture[unit].func == FGFP_TEXFUNC_COMBINE)
-		ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBC_SRC, arg, src);
 }
 
 void fimgCompatSetColorCombineArgMod(fimgContext *ctx, uint32_t unit,
 					uint32_t arg, fimgCombArgMod mod)
 {
-	if (ctx->compat.texture[unit].combc.arg[arg].mod == mod)
-		return;
-
-	ctx->compat.texture[unit].combc.arg[arg].mod = mod;
-
-	if (ctx->compat.texture[unit].enabled
-	&& ctx->compat.texture[unit].func == FGFP_TEXFUNC_COMBINE)
-		ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBC_MOD, arg, mod);
 }
 
 void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, uint32_t unit,
 					uint32_t arg, fimgCombArgSrc src)
 {
-	if (ctx->compat.texture[unit].comba.arg[arg].src == src)
-		return;
-
-	ctx->compat.texture[unit].comba.arg[arg].src = src;
-
-	if (ctx->compat.texture[unit].enabled
-	&& ctx->compat.texture[unit].func == FGFP_TEXFUNC_COMBINE)
-		ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_SRC, arg, src & 1);
 }
 
 void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, uint32_t unit,
 					uint32_t arg, fimgCombArgMod mod)
 {
-	if (ctx->compat.texture[unit].comba.arg[arg].mod == mod)
-		return;
-
-	ctx->compat.texture[unit].comba.arg[arg].mod = mod;
-
-	if (ctx->compat.texture[unit].enabled
-	&& ctx->compat.texture[unit].func == FGFP_TEXFUNC_COMBINE)
-		ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_MOD, arg, mod & 1);
 }
 
 void fimgCompatSetColorScale(fimgContext *ctx, uint32_t unit, float scale)
@@ -1229,12 +1215,9 @@ void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
 void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
 {
 	ctx->compat.texture[unit].texture = tex;
-	if (tex) {
-		if (ctx->compat.texture[unit].swap != !!(tex->reserved2 & FGTU_TEX_BGR))
-			ctx->compat.psDirty = 1;
-		ctx->compat.texture[unit].swap =
-					!!(tex->reserved2 & FGTU_TEX_BGR);
-	}
+	if (tex)
+		FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit],
+				TEX_SWAP, !!(tex->reserved2 & FGTU_TEX_BGR));
 }
 
 void fimgCreateCompatContext(fimgContext *ctx)
@@ -1245,40 +1228,42 @@ void fimgCreateCompatContext(fimgContext *ctx)
 	texture = ctx->compat.texture;
 
 	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
-		texture->func = FGFP_TEXFUNC_MODULATE;
+		uint32_t reg = 0;
 
-		texture->combc.func = FGFP_COMBFUNC_MODULATE;
-		texture->combc.arg[0].src = FGFP_COMBARG_TEX;
-		texture->combc.arg[0].mod = FGFP_COMBARG_SRC_COLOR;
-		texture->combc.arg[1].src = FGFP_COMBARG_PREV;
-		texture->combc.arg[1].mod = FGFP_COMBARG_SRC_COLOR;
-		texture->combc.arg[2].src = FGFP_COMBARG_CONST;
-		texture->combc.arg[2].mod = FGFP_COMBARG_SRC_ALPHA;
+		FGFP_BITFIELD_SET(reg, TEX_COMBC_FUNC, FGFP_COMBFUNC_MODULATE);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 0, FGFP_COMBARG_TEX);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 0, FGFP_COMBARG_SRC_COLOR);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 1, FGFP_COMBARG_PREV);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 1, FGFP_COMBARG_SRC_COLOR);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 2, FGFP_COMBARG_CONST);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 2, FGFP_COMBARG_SRC_ALPHA);
 
-		texture->combc.func = FGFP_COMBFUNC_MODULATE;
-		texture->comba.arg[0].src = FGFP_COMBARG_TEX;
-		texture->comba.arg[0].mod = FGFP_COMBARG_SRC_ALPHA;
-		texture->comba.arg[1].src = FGFP_COMBARG_PREV;
-		texture->comba.arg[1].mod = FGFP_COMBARG_SRC_ALPHA;
-		texture->comba.arg[2].src = FGFP_COMBARG_CONST;
-		texture->comba.arg[2].mod = FGFP_COMBARG_SRC_ALPHA;
+		FGFP_BITFIELD_SET(reg, TEX_COMBA_FUNC, FGFP_COMBFUNC_MODULATE);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 0, FGFP_COMBARG_TEX);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 0, FGFP_COMBARG_SRC_ALPHA & 1);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 1, FGFP_COMBARG_PREV);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 1, FGFP_COMBARG_SRC_ALPHA & 1);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 2, FGFP_COMBARG_CONST);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 2, FGFP_COMBARG_SRC_ALPHA & 1);
 
-		texture->scale[0] = 1.0;
-		texture->scale[1] = 1.0;
-		texture->scale[2] = 1.0;
-		texture->scale[3] = 1.0;
+		ctx->compat.texture[unit].scale[0] = 1.0;
+		ctx->compat.texture[unit].scale[1] = 1.0;
+		ctx->compat.texture[unit].scale[2] = 1.0;
+		ctx->compat.texture[unit].scale[3] = 1.0;
 
-		texture->swap = 0;
+		ctx->compat.psState.tex[unit] = reg;
 	}
 
-	ctx->compat.vsDirty = 1;
-	ctx->compat.psDirty = 1;
+	FGFP_BITFIELD_SET(ctx->compat.vsState.vs, VS_INVALID, 1);
+	FGFP_BITFIELD_SET(ctx->compat.psState.ps, PS_INVALID, 1);
 
+	ctx->compat.psMask[FIMG_NUM_TEXTURE_UNITS] = 0xffffffff;
 }
 
 #define FGFP_TEXENV(unit)	(4 + 2*(unit))
 #define FGFP_COMBSCALE(unit)	(5 + 2*(unit))
 
+#if 0
 static void setPSConstBool(fimgContext *ctx, int val, uint32_t slot)
 {
 	uint32_t reg;
@@ -1288,6 +1273,7 @@ static void setPSConstBool(fimgContext *ctx, int val, uint32_t slot)
 	reg |= !!val << slot;
 	fimgWrite(ctx, reg, FGPS_CBOOL_START);
 }
+#endif
 
 static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
 								uint32_t slot)
@@ -1331,15 +1317,40 @@ static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 	}
 }
 
+static int vsStateIsDirty(fimgContext *ctx)
+{
+	return ctx->compat.vsState.val[0] != ctx->compat.curVsState.val[0];
+}
+
+#define NELEM(i)	(sizeof(i)/sizeof(*i))
+
+static int psStateIsDirty(fimgContext *ctx)
+{
+	unsigned int i;
+
+	for (i = 0; i < NELEM(ctx->compat.psState.val); ++i)
+		if ((ctx->compat.psState.val[i] ^ ctx->compat.curPsState.val[i]) & ctx->compat.psMask[i])
+			return 1;
+
+	return 0;
+}
+
 void fimgCompatFlush(fimgContext *ctx)
 {
 	uint32_t i;
+	int psStopped = 0;
 
-	if (ctx->compat.vsDirty) {
-		fimgCompatLoadVertexShader(ctx);
-		ctx->compat.vsDirty = 0;
+	if (vsStateIsDirty(ctx)) {
+		fimgCompatBuildVertexShader(ctx);
+		ctx->compat.curVsState = ctx->compat.vsState;
+		ctx->compat.vshaderLoaded = 0;
 	}
-	setVertexShaderAttribCount(ctx, ctx->numAttribs);
+
+	if (!ctx->compat.vshaderLoaded) {
+		fimgCompatLoadVertexShader(ctx);
+		setVertexShaderAttribCount(ctx, ctx->numAttribs);
+		ctx->compat.vshaderLoaded = 1;
+	}
 
 	for (i = 0; i < 2 + FIMG_NUM_TEXTURE_UNITS; i++) {
 		if (!ctx->compat.matrixDirty[i] || ctx->compat.matrix[i] == NULL)
@@ -1349,25 +1360,35 @@ void fimgCompatFlush(fimgContext *ctx)
 		ctx->compat.matrixDirty[i] = 0;
 	}
 
-	setPixelShaderState(ctx, 0);
-
-	if (ctx->compat.psDirty) {
-		fimgCompatLoadPixelShader(ctx);
-		ctx->compat.psDirty = 0;
+	if (psStateIsDirty(ctx)) {
+		fimgCompatBuildPixelShader(ctx);
+		ctx->compat.curPsState = ctx->compat.psState;
+		ctx->compat.pshaderLoaded = 0;
 	}
-	setPixelShaderAttribCount(ctx, FIMG_ATTRIB_NUM - 1);
+
+	if (!ctx->compat.pshaderLoaded) {
+		setPixelShaderState(ctx, 0);
+		fimgCompatLoadPixelShader(ctx);
+		psStopped = 1;
+		ctx->compat.pshaderLoaded = 1;
+	}
 
 	for (i = 0; i < FIMG_NUM_TEXTURE_UNITS; i++) {
 		if (ctx->compat.texture[i].texture == NULL)
 			continue;
 
-		if (!ctx->compat.texture[i].enabled)
+		if (!FGFP_BITFIELD_GET(ctx->compat.psState.tex[i], TEX_MODE))
 			continue;
 
 		fimgSetupTexture(ctx, ctx->compat.texture[i].texture, i);
 
 		if (!ctx->compat.texture[i].dirty)
 			continue;
+
+		if (!psStopped) {
+			setPixelShaderState(ctx, 0);
+			psStopped = 1;
+		}
 
 		loadPSConstFloat(ctx, ctx->compat.texture[i].env,
 							FGFP_TEXENV(i));
@@ -1377,7 +1398,10 @@ void fimgCompatFlush(fimgContext *ctx)
 		ctx->compat.texture[i].dirty = 0;
 	}
 
-	setPixelShaderState(ctx, 1);
+	if (psStopped) {
+		setPixelShaderAttribCount(ctx, FIMG_ATTRIB_NUM - 1);
+		setPixelShaderState(ctx, 1);
+	}
 }
 
 void fimgRestoreCompatState(fimgContext *ctx)
@@ -1390,6 +1414,6 @@ void fimgRestoreCompatState(fimgContext *ctx)
 	for (i = 0; i < FIMG_NUM_TEXTURE_UNITS; i++)
 		ctx->compat.texture[i].dirty = 1;
 
-	ctx->compat.vsDirty = 1;
-	ctx->compat.psDirty = 1;
+	ctx->compat.vshaderLoaded = 0;
+	ctx->compat.pshaderLoaded = 0;
 }

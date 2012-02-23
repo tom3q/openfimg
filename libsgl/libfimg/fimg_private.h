@@ -444,37 +444,83 @@ void fimgRestoreFragmentState(fimgContext *ctx);
 
 #ifdef FIMG_FIXED_PIPELINE
 
-typedef struct {
-	fimgCombArgSrc src;
-	fimgCombArgMod mod;
-} fimgCombArg;
+#define FGFP_BITFIELD_GET(reg, name)		\
+	(((reg) & FGFP_ ## name ## _MASK) >> FGFP_ ## name ## _SHIFT)
+#define FGFP_BITFIELD_GET_IDX(reg, name, idx)		\
+	(((reg) & FGFP_ ## name ## _MASK((idx))) >> FGFP_ ## name ## _SHIFT((idx)))
+
+#define FGFP_BITFIELD_SET(reg, name, val)	do {\
+		reg &= ~(FGFP_ ## name ## _MASK); \
+		reg |= (val) << FGFP_ ## name ## _SHIFT; \
+	} while (0);
+#define FGFP_BITFIELD_SET_IDX(reg, name, idx, val)	do {\
+		reg &= ~(FGFP_ ## name ## _MASK((idx))); \
+		reg |= (val) << FGFP_ ## name ## _SHIFT((idx)); \
+	} while (0);
+
+#define FGFP_TEX_MODE_SHIFT		(0)
+#define FGFP_TEX_MODE_MASK		(0x7 << 0)
+#define FGFP_TEX_SWAP_SHIFT		(3)
+#define FGFP_TEX_SWAP_MASK		(0x1 << 3)
+#define FGFP_TEX_COMBC_SRC_SHIFT(i)	(4 + 4*(i))
+#define FGFP_TEX_COMBC_SRC_MASK(i)	(0x3 << (4 + 4*(i)))
+#define FGFP_TEX_COMBC_MOD_SHIFT(i)	(6 + 4*(i))
+#define FGFP_TEX_COMBC_MOD_MASK(i)	(0x3 << (6 + 4*(i)))
+#define FGFP_TEX_COMBC_FUNC_SHIFT	(16)
+#define FGFP_TEX_COMBC_FUNC_MASK	(0x7 << 16)
+#define FGFP_TEX_COMBA_SRC_SHIFT(i)	(19 + 3*(i))
+#define FGFP_TEX_COMBA_SRC_MASK(i)	(0x3 << (19 + 3*(i)))
+#define FGFP_TEX_COMBA_MOD_SHIFT(i)	(21 + 3*(i))
+#define FGFP_TEX_COMBA_MOD_MASK(i)	(0x1 << (21 + 3*(i)))
+#define FGFP_TEX_COMBA_FUNC_SHIFT	(28)
+#define FGFP_TEX_COMBA_FUNC_MASK	(0x7 << 28)
+#define FGFP_PS_SWAP_SHIFT		(0)
+#define FGFP_PS_SWAP_MASK		(0x1 << 0)
+#define FGFP_PS_INVALID_SHIFT		(31)
+#define FGFP_PS_INVALID_MASK		(0x1 << 31)
+
+typedef union _fimgPixelShaderState {
+	uint32_t val[FIMG_NUM_TEXTURE_UNITS + 1];
+	struct {
+		uint32_t tex[FIMG_NUM_TEXTURE_UNITS];
+		uint32_t ps;
+	};
+} fimgPixelShaderState;
+
+#define FGFP_VS_TEX_EN_SHIFT(i)		(i)
+#define FGFP_VS_TEX_EN_MASK(i)		(0x1 << (i))
+#define FGFP_VS_INVALID_SHIFT		(31)
+#define FGFP_VS_INVALID_MASK		(0x1 << 31)
+
+typedef union _fimgVertexShaderState {
+	uint32_t val[1];
+	struct {
+		uint32_t vs;
+	};
+} fimgVertexShaderState;
 
 typedef struct {
-	fimgCombFunc func;
-	fimgCombArg arg[3];
-} fimgCombiner;
-
-typedef struct {
-	int enabled;
 	int dirty;
-	fimgTexFunc func;
-	fimgCombiner combc;
-	fimgCombiner comba;
 	float env[4];
 	float scale[4];
 	fimgTexture *texture;
-	int swap;
 } fimgTextureCompat;
 
 typedef struct {
-	int vsDirty;
+	uint32_t *vshaderBuf;
+	int vshaderLoaded;
+	fimgVertexShaderState vsState;
+	fimgVertexShaderState curVsState;
 	uint32_t vshaderEnd;
-	int psDirty;
+	uint32_t *pshaderBuf;
+	int pshaderLoaded;
+	fimgPixelShaderState psState;
+	fimgPixelShaderState curPsState;
+	uint32_t psMask[FIMG_NUM_TEXTURE_UNITS + 1];
 	uint32_t pshaderEnd;
 	fimgTextureCompat texture[FIMG_NUM_TEXTURE_UNITS];
 	int matrixDirty[2 + FIMG_NUM_TEXTURE_UNITS];
 	const float *matrix[2 + FIMG_NUM_TEXTURE_UNITS];
-	uint32_t *shaderBuf;
 	/* More to come */
 } fimgCompatContext;
 

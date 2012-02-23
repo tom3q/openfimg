@@ -144,11 +144,13 @@ struct FGLEGLState {
 struct FGLTextureState {
 	FGLTexture defTexture;
 	FGLTextureObjectBinding binding;
+	fimgTexFunc fglFunc;
 	bool enabled;
 
 	FGLTextureState() :
 		defTexture(),
 		binding(this),
+		fglFunc(FGFP_TEXFUNC_MODULATE),
 		enabled(false) {};
 
 	inline FGLTexture *getTexture(void)
