@@ -1492,8 +1492,10 @@ GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
 
 	FGLContext *ctx = getContext();
 
-	fimgSetFrontStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
-	fimgSetBackStencilFunc(ctx->fimg, fglFunc, ref & 0xff, mask & 0xff);
+	ref = clamp(ref, 0, 0xff);
+
+	fimgSetFrontStencilFunc(ctx->fimg, fglFunc, ref, mask & 0xff);
+	fimgSetBackStencilFunc(ctx->fimg, fglFunc, ref, mask & 0xff);
 	ctx->perFragment.stencil.func = func;
 	ctx->perFragment.stencil.ref = ref;
 	ctx->perFragment.stencil.mask = mask;
