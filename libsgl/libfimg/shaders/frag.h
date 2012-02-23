@@ -179,9 +179,9 @@ static const unsigned int frag_combine_adds[] = {
 };
 
 static const unsigned int frag_combine_interpolate[] = {
-	0x06000000, 0x0104e401, 0x037824e4, 0x00000000,
+	0x06000000, 0x0104e401, 0x037827e4, 0x00000000,
 	0x06000000, 0x0201e441, 0x227826e4, 0x00000000,
-	0x06e40104, 0x0105e401, 0x0ef824e4, 0x00000000,
+	0x06e40107, 0x0105e401, 0x0ef824e4, 0x00000000,
 };
 
 static const unsigned int frag_combine_subtract[] = {

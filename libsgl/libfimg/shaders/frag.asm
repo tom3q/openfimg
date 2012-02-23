@@ -611,9 +611,9 @@ label start
 # Output:	r4 - result
 
 # Interpolate
-	mul r4, r4, r6
+	mul r7, r4, r6
 	add r6, c1, -r6
-	mad r4, r5, r6, r4
+	mad r4, r5, r6, r7
 
 % f combine_subtract
 
