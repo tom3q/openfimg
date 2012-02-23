@@ -484,12 +484,6 @@ void fimgCompatFlush(fimgContext *ctx);
 
 #endif
 
-typedef struct {
-	float color[4];
-	float depth;
-	uint8_t stencil;
-} fimgClearContext;
-
 struct _fimgContext {
 	volatile char *base;
 	int fd;
@@ -502,7 +496,6 @@ struct _fimgContext {
 #ifdef FIMG_FIXED_PIPELINE
 	fimgCompatContext compat;
 #endif
-	fimgClearContext clear;
 	/* Shared context */
 	unsigned int invalTexCache;
 	unsigned int numAttribs;

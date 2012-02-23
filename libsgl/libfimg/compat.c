@@ -1274,7 +1274,6 @@ void fimgCreateCompatContext(fimgContext *ctx)
 	ctx->compat.vsDirty = 1;
 	ctx->compat.psDirty = 1;
 
-	ctx->clear.depth = 1.0;
 }
 
 #define FGFP_TEXENV(unit)	(4 + 2*(unit))
