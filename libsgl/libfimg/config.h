@@ -46,4 +46,7 @@
 /* Check for hardware lock before register access */
 //#define FIMG_DEBUG_HW_LOCK
 
+/* Dump generated shaders */
+//#define FIMG_DYNSHADER_DEBUG
+
 #endif /* _FIMG_CONFIG_H_ */

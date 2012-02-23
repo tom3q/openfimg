@@ -249,7 +249,7 @@ static uint32_t loadShaderBlock(const struct shaderBlock *blk,
 
 	for (inst = 0; inst < blk->len; inst++) {
 #ifdef FIMG_DYNSHADER_DEBUG
-		printf("%p: %08x %08x %08x %08x\n", addr,
+		LOGD("%p: %08x %08x %08x %08x", addr,
 					data[0], data[1], data[2], data[3]);
 #endif
 #if 0
