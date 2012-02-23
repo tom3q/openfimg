@@ -311,6 +311,671 @@ static inline void setPixelShaderRange(fimgContext *ctx,
 	fimgWrite(ctx, 1, FGPS_PC_COPY);
 }
 
+/*
+ * Shader optimization code
+ */
+
+typedef struct __attribute__ ((__packed__)) _fimgShaderInstruction {
+	struct {
+		unsigned src2_regnum	:5;
+		unsigned		:3;
+		unsigned src2_regtype	:3;
+		unsigned src2_ar	:1;
+		unsigned		:2;
+		unsigned src2_modifier	:2;
+		unsigned src2_swizzle	:8;
+		unsigned src1_regnum	:5;
+		unsigned src1_pch	:2;
+		unsigned src1_pa	:1;
+	};
+	struct {
+		unsigned src1_regtype	:3;
+		unsigned src1_ar	:1;
+		unsigned src1_pn	:1;
+		unsigned src1_p		:1;
+		unsigned src1_modifier	:2;
+		unsigned src1_swizzle	:8;
+		unsigned src0_regnum	:5;
+		unsigned src0_extnum	:3;
+		unsigned src0_regtype	:3;
+		unsigned src0_ar	:3;
+		unsigned src0_modifier	:2;
+	};
+	union {
+		struct {
+			unsigned src0_swizzle	:8;
+			unsigned dest_regnum	:5;
+			unsigned dest_regtype	:3;
+			unsigned dest_a		:1;
+			unsigned dest_modifier	:2;
+			unsigned dest_mask	:4;
+			unsigned opcode		:6;
+			unsigned next_3src	:1;
+			unsigned		:2;
+		};
+		struct {
+			unsigned 		:8;
+			unsigned branch_offs	:8;
+			unsigned branch_dir	:1;
+			unsigned		:15;
+		};
+	};
+	struct {
+		uint32_t reserved;
+	};
+} fimgShaderInstruction;
+
+typedef struct opcodeInfo {
+	uint8_t type;
+	uint8_t srcCount;
+} fimgOpcodeInfo;
+
+enum fimgOpcode {
+	OP_NOP = 0,
+	OP_MOV,
+	OP_MOVA,
+	OP_MOVC,
+	OP_ADD,
+	OP_MUL,
+	OP_MUL_LIT,
+	OP_DP3,
+	OP_DP4,
+	OP_DPH,
+	OP_DST,
+	OP_EXP,
+	OP_EXP_LIT,
+	OP_LOG,
+	OP_LOG_LIT,
+	OP_RCP,
+	OP_RSQ,
+	OP_DP2ADD,
+	OP_RSVD_13,
+	OP_MAX,
+	OP_MIN,
+	OP_SGE,
+	OP_SLT,
+	OP_SETP_EQ,
+	OP_SETP_GE,
+	OP_SETP_GT,
+	OP_SETP_NE,
+	OP_CMP,
+	OP_MAD,
+	OP_FRC,
+	OP_RSVD_1F,
+	OP_TEXLD,
+	OP_CUBEDIR,
+	OP_MAXCOMP,
+	OP_TEXLDC,
+	OP_RSVD_24,
+	OP_RSVD_25,
+	OP_RSVD_26,
+	OP_TEXKILL,
+	OP_MOVIPS,
+	OP_ADDI,
+	OP_B,
+	OP_BF,
+	OP_RSVD_32,
+	OP_RSVD_33,
+	OP_BP,
+	OP_BFP,
+	OP_BZP,
+	OP_RSVD_37,
+	OP_CALL,
+	OP_CALLNZ,
+	OP_RSVD_3A,
+	OP_RSVD_3B,
+	OP_RET
+};
+
+enum fimgOpcodeType {
+	OP_TYPE_RESERVED = 0,
+	OP_TYPE_FLOW,
+	OP_TYPE_NORMAL,
+	OP_TYPE_MOVE
+};
+
+static fimgOpcodeInfo opcodeMap[64] = {
+	[OP_NOP] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_MOV] = {
+		.type		= OP_TYPE_MOVE,
+		.srcCount	= 1,
+	},
+	[OP_MOVA] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_MOVC] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_ADD] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_MUL] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_MUL_LIT] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_DP3] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_DP4] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_DPH] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_DST] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_EXP] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_EXP_LIT] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_LOG] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_LOG_LIT] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_RCP] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_RSQ] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_DP2ADD] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 3,
+	},
+	[OP_RSVD_13] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_MAX] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_MIN] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_SGE] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_SLT] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_SETP_EQ] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_SETP_GE] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_SETP_GT] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_SETP_NE] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_CMP] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 3,
+	},
+	[OP_MAD] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 3,
+	},
+	[OP_FRC] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_RSVD_1F] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_TEXLD] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_CUBEDIR] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_MAXCOMP] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_TEXLDC] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 3,
+	},
+	[OP_RSVD_24] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_RSVD_25] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_RSVD_26] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_TEXKILL] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_MOVIPS] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 1,
+	},
+	[OP_ADDI] = {
+		.type		= OP_TYPE_NORMAL,
+		.srcCount	= 2,
+	},
+	[OP_B] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 0,
+	},
+	[OP_BF] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 1,
+	},
+	[OP_RSVD_32] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_RSVD_33] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_BP] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 0,
+	},
+	[OP_BFP] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 1,
+	},
+	[OP_BZP] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 1,
+	},
+	[OP_RSVD_37] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_CALL] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 0,
+	},
+	[OP_CALLNZ] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 1,
+	},
+	[OP_RSVD_3A] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_RSVD_3B] = {
+		.type		= OP_TYPE_RESERVED,
+		.srcCount	= 0,
+	},
+	[OP_RET] = {
+		.type		= OP_TYPE_FLOW,
+		.srcCount	= 0,
+	}
+};
+
+enum fimgSrcRegType {
+	REG_SRC_V = 0,
+	REG_SRC_R,
+	REG_SRC_C,
+	REG_SRC_I,
+	REG_SRC_AL,
+	REG_SRC_B,
+	REG_SRC_P,
+	REG_SRC_S,
+	REG_SRC_D,
+	REG_SRC_VFACE,
+	REG_SRC_VPOS
+};
+
+enum fimgDstRegType {
+	REG_DST_O = 0,
+	REG_DST_R,
+	REG_DST_P,
+	REG_DST_A0,
+	REG_DST_AL
+};
+
+struct registerMap {
+	union {
+		struct {
+			unsigned srcRegNum	:5;
+			unsigned srcRegType	:3;
+		};
+		uint8_t srcReg;
+	};
+	uint8_t srcSwizzle;
+	uint8_t movInstr;
+	uint8_t flags;
+};
+
+#define MAP_FLAG_USED		(1 << 0)
+#define MAP_FLAG_INVALID	(1 << 1)
+
+#define SWIZZLE(a, b, c, d)	((a) | ((b) << 2) | ((c) << 4) | ((d) << 6))
+
+static inline uint8_t mergeSwizzle(uint8_t a, uint8_t b)
+{
+	uint8_t swizzle = 0;
+
+	swizzle |= ((a >> 2*(b & 3)) & 3) << 6;
+	swizzle >>= 2;
+	b >>= 2;
+	swizzle |= ((a >> 2*(b & 3)) & 3) << 6;
+	swizzle >>= 2;
+	b >>= 2;
+	swizzle |= ((a >> 2*(b & 3)) & 3) << 6;
+	swizzle >>= 2;
+	b >>= 2;
+	swizzle |= ((a >> 2*(b & 3)) & 3) << 6;
+
+	return swizzle;
+}
+
+static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
+{
+	struct registerMap map[32];
+	unsigned int deps[32];
+	int reg;
+	fimgShaderInstruction *instrStart = (fimgShaderInstruction *)start;
+	fimgShaderInstruction *instrEnd = (fimgShaderInstruction *)end;
+	fimgShaderInstruction *instr;
+	fimgShaderInstruction *instrPtr;
+
+	/* State initialization */
+	memset(deps, 0, sizeof(deps));
+	for (reg = 0; reg < 32; ++reg) {
+		map[reg].srcReg = reg;
+		map[reg].srcRegType = 1;
+		map[reg].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+		map[reg].movInstr = 0;
+		map[reg].flags = 0;
+	}
+
+	/* Optimization pass */
+	for (instr = instrStart; instr < instrEnd; ++instr) {
+		fimgOpcodeInfo *info = &opcodeMap[instr->opcode];
+		uint32_t depMask;
+		uint32_t depReg;
+
+		switch (info->srcCount) {
+		case 1:
+			if (instr->src0_regtype == REG_SRC_R
+			    && map[instr->src0_regnum].flags & MAP_FLAG_INVALID)
+				map[instr->src0_regnum].flags = 0;
+
+			if (instr->src0_regtype == REG_SRC_R
+			    && map[instr->src0_regnum].flags
+			) {
+				instr->src0_swizzle =
+					mergeSwizzle(map[instr->src0_regnum].srcSwizzle,
+								instr->src0_swizzle);
+				instr->src0_regtype = map[instr->src0_regnum].srcRegType;
+				instr->src0_regnum = map[instr->src0_regnum].srcRegNum;
+			}
+
+			break;
+		case 2:
+			if (instr->src0_regtype == REG_SRC_R
+			    && map[instr->src0_regnum].flags & MAP_FLAG_INVALID)
+				map[instr->src0_regnum].flags = 0;
+
+			if (instr->src0_regtype == REG_SRC_R
+				&& map[instr->src0_regnum].flags
+				&& map[instr->src0_regnum].srcRegType != REG_SRC_R
+				&& map[instr->src0_regnum].srcRegType == instr->src1_regtype
+			) {
+				if (map[instr->src0_regnum].srcRegType == REG_SRC_R)
+					deps[map[instr->src0_regnum].srcRegNum] &= ~(1 << instr->src0_regnum);
+
+				map[instr->src0_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+				map[instr->src0_regnum].srcRegType = REG_SRC_R;
+				map[instr->src0_regnum].srcRegNum = instr->src0_regnum;
+				map[instr->src0_regnum].flags = 0;
+			}
+
+			if (instr->src0_regtype == REG_SRC_R
+				&& map[instr->src0_regnum].flags
+			) {
+				instr->src0_swizzle =
+					mergeSwizzle(map[instr->src0_regnum].srcSwizzle,
+								instr->src0_swizzle);
+				instr->src0_regtype = map[instr->src0_regnum].srcRegType;
+				instr->src0_regnum = map[instr->src0_regnum].srcRegNum;
+			}
+
+			if (instr->src1_regtype == REG_SRC_R
+			    && map[instr->src1_regnum].flags & MAP_FLAG_INVALID)
+				map[instr->src1_regnum].flags = 0;
+
+			if (instr->src1_regtype == REG_SRC_R
+				&& map[instr->src1_regnum].flags
+				&& map[instr->src1_regnum].srcRegType != REG_SRC_R
+				&& map[instr->src1_regnum].srcRegType == instr->src0_regtype
+			) {
+				if (map[instr->src1_regnum].srcRegType == REG_SRC_R)
+					deps[map[instr->src1_regnum].srcRegNum] &= ~(1 << instr->src1_regnum);
+
+				map[instr->src1_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+				map[instr->src1_regnum].srcRegType = REG_SRC_R;
+				map[instr->src1_regnum].srcRegNum = instr->src1_regnum;
+				map[instr->src1_regnum].flags = 0;
+			}
+
+			if (instr->src1_regtype == REG_SRC_R
+				&& map[instr->src1_regnum].flags
+			) {
+				instr->src1_swizzle =
+					mergeSwizzle(map[instr->src1_regnum].srcSwizzle,
+								instr->src1_swizzle);
+				instr->src1_regtype = map[instr->src1_regnum].srcRegType;
+				instr->src1_regnum = map[instr->src1_regnum].srcRegNum;
+			}
+
+			break;
+		case 3:
+			if (instr->src0_regtype == REG_SRC_R
+			    && map[instr->src0_regnum].flags & MAP_FLAG_INVALID)
+				map[instr->src0_regnum].flags = 0;
+
+			if (instr->src0_regtype == REG_SRC_R
+				&& map[instr->src0_regnum].flags
+				&& map[instr->src0_regnum].srcRegType != REG_SRC_R
+				&& (map[instr->src0_regnum].srcRegType == instr->src1_regtype
+				|| map[instr->src0_regnum].srcRegType == instr->src2_regtype)
+			) {
+				if (map[instr->src0_regnum].srcRegType == REG_SRC_R)
+					deps[map[instr->src0_regnum].srcRegNum] &= ~(1 << instr->src0_regnum);
+
+				map[instr->src0_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+				map[instr->src0_regnum].srcRegType = REG_SRC_R;
+				map[instr->src0_regnum].srcRegNum = instr->src0_regnum;
+				map[instr->src0_regnum].flags = 0;
+			}
+
+			if (instr->src0_regtype == REG_SRC_R
+			    && map[instr->src0_regnum].flags) {
+				instr->src0_swizzle =
+					mergeSwizzle(map[instr->src0_regnum].srcSwizzle,
+								instr->src0_swizzle);
+				instr->src0_regtype = map[instr->src0_regnum].srcRegType;
+				instr->src0_regnum = map[instr->src0_regnum].srcRegNum;
+			}
+
+			if (instr->src1_regtype == REG_SRC_R
+			    && map[instr->src1_regnum].flags & MAP_FLAG_INVALID)
+				map[instr->src1_regnum].flags = 0;
+
+			if (instr->src1_regtype == REG_SRC_R
+				&& map[instr->src1_regnum].flags
+				&& map[instr->src1_regnum].srcRegType != REG_SRC_R
+				&& (map[instr->src1_regnum].srcRegType == instr->src0_regtype
+				|| map[instr->src1_regnum].srcRegType == instr->src2_regtype)
+			) {
+				if (map[instr->src1_regnum].srcRegType == REG_SRC_R)
+					deps[map[instr->src1_regnum].srcRegNum] &= ~(1 << instr->src1_regnum);
+
+				map[instr->src1_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+				map[instr->src1_regnum].srcRegType = REG_SRC_R;
+				map[instr->src1_regnum].srcRegNum = instr->src1_regnum;
+				map[instr->src1_regnum].flags = 0;
+			}
+
+			if (instr->src1_regtype == REG_SRC_R
+			    && map[instr->src1_regnum].flags) {
+				instr->src1_swizzle =
+					mergeSwizzle(map[instr->src1_regnum].srcSwizzle,
+								instr->src1_swizzle);
+				instr->src1_regtype = map[instr->src1_regnum].srcRegType;
+				instr->src1_regnum = map[instr->src1_regnum].srcRegNum;
+			}
+
+			if (instr->src2_regtype == REG_SRC_R
+			    && map[instr->src2_regnum].flags & MAP_FLAG_INVALID)
+				map[instr->src2_regnum].flags = 0;
+
+			if (instr->src2_regtype == REG_SRC_R
+				&& map[instr->src2_regnum].flags
+				&& map[instr->src2_regnum].srcRegType != REG_SRC_R
+				&& (map[instr->src2_regnum].srcRegType == instr->src0_regtype
+				|| map[instr->src2_regnum].srcRegType == instr->src1_regtype)
+			) {
+				if (map[instr->src2_regnum].srcRegType == REG_SRC_R)
+					deps[map[instr->src2_regnum].srcRegNum] &= ~(1 << instr->src2_regnum);
+
+				map[instr->src2_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+				map[instr->src2_regnum].srcRegType = REG_SRC_R;
+				map[instr->src2_regnum].srcRegNum = instr->src2_regnum;
+				map[instr->src2_regnum].flags = 0;
+			}
+
+			if (instr->src2_regtype == REG_SRC_R
+			    && map[instr->src2_regnum].flags) {
+				instr->src2_swizzle =
+					mergeSwizzle(map[instr->src2_regnum].srcSwizzle,
+								instr->src2_swizzle);
+				instr->src2_regtype = map[instr->src2_regnum].srcRegType;
+				instr->src2_regnum = map[instr->src2_regnum].srcRegNum;
+			}
+			break;
+		default:
+			break;
+		}
+
+		if (info->type <= OP_TYPE_FLOW || instr->dest_regtype != REG_DST_R)
+			continue;
+
+		if (map[instr->dest_regnum].flags & MAP_FLAG_USED) {
+			fimgShaderInstruction *mov =
+				instrStart + map[instr->dest_regnum].movInstr;
+
+			/* Instructions with non-zero here will be removed */
+			mov->reserved = 0xdeadc0de;
+
+			if (map[instr->dest_regnum].srcRegType == REG_SRC_R)
+				deps[map[instr->dest_regnum].srcRegNum] &= ~(1 << instr->dest_regnum);
+
+			map[instr->dest_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+			map[instr->dest_regnum].srcRegType = REG_SRC_R;
+			map[instr->dest_regnum].srcRegNum = instr->dest_regnum;
+			map[instr->dest_regnum].flags = 0;
+		}
+
+		depMask = deps[instr->dest_regnum];
+		depReg = 0;
+		while (depMask) {
+			if (depMask & 1) {
+				map[depReg].srcSwizzle = SWIZZLE(0, 1, 2, 3);
+				map[depReg].srcRegType = REG_SRC_R;
+				map[depReg].srcRegNum = depReg;
+				map[depReg].flags |= MAP_FLAG_INVALID;
+			}
+			depMask >>= 1;
+			++depReg;
+		}
+		deps[instr->dest_regnum] = 0;
+
+		if (info->type != OP_TYPE_MOVE)
+			continue;
+
+		if (instr->dest_mask != 0xf || instr->dest_modifier
+		    || instr->src0_modifier)
+			continue;
+
+		map[instr->dest_regnum].srcRegNum = instr->src0_regnum;
+		map[instr->dest_regnum].srcRegType = instr->src0_regtype;
+		map[instr->dest_regnum].srcSwizzle = instr->src0_swizzle;
+		map[instr->dest_regnum].movInstr = instr - instrStart;
+		map[instr->dest_regnum].flags = MAP_FLAG_USED;
+
+		if (instr->src0_regtype == REG_SRC_R)
+			deps[instr->src0_regnum] |= (1 << instr->dest_regnum);
+	}
+
+	/* Mark all remaining mapped mov instructions to be removed */
+	for (reg = 0; reg < 32; ++reg) {
+		if (!map[reg].flags)
+			continue;
+		fimgShaderInstruction *mov = instrStart + map[reg].movInstr;
+		mov->reserved = 0xdeadc0de;
+	}
+
+	/* Done, remove unused instructions and return */
+	instrPtr = instrStart;
+	for (instr = instrStart; instr < instrEnd; ++instr) {
+		if (instr->reserved == 0xdeadc0de)
+			continue;
+		if (opcodeMap[instr->opcode].srcCount == 3)
+			(instr - 1)->next_3src = 1;
+		*(instrPtr++) = *instr;
+	}
+
+	return instrPtr - instrStart;
+}
+
+/*
+ * Shader generation code
+ */
+
 void fimgCompatLoadVertexShader(fimgContext *ctx)
 {
 	uint32_t unit;
