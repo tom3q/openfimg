@@ -28,9 +28,6 @@
 /* Use fixed pipeline emulation */
 #define FIMG_FIXED_PIPELINE
 
-/* Flip the Y axis */
-#define FIMG_COORD_FLIP_Y
-
 /* Dump register state before sending draw request (for debugging) */
 //#define FIMG_DUMP_STATE_BEFORE_DRAW
 
