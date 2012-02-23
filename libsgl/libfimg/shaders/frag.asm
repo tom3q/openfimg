@@ -652,12 +652,4 @@ label noswapout
 	# Return
 	ret
 
-################################################################################
-
-% f clear
-
-# Shader for glClear
-	mov_sat oColor, c255
-	ret
-
 # End of shader code

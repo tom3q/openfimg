@@ -202,9 +202,4 @@ static const unsigned int frag_footer[] = {
 	0x00000000, 0x00000000, 0x1e000000, 0x00000000,
 };
 
-static const unsigned int frag_clear[] = {
-	0x00000000, 0x02ff0000, 0x00fa10e4, 0x00000000,
-	0x00000000, 0x00000000, 0x1e000000, 0x00000000,
-};
-
 #endif

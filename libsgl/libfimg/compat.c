@@ -125,8 +125,6 @@ static const struct shaderBlock texcoordTransform[] = {
 	SHADER_BLOCK(vert_texture1)
 };
 
-static const struct shaderBlock vertexClear = SHADER_BLOCK(vert_clear);
-
 /* Pixel shader */
 
 static const struct shaderBlock pixelConstFloat = SHADER_BLOCK(frag_cfloat);
@@ -215,8 +213,6 @@ static const struct shaderBlock *combineArgMod[] = {
 static const struct shaderBlock combine_c = SHADER_BLOCK(frag_combine_col);
 static const struct shaderBlock combine_a = SHADER_BLOCK(frag_combine_a);
 static const struct shaderBlock combine_u = SHADER_BLOCK(frag_combine_uni);
-
-static const struct shaderBlock pixelClear = SHADER_BLOCK(frag_clear);
 
 /* Shader functions */
 
@@ -337,8 +333,6 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 
 	setVertexShaderRange(ctx, 0, ctx->compat.vshaderEnd);
 
-	loadShaderBlock(&vertexClear, vsInstAddr(ctx, 512 - vertexClear.len));
-
 	addr = (volatile uint32_t *)(ctx->base + FGVS_CFLOAT_START);
 
 	loadShaderBlock(&vertexConstFloat, addr);
@@ -403,8 +397,6 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 
 	ctx->compat.pshaderEnd = psInstLen(ctx, addr) - 1;
 	setPixelShaderRange(ctx, 0, ctx->compat.pshaderEnd);
-
-	loadShaderBlock(&pixelClear, psInstAddr(ctx, 512 - pixelClear.len));
 
 	addr = (volatile uint32_t *)(ctx->base + FGPS_CFLOAT_START);
 

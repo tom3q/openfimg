@@ -93,12 +93,4 @@ label start
 	# Return
 	ret
 
-################################################################################
-
-% v clear
-
-# Shader for glClear
-	mov o0, v0
-	ret
-
 # End of shader code
