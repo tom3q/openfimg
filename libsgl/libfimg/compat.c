@@ -218,8 +218,6 @@ static const struct shaderBlock out_swap = SHADER_BLOCK(frag_out_swap);
 
 /* Shader functions */
 
-//#define FIMG_DYNSHADER_DEBUG
-
 static inline volatile void *vsInstAddr(fimgContext *ctx, unsigned int slot)
 {
 	return ctx->base + FGVS_INSTMEM_START + 16*slot;
@@ -1054,12 +1052,7 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 
 		addr += loadShaderBlock(&combineFunc[texture->combc.func],
 									addr);
-#if 0
-		if (texture->combc.func == texture->comba.func) {
-			addr += loadShaderBlock(&combine_u, addr);
-			continue;
-		}
-#endif
+
 		if (texture->combc.func == FGFP_COMBFUNC_DOT3_RGBA) {
 			addr += loadShaderBlock(&combine_u, addr);
 			continue;
