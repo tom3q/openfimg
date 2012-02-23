@@ -213,6 +213,8 @@ static const struct shaderBlock *combineArgMod[] = {
 static const struct shaderBlock combine_c = SHADER_BLOCK(frag_combine_col);
 static const struct shaderBlock combine_a = SHADER_BLOCK(frag_combine_a);
 static const struct shaderBlock combine_u = SHADER_BLOCK(frag_combine_uni);
+static const struct shaderBlock tex_swap = SHADER_BLOCK(frag_tex_swap);
+static const struct shaderBlock out_swap = SHADER_BLOCK(frag_out_swap);
 
 /* Shader functions */
 
@@ -354,6 +356,8 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 			continue;
 
 		addr += loadShaderBlock(&textureUnit[unit], addr);
+		if (texture->swap)
+			addr += loadShaderBlock(&tex_swap, addr);
 		addr += loadShaderBlock(&textureFunc[texture->func], addr);
 
 		if (texture->func != FGFP_TEXFUNC_COMBINE)
@@ -392,6 +396,9 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 									addr);
 		addr += loadShaderBlock(&combine_a, addr);
 	}
+
+	if (ctx->fbFlags & FGPF_COLOR_MODE_BGR)
+		addr += loadShaderBlock(&out_swap, addr);
 
 	addr += loadShaderBlock(&pixelFooter, addr);
 
@@ -532,9 +539,12 @@ void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
 void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
 {
 	ctx->compat.texture[unit].texture = tex;
-	if (tex)
+	if (tex) {
+		if (ctx->compat.texture[unit].swap != !!(tex->reserved2 & FGTU_TEX_BGR))
+			ctx->compat.psDirty = 1;
 		ctx->compat.texture[unit].swap =
 					!!(tex->reserved2 & FGTU_TEX_BGR);
+	}
 }
 
 void fimgCreateCompatContext(fimgContext *ctx)
@@ -666,7 +676,6 @@ void fimgCompatFlush(fimgContext *ctx)
 			continue;
 
 		fimgSetupTexture(ctx, ctx->compat.texture[i].texture, i);
-		setPSConstBool(ctx, ctx->compat.texture[i].swap, i);
 
 		if (!ctx->compat.texture[i].dirty)
 			continue;
@@ -678,9 +687,6 @@ void fimgCompatFlush(fimgContext *ctx)
 
 		ctx->compat.texture[i].dirty = 0;
 	}
-
-	setPSConstBool(ctx, !!(ctx->fbFlags & FGPF_COLOR_MODE_BGR),
-							FIMG_NUM_TEXTURE_UNITS);
 
 	setPixelShaderState(ctx, 1);
 }

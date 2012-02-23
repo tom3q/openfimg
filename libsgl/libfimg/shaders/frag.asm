@@ -64,9 +64,6 @@ label start
 
 # Texture 0
 	texld r1, v1, s0
-	bf noswap0, b0
-	mov r1.xyzw, r1.zyxw
-label noswap0
 	mov r2, c4
 	mov r3, c5
 
@@ -78,11 +75,19 @@ label noswap0
 
 # Texture 1
 	texld r1, v2, s1
-	bf noswap1, b1
-	mov r1.xyzw, r1.zyxw
-label noswap1
 	mov r2, c6
 	mov r3, c7
+
+% f tex_swap
+
+# Texture BGR -> RGB color component swap
+#
+# Input:	r1 - BGR texture value
+#
+# Ouput:	r1 - RGB texture value
+
+# Swap
+	mov r1.xyzw, r1.zyxw
 
 ################################################################################
 
@@ -641,15 +646,21 @@ label noswap1
 
 ################################################################################
 
+% f out_swap
+
+# Output RGB -> BGR color component swap
+#
+# Inputs:	r0 - fragment color
+#
+# Outputs:	r0 - swapped fragment color
+
+# Swap
+	mov r0.xyzw, r0.zyxw
+
 % f footer
 
 # Shader footer
 	# Emit the pixel
-	bf noswapout, b2
-	mov r0.xyzw, r0.zyxw
-label noswapout
-	mov oColor, r0
-	# Return
-	ret
+	mov_sat oColor, r0
 
 # End of shader code

@@ -426,6 +426,10 @@ void fimgSetFrameBufParams(fimgContext *ctx,
 	ctx->fragment.fbctl.alphathreshold = 0;
 	ctx->fragment.fbctl.alphaconst = 255;
 	ctx->fragment.fbctl.colormode = format;
+#ifdef FIMG_FIXED_PIPELINE
+	if (ctx->fbFlags != flags)
+		ctx->compat.psDirty = 1;
+#endif
 	ctx->fbFlags = flags;
 	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
