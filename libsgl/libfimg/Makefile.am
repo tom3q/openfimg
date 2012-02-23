@@ -11,17 +11,12 @@ libfimg_la_SOURCES = \
 	dump.c \
 	fragment.c \
 	global.c \
+	host_new.c \
 	primitive.c \
 	raster.c \
 	shaders.c \
 	system.c \
 	texture.c
-
-if USE_NEWHOST
-libfimg_la_SOURCES += host_new.c
-else
-libfimg_la_SOURCES += host.c
-endif
 
 MAINTAINERCLEANFILES = \
 	Makefile.in

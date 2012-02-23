@@ -25,15 +25,6 @@
 /* Workaround for rasterizer bug. */
 #define FIMG_INTERPOLATION_WORKAROUND
 
-/* Enable buffered geometry transfer */
-#define FIMG_USE_VERTEX_BUFFER
-
-/* Use vertex buffer 0 stride for constant attributes */
-#define FIMG_USE_STRIDE_0_CONSTANTS
-
-/* Use busy waiting instead of interrupts for FIFO transfers */
-//#define FIMG_FIFO_BUSY_WAIT
-
 /* Use fixed pipeline emulation */
 #define FIMG_FIXED_PIPELINE
 
@@ -42,9 +33,6 @@
 
 /* Dump register state before sending draw request (for debugging) */
 //#define FIMG_DUMP_STATE_BEFORE_DRAW
-
-/* Enable clipper workaround */
-//#define FIMG_CLIPPER_WORKAROUND
 
 /* Use dump file to store GPU crash dumps */
 #define FIMG_USE_DUMP_FILE

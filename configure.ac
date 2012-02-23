@@ -87,17 +87,6 @@ if test "${ENABLE_FRAMEBUFFER}" = "no" -a "${ENABLE_ANDROID}" = "no"; then
 	AC_MSG_ERROR([At least one of the backends (Android or framebuffer) must be enabled])
 fi
 
-AC_MSG_CHECKING([whether to enable new host interface module])
-AC_ARG_ENABLE(newhost,
-	AS_HELP_STRING([--enable-newhost], [enable new host interface module @<:@default=no@:>@]),
-		[case "$enableval" in
-		y | yes) ENABLE_NEWHOST=yes ;;
-		*) ENABLE_NEWHOST=no ;;
-	esac],
-	[ENABLE_NEWHOST=no])
-AC_MSG_RESULT([${ENABLE_NEWHOST}])
-AM_CONDITIONAL([USE_NEWHOST], [test "${ENABLE_NEWHOST}" = "yes"])
-
 #
 # Debugging
 #
