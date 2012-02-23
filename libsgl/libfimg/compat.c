@@ -1008,12 +1008,23 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 void fimgCompatLoadPixelShader(fimgContext *ctx)
 {
 	uint32_t unit, arg;
-	volatile uint32_t *addr;
+	uint32_t *addr;
 	fimgTextureCompat *texture;
-
+	uint32_t instrCount;
+	volatile uint32_t *reg;
+	struct shaderBlock blk;
 	texture = ctx->compat.texture;
-	addr = psInstAddr(ctx, 0);
 
+	if (!ctx->compat.shaderBuf) {
+		addr = malloc(64 * sizeof(fimgShaderInstruction));
+		if (!addr) {
+			LOGE("Failed to allocate memory for shader buffer, terminating.");
+			exit(1);
+		}
+		ctx->compat.shaderBuf = addr;
+	}
+
+	addr = ctx->compat.shaderBuf;
 	addr += loadShaderBlock(&pixelHeader, addr);
 
 	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
@@ -1066,13 +1077,16 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 		addr += loadShaderBlock(&out_swap, addr);
 
 	addr += loadShaderBlock(&pixelFooter, addr);
+	instrCount = optimizeShader(ctx->compat.shaderBuf, addr);
+	reg = psInstAddr(ctx, 0);
+	blk.data = ctx->compat.shaderBuf;
+	blk.len = instrCount;
+	loadShaderBlock(&blk, reg);
 
-	ctx->compat.pshaderEnd = psInstLen(ctx, addr) - 1;
+	ctx->compat.pshaderEnd = instrCount - 1;
 	setPixelShaderRange(ctx, 0, ctx->compat.pshaderEnd);
-
-	addr = (volatile uint32_t *)(ctx->base + FGPS_CFLOAT_START);
-
-	loadShaderBlock(&pixelConstFloat, addr);
+	reg = (volatile uint32_t *)(ctx->base + FGPS_CFLOAT_START);
+	loadShaderBlock(&pixelConstFloat, reg);
 }
 
 void fimgCompatSetTextureEnable(fimgContext *ctx, uint32_t unit, int enable)

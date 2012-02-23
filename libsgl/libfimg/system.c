@@ -135,6 +135,9 @@ void fimgDestroyContext(fimgContext *ctx)
 	fimgDeviceClose(ctx);
 	free(ctx->queueStart);
 	free(ctx->vertexData);
+#ifdef FIMG_FIXED_PIPELINE
+	free(ctx->compat.shaderBuf);
+#endif
 	free(ctx);
 }
 

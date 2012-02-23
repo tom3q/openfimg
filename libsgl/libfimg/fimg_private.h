@@ -474,6 +474,7 @@ typedef struct {
 	fimgTextureCompat texture[FIMG_NUM_TEXTURE_UNITS];
 	int matrixDirty[2 + FIMG_NUM_TEXTURE_UNITS];
 	const float *matrix[2 + FIMG_NUM_TEXTURE_UNITS];
+	uint32_t *shaderBuf;
 	/* More to come */
 } fimgCompatContext;
 
