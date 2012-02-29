@@ -384,7 +384,7 @@ public:
 	virtual int lock(int usage = 0)
 	{
 		return module->lock(module, handle, usage,
-				0, 0, buffer->width, buffer->height, &vaddr);
+				0, 0, buffer->stride, buffer->height, &vaddr);
 	}
 
 	virtual int unlock(void)
@@ -523,7 +523,7 @@ class FGLWindowSurface : public FGLRenderSurface {
 	int lock(android_native_buffer_t *buf, int usage, void **vaddr)
 	{
 		return module->lock(module, buf->handle,
-				usage, 0, 0, buf->width, buf->height, vaddr);
+				usage, 0, 0, buf->stride, buf->height, vaddr);
 	}
 
 	int unlock(android_native_buffer_t *buf)
@@ -696,7 +696,7 @@ public:
 		nativeWin->lockBuffer(nativeWin, buffer);
 
 		uint32_t oldSize = width*height;
-		uint32_t newSize = buffer->width*buffer->height;
+		uint32_t newSize = buffer->stride*buffer->height;
 
 		/* reallocate the depth-buffer if needed */
 		if (depthFormat && oldSize != newSize) {
@@ -714,7 +714,7 @@ public:
 			}
 		}
 
-		width = buffer->width;
+		width = buffer->stride;
 		height = buffer->height;
 
 		/* keep a reference on the buffer */
@@ -726,7 +726,7 @@ public:
 				| GRALLOC_USAGE_HW_RENDER;
 		if (lock(buffer, usage, &bits)) {
 			LOGE("%s failed to lock buffer %p (%ux%u)",
-					__func__, buffer, buffer->width,
+					__func__, buffer, buffer->stride,
 					buffer->height);
 
 			nativeWin->cancelBuffer(nativeWin, buffer);
@@ -780,7 +780,7 @@ public:
 			return false;
 		}
 
-		width = buffer->width;
+		width = buffer->stride;
 		height = buffer->height;
 
 		if (depthFormat) {
@@ -809,7 +809,7 @@ public:
 		// pin the buffer down
 		if (lock(buffer, usage, &bits)) {
 			LOGE("%s failed to lock buffer %p (%ux%u)",
-					__func__, buffer, buffer->width,
+					__func__, buffer, buffer->stride,
 					buffer->height);
 
 			nativeWin->cancelBuffer(nativeWin, buffer);
