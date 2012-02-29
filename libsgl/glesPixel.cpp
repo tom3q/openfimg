@@ -753,6 +753,7 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 		uint32_t color = getFillColor(ctx, &mask, &is32bpp);
 
 		if (lineByLine) {
+			int32_t lines = h;
 			if (!is32bpp) {
 				uint16_t *buf16 = (uint16_t *)draw->vaddr;
 				buf16 += t * stride;
@@ -761,13 +762,13 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 						uint16_t *line = buf16 + l;
 						fill16masked(line, color, ~mask, w);
 						buf16 += stride;
-					} while (--h);
+					} while (--lines);
 				} else {
 					do {
 						uint16_t *line = buf16 + l;
 						fill16(line, color, w);
 						buf16 += stride;
-					} while (--h);
+					} while (--lines);
 				}
 			} else {
 				uint32_t *buf32 = (uint32_t *)draw->vaddr;
@@ -777,13 +778,13 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 						uint32_t *line = buf32 + l;
 						fill32masked(line, color, ~mask, w);
 						buf32 += stride;
-					} while (--h);
+					} while (--lines);
 				} else {
 					do {
 						uint32_t *line = buf32 + l;
 						fill32(line, color, w);
 						buf32 += stride;
-					} while (--h);
+					} while (--lines);
 				}
 			}
 		} else {
@@ -825,6 +826,7 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 			return;
 
 		if (lineByLine) {
+			int32_t lines = h;
 			uint32_t *buf32 = (uint32_t *)depth->vaddr;
 			buf32 += t * stride;
 			if (mask) {
@@ -832,13 +834,13 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 					uint32_t *line = buf32 + l;
 					fill32masked(line, val, ~mask, w);
 					buf32 += stride;
-				} while (--h);
+				} while (--lines);
 			} else {
 				do {
 					uint32_t *line = buf32 + l;
 					fill32(line, val, w);
 					buf32 += stride;
-				} while (--h);
+				} while (--lines);
 			}
 		} else {
 			uint32_t *buf32 = (uint32_t *)depth->vaddr;
