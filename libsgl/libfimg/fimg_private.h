@@ -506,22 +506,51 @@ typedef struct {
 	fimgTexture *texture;
 } fimgTextureCompat;
 
+typedef struct fimgPixelShaderProgram {
+	uint32_t instrCount;
+	fimgPixelShaderState state;
+} fimgPixelShaderProgram;
+
+typedef struct fimgVertexShaderProgram {
+	uint32_t instrCount;
+	fimgVertexShaderState state;
+} fimgVertexShaderProgram;
+
+#define VS_CACHE_SIZE	4
+#define PS_CACHE_SIZE	8
+
 typedef struct {
-	uint32_t *vshaderBuf;
-	int vshaderLoaded;
-	fimgVertexShaderState vsState;
-	fimgVertexShaderState curVsState;
-	uint32_t vshaderEnd;
-	uint32_t *pshaderBuf;
-	int pshaderLoaded;
-	fimgPixelShaderState psState;
-	fimgPixelShaderState curPsState;
-	uint32_t psMask[FIMG_NUM_TEXTURE_UNITS + 1];
-	uint32_t pshaderEnd;
-	fimgTextureCompat texture[FIMG_NUM_TEXTURE_UNITS];
-	int matrixDirty[2 + FIMG_NUM_TEXTURE_UNITS];
-	const float *matrix[2 + FIMG_NUM_TEXTURE_UNITS];
-	/* More to come */
+	uint32_t		*vshaderBuf;
+	int			vshaderLoaded;
+	uint32_t		curVsNum;
+	uint32_t		vsEvictCounter;
+	fimgVertexShaderState	vsState;
+	fimgVertexShaderProgram	vertexShaders[VS_CACHE_SIZE];
+#ifdef FIMG_SHADER_CACHE_STATS
+	uint8_t			vsMisses;
+	uint8_t			vsSameHits;
+	uint8_t			vsCacheHits;
+	uint8_t			vsStatsCounter;
+#endif
+
+	uint32_t		*pshaderBuf;
+	int			pshaderLoaded;
+	uint32_t		curPsNum;
+	uint32_t		psEvictCounter;
+	uint32_t		psMask[FIMG_NUM_TEXTURE_UNITS + 1];
+	fimgPixelShaderState	psState;
+	fimgPixelShaderProgram	pixelShaders[PS_CACHE_SIZE];
+#ifdef FIMG_SHADER_CACHE_STATS
+	uint8_t			psMisses;
+	uint8_t			psSameHits;
+	uint8_t			psCacheHits;
+	uint8_t			psStatsCounter;
+#endif
+
+	fimgTextureCompat	texture[FIMG_NUM_TEXTURE_UNITS];
+
+	int			matrixDirty[2 + FIMG_NUM_TEXTURE_UNITS];
+	const float		*matrix[2 + FIMG_NUM_TEXTURE_UNITS];
 } fimgCompatContext;
 
 void fimgCreateCompatContext(fimgContext *ctx);

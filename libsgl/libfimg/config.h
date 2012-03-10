@@ -46,4 +46,7 @@
 /* Dump generated shaders */
 //#define FIMG_DYNSHADER_DEBUG
 
+/* Show shader cache hit/miss statistics in log */
+//#define FIMG_SHADER_CACHE_STATS
+
 #endif /* _FIMG_CONFIG_H_ */

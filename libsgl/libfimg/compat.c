@@ -975,20 +975,28 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
  * Shader generation code
  */
 
-void fimgCompatBuildVertexShader(fimgContext *ctx)
+#define MAX_INSTR	(64)
+
+static inline uint32_t *SHADER_SLOT(uint32_t *buf, uint32_t slot)
+{
+	return buf
+		+ slot*MAX_INSTR*sizeof(fimgShaderInstruction)/sizeof(uint32_t);
+}
+
+void fimgCompatBuildVertexShader(fimgContext *ctx, uint32_t slot)
 {
 	uint32_t unit;
 	uint32_t *addr;
+	uint32_t *start;
 
-	addr = ctx->compat.vshaderBuf;
-	if (!addr) {
-		addr = malloc(64 * sizeof(fimgShaderInstruction));
-		if (!addr) {
+	if (!ctx->compat.vshaderBuf) {
+		ctx->compat.vshaderBuf = malloc(VS_CACHE_SIZE * MAX_INSTR * sizeof(fimgShaderInstruction));
+		if (!ctx->compat.vshaderBuf) {
 			LOGE("Failed to allocate memory for shader buffer, terminating.");
 			exit(1);
 		}
-		ctx->compat.vshaderBuf = addr;
 	}
+	start = addr = SHADER_SLOT(ctx->compat.vshaderBuf, slot);
 
 	addr += loadShaderBlock(&vertexHeader, addr);
 
@@ -1001,24 +1009,27 @@ void fimgCompatBuildVertexShader(fimgContext *ctx)
 
 	addr += loadShaderBlock(&vertexFooter, addr);
 
-	ctx->compat.vshaderEnd = (addr - ctx->compat.vshaderBuf) / 4;
-
 	FGFP_BITFIELD_SET(ctx->compat.vsState.vs, VS_INVALID, 0);
+
+	ctx->compat.vertexShaders[slot].instrCount = (addr - start) / 4;
+	ctx->compat.vertexShaders[slot].state = ctx->compat.vsState;
 }
 
 void fimgCompatLoadVertexShader(fimgContext *ctx)
 {
 	volatile uint32_t *reg;
 	struct shaderBlock blk;
+	uint32_t slot = ctx->compat.curVsNum;
+	struct fimgVertexShaderProgram *vs = &ctx->compat.vertexShaders[slot];
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
 	reg = vsInstAddr(ctx, 0);
-	blk.data = ctx->compat.vshaderBuf;
-	blk.len = ctx->compat.vshaderEnd + 1;
+	blk.data = SHADER_SLOT(ctx->compat.vshaderBuf, slot);
+	blk.len = vs->instrCount;
 	loadShaderBlock(&blk, reg);
 
-	setVertexShaderRange(ctx, 0, ctx->compat.vshaderEnd);
+	setVertexShaderRange(ctx, 0, vs->instrCount - 1);
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
@@ -1029,23 +1040,23 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 #endif
 }
 
-void fimgCompatBuildPixelShader(fimgContext *ctx)
+void fimgCompatBuildPixelShader(fimgContext *ctx, uint32_t slot)
 {
 	uint32_t unit, arg;
 	uint32_t *addr;
+	uint32_t *start;
 	uint32_t instrCount;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading pixel shader");
 #endif
-	addr = ctx->compat.pshaderBuf;
-	if (!addr) {
-		addr = malloc(64 * sizeof(fimgShaderInstruction));
-		if (!addr) {
+	if (!ctx->compat.pshaderBuf) {
+		ctx->compat.pshaderBuf = malloc(PS_CACHE_SIZE * MAX_INSTR * sizeof(fimgShaderInstruction));
+		if (!ctx->compat.pshaderBuf) {
 			LOGE("Failed to allocate memory for shader buffer, terminating.");
 			exit(1);
 		}
-		ctx->compat.pshaderBuf = addr;
 	}
+	start = addr = SHADER_SLOT(ctx->compat.pshaderBuf, slot);
 
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Generating basic shader code");
@@ -1101,25 +1112,29 @@ void fimgCompatBuildPixelShader(fimgContext *ctx)
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Optimizing pixel shader");
 #endif
-	instrCount = optimizeShader(ctx->compat.pshaderBuf, addr);
-	ctx->compat.pshaderEnd = instrCount - 1;
+	instrCount = optimizeShader(start, addr);
 
 	FGFP_BITFIELD_SET(ctx->compat.psState.ps, PS_INVALID, 0);
+
+	ctx->compat.pixelShaders[slot].instrCount = instrCount;
+	ctx->compat.pixelShaders[slot].state = ctx->compat.psState;
 }
 
 void fimgCompatLoadPixelShader(fimgContext *ctx)
 {
 	volatile uint32_t *reg;
 	struct shaderBlock blk;
+	uint32_t slot = ctx->compat.curPsNum;
+	struct fimgPixelShaderProgram *ps = &ctx->compat.pixelShaders[slot];
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
 	reg = psInstAddr(ctx, 0);
-	blk.data = ctx->compat.pshaderBuf;
-	blk.len = ctx->compat.pshaderEnd + 1;
+	blk.data = SHADER_SLOT(ctx->compat.pshaderBuf, slot);
+	blk.len = ps->instrCount;
 	loadShaderBlock(&blk, reg);
 
-	setPixelShaderRange(ctx, 0, ctx->compat.pshaderEnd);
+	setPixelShaderRange(ctx, 0, ps->instrCount - 1);
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
@@ -1254,8 +1269,13 @@ void fimgCreateCompatContext(fimgContext *ctx)
 		ctx->compat.psState.tex[unit] = reg;
 	}
 
-	FGFP_BITFIELD_SET(ctx->compat.vsState.vs, VS_INVALID, 1);
-	FGFP_BITFIELD_SET(ctx->compat.psState.ps, PS_INVALID, 1);
+	for (unit = 0; unit < VS_CACHE_SIZE; ++unit)
+		FGFP_BITFIELD_SET(ctx->compat.vertexShaders[unit].state.vs,
+								VS_INVALID, 1);
+
+	for (unit = 0; unit < PS_CACHE_SIZE; ++unit)
+		FGFP_BITFIELD_SET(ctx->compat.pixelShaders[unit].state.ps,
+								PS_INVALID, 1);
 
 	ctx->compat.psMask[FIMG_NUM_TEXTURE_UNITS] = 0xffffffff;
 }
@@ -1317,22 +1337,124 @@ static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 	}
 }
 
-static int vsStateIsDirty(fimgContext *ctx)
+static int compareVertexShaders(fimgContext *ctx,
+			fimgVertexShaderState *a, fimgVertexShaderState *b)
 {
-	return ctx->compat.vsState.val[0] != ctx->compat.curVsState.val[0];
+	return a->val[0] != b->val[0];
 }
 
 #define NELEM(i)	(sizeof(i)/sizeof(*i))
 
-static int psStateIsDirty(fimgContext *ctx)
+static int comparePixelShaders(fimgContext *ctx,
+			fimgPixelShaderState *a, fimgPixelShaderState *b)
 {
 	unsigned int i;
 
-	for (i = 0; i < NELEM(ctx->compat.psState.val); ++i)
-		if ((ctx->compat.psState.val[i] ^ ctx->compat.curPsState.val[i]) & ctx->compat.psMask[i])
+	for (i = 0; i < NELEM(a->val); ++i)
+		if ((a->val[i] ^ b->val[i]) & ctx->compat.psMask[i])
 			return 1;
 
 	return 0;
+}
+
+static void validateVertexShader(fimgContext *ctx)
+{
+	unsigned int i;
+	int ret;
+#ifdef FIMG_SHADER_CACHE_STATS
+	if (++ctx->compat.vsStatsCounter == 128) {
+		LOGD("Vertex shader cache stats:");
+		LOGD("Same hits: %d\n", ctx->compat.vsSameHits);
+		LOGD("Cache hits: %d\n", ctx->compat.vsCacheHits);
+		LOGD("Misses: %d\n", ctx->compat.vsMisses);
+		ctx->compat.vsSameHits = 0;
+		ctx->compat.vsCacheHits = 0;
+		ctx->compat.vsMisses = 0;
+		ctx->compat.vsStatsCounter = 0;
+	}
+#endif
+	ret = compareVertexShaders(ctx, &ctx->compat.vsState,
+			&ctx->compat.vertexShaders[ctx->compat.curVsNum].state);
+	if (!ret) {
+#ifdef FIMG_SHADER_CACHE_STATS
+		++ctx->compat.vsSameHits;
+#endif
+		return;
+	}
+
+	ctx->compat.vshaderLoaded = 0;
+
+	for (i = 0; i < VS_CACHE_SIZE; ++i) {
+		if (i == ctx->compat.curVsNum)
+			continue;
+		ret = compareVertexShaders(ctx, &ctx->compat.vsState,
+					&ctx->compat.vertexShaders[i].state);
+		if (!ret) {
+#ifdef FIMG_SHADER_CACHE_STATS
+			++ctx->compat.vsCacheHits;
+#endif
+			ctx->compat.curVsNum = i;
+			return;
+		}
+	}
+#ifdef FIMG_SHADER_CACHE_STATS
+	++ctx->compat.vsMisses;
+#endif
+	i = ctx->compat.vsEvictCounter++;
+	ctx->compat.vsEvictCounter %= VS_CACHE_SIZE;
+
+	fimgCompatBuildVertexShader(ctx, i);
+	ctx->compat.curVsNum = i;
+}
+
+static void validatePixelShader(fimgContext *ctx)
+{
+	unsigned int i;
+	int ret;
+#ifdef FIMG_SHADER_CACHE_STATS
+	if (++ctx->compat.psStatsCounter == 128) {
+		LOGD("Pixel shader cache stats:");
+		LOGD("Same hits: %d\n", ctx->compat.psSameHits);
+		LOGD("Cache hits: %d\n", ctx->compat.psCacheHits);
+		LOGD("Misses: %d\n", ctx->compat.psMisses);
+		ctx->compat.psSameHits = 0;
+		ctx->compat.psCacheHits = 0;
+		ctx->compat.psMisses = 0;
+		ctx->compat.psStatsCounter = 0;
+	}
+#endif
+	ret = comparePixelShaders(ctx, &ctx->compat.psState,
+			&ctx->compat.pixelShaders[ctx->compat.curPsNum].state);
+	if (!ret) {
+#ifdef FIMG_SHADER_CACHE_STATS
+		++ctx->compat.psSameHits;
+#endif
+		return;
+	}
+
+	ctx->compat.pshaderLoaded = 0;
+
+	for (i = 0; i < PS_CACHE_SIZE; ++i) {
+		if (i == ctx->compat.curPsNum)
+			continue;
+		ret = comparePixelShaders(ctx, &ctx->compat.psState,
+					&ctx->compat.pixelShaders[i].state);
+		if (!ret) {
+#ifdef FIMG_SHADER_CACHE_STATS
+			++ctx->compat.psCacheHits;
+#endif
+			ctx->compat.curPsNum = i;
+			return;
+		}
+	}
+#ifdef FIMG_SHADER_CACHE_STATS
+	++ctx->compat.psMisses;
+#endif
+	i = ctx->compat.psEvictCounter++;
+	ctx->compat.psEvictCounter %= PS_CACHE_SIZE;
+
+	fimgCompatBuildPixelShader(ctx, i);
+	ctx->compat.curPsNum = i;
 }
 
 void fimgCompatFlush(fimgContext *ctx)
@@ -1340,12 +1462,7 @@ void fimgCompatFlush(fimgContext *ctx)
 	uint32_t i;
 	int psStopped = 0;
 
-	if (vsStateIsDirty(ctx)) {
-		fimgCompatBuildVertexShader(ctx);
-		ctx->compat.curVsState = ctx->compat.vsState;
-		ctx->compat.vshaderLoaded = 0;
-	}
-
+	validateVertexShader(ctx);
 	if (!ctx->compat.vshaderLoaded) {
 		fimgCompatLoadVertexShader(ctx);
 		setVertexShaderAttribCount(ctx, ctx->numAttribs);
@@ -1360,12 +1477,7 @@ void fimgCompatFlush(fimgContext *ctx)
 		ctx->compat.matrixDirty[i] = 0;
 	}
 
-	if (psStateIsDirty(ctx)) {
-		fimgCompatBuildPixelShader(ctx);
-		ctx->compat.curPsState = ctx->compat.psState;
-		ctx->compat.pshaderLoaded = 0;
-	}
-
+	validatePixelShader(ctx);
 	if (!ctx->compat.pshaderLoaded) {
 		setPixelShaderState(ctx, 0);
 		fimgCompatLoadPixelShader(ctx);
