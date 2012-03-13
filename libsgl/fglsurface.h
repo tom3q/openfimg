@@ -34,9 +34,9 @@
 
 class FGLSurface {
 public:
-	unsigned long	paddr;
+	intptr_t	paddr;
 	void		*vaddr;
-	unsigned long	size;
+	size_t		size;
 
 			FGLSurface() : paddr(0), vaddr(0), size(0) {};
 			FGLSurface(unsigned long p, void *v, unsigned long s) :
@@ -60,12 +60,12 @@ public:
 	virtual int	lock(int usage = 0);
 	virtual int	unlock(void);
 
-	virtual bool	isValid(void) { return fd != -1; };
+	virtual bool	isValid(void) { return fd >= 0; };
 };
 
 class FGLExternalSurface : public FGLSurface {
 public:
-			FGLExternalSurface(void *v, unsigned long p, unsigned long s);
+			FGLExternalSurface(void *v, intptr_t p, size_t s);
 	virtual		~FGLExternalSurface();
 
 	virtual void	flush(void);

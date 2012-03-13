@@ -132,7 +132,7 @@ void FGLLocalSurface::flush(void)
 		LOGW("Could not flush PMEM surface %d", fd);
 }
 
-FGLExternalSurface::FGLExternalSurface(void *v, unsigned long p, unsigned long s)
+FGLExternalSurface::FGLExternalSurface(void *v, intptr_t p, size_t s)
 {
 	vaddr = v;
 	paddr = p;
