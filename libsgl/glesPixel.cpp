@@ -712,12 +712,123 @@ static inline uint32_t getFillDepth(FGLContext *ctx,
 	return val;
 }
 
+static inline void fglColorClear(FGLContext *ctx, bool lineByLine,
+		uint32_t stride, int32_t l, int32_t t, int32_t w, int32_t h)
+{
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
+	FGLSurface *draw = fba->surface;
+	bool is32bpp = false;
+	uint32_t mask = 0;
+	uint32_t color = getFillColor(ctx, &mask, &is32bpp);
+
+	if (mask == 0xffffffff || (!is32bpp && mask == 0xffff))
+		return;
+
+	if (lineByLine) {
+		int32_t lines = h;
+		if (!is32bpp) {
+			uint16_t *buf16 = (uint16_t *)draw->vaddr;
+			buf16 += t * stride + l;
+			if (mask & 0xffff) {
+				do {
+					fill16masked(buf16, color, ~mask, w);
+					buf16 += stride;
+				} while (--lines);
+			} else {
+				do {
+					fill16(buf16, color, w);
+					buf16 += stride;
+				} while (--lines);
+			}
+		} else {
+			uint32_t *buf32 = (uint32_t *)draw->vaddr;
+			buf32 += t * stride + l;
+			if (mask) {
+				do {
+					fill32masked(buf32, color, ~mask, w);
+					buf32 += stride;
+				} while (--lines);
+			} else {
+				do {
+					fill32(buf32, color, w);
+					buf32 += stride;
+				} while (--lines);
+			}
+		}
+	} else {
+		if (!is32bpp) {
+			uint16_t *buf16 = (uint16_t *)draw->vaddr;
+			buf16 += t * stride;
+			if (mask & 0xffff)
+				fill16masked(buf16, color, ~mask, stride*h);
+			else
+				fill16(buf16, color, stride*h);
+		} else {
+			uint32_t *buf32 = (uint32_t *)draw->vaddr;
+			buf32 += t * stride;
+			if (mask)
+				fill32masked(buf32, color, ~mask, stride*h);
+			else
+				fill32(buf32, color, stride*h);
+		}
+	}
+
+	draw->flush();
+}
+
+static inline void fglDepthClear(FGLContext *ctx, bool lineByLine,
+		uint32_t stride, int32_t l, int32_t t, int32_t w, int32_t h,
+		GLbitfield mode)
+{
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	FGLFramebufferAttachable *fba;
+	uint32_t depthFormat = fb->getDepthFormat();
+	if (!depthFormat)
+		return;
+
+	fba = fb->get(FGL_ATTACHMENT_DEPTH);
+	if (!fba)
+		fba = fb->get(FGL_ATTACHMENT_STENCIL);
+
+	FGLSurface *depth = fba->surface;
+	uint32_t mask = 0;
+	uint32_t val = getFillDepth(ctx, &mask, mode, depthFormat);
+
+	if (mask == 0xffffffff)
+		return;
+
+	if (lineByLine) {
+		int32_t lines = h;
+		uint32_t *buf32 = (uint32_t *)depth->vaddr;
+		buf32 += t * stride + l;
+		if (mask) {
+			do {
+				fill32masked(buf32, val, ~mask, w);
+				buf32 += stride;
+			} while (--lines);
+		} else {
+			do {
+				fill32(buf32, val, w);
+				buf32 += stride;
+			} while (--lines);
+		}
+	} else {
+		uint32_t *buf32 = (uint32_t *)depth->vaddr;
+		buf32 += t * stride;
+		if (mask)
+			fill32masked(buf32, val, ~mask, stride*h);
+		else
+			fill32(buf32, val, stride*h);
+	}
+
+	depth->flush();
+}
+
 static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
 	FUNCTION_TRACER;
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
-	FGLFramebufferAttachable *fba = fb->get(FGL_ATTACHMENT_COLOR);
-	FGLSurface *draw = fba->surface;
 	uint32_t stride = fb->getWidth();
 	bool lineByLine = false;
 	int32_t l, b, t, w, h;
@@ -747,112 +858,12 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 
 	lineByLine |= ((GLuint)w < fb->getWidth());
 
-	if (mode & GL_COLOR_BUFFER_BIT) {
-		bool is32bpp = false;
-		uint32_t mask = 0;
-		uint32_t color = getFillColor(ctx, &mask, &is32bpp);
-
-		if (lineByLine) {
-			int32_t lines = h;
-			if (!is32bpp) {
-				uint16_t *buf16 = (uint16_t *)draw->vaddr;
-				buf16 += t * stride;
-				if (mask & 0xffff) {
-					do {
-						uint16_t *line = buf16 + l;
-						fill16masked(line, color, ~mask, w);
-						buf16 += stride;
-					} while (--lines);
-				} else {
-					do {
-						uint16_t *line = buf16 + l;
-						fill16(line, color, w);
-						buf16 += stride;
-					} while (--lines);
-				}
-			} else {
-				uint32_t *buf32 = (uint32_t *)draw->vaddr;
-				buf32 += t * stride;
-				if (mask) {
-					do {
-						uint32_t *line = buf32 + l;
-						fill32masked(line, color, ~mask, w);
-						buf32 += stride;
-					} while (--lines);
-				} else {
-					do {
-						uint32_t *line = buf32 + l;
-						fill32(line, color, w);
-						buf32 += stride;
-					} while (--lines);
-				}
-			}
-		} else {
-			if (!is32bpp) {
-				uint16_t *buf16 = (uint16_t *)draw->vaddr;
-				buf16 += t * stride;
-				if (mask & 0xffff)
-					fill16masked(buf16, color, ~mask, stride*h);
-				else
-					fill16(buf16, color, stride*h);
-			} else {
-				uint32_t *buf32 = (uint32_t *)draw->vaddr;
-				buf32 += t * stride;
-				if (mask)
-					fill32masked(buf32, color, ~mask, stride*h);
-				else
-					fill32(buf32, color, stride*h);
-			}
-		}
-
-		draw->flush();
-	}
+	if (mode & GL_COLOR_BUFFER_BIT)
+		fglColorClear(ctx, lineByLine, stride, l, t, w, h);
 
 	mode &= (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	if (mode) {
-		uint32_t depthFormat = fb->getDepthFormat();
-		if (!depthFormat)
-			return;
-
-		fba = fb->get(FGL_ATTACHMENT_DEPTH);
-		if (!fba)
-			fba = fb->get(FGL_ATTACHMENT_STENCIL);
-
-		FGLSurface *depth = fba->surface;
-		uint32_t mask;
-		uint32_t val = getFillDepth(ctx, &mask, mode, depthFormat);
-
-		if (mask == 0xffffffff)
-			return;
-
-		if (lineByLine) {
-			int32_t lines = h;
-			uint32_t *buf32 = (uint32_t *)depth->vaddr;
-			buf32 += t * stride;
-			if (mask) {
-				do {
-					uint32_t *line = buf32 + l;
-					fill32masked(line, val, ~mask, w);
-					buf32 += stride;
-				} while (--lines);
-			} else {
-				do {
-					uint32_t *line = buf32 + l;
-					fill32(line, val, w);
-					buf32 += stride;
-				} while (--lines);
-			}
-		} else {
-			uint32_t *buf32 = (uint32_t *)depth->vaddr;
-			buf32 += t * stride;
-			if (mask)
-				fill32masked(buf32, val, ~mask, stride*h);
-			else
-				fill32(buf32, val, stride*h);
-		}
-
-		depth->flush();
-	}
+	if (mode)
+		fglDepthClear(ctx, lineByLine, stride, l, t, w, h, mode);
 }
 
 #define FGL_CLEAR_MASK \
