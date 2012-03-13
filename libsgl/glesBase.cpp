@@ -1921,6 +1921,7 @@ static inline void fglSet(GLenum cap, bool state)
 	case GL_LIGHT6:
 	case GL_LIGHT7:
 	case GL_NORMALIZE:
+	case GL_COLOR_MATERIAL:
 		break;
 	default:
 		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);
