@@ -1052,7 +1052,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 		return;
 	}
 
-	// Save current state and prepare to drawing
+	/* Save current state and prepare to drawing */
 
 	GLint viewportX = ctx->viewport.x;
 	GLint viewportY = ctx->viewport.y;
@@ -1106,7 +1106,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 	vertices[10] = y;
 	vertices[11] = zD;
 
-	// Proceed with drawing
+	/* Proceed with drawing */
 
 	fimgArray arrays[4 + FGL_MAX_TEXTURE_UNITS];
 
@@ -1167,7 +1167,7 @@ GL_API void GL_APIENTRY glDrawTexfOES (GLfloat x, GLfloat y, GLfloat z, GLfloat 
 
 	fimgDrawArrays(ctx->fimg, FGPE_TRIANGLE_STRIP, arrays, 4);
 
-	// Restore previous state
+	/* Restore previous state */
 
 	for (int i = 0; i < 4 + FGL_MAX_TEXTURE_UNITS; i++) {
 		if (arrayEnabled[i])
