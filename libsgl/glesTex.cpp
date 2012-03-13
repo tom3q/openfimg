@@ -177,7 +177,6 @@ static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 
 static void fglGenerateMipmaps(FGLTexture *obj)
 {
- FUNCTION_TRACER;
 	int level = 0;
 	int skip = 1;
 
@@ -371,7 +370,6 @@ static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
- FUNCTION_TRACER;
 	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
 	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
@@ -391,7 +389,6 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 static void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
- FUNCTION_TRACER;
 	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
 	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
@@ -428,7 +425,6 @@ static inline uint16_t fglPackAL88(uint8_t l, uint8_t a)
 static void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
- FUNCTION_TRACER;
 	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
 	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
@@ -523,7 +519,6 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	GLint internalformat, GLsizei width, GLsizei height, GLint border,
 	GLenum format, GLenum type, const GLvoid *pixels)
 {
- FUNCTION_TRACER;
 	// Check conditions required by specification
 	if (target != GL_TEXTURE_2D) {
 		setError(GL_INVALID_ENUM);
@@ -707,7 +702,6 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
- FUNCTION_TRACER;
 	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
 	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
@@ -737,7 +731,6 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment,
 			unsigned x, unsigned y, unsigned w, unsigned h)
 {
- FUNCTION_TRACER;
 	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
 	unsigned offset = pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level);
 
@@ -848,7 +841,6 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 		GLint xoffset, GLint yoffset, GLsizei width, GLsizei height,
 		GLenum format, GLenum type, const GLvoid *pixels)
 {
- FUNCTION_TRACER;
 	if (target != GL_TEXTURE_2D) {
 		setError(GL_INVALID_ENUM);
 		return;
