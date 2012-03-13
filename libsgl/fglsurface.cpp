@@ -86,9 +86,6 @@ FGLLocalSurface::FGLLocalSurface(unsigned long size)
 	this->vaddr	= vaddr;
 	this->paddr	= region.offset;
 
-	//LOGD("FGLLocalSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, (unsigned int)region.offset, rounded);
-
 	flush();
 
 	return;
@@ -106,9 +103,6 @@ FGLLocalSurface::~FGLLocalSurface()
 
 	munmap(vaddr, size);
 	close(fd);
-
-	//LOGD("~FGLLocalSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, (unsigned int)paddr, size);
 }
 
 int FGLLocalSurface::lock(int usage)
@@ -137,14 +131,11 @@ FGLExternalSurface::FGLExternalSurface(void *v, intptr_t p, size_t s)
 	vaddr = v;
 	paddr = p;
 	size = s;
-	//LOGD("FGLExternalSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, paddr, size);
 }
 
 FGLExternalSurface::~FGLExternalSurface()
 {
-	//LOGD("~FGLExternalSurface (vaddr = %p, paddr = %08x, size = %u)",
-	//			vaddr, paddr, size);
+
 }
 
 int FGLExternalSurface::lock(int usage)
