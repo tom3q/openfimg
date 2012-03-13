@@ -327,20 +327,6 @@ GL_API void GL_APIENTRY glOrthox (GLfixed left, GLfixed right, GLfixed bottom, G
 		 floatFromFixed(zNear), floatFromFixed(zFar));
 }
 
-GL_API void GL_APIENTRY glActiveTexture (GLenum texture)
-{
-	GLint unit;
-
-	if((unit = unitFromTextureEnum(texture)) < 0) {
-		setError(GL_INVALID_ENUM);
-		return;
-	}
-
-	FGLContext *ctx = getContext();
-
-	ctx->activeTexture = unit;
-}
-
 GL_API void GL_APIENTRY glPopMatrix (void)
 {
 	FGLContext *ctx = getContext();

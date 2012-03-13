@@ -997,6 +997,20 @@ GL_API void GL_APIENTRY glEGLImageTargetRenderbufferStorageOES (GLenum target, G
 }
 #endif
 
+GL_API void GL_APIENTRY glActiveTexture (GLenum texture)
+{
+	GLint unit;
+
+	if((unit = unitFromTextureEnum(texture)) < 0) {
+		setError(GL_INVALID_ENUM);
+		return;
+	}
+
+	FGLContext *ctx = getContext();
+
+	ctx->activeTexture = unit;
+}
+
 GL_API void GL_APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param)
 {
 	FGLTexture *obj;
