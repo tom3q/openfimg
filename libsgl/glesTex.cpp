@@ -541,8 +541,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 
 	FGLContext *ctx = getContext();
-	FGLTexture *obj =
-		ctx->texture[ctx->activeTexture].getTexture();
+	FGLTexture *obj = ctx->texture[ctx->activeTexture].getTexture();
 
 	/* Mipmap image specification */
 	if (level > 0) {
