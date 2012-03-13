@@ -699,31 +699,33 @@ static inline void fglSetupTextures(FGLContext *ctx)
 	int i = FGL_MAX_TEXTURE_UNITS - 1;
 
 	do {
-		FGLTexture *tex;
-		bool enabled = ctx->textureExternal[i].enabled;
-		if (enabled) {
-			tex = ctx->textureExternal[i].getTexture();
-		} else {
-			tex = ctx->texture[i].getTexture();
-			enabled = ctx->texture[i].enabled;
-		}
+		FGLTexture *tex = 0;
 
-		if(enabled && tex->surface && tex->isComplete()) {
-			/* Texture is ready */
-			if (tex->dirty) {
-				tex->surface->flush();
-				tex->dirty = false;
-				flush = true;
-			}
-			fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
-			fimgCompatSetTextureFunc(ctx->fimg,
-						i, ctx->texture[i].fglFunc);
-			ctx->busyTexture[i] = tex;
-		} else {
+		if (ctx->textureExternal[i].enabled)
+			tex = ctx->textureExternal[i].getTexture();
+
+		if (!tex && ctx->texture[i].enabled)
+			tex = ctx->texture[i].getTexture();
+
+		if (!tex || !tex->isComplete()) {
 			/* Texture is not ready */
 			fimgCompatSetTextureFunc(ctx->fimg,
 							i, FGFP_TEXFUNC_NONE);
+			continue;
 		}
+
+		/* Texture is ready */
+		if (tex->dirty) {
+			tex->surface->flush();
+			tex->dirty = false;
+			flush = true;
+		}
+
+		fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
+		fimgCompatSetTextureFunc(ctx->fimg,
+					i, ctx->texture[i].fglFunc);
+
+		ctx->busyTexture[i] = tex;
 	} while (i--);
 
 	if (flush)
