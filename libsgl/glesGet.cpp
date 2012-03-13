@@ -582,6 +582,23 @@ private:
 void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 {
 	switch (pname) {
+	case GL_CURRENT_COLOR:
+		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_RED]);
+		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_BLUE]);
+		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_GREEN]);
+		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_ALPHA]);
+		break;
+	case GL_CURRENT_NORMAL:
+		state.putFloat(ctx->vertex[FGL_ARRAY_NORMAL][FGL_COMP_NX]);
+		state.putFloat(ctx->vertex[FGL_ARRAY_NORMAL][FGL_COMP_NY]);
+		state.putFloat(ctx->vertex[FGL_ARRAY_NORMAL][FGL_COMP_NZ]);
+		break;
+	case GL_CURRENT_TEXTURE_COORDS:
+		state.putFloat(ctx->vertex[FGL_ARRAY_TEXTURE(ctx->activeTexture)][FGL_COMP_S]);
+		state.putFloat(ctx->vertex[FGL_ARRAY_TEXTURE(ctx->activeTexture)][FGL_COMP_T]);
+		state.putFloat(ctx->vertex[FGL_ARRAY_TEXTURE(ctx->activeTexture)][FGL_COMP_R]);
+		state.putFloat(ctx->vertex[FGL_ARRAY_TEXTURE(ctx->activeTexture)][FGL_COMP_Q]);
+		break;
 	case GL_ARRAY_BUFFER_BINDING:
 		if (ctx->arrayBuffer.isBound())
 			state.putInteger(ctx->arrayBuffer.get()->getName());
