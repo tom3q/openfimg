@@ -285,6 +285,8 @@ label start
 #
 # Inputs:	r0 - current fragment value
 #		r1 - texture value
+#		r2 - environment color
+#		r3 - combiner scale
 #
 # Output:	r4 - argument 0
 
