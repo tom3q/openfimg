@@ -519,7 +519,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	GLint internalformat, GLsizei width, GLsizei height, GLint border,
 	GLenum format, GLenum type, const GLvoid *pixels)
 {
-	// Check conditions required by specification
+	/* Check conditions required by specification */
 	if (target != GL_TEXTURE_2D) {
 		setError(GL_INVALID_ENUM);
 		return;
@@ -544,7 +544,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	FGLTexture *obj =
 		ctx->texture[ctx->activeTexture].getTexture();
 
-	// Specifying mipmaps
+	/* Mipmap image specification */
 	if (level > 0) {
 		if (obj->eglImage) {
 			/* TODO: Copy eglImage contents into new texture */
@@ -563,29 +563,30 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 			mipmapH = 1;
 
 		if (!obj->surface) {
-			// Mipmaps can be specified only if the texture exists
+			/* Mipmaps can be specified only if base level exists */
 			setError(GL_INVALID_OPERATION);
 			return;
 		}
 
-		// Check dimensions
+		/* Check dimensions */
 		if (mipmapW != width || mipmapH != height) {
-			// Invalid size
+			/* Invalid size */
 			setError(GL_INVALID_VALUE);
 			return;
 		}
 
-		// Check format
+		/* Check format */
 		if (obj->format != format || obj->type != type) {
-			// Must be the same format as level 0
+			/* Must be the same format as base level */
 			setError(GL_INVALID_ENUM);
 			return;
 		}
 
-		// Copy the image (with conversion if needed)
+		/* Copy the image (with conversion if needed) */
 		if (pixels != NULL) {
 			const FGLPixelFormat *pix =
 					FGLPixelFormat::get(obj->pixFormat);
+
 			fglWaitForTexture(ctx, obj);
 
 			if (obj->convert) {
@@ -605,9 +606,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		return;
 	}
 
-	// level == 0
-
-	// Get format information
+	/* Base image specification */
 	bool convert;
 	int pixFormat = fglGetFormatInfo(format, type, &convert);
 	if (pixFormat < 0) {
@@ -645,7 +644,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		return;
 	}
 
-	// Calculate mipmaps
+	/* Calculate mipmaps */
 	uint32_t size = pix->pixelSize*fglCalculateMipmaps(obj,
 						width, height, pix->pixelSize);
 
@@ -657,9 +656,8 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		}
 	}
 
-	// (Re)allocate the texture
+	/* (Re)allocate the texture if needed */
 	if (!obj->surface) {
-		// Setup surface
 		obj->surface = new FGLLocalSurface(size);
 		if(!obj->surface || !obj->surface->isValid()) {
 			delete obj->surface;
@@ -678,7 +676,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 					pix->texFormat, obj->surface->paddr);
 	fimgSetTex2DSize(obj->fimg, width, height, obj->maxLevel);
 
-	// Copy the image (with conversion if needed)
+	/* Copy the image (with conversion if needed) */
 	if (pixels != NULL) {
 		if (obj->convert) {
 			fglConvertTexture(obj, level, pixels,
