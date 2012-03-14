@@ -236,10 +236,10 @@ void FGLmatrix::multiply(const GLfixed *m)
 	FGLmatrix temp;
 
 	for(int i = 0; i < 4; ++i) {
-		temp[0][0] = (*this)[0][0]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][0]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][0]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][0]*floatFromFixed(m[MAT4(i, 3)]);
-		temp[0][1] = (*this)[0][1]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][1]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][1]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][1]*floatFromFixed(m[MAT4(i, 3)]);
-		temp[0][2] = (*this)[0][2]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][2]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][2]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][2]*floatFromFixed(m[MAT4(i, 3)]);
-		temp[0][3] = (*this)[0][3]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][3]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][3]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][3]*floatFromFixed(m[MAT4(i, 3)]);
+		temp[i][0] = (*this)[0][0]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][0]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][0]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][0]*floatFromFixed(m[MAT4(i, 3)]);
+		temp[i][1] = (*this)[0][1]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][1]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][1]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][1]*floatFromFixed(m[MAT4(i, 3)]);
+		temp[i][2] = (*this)[0][2]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][2]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][2]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][2]*floatFromFixed(m[MAT4(i, 3)]);
+		temp[i][3] = (*this)[0][3]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][3]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][3]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][3]*floatFromFixed(m[MAT4(i, 3)]);
 	}
 
 	*this = temp;
