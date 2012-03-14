@@ -3,7 +3,7 @@
  *
  * SAMSUNG S3C6410 FIMG-3DSE (PROPER) OPENGL ES IMPLEMENTATION
  *
- * Copyrights:	2010 by Tomasz Figa < tomasz.figa at gmail.com >
+ * Copyrights:	2010-2012 by Tomasz Figa < tomasz.figa at gmail.com >
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -38,7 +38,7 @@
 
 void FGLmatrix::zero(void)
 {
-	for(int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		(*this)[i][0] = 0;
 		(*this)[i][1] = 0;
 		(*this)[i][2] = 0;
@@ -63,7 +63,7 @@ void FGLmatrix::load(const GLfloat *m)
 
 void FGLmatrix::load(const GLfixed *m)
 {
-	for(int x = 0; x < 4; ++x) {
+	for (int x = 0; x < 4; ++x) {
 		(*this)[x][0] = floatFromFixed(m[MAT4(x, 0)]);
 		(*this)[x][1] = floatFromFixed(m[MAT4(x, 1)]);
 		(*this)[x][2] = floatFromFixed(m[MAT4(x, 2)]);
@@ -102,9 +102,17 @@ void FGLmatrix::rotate(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 	yz = y1 * z1;
 	xz = x1 * z1;
 
-	(*this)[0][0] = x2 * ci + c;  (*this)[1][0] = xy * ci - zs; (*this)[2][0] = xz * ci + ys;
-	(*this)[0][1] = xy * ci + zs; (*this)[1][1] = y2 * ci + c;  (*this)[2][1] = yz * ci - xs;
-	(*this)[0][2] = xz * ci - ys; (*this)[1][2] = yz * ci + xs; (*this)[2][2] = z2 * ci + c;
+	(*this)[0][0] = x2 * ci + c;
+	(*this)[1][0] = xy * ci - zs;
+	(*this)[2][0] = xz * ci + ys;
+
+	(*this)[0][1] = xy * ci + zs;
+	(*this)[1][1] = y2 * ci + c;
+	(*this)[2][1] = yz * ci - xs;
+
+	(*this)[0][2] = xz * ci - ys;
+	(*this)[1][2] = yz * ci + xs;
+	(*this)[2][2] = z2 * ci + c;
 }
 
 void FGLmatrix::translate(GLfloat x, GLfloat y, GLfloat z)
@@ -125,7 +133,8 @@ void FGLmatrix::scale(GLfloat x, GLfloat y, GLfloat z)
 	(*this)[2][2] = z;
 }
 
-void FGLmatrix::frustum(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f)
+void FGLmatrix::frustum(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
+							GLfloat n, GLfloat f)
 {
 	identity();
 
@@ -142,7 +151,8 @@ void FGLmatrix::frustum(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, G
 	(*this)[3][3] = 0.0f ;
 }
 
-void FGLmatrix::ortho(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f)
+void FGLmatrix::ortho(GLfloat l, GLfloat r, GLfloat b, GLfloat t,
+							GLfloat n, GLfloat f)
 {
 	identity();
 
@@ -183,7 +193,8 @@ void FGLmatrix::inverseScale(GLfloat x, GLfloat y, GLfloat z)
 	Required conditions:
 	zNear != 0, zFar != 0
 */
-void FGLmatrix::inverseFrustum(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
+void FGLmatrix::inverseFrustum(GLfloat left, GLfloat right,
+		GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
 {
 	identity();
 
@@ -201,7 +212,8 @@ void FGLmatrix::inverseFrustum(GLfloat left, GLfloat right, GLfloat bottom, GLfl
 	Required conditions:
 	zNear != zFar, right != left, top != bottom
 */
-void FGLmatrix::inverseOrtho(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
+void FGLmatrix::inverseOrtho(GLfloat left, GLfloat right,
+		GLfloat bottom, GLfloat top, GLfloat zNear, GLfloat zFar)
 {
 	identity();
 
@@ -224,11 +236,23 @@ void FGLmatrix::multiply(const GLfloat *m)
 	index ^= 1;
 	work = &storage[16*index];
 
-	for(int i = 0; i < 4; ++i) {
-		work[MAT4(i, 0)] = (*this)[0][0]*m[MAT4(i, 0)] + (*this)[1][0]*m[MAT4(i, 1)] + (*this)[2][0]*m[MAT4(i, 2)] + (*this)[3][0]*m[MAT4(i, 3)];
-		work[MAT4(i, 1)] = (*this)[0][1]*m[MAT4(i, 0)] + (*this)[1][1]*m[MAT4(i, 1)] + (*this)[2][1]*m[MAT4(i, 2)] + (*this)[3][1]*m[MAT4(i, 3)];
-		work[MAT4(i, 2)] = (*this)[0][2]*m[MAT4(i, 0)] + (*this)[1][2]*m[MAT4(i, 1)] + (*this)[2][2]*m[MAT4(i, 2)] + (*this)[3][2]*m[MAT4(i, 3)];
-		work[MAT4(i, 3)] = (*this)[0][3]*m[MAT4(i, 0)] + (*this)[1][3]*m[MAT4(i, 1)] + (*this)[2][3]*m[MAT4(i, 2)] + (*this)[3][3]*m[MAT4(i, 3)];
+	for (int i = 0; i < 4; ++i) {
+		work[MAT4(i, 0)] = (*this)[0][0]*m[MAT4(i, 0)]
+					+ (*this)[1][0]*m[MAT4(i, 1)]
+					+ (*this)[2][0]*m[MAT4(i, 2)]
+					+ (*this)[3][0]*m[MAT4(i, 3)];
+		work[MAT4(i, 1)] = (*this)[0][1]*m[MAT4(i, 0)]
+					+ (*this)[1][1]*m[MAT4(i, 1)]
+					+ (*this)[2][1]*m[MAT4(i, 2)]
+					+ (*this)[3][1]*m[MAT4(i, 3)];
+		work[MAT4(i, 2)] = (*this)[0][2]*m[MAT4(i, 0)]
+					+ (*this)[1][2]*m[MAT4(i, 1)]
+					+ (*this)[2][2]*m[MAT4(i, 2)]
+					+ (*this)[3][2]*m[MAT4(i, 3)];
+		work[MAT4(i, 3)] = (*this)[0][3]*m[MAT4(i, 0)]
+					+ (*this)[1][3]*m[MAT4(i, 1)]
+					+ (*this)[2][3]*m[MAT4(i, 2)]
+					+ (*this)[3][3]*m[MAT4(i, 3)];
 	}
 
 	data = work;
@@ -241,11 +265,23 @@ void FGLmatrix::multiply(const GLfixed *m)
 	index ^= 1;
 	work = &storage[16*index];
 
-	for(int i = 0; i < 4; ++i) {
-		work[MAT4(i, 0)] = (*this)[0][0]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][0]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][0]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][0]*floatFromFixed(m[MAT4(i, 3)]);
-		work[MAT4(i, 1)] = (*this)[0][1]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][1]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][1]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][1]*floatFromFixed(m[MAT4(i, 3)]);
-		work[MAT4(i, 2)] = (*this)[0][2]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][2]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][2]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][2]*floatFromFixed(m[MAT4(i, 3)]);
-		work[MAT4(i, 3)] = (*this)[0][3]*floatFromFixed(m[MAT4(i, 0)]) + (*this)[1][3]*floatFromFixed(m[MAT4(i, 1)]) + (*this)[2][3]*floatFromFixed(m[MAT4(i, 2)]) + (*this)[3][3]*floatFromFixed(m[MAT4(i, 3)]);
+	for (int i = 0; i < 4; ++i) {
+		work[MAT4(i, 0)] = (*this)[0][0]*floatFromFixed(m[MAT4(i, 0)])
+				+ (*this)[1][0]*floatFromFixed(m[MAT4(i, 1)])
+				+ (*this)[2][0]*floatFromFixed(m[MAT4(i, 2)])
+				+ (*this)[3][0]*floatFromFixed(m[MAT4(i, 3)]);
+		work[MAT4(i, 1)] = (*this)[0][1]*floatFromFixed(m[MAT4(i, 0)])
+				+ (*this)[1][1]*floatFromFixed(m[MAT4(i, 1)])
+				+ (*this)[2][1]*floatFromFixed(m[MAT4(i, 2)])
+				+ (*this)[3][1]*floatFromFixed(m[MAT4(i, 3)]);
+		work[MAT4(i, 2)] = (*this)[0][2]*floatFromFixed(m[MAT4(i, 0)])
+				+ (*this)[1][2]*floatFromFixed(m[MAT4(i, 1)])
+				+ (*this)[2][2]*floatFromFixed(m[MAT4(i, 2)])
+				+ (*this)[3][2]*floatFromFixed(m[MAT4(i, 3)]);
+		work[MAT4(i, 3)] = (*this)[0][3]*floatFromFixed(m[MAT4(i, 0)])
+				+ (*this)[1][3]*floatFromFixed(m[MAT4(i, 1)])
+				+ (*this)[2][3]*floatFromFixed(m[MAT4(i, 2)])
+				+ (*this)[3][3]*floatFromFixed(m[MAT4(i, 3)]);
 	}
 
 	data = work;
@@ -258,11 +294,23 @@ void FGLmatrix::leftMultiply(FGLmatrix const &m)
 	index ^= 1;
 	work = &storage[16*index];
 
-	for(int i = 0; i < 4; ++i) {
-		work[MAT4(i, 0)] = m[0][0]*(*this)[i][0] + m[1][0]*(*this)[i][1] + m[2][0]*(*this)[i][2] + m[3][0]*(*this)[i][3];
-		work[MAT4(i, 1)] = m[0][1]*(*this)[i][0] + m[1][1]*(*this)[i][1] + m[2][1]*(*this)[i][2] + m[3][1]*(*this)[i][3];
-		work[MAT4(i, 2)] = m[0][2]*(*this)[i][0] + m[1][2]*(*this)[i][1] + m[2][2]*(*this)[i][2] + m[3][2]*(*this)[i][3];
-		work[MAT4(i, 3)] = m[0][3]*(*this)[i][0] + m[1][3]*(*this)[i][1] + m[2][3]*(*this)[i][2] + m[3][3]*(*this)[i][3];
+	for (int i = 0; i < 4; ++i) {
+		work[MAT4(i, 0)] = m[0][0]*(*this)[i][0]
+					+ m[1][0]*(*this)[i][1]
+					+ m[2][0]*(*this)[i][2]
+					+ m[3][0]*(*this)[i][3];
+		work[MAT4(i, 1)] = m[0][1]*(*this)[i][0]
+					+ m[1][1]*(*this)[i][1]
+					+ m[2][1]*(*this)[i][2]
+					+ m[3][1]*(*this)[i][3];
+		work[MAT4(i, 2)] = m[0][2]*(*this)[i][0]
+					+ m[1][2]*(*this)[i][1]
+					+ m[2][2]*(*this)[i][2]
+					+ m[3][2]*(*this)[i][3];
+		work[MAT4(i, 3)] = m[0][3]*(*this)[i][0]
+					+ m[1][3]*(*this)[i][1]
+					+ m[2][3]*(*this)[i][2]
+					+ m[3][3]*(*this)[i][3];
 	}
 
 	data = work;
@@ -270,11 +318,23 @@ void FGLmatrix::leftMultiply(FGLmatrix const &m)
 
 void FGLmatrix::multiply(const FGLmatrix &a, const FGLmatrix &b)
 {
-	for(int i = 0; i < 4; ++i) {
-		(*this)[i][0] = a[0][0]*b[i][0] + a[1][0]*b[i][1] + a[2][0]*b[i][2] + a[3][0]*b[i][3];
-		(*this)[i][1] = a[0][1]*b[i][0] + a[1][1]*b[i][1] + a[2][1]*b[i][2] + a[3][1]*b[i][3];
-		(*this)[i][2] = a[0][2]*b[i][0] + a[1][2]*b[i][1] + a[2][2]*b[i][2] + a[3][2]*b[i][3];
-		(*this)[i][3] = a[0][3]*b[i][0] + a[1][3]*b[i][1] + a[2][3]*b[i][2] + a[3][3]*b[i][3];
+	for (int i = 0; i < 4; ++i) {
+		(*this)[i][0] = a[0][0]*b[i][0]
+				+ a[1][0]*b[i][1]
+				+ a[2][0]*b[i][2]
+				+ a[3][0]*b[i][3];
+		(*this)[i][1] = a[0][1]*b[i][0]
+				+ a[1][1]*b[i][1]
+				+ a[2][1]*b[i][2]
+				+ a[3][1]*b[i][3];
+		(*this)[i][2] = a[0][2]*b[i][0]
+				+ a[1][2]*b[i][1]
+				+ a[2][2]*b[i][2]
+				+ a[3][2]*b[i][3];
+		(*this)[i][3] = a[0][3]*b[i][0]
+				+ a[1][3]*b[i][1]
+				+ a[2][3]*b[i][2]
+				+ a[3][3]*b[i][3];
 	}
 }
 
@@ -317,105 +377,105 @@ void FGLmatrix::inverse(void)
 
 	invDet = 1/det;
 
-	work[MAT4(0, 0)] = invDet * ((-(*this)[1][3]*(*this)[2][2]*(*this)[3][1]) +
-				((*this)[1][2]*(*this)[2][3]*(*this)[3][1]) +
-				((*this)[1][3]*(*this)[2][1]*(*this)[3][2]) -
-				((*this)[1][1]*(*this)[2][3]*(*this)[3][2]) -
-				((*this)[1][2]*(*this)[2][1]*(*this)[3][3]) +
-				((*this)[1][1]*(*this)[2][2]*(*this)[3][3]));
-	work[MAT4(0, 1)] = invDet * (((*this)[0][3]*(*this)[2][2]*(*this)[3][1]) -
-				((*this)[0][2]*(*this)[2][3]*(*this)[3][1]) -
-				((*this)[0][3]*(*this)[2][1]*(*this)[3][2]) +
-				((*this)[0][1]*(*this)[2][3]*(*this)[3][2]) +
-				((*this)[0][2]*(*this)[2][1]*(*this)[3][3]) -
-				((*this)[0][1]*(*this)[2][2]*(*this)[3][3]));
-	work[MAT4(0, 2)] = invDet * ((-(*this)[0][3]*(*this)[1][2]*(*this)[3][1]) +
-				((*this)[0][2]*(*this)[1][3]*(*this)[3][1]) +
-				((*this)[0][3]*(*this)[1][1]*(*this)[3][2]) -
-				((*this)[0][1]*(*this)[1][3]*(*this)[3][2]) -
-				((*this)[0][2]*(*this)[1][1]*(*this)[3][3]) +
-				((*this)[0][1]*(*this)[1][2]*(*this)[3][3]));
-	work[MAT4(0, 3)] = invDet * (((*this)[0][3]*(*this)[1][2]*(*this)[2][1]) -
-				((*this)[0][2]*(*this)[1][3]*(*this)[2][1]) -
-				((*this)[0][3]*(*this)[1][1]*(*this)[2][2]) +
-				((*this)[0][1]*(*this)[1][3]*(*this)[2][2]) +
-				((*this)[0][2]*(*this)[1][1]*(*this)[2][3]) -
-				((*this)[0][1]*(*this)[1][2]*(*this)[2][3]));
+	work[MAT4(0, 0)] = invDet*((-(*this)[1][3]*(*this)[2][2]*(*this)[3][1])
+				+ ((*this)[1][2]*(*this)[2][3]*(*this)[3][1])
+				+ ((*this)[1][3]*(*this)[2][1]*(*this)[3][2])
+				- ((*this)[1][1]*(*this)[2][3]*(*this)[3][2])
+				- ((*this)[1][2]*(*this)[2][1]*(*this)[3][3])
+				+ ((*this)[1][1]*(*this)[2][2]*(*this)[3][3]));
+	work[MAT4(0, 1)] = invDet*(((*this)[0][3]*(*this)[2][2]*(*this)[3][1])
+				- ((*this)[0][2]*(*this)[2][3]*(*this)[3][1])
+				- ((*this)[0][3]*(*this)[2][1]*(*this)[3][2])
+				+ ((*this)[0][1]*(*this)[2][3]*(*this)[3][2])
+				+ ((*this)[0][2]*(*this)[2][1]*(*this)[3][3])
+				- ((*this)[0][1]*(*this)[2][2]*(*this)[3][3]));
+	work[MAT4(0, 2)] = invDet*(((-(*this)[0][3]*(*this)[1][2]*(*this)[3][1])
+				+ (*this)[0][2]*(*this)[1][3]*(*this)[3][1])
+				+ ((*this)[0][3]*(*this)[1][1]*(*this)[3][2])
+				- ((*this)[0][1]*(*this)[1][3]*(*this)[3][2])
+				- ((*this)[0][2]*(*this)[1][1]*(*this)[3][3])
+				+ ((*this)[0][1]*(*this)[1][2]*(*this)[3][3]));
+	work[MAT4(0, 3)] = invDet*(((*this)[0][3]*(*this)[1][2]*(*this)[2][1])
+				- ((*this)[0][2]*(*this)[1][3]*(*this)[2][1])
+				- ((*this)[0][3]*(*this)[1][1]*(*this)[2][2])
+				+ ((*this)[0][1]*(*this)[1][3]*(*this)[2][2])
+				+ ((*this)[0][2]*(*this)[1][1]*(*this)[2][3])
+				- ((*this)[0][1]*(*this)[1][2]*(*this)[2][3]));
 
-	work[MAT4(1, 0)] = invDet * (((*this)[1][3]*(*this)[2][2]*(*this)[3][0]) -
-				((*this)[1][2]*(*this)[2][3]*(*this)[3][0]) -
-				((*this)[1][3]*(*this)[2][0]*(*this)[3][2]) +
-				((*this)[1][0]*(*this)[2][3]*(*this)[3][2]) +
-				((*this)[1][2]*(*this)[2][0]*(*this)[3][3]) -
-				((*this)[1][0]*(*this)[2][2]*(*this)[3][3]));
-	work[MAT4(1, 1)] = invDet * ((-(*this)[0][3]*(*this)[2][2]*(*this)[3][0]) +
-				((*this)[0][2]*(*this)[2][3]*(*this)[3][0]) +
-				((*this)[0][3]*(*this)[2][0]*(*this)[3][2]) -
-				((*this)[0][0]*(*this)[2][3]*(*this)[3][2]) -
-				((*this)[0][2]*(*this)[2][0]*(*this)[3][3]) +
-				((*this)[0][0]*(*this)[2][2]*(*this)[3][3]));
-	work[MAT4(1, 2)] = invDet * (((*this)[0][3]*(*this)[1][2]*(*this)[3][0]) -
-				((*this)[0][2]*(*this)[1][3]*(*this)[3][0]) -
-				((*this)[0][3]*(*this)[1][0]*(*this)[3][2]) +
-				((*this)[0][0]*(*this)[1][3]*(*this)[3][2]) +
-				((*this)[0][2]*(*this)[1][0]*(*this)[3][3]) -
-				((*this)[0][0]*(*this)[1][2]*(*this)[3][3]));
-	work[MAT4(1, 3)] = invDet * ((-(*this)[0][3]*(*this)[1][2]*(*this)[2][0]) +
-				((*this)[0][2]*(*this)[1][3]*(*this)[2][0]) +
-				((*this)[0][3]*(*this)[1][0]*(*this)[2][2]) -
-				((*this)[0][0]*(*this)[1][3]*(*this)[2][2]) -
-				((*this)[0][2]*(*this)[1][0]*(*this)[2][3]) +
-				((*this)[0][0]*(*this)[1][2]*(*this)[2][3]));
+	work[MAT4(1, 0)] = invDet*(((*this)[1][3]*(*this)[2][2]*(*this)[3][0])
+				- ((*this)[1][2]*(*this)[2][3]*(*this)[3][0])
+				- ((*this)[1][3]*(*this)[2][0]*(*this)[3][2])
+				+ ((*this)[1][0]*(*this)[2][3]*(*this)[3][2])
+				+ ((*this)[1][2]*(*this)[2][0]*(*this)[3][3])
+				- ((*this)[1][0]*(*this)[2][2]*(*this)[3][3]));
+	work[MAT4(1, 1)] = invDet*((-(*this)[0][3]*(*this)[2][2]*(*this)[3][0])
+				+ ((*this)[0][2]*(*this)[2][3]*(*this)[3][0])
+				+ ((*this)[0][3]*(*this)[2][0]*(*this)[3][2])
+				- ((*this)[0][0]*(*this)[2][3]*(*this)[3][2])
+				- ((*this)[0][2]*(*this)[2][0]*(*this)[3][3])
+				+ ((*this)[0][0]*(*this)[2][2]*(*this)[3][3]));
+	work[MAT4(1, 2)] = invDet*(((*this)[0][3]*(*this)[1][2]*(*this)[3][0])
+				- ((*this)[0][2]*(*this)[1][3]*(*this)[3][0])
+				- ((*this)[0][3]*(*this)[1][0]*(*this)[3][2])
+				+ ((*this)[0][0]*(*this)[1][3]*(*this)[3][2])
+				+ ((*this)[0][2]*(*this)[1][0]*(*this)[3][3])
+				- ((*this)[0][0]*(*this)[1][2]*(*this)[3][3]));
+	work[MAT4(1, 3)] = invDet*((-(*this)[0][3]*(*this)[1][2]*(*this)[2][0])
+				+ ((*this)[0][2]*(*this)[1][3]*(*this)[2][0])
+				+ ((*this)[0][3]*(*this)[1][0]*(*this)[2][2])
+				- ((*this)[0][0]*(*this)[1][3]*(*this)[2][2])
+				- ((*this)[0][2]*(*this)[1][0]*(*this)[2][3])
+				+ ((*this)[0][0]*(*this)[1][2]*(*this)[2][3]));
 
-	work[MAT4(2, 0)] = invDet * ((-(*this)[1][3]*(*this)[2][1]*(*this)[3][0]) +
-				((*this)[1][1]*(*this)[2][3]*(*this)[3][0]) +
-				((*this)[1][3]*(*this)[2][0]*(*this)[3][1]) -
-				((*this)[1][0]*(*this)[2][3]*(*this)[3][1]) -
-				((*this)[1][1]*(*this)[2][0]*(*this)[3][3]) +
-				((*this)[1][0]*(*this)[2][1]*(*this)[3][3]));
-	work[MAT4(2, 1)] = invDet * (((*this)[0][3]*(*this)[2][1]*(*this)[3][0]) -
-				((*this)[0][1]*(*this)[2][3]*(*this)[3][0]) -
-				((*this)[0][3]*(*this)[2][0]*(*this)[3][1]) +
-				((*this)[0][0]*(*this)[2][3]*(*this)[3][1]) +
-				((*this)[0][1]*(*this)[2][0]*(*this)[3][3]) -
-				((*this)[0][0]*(*this)[2][1]*(*this)[3][3]));
-	work[MAT4(2, 2)] = invDet * ((-(*this)[0][3]*(*this)[1][1]*(*this)[3][0]) +
-				((*this)[0][1]*(*this)[1][3]*(*this)[3][0]) +
-				((*this)[0][3]*(*this)[1][0]*(*this)[3][1]) -
-				((*this)[0][0]*(*this)[1][3]*(*this)[3][1]) -
-				((*this)[0][1]*(*this)[1][0]*(*this)[3][3]) +
-				((*this)[0][0]*(*this)[1][1]*(*this)[3][3]));
-	work[MAT4(2, 3)] = invDet * (((*this)[0][3]*(*this)[1][1]*(*this)[2][0]) -
-				((*this)[0][1]*(*this)[1][3]*(*this)[2][0]) -
-				((*this)[0][3]*(*this)[1][0]*(*this)[2][1]) +
-				((*this)[0][0]*(*this)[1][3]*(*this)[2][1]) +
-				((*this)[0][1]*(*this)[1][0]*(*this)[2][3]) -
-				((*this)[0][0]*(*this)[1][1]*(*this)[2][3]));
+	work[MAT4(2, 0)] = invDet*((-(*this)[1][3]*(*this)[2][1]*(*this)[3][0])
+				+ ((*this)[1][1]*(*this)[2][3]*(*this)[3][0])
+				+ ((*this)[1][3]*(*this)[2][0]*(*this)[3][1])
+				- ((*this)[1][0]*(*this)[2][3]*(*this)[3][1])
+				- ((*this)[1][1]*(*this)[2][0]*(*this)[3][3])
+				+ ((*this)[1][0]*(*this)[2][1]*(*this)[3][3]));
+	work[MAT4(2, 1)] = invDet*(((*this)[0][3]*(*this)[2][1]*(*this)[3][0])
+				- ((*this)[0][1]*(*this)[2][3]*(*this)[3][0])
+				- ((*this)[0][3]*(*this)[2][0]*(*this)[3][1])
+				+ ((*this)[0][0]*(*this)[2][3]*(*this)[3][1])
+				+ ((*this)[0][1]*(*this)[2][0]*(*this)[3][3])
+				- ((*this)[0][0]*(*this)[2][1]*(*this)[3][3]));
+	work[MAT4(2, 2)] = invDet*((-(*this)[0][3]*(*this)[1][1]*(*this)[3][0])
+				+ ((*this)[0][1]*(*this)[1][3]*(*this)[3][0])
+				+ ((*this)[0][3]*(*this)[1][0]*(*this)[3][1])
+				- ((*this)[0][0]*(*this)[1][3]*(*this)[3][1])
+				- ((*this)[0][1]*(*this)[1][0]*(*this)[3][3])
+				+ ((*this)[0][0]*(*this)[1][1]*(*this)[3][3]));
+	work[MAT4(2, 3)] = invDet*(((*this)[0][3]*(*this)[1][1]*(*this)[2][0])
+				- ((*this)[0][1]*(*this)[1][3]*(*this)[2][0])
+				- ((*this)[0][3]*(*this)[1][0]*(*this)[2][1])
+				+ ((*this)[0][0]*(*this)[1][3]*(*this)[2][1])
+				+ ((*this)[0][1]*(*this)[1][0]*(*this)[2][3])
+				- ((*this)[0][0]*(*this)[1][1]*(*this)[2][3]));
 
-	work[MAT4(3, 0)] = invDet * (((*this)[1][2]*(*this)[2][1]*(*this)[3][0]) -
-				((*this)[1][1]*(*this)[2][2]*(*this)[3][0]) -
-				((*this)[1][2]*(*this)[2][0]*(*this)[3][1]) +
-				((*this)[1][0]*(*this)[2][2]*(*this)[3][1]) +
-				((*this)[1][1]*(*this)[2][0]*(*this)[3][2]) -
-				((*this)[1][0]*(*this)[2][1]*(*this)[3][2]));
-	work[MAT4(3, 1)] = invDet * ((-(*this)[0][2]*(*this)[2][1]*(*this)[3][0]) +
-				((*this)[0][1]*(*this)[2][2]*(*this)[3][0]) +
-				((*this)[0][2]*(*this)[2][0]*(*this)[3][1]) -
-				((*this)[0][0]*(*this)[2][2]*(*this)[3][1]) -
-				((*this)[0][1]*(*this)[2][0]*(*this)[3][2]) +
-				((*this)[0][0]*(*this)[2][1]*(*this)[3][2]));
-	work[MAT4(3, 2)] = invDet * (((*this)[0][2]*(*this)[1][1]*(*this)[3][0]) -
-				((*this)[0][1]*(*this)[1][2]*(*this)[3][0]) -
-				((*this)[0][2]*(*this)[1][0]*(*this)[3][1]) +
-				((*this)[0][0]*(*this)[1][2]*(*this)[3][1]) +
-				((*this)[0][1]*(*this)[1][0]*(*this)[3][2]) -
-				((*this)[0][0]*(*this)[1][1]*(*this)[3][2]));
-	work[MAT4(3, 3)] = invDet * ((-(*this)[0][2]*(*this)[1][1]*(*this)[2][0]) +
-				((*this)[0][1]*(*this)[1][2]*(*this)[2][0]) +
-				((*this)[0][2]*(*this)[1][0]*(*this)[2][1]) -
-				((*this)[0][0]*(*this)[1][2]*(*this)[2][1]) -
-				((*this)[0][1]*(*this)[1][0]*(*this)[2][2]) +
-				((*this)[0][0]*(*this)[1][1]*(*this)[2][2]));
+	work[MAT4(3, 0)] = invDet*(((*this)[1][2]*(*this)[2][1]*(*this)[3][0])
+				- ((*this)[1][1]*(*this)[2][2]*(*this)[3][0])
+				- ((*this)[1][2]*(*this)[2][0]*(*this)[3][1])
+				+ ((*this)[1][0]*(*this)[2][2]*(*this)[3][1])
+				+ ((*this)[1][1]*(*this)[2][0]*(*this)[3][2])
+				- ((*this)[1][0]*(*this)[2][1]*(*this)[3][2]));
+	work[MAT4(3, 1)] = invDet*((-(*this)[0][2]*(*this)[2][1]*(*this)[3][0])
+				+ ((*this)[0][1]*(*this)[2][2]*(*this)[3][0])
+				+ ((*this)[0][2]*(*this)[2][0]*(*this)[3][1])
+				- ((*this)[0][0]*(*this)[2][2]*(*this)[3][1])
+				- ((*this)[0][1]*(*this)[2][0]*(*this)[3][2])
+				+ ((*this)[0][0]*(*this)[2][1]*(*this)[3][2]));
+	work[MAT4(3, 2)] = invDet*(((*this)[0][2]*(*this)[1][1]*(*this)[3][0])
+				- ((*this)[0][1]*(*this)[1][2]*(*this)[3][0])
+				- ((*this)[0][2]*(*this)[1][0]*(*this)[3][1])
+				+ ((*this)[0][0]*(*this)[1][2]*(*this)[3][1])
+				+ ((*this)[0][1]*(*this)[1][0]*(*this)[3][2])
+				- ((*this)[0][0]*(*this)[1][1]*(*this)[3][2]));
+	work[MAT4(3, 3)] = invDet*((-(*this)[0][2]*(*this)[1][1]*(*this)[2][0])
+				+ ((*this)[0][1]*(*this)[1][2]*(*this)[2][0])
+				+ ((*this)[0][2]*(*this)[1][0]*(*this)[2][1])
+				- ((*this)[0][0]*(*this)[1][2]*(*this)[2][1])
+				- ((*this)[0][1]*(*this)[1][0]*(*this)[2][2])
+				+ ((*this)[0][0]*(*this)[1][1]*(*this)[2][2]));
 
 	data = work;
 }
@@ -427,7 +487,7 @@ void FGLmatrix::transpose(void)
 	index ^= 1;
 	work = &storage[16*index];
 
-	for(int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		work[MAT4(0, i)] = (*this)[i][0];
 		work[MAT4(1, i)] = (*this)[i][1];
 		work[MAT4(2, i)] = (*this)[i][2];
