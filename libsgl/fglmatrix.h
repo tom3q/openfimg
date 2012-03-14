@@ -6,10 +6,21 @@
 
 #define MAT4(x, y)	(4*(x) + (y))
 struct FGLmatrix {
-	GLfloat data[16];
+	GLfloat storage[2*16];
 
-	inline FGLmatrix() {};
-	inline FGLmatrix(FGLmatrix const &m) { *this = m; };
+	GLfloat *data;
+	int index;
+
+	inline FGLmatrix() :
+		data(storage),
+		index(0) {};
+
+	inline FGLmatrix(FGLmatrix const &m) :
+		data(storage),
+		index(0)
+	{
+		*this = m;
+	}
 
 	void zero(void);
 	void identity(void);
