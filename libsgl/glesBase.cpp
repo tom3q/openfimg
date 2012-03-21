@@ -651,6 +651,8 @@ GL_API void GL_APIENTRY glShadeModel (GLenum mode)
 		fimgSetShadingMode(ctx->fimg, 1, FGL_ARRAY_COLOR);
 		break;
 	}
+
+	ctx->rasterizer.shadeModel = mode;
 }
 
 static inline void fglSetupMatrices(FGLContext *ctx)

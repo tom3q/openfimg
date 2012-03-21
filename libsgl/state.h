@@ -247,6 +247,7 @@ struct FGLRasterizerState {
 	float pointSize;
 	GLenum cullFace;
 	GLenum frontFace;
+	GLenum shadeModel;
 	GLfloat polyOffFactor;
 	GLfloat polyOffUnits;
 
@@ -255,6 +256,7 @@ struct FGLRasterizerState {
 		pointSize(1.0f),
 		cullFace(GL_BACK),
 		frontFace(GL_CCW),
+		shadeModel(GL_SMOOTH),
 		polyOffFactor(0.0f),
 		polyOffUnits(0.0f) {};
 };
