@@ -640,8 +640,6 @@ static const GLenum matrixModeTable[FGL_MATRIX_TEXTURE(FGL_MAX_TEXTURE_UNITS)] =
 
 void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 {
-	LOGD("%s: %x", __func__, pname);
-
 	switch (pname) {
 	case GL_FRAMEBUFFER_BINDING_OES: {
 		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
