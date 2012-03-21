@@ -700,7 +700,7 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 			state.putInteger(0);
 		break; }
 	case GL_ACTIVE_TEXTURE:
-		state.putInteger(ctx->activeTexture);
+		state.putEnum(GL_TEXTURE0 + ctx->activeTexture);
 		break;
 	case GL_COLOR_WRITEMASK:
 		state.putBoolean(ctx->perFragment.mask.red);
