@@ -4,10 +4,20 @@
 template<typename T>
 class FGLstack {
 	T *data;
-	unsigned int pos;
-	unsigned int max;
+	int pos;
+	int max;
 
 public:
+	int depth(void) const
+	{
+		return pos + 1;
+	}
+
+	int size(void) const
+	{
+		return max + 1;
+	}
+
 	int create(unsigned int size)
 	{
 		max = size - 1;
@@ -23,6 +33,8 @@ public:
 	void destroy(void)
 	{
 		delete[] data;
+		max = -1;
+		pos = -1;
 	}
 
 	inline int push(void)
