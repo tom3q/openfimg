@@ -513,6 +513,7 @@ struct FGLStateGetter {
 	virtual void putInteger(GLint i) = 0;
 	virtual void putIntegers(const GLint *i, unsigned count) = 0;
 	virtual void putFloat(GLfloat f) = 0;
+	virtual void putFloats(const GLfloat *f, unsigned count) = 0;
 	virtual void putBoolean(GLboolean b) = 0;
 	virtual void putFixed(GLfixed x) = 0;
 	virtual void putEnum(GLenum e) = 0;
@@ -540,6 +541,12 @@ struct FGLFloatGetter : FGLStateGetter {
 			_f[_n++] = *i++;
 	}
 
+	virtual void putFloats(const GLfloat *f, unsigned count)
+	{
+		memcpy(_f + _n, f, count * sizeof(*f));
+		_n += count;
+	}
+
 private:
 	GLfloat *_f;
 };
@@ -558,6 +565,12 @@ struct FGLFixedGetter : FGLStateGetter {
 	{
 		while (count--)
 			_x[_n++] = fixedFromInt(*i++);
+	}
+
+	virtual void putFloats(const GLfloat *f, unsigned count)
+	{
+		while (count--)
+			_x[_n++] = fixedFromFloat(*f++);
 	}
 
 private:
@@ -580,6 +593,12 @@ struct FGLIntegerGetter : FGLStateGetter {
 		_n += count;
 	}
 
+	virtual void putFloats(const GLfloat *f, unsigned count)
+	{
+		while (count--)
+			_i[_n++] = round(*f++);
+	}
+
 private:
 	GLint *_i;
 };
@@ -598,6 +617,12 @@ struct FGLBooleanGetter : FGLStateGetter {
 	{
 		while (count--)
 			_b[_n++] = (*i++ != 0);
+	}
+
+	virtual void putFloats(const GLfloat *f, unsigned count)
+	{
+		while (count--)
+			_b[_n++] = (*f++ != 0.0f);
 	}
 
 private:
