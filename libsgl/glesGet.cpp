@@ -48,6 +48,7 @@ static char const * const gExtensionsString =
 	"GL_OES_fixed_point "
 	"GL_OES_single_precision "
 	"GL_OES_read_format "
+	"GL_OES_matrix_get "
 	"GL_OES_draw_texture "
 	"GL_OES_EGL_image "
 	"GL_OES_EGL_image_external "
@@ -629,9 +630,96 @@ private:
 	GLboolean *_b;
 };
 
+static const GLenum matrixModeTable[FGL_MATRIX_TEXTURE(FGL_MAX_TEXTURE_UNITS)] = {
+	GL_PROJECTION_MATRIX,
+	GL_MODELVIEW_MATRIX,
+	0,
+	GL_TEXTURE_MATRIX,
+	GL_TEXTURE_MATRIX
+};
+
 void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 {
+	LOGD("%s: %x", __func__, pname);
+
 	switch (pname) {
+	case GL_FRAMEBUFFER_BINDING_OES: {
+		FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+		state.putInteger(fb->getName());
+		break; }
+	case GL_RENDERBUFFER_BINDING_OES: {
+		FGLRenderbuffer *rb = ctx->renderbuffer.get();
+		GLint name = (rb) ? rb->getName() : 0;
+		state.putInteger(name);
+		break; }
+	case GL_MAX_RENDERBUFFER_SIZE_OES:
+		state.putInteger(FGL_MAX_VIEWPORT_DIMS);
+		break;
+
+	case GL_SHADE_MODEL:
+		state.putEnum(ctx->rasterizer.shadeModel);
+		break;
+
+	case GL_MATRIX_MODE:
+		state.putEnum(matrixModeTable[ctx->matrix.activeMatrix]);
+		break;
+
+	case GL_MAX_MODELVIEW_STACK_DEPTH: {
+		GLint depth = ctx->matrix.stack[FGL_MATRIX_MODELVIEW].size();
+		state.putInteger(depth);
+		break; }
+	case GL_MAX_PROJECTION_STACK_DEPTH: {
+		GLint depth = ctx->matrix.stack[FGL_MATRIX_MODELVIEW].size();
+		state.putInteger(depth);
+		break; }
+	case GL_MAX_TEXTURE_STACK_DEPTH: {
+		unsigned id = FGL_MATRIX_TEXTURE(ctx->activeTexture);
+		GLint depth = ctx->matrix.stack[id].size();
+		state.putInteger(depth);
+		break; }
+
+	case GL_MODELVIEW_STACK_DEPTH: {
+		GLint depth = ctx->matrix.stack[FGL_MATRIX_MODELVIEW].depth();
+		state.putInteger(depth);
+		break; }
+	case GL_PROJECTION_STACK_DEPTH: {
+		GLint depth = ctx->matrix.stack[FGL_MATRIX_MODELVIEW].depth();
+		state.putInteger(depth);
+		break; }
+	case GL_TEXTURE_STACK_DEPTH: {
+		unsigned id = FGL_MATRIX_TEXTURE(ctx->activeTexture);
+		GLint depth = ctx->matrix.stack[id].depth();
+		state.putInteger(depth);
+		break; }
+
+	case GL_MODELVIEW_MATRIX: {
+		FGLmatrix *mat = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top();
+		state.putFloats(mat->data, 16);
+		break; }
+	case GL_PROJECTION_MATRIX: {
+		FGLmatrix *mat = &ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
+		state.putFloats(mat->data, 16);
+		break; }
+	case GL_TEXTURE_MATRIX: {
+		unsigned id = FGL_MATRIX_TEXTURE(ctx->activeTexture);
+		FGLmatrix *mat = &ctx->matrix.stack[id].top();
+		state.putFloats(mat->data, 16);
+		break; }
+
+	case GL_MODELVIEW_MATRIX_FLOAT_AS_INT_BITS_OES: {
+		FGLmatrix *mat = &ctx->matrix.stack[FGL_MATRIX_MODELVIEW].top();
+		state.putIntegers((GLint *)mat->data, 16);
+		break; }
+	case GL_PROJECTION_MATRIX_FLOAT_AS_INT_BITS_OES: {
+		FGLmatrix *mat = &ctx->matrix.stack[FGL_MATRIX_PROJECTION].top();
+		state.putIntegers((GLint *)mat->data, 16);
+		break; }
+	case GL_TEXTURE_MATRIX_FLOAT_AS_INT_BITS_OES: {
+		unsigned id = FGL_MATRIX_TEXTURE(ctx->activeTexture);
+		FGLmatrix *mat = &ctx->matrix.stack[id].top();
+		state.putIntegers((GLint *)mat->data, 16);
+		break; }
+
 	case GL_CURRENT_COLOR:
 		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_RED]);
 		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_GREEN]);
@@ -699,6 +787,9 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 		else
 			state.putInteger(0);
 		break; }
+	case GL_CLIENT_ACTIVE_TEXTURE:
+		state.putEnum(GL_TEXTURE0 + ctx->clientActiveTexture);
+		break;
 	case GL_ACTIVE_TEXTURE:
 		state.putEnum(GL_TEXTURE0 + ctx->activeTexture);
 		break;
@@ -858,6 +949,75 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 		state.putEnum(cfg->readFormat);
 		break; }
 
+	case GL_VERTEX_ARRAY_SIZE:
+		state.putInteger(ctx->array[FGL_ARRAY_VERTEX].size);
+		break;
+	case GL_VERTEX_ARRAY_TYPE:
+		state.putEnum(ctx->array[FGL_ARRAY_VERTEX].type);
+		break;
+	case GL_VERTEX_ARRAY_STRIDE:
+		state.putInteger(ctx->array[FGL_ARRAY_VERTEX].stride);
+		break;
+	case GL_VERTEX_ARRAY_BUFFER_BINDING: {
+		FGLBuffer *buf = ctx->array[FGL_ARRAY_VERTEX].buffer;
+		GLint name = (buf) ? buf->getName() : 0;
+		state.putInteger(name);
+		break; }
+	case GL_NORMAL_ARRAY_TYPE:
+		state.putEnum(ctx->array[FGL_ARRAY_NORMAL].type);
+		break;
+	case GL_NORMAL_ARRAY_STRIDE:
+		state.putInteger(ctx->array[FGL_ARRAY_NORMAL].stride);
+		break;
+	case GL_NORMAL_ARRAY_BUFFER_BINDING: {
+		FGLBuffer *buf = ctx->array[FGL_ARRAY_NORMAL].buffer;
+		GLint name = (buf) ? buf->getName() : 0;
+		state.putInteger(name);
+		break; }
+	case GL_COLOR_ARRAY_SIZE:
+		state.putInteger(ctx->array[FGL_ARRAY_COLOR].size);
+		break;
+	case GL_COLOR_ARRAY_TYPE:
+		state.putEnum(ctx->array[FGL_ARRAY_COLOR].type);
+		break;
+	case GL_COLOR_ARRAY_STRIDE:
+		state.putInteger(ctx->array[FGL_ARRAY_COLOR].stride);
+		break;
+	case GL_COLOR_ARRAY_BUFFER_BINDING: {
+		FGLBuffer *buf = ctx->array[FGL_ARRAY_COLOR].buffer;
+		GLint name = (buf) ? buf->getName() : 0;
+		state.putInteger(name);
+		break; }
+	case GL_TEXTURE_COORD_ARRAY_SIZE: {
+		unsigned id = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
+		state.putInteger(ctx->array[id].size);
+		break; }
+	case GL_TEXTURE_COORD_ARRAY_TYPE:{
+		unsigned id = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
+		state.putEnum(ctx->array[id].type);
+		break; }
+	case GL_TEXTURE_COORD_ARRAY_STRIDE:{
+		unsigned id = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
+		state.putInteger(ctx->array[id].stride);
+		break; }
+	case GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING: {
+		unsigned id = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
+		FGLBuffer *buf = ctx->array[id].buffer;
+		GLint name = (buf) ? buf->getName() : 0;
+		state.putInteger(name);
+		break; }
+	case GL_POINT_SIZE_ARRAY_TYPE_OES:
+		state.putEnum(ctx->array[FGL_ARRAY_POINT_SIZE].type);
+		break;
+	case GL_POINT_SIZE_ARRAY_STRIDE_OES:
+		state.putInteger(ctx->array[FGL_ARRAY_POINT_SIZE].stride);
+		break;
+	case GL_POINT_SIZE_ARRAY_BUFFER_BINDING_OES: {
+		FGLBuffer *buf = ctx->array[FGL_ARRAY_POINT_SIZE].buffer;
+		GLint name = (buf) ? buf->getName() : 0;
+		state.putInteger(name);
+		break; }
+
 	/* Single boolean values */
 	case GL_CULL_FACE:
 	case GL_POLYGON_OFFSET_FILL:
@@ -867,6 +1027,11 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 	case GL_BLEND:
 	case GL_DITHER:
 	case GL_COLOR_LOGIC_OP:
+	case GL_VERTEX_ARRAY:
+	case GL_NORMAL_ARRAY:
+	case GL_COLOR_ARRAY:
+	case GL_TEXTURE_COORD_ARRAY:
+	case GL_POINT_SIZE_ARRAY_OES:
 		state.putBoolean(glIsEnabled(pname));
 		break;
 	default:
@@ -969,6 +1134,18 @@ GL_API GLboolean GL_APIENTRY glIsEnabled (GLenum cap)
 		return ctx->enable.dither;
 	case GL_COLOR_LOGIC_OP:
 		return ctx->enable.colorLogicOp;
+	case GL_VERTEX_ARRAY:
+		return ctx->array[FGL_ARRAY_VERTEX].enabled;
+	case GL_NORMAL_ARRAY:
+		return ctx->array[FGL_ARRAY_NORMAL].enabled;
+	case GL_COLOR_ARRAY:
+		return ctx->array[FGL_ARRAY_COLOR].enabled;
+	case GL_TEXTURE_COORD_ARRAY: {
+		unsigned id = FGL_ARRAY_TEXTURE(ctx->clientActiveTexture);
+		return ctx->array[id].enabled;
+	}
+	case GL_POINT_SIZE_ARRAY_OES:
+		return ctx->array[FGL_ARRAY_POINT_SIZE].enabled;
 	default:
 		setError(GL_INVALID_ENUM);
 		return GL_FALSE;
