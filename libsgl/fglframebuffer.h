@@ -80,6 +80,8 @@ public:
 	{
 		dirty = false;
 	}
+
+	virtual GLint getName(void) const { return 0; }
 };
 
 struct FGLFramebufferState;
@@ -147,6 +149,11 @@ public:
 		updateStatus();
 
 		return status;
+	}
+
+	virtual GLint getName(void) const
+	{
+		return name;
 	}
 };
 
