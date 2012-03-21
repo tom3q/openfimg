@@ -650,6 +650,9 @@ GL_API void GL_APIENTRY glShadeModel (GLenum mode)
 	case GL_FLAT:
 		fimgSetShadingMode(ctx->fimg, 1, FGL_ARRAY_COLOR);
 		break;
+	default:
+		setError(GL_INVALID_ENUM);
+		return;
 	}
 
 	ctx->rasterizer.shadeModel = mode;
