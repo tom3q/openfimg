@@ -634,8 +634,8 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 	switch (pname) {
 	case GL_CURRENT_COLOR:
 		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_RED]);
-		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_BLUE]);
 		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_GREEN]);
+		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_BLUE]);
 		state.putNormalized(ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_ALPHA]);
 		break;
 	case GL_CURRENT_NORMAL:
