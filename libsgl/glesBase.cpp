@@ -1928,6 +1928,9 @@ static inline void fglSet(GLenum cap, bool state)
 	case GL_NORMALIZE:
 	case GL_COLOR_MATERIAL:
 	case GL_FOG:
+	case GL_POINT_SMOOTH:
+	case GL_LINE_SMOOTH:
+	case GL_MULTISAMPLE:
 		break;
 	default:
 		LOGD("Unimplemented or unsupported enum %d in %s", cap, __func__);
