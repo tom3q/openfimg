@@ -867,10 +867,12 @@ void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 		state.putInteger(FGL_MAX_VIEWPORT_DIMS);
 		state.putInteger(FGL_MAX_VIEWPORT_DIMS);
 		break;
+	case GL_SMOOTH_POINT_SIZE_RANGE:
 	case GL_ALIASED_POINT_SIZE_RANGE:
 		state.putFloat(FGL_MIN_POINT_SIZE);
 		state.putFloat(FGL_MAX_POINT_SIZE);
 		break;
+	case GL_SMOOTH_LINE_WIDTH_RANGE:
 	case GL_ALIASED_LINE_WIDTH_RANGE:
 		state.putFloat(FGL_MIN_LINE_WIDTH);
 		state.putFloat(FGL_MAX_LINE_WIDTH);
