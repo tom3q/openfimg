@@ -1053,9 +1053,9 @@ void fimgCompatBuildPixelShader(fimgContext *ctx, uint32_t slot)
 
 		for (arg = 0; arg < 3; arg++) {
 			addr += loadShaderBlock(&combineArg[arg]
-					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBA_SRC, arg) + 2], addr);
+					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBA_SRC, arg)], addr);
 			addr += loadShaderBlock(&combineArgMod[arg]
-					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBA_MOD, arg) + 2], addr);
+					[FGFP_BITFIELD_GET_IDX(reg, TEX_COMBA_MOD, arg) | 0x2], addr);
 		}
 
 		addr += loadShaderBlock(&combineFunc[FGFP_BITFIELD_GET(reg, TEX_COMBA_FUNC)],
@@ -1149,7 +1149,7 @@ void fimgCompatSetColorCombineArgMod(fimgContext *ctx, uint32_t unit,
 void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, uint32_t unit,
 					uint32_t arg, fimgCombArgSrc src)
 {
-	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_SRC, arg, src & 1);
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_SRC, arg, src);
 }
 
 void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, uint32_t unit,
