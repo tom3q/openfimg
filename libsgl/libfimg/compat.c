@@ -762,15 +762,8 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 				&& map[instr->src0_regnum].flags
 				&& map[instr->src0_regnum].srcRegType != REG_SRC_R
 				&& map[instr->src0_regnum].srcRegType == instr->src1_regtype
-			) {
-				if (map[instr->src0_regnum].srcRegType == REG_SRC_R)
-					deps[map[instr->src0_regnum].srcRegNum] &= ~(1 << instr->src0_regnum);
-
-				map[instr->src0_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-				map[instr->src0_regnum].srcRegType = REG_SRC_R;
-				map[instr->src0_regnum].srcRegNum = instr->src0_regnum;
+			)
 				map[instr->src0_regnum].flags = 0;
-			}
 
 			if (instr->src0_regtype == REG_SRC_R
 				&& map[instr->src0_regnum].flags
@@ -790,15 +783,8 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 				&& map[instr->src1_regnum].flags
 				&& map[instr->src1_regnum].srcRegType != REG_SRC_R
 				&& map[instr->src1_regnum].srcRegType == instr->src0_regtype
-			) {
-				if (map[instr->src1_regnum].srcRegType == REG_SRC_R)
-					deps[map[instr->src1_regnum].srcRegNum] &= ~(1 << instr->src1_regnum);
-
-				map[instr->src1_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-				map[instr->src1_regnum].srcRegType = REG_SRC_R;
-				map[instr->src1_regnum].srcRegNum = instr->src1_regnum;
+			)
 				map[instr->src1_regnum].flags = 0;
-			}
 
 			if (instr->src1_regtype == REG_SRC_R
 				&& map[instr->src1_regnum].flags
@@ -821,15 +807,8 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 				&& map[instr->src0_regnum].srcRegType != REG_SRC_R
 				&& (map[instr->src0_regnum].srcRegType == instr->src1_regtype
 				|| map[instr->src0_regnum].srcRegType == instr->src2_regtype)
-			) {
-				if (map[instr->src0_regnum].srcRegType == REG_SRC_R)
-					deps[map[instr->src0_regnum].srcRegNum] &= ~(1 << instr->src0_regnum);
-
-				map[instr->src0_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-				map[instr->src0_regnum].srcRegType = REG_SRC_R;
-				map[instr->src0_regnum].srcRegNum = instr->src0_regnum;
+			)
 				map[instr->src0_regnum].flags = 0;
-			}
 
 			if (instr->src0_regtype == REG_SRC_R
 			    && map[instr->src0_regnum].flags) {
@@ -849,15 +828,8 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 				&& map[instr->src1_regnum].srcRegType != REG_SRC_R
 				&& (map[instr->src1_regnum].srcRegType == instr->src0_regtype
 				|| map[instr->src1_regnum].srcRegType == instr->src2_regtype)
-			) {
-				if (map[instr->src1_regnum].srcRegType == REG_SRC_R)
-					deps[map[instr->src1_regnum].srcRegNum] &= ~(1 << instr->src1_regnum);
-
-				map[instr->src1_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-				map[instr->src1_regnum].srcRegType = REG_SRC_R;
-				map[instr->src1_regnum].srcRegNum = instr->src1_regnum;
+			)
 				map[instr->src1_regnum].flags = 0;
-			}
 
 			if (instr->src1_regtype == REG_SRC_R
 			    && map[instr->src1_regnum].flags) {
@@ -877,15 +849,8 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 				&& map[instr->src2_regnum].srcRegType != REG_SRC_R
 				&& (map[instr->src2_regnum].srcRegType == instr->src0_regtype
 				|| map[instr->src2_regnum].srcRegType == instr->src1_regtype)
-			) {
-				if (map[instr->src2_regnum].srcRegType == REG_SRC_R)
-					deps[map[instr->src2_regnum].srcRegNum] &= ~(1 << instr->src2_regnum);
-
-				map[instr->src2_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-				map[instr->src2_regnum].srcRegType = REG_SRC_R;
-				map[instr->src2_regnum].srcRegNum = instr->src2_regnum;
+			)
 				map[instr->src2_regnum].flags = 0;
-			}
 
 			if (instr->src2_regtype == REG_SRC_R
 			    && map[instr->src2_regnum].flags) {
@@ -913,21 +878,14 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 			if (map[instr->dest_regnum].srcRegType == REG_SRC_R)
 				deps[map[instr->dest_regnum].srcRegNum] &= ~(1 << instr->dest_regnum);
 
-			map[instr->dest_regnum].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-			map[instr->dest_regnum].srcRegType = REG_SRC_R;
-			map[instr->dest_regnum].srcRegNum = instr->dest_regnum;
 			map[instr->dest_regnum].flags = 0;
 		}
 
 		depMask = deps[instr->dest_regnum];
 		depReg = 0;
 		while (depMask) {
-			if (depMask & 1) {
-				map[depReg].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-				map[depReg].srcRegType = REG_SRC_R;
-				map[depReg].srcRegNum = depReg;
+			if (depMask & 1)
 				map[depReg].flags |= MAP_FLAG_INVALID;
-			}
 			depMask >>= 1;
 			++depReg;
 		}
