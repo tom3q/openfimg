@@ -730,13 +730,7 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 
 	/* State initialization */
 	memset(deps, 0, sizeof(deps));
-	for (reg = 0; reg < 32; ++reg) {
-		map[reg].srcReg = reg;
-		map[reg].srcRegType = 1;
-		map[reg].srcSwizzle = SWIZZLE(0, 1, 2, 3);
-		map[reg].movInstr = 0;
-		map[reg].flags = 0;
-	}
+	memset(map, 0, sizeof(map));
 
 	/* Optimization pass */
 	for (instr = instrStart; instr < instrEnd; ++instr) {
