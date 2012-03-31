@@ -72,18 +72,23 @@ struct FGLBuffer {
 
 	int create(int s)
 	{
-		if (size != s) {
-			if (size != 0)
-				free(memory);
-			memory = malloc(s);
-		}
-
-		if (likely(memory != 0)) {
-			size = s;
+		if (size == s)
 			return 0;
-		}
 
-		return -1;
+		if (size)
+			free(memory);
+
+		memory = 0;
+		size = 0;
+		if (!s)
+			return 0;
+
+		memory = malloc(s);
+		if (!memory)
+			return -1;
+
+		size = s;
+		return 0;
 	}
 
 	void destroy()
