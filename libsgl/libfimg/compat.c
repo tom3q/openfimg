@@ -433,6 +433,7 @@ enum fimgOpcodeType {
 	OP_TYPE_MOVE
 };
 
+#ifndef FIMG_BYPASS_SHADER_OPTIMIZER
 static fimgOpcodeInfo opcodeMap[64] = {
 	[OP_NOP] = {
 		.type		= OP_TYPE_RESERVED,
@@ -651,6 +652,7 @@ static fimgOpcodeInfo opcodeMap[64] = {
 		.srcCount	= 0,
 	}
 };
+#endif
 
 enum fimgSrcRegType {
 	REG_SRC_V = 0,
@@ -692,6 +694,12 @@ struct registerMap {
 
 #define SWIZZLE(a, b, c, d)	((a) | ((b) << 2) | ((c) << 4) | ((d) << 6))
 
+#ifdef FIMG_BYPASS_SHADER_OPTIMIZER
+static inline uint32_t optimizeShader(uint32_t *start, uint32_t *end)
+{
+	return (end - start) / 4;
+}
+#else
 static inline uint8_t mergeSwizzle(uint8_t a, uint8_t b)
 {
 	uint8_t swizzle = 0;
@@ -928,6 +936,7 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 
 	return instrPtr - instrStart;
 }
+#endif
 
 /*
  * Shader generation code

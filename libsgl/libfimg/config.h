@@ -49,4 +49,7 @@
 /* Show shader cache hit/miss statistics in log */
 //#define FIMG_SHADER_CACHE_STATS
 
+/* Disable shader optimizer */
+//#define FIMG_BYPASS_SHADER_OPTIMIZER
+
 #endif /* _FIMG_CONFIG_H_ */
