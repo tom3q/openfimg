@@ -493,7 +493,7 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 		do {
 			unsigned x = width;
 			do {
-				*(dst16++) = fglPackAL88(0, *(src8++));
+				*(dst16++) = fglPackAL88(0xff, *(src8++));
 			} while (--x);
 			src8 += padding;
 		} while (--height);
@@ -821,7 +821,7 @@ static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 		do {
 			unsigned x = w;
 			do {
-				*(dst16++) = fglPackAL88(0, *(src8++));
+				*(dst16++) = fglPackAL88(0xff, *(src8++));
 			} while (--x);
 			src8 += srcPad;
 			dst16 += dstPad;
