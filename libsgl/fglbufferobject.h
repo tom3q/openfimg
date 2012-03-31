@@ -92,6 +92,7 @@ struct FGLBuffer {
 			return;
 
 		free(memory);
+		memory = 0;
 		size = 0;
 	}
 
