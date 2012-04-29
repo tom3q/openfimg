@@ -643,7 +643,7 @@ GL_API void GL_APIENTRY glGetFramebufferAttachmentParameterivOES (GLenum target,
 			*params = fba->getName();
 			break;
 		case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL_OES:
-			if (fba->getType() != GL_TEXTURE_2D) {
+			if (fba->getType() != GL_TEXTURE) {
 				setError(GL_INVALID_ENUM);
 				return;
 			}
