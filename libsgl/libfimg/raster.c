@@ -42,43 +42,36 @@
 
 #define FGRA_COORDREPLACE_VAL(i)	(1 << (i))
 
-/* TODO: Function inlining */
-
-/*****************************************************************************
- * FUNCTIONS:	fimgSetPixelSamplePos
- * SYNOPSIS:	This function controls whether pixel is sampled at the center
- * 		or corner of the sample
- * PARAMETERS:	[IN] FGL_Sample samp: pixel sampling position
- * 		     Zero	- sample at center
- *		     Non-zero	- sample at left-top corner
- *****************************************************************************/
+/**
+ * Sets pixel sampling position.
+ * @param ctx Hardware context.
+ * @param corner Non-zero to sample at top-left pixel corner, center otherwise.
+ */
 void fimgSetPixelSamplePos(fimgContext *ctx, int corner)
 {
 	ctx->rasterizer.samplePos = !!corner;
 	fimgQueue(ctx, !!corner, FGRA_PIX_SAMP);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgEnableDepthOffset
- * SYNOPSIS:	This function decides to use the depth offset
- *		Note : This function affects polygon, not point and line.
- * PARAMETERS:	[IN] int enable: Non-zero to enable. default value is FG_FALSE
- *****************************************************************************/
+/**
+ * Controls enable state of depth offset.
+ * @see fimgSetDepthOffsetParam
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable depth offset.
+ */
 void fimgEnableDepthOffset(fimgContext *ctx, int enable)
 {
 	ctx->rasterizer.dOffEn = !!enable;
 	fimgQueue(ctx, !!enable, FGRA_D_OFF_EN);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetDepthOffsetParam
- * SYNOPSIS:	This function sets depth offset parameters one by one
- *		Note : This function affects polygon, not point and line.
- * PARAMETERS:	[IN] FGL_DepthOffsetParam param: depth offset parameter to be set
- *		[IN] unsigned int value: specified parameter value
- * RETURNS: 	 0 - if successful.
- *		-1 - if an invalid parameter is specified.
- *****************************************************************************/
+/**
+ * Sets depth offset parameters.
+ * @see fimgSetDepthOffset
+ * @param ctx Hardware context.
+ * @param factor Depth offset factor.
+ * @param units Depth offset units.
+ */
 void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
 {
 	ctx->rasterizer.dOffFactor = factor;
@@ -87,36 +80,53 @@ void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
 	fimgQueueF(ctx, units, FGRA_D_OFF_UNITS);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetFaceCullControl
- * SYNOPSIS:	This function controls back-face culling.
- * PARAMETERS:	[IN] FG_BOOL enable: FG_TRUE for using back-face cull.
- *		[IN] FG_BOOL bCW: FG_TRUE for make a clock-wise face front
- *		[IN] fimgCullingFace face: culling face
- *****************************************************************************/
+/**
+ * Controls face culling enable state.
+ * @see fimgSetFaceCullFace
+ * @see fimgSetFaceCullFront
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable.
+ */
 void fimgSetFaceCullEnable(fimgContext *ctx, int enable)
 {
 	ctx->rasterizer.cull.enable = !!enable;
 	fimgQueue(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 
+/**
+ * Selects which faces to cull.
+ * @see fimgCullingFace
+ * @see fimgSetFaceCullEnable
+ * @see fimgSetFaceCullFront
+ * @param ctx Hardware context.
+ * @param face Faces to cull (see fimgCullingFace enum).
+ */
 void fimgSetFaceCullFace(fimgContext *ctx, unsigned int face)
 {
 	ctx->rasterizer.cull.face = face;
 	fimgQueue(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
+
+/**
+ * Selects front face direction.
+ * @see fimgSetFaceCullEnable
+ * @see fimgSetFaceCullFace
+ * @param ctx Hardware context.
+ * @param bCW Non-zero to assume clockwise faces as front, counter-clockwise
+ * otherwise.
+ */
 void fimgSetFaceCullFront(fimgContext *ctx, int bCW)
 {
 	ctx->rasterizer.cull.clockwise = !!bCW;
 	fimgQueue(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetYClip
- * SYNOPSIS:	This function sets clipping plan in Y coordinate.
- * PARAMETERS:	[IN] unsigned int ymin: Y clipping min. coordinate.
- *		[IN] unsigned int ymax: Y clipping max. coordinate.
- *****************************************************************************/
+/**
+ * Configures Y coordinate range for early fragment clipping.
+ * @param ctx Hardware context.
+ * @param ymin Fragments with less Y coordinate will be clipped.
+ * @param ymax Fragments with greater or equal Y coordinate will be clipped.
+ */
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 {
 	if (ctx->flipY) {
@@ -131,11 +141,14 @@ void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 	fimgQueue(ctx, ctx->rasterizer.yClip.val, FGRA_YCLIP);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetLODControl
- * SYNOPSIS:	This function sets LOD calculation control.
- * PARAMETERS:	[IN] fimgLODControl ctl: lodcon values
- *****************************************************************************/
+/**
+ * Configures generation of LOD coefficients for selected attribute.
+ * @param ctx Hardware context.
+ * @param attrib Attribute index.
+ * @param lod Non-zero to generate LOD coefficient.
+ * @param ddx Non-zero to generate DDX coefficient.
+ * @param ddy Non-zero to generate DDY coefficient.
+ */
 void fimgSetLODControl(fimgContext *ctx, unsigned int attrib,
 						int lod, int ddx, int ddy)
 {
@@ -146,12 +159,12 @@ void fimgSetLODControl(fimgContext *ctx, unsigned int attrib,
 	fimgQueue(ctx, ctx->rasterizer.lodGen.val, FGRA_LODCTL);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetXClip
- * SYNOPSIS:	This function sets clipping plan in X coordinate.
- * PARAMETERS:	[IN] unsigned int xmin: X clipping min. coordinate.
- *		[IN] unsigned int xmax: X clipping max. coordinate.
- *****************************************************************************/
+/**
+ * Configures X coordinate range for early fragment clipping.
+ * @param ctx Hardware context.
+ * @param xmin Fragments with less X coordinate will be clipped.
+ * @param xmax Fragments with greater or equal X coordinate will be clipped.
+ */
 void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
 {
 	ctx->rasterizer.xClip.maxval = xmax;
@@ -160,63 +173,65 @@ void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
 	fimgQueue(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetPointWidth
- * SYNOPSIS:	This function sets point width register.
- * PARAMETERS:	[IN] float pWidth: Point width.
- *****************************************************************************/
+/**
+ * Sets point width for point rendering.
+ * @param ctx Hardware context.
+ * @param pWidth Point width.
+ */
 void fimgSetPointWidth(fimgContext *ctx, float pWidth)
 {
 	ctx->rasterizer.pointWidth = pWidth;
 	fimgQueueF(ctx, pWidth, FGRA_PWIDTH);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetMinimumPointWidth
- * SYNOPSIS:	This function sets minimum point width register.
- * PARAMETERS:	[IN] float pWidthMin: Minimum point width.
- *****************************************************************************/
+/**
+ * Sets minimum point width used to clamp dynamic point width.
+ * @param ctx Hardware context.
+ * @param pWidthMin Minimum point width.
+ */
 void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin)
 {
 	ctx->rasterizer.pointWidthMin = pWidthMin;
 	fimgQueueF(ctx, pWidthMin, FGRA_PSIZE_MIN);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetMaximumPointWidth
- * SYNOPSIS:	This function sets maximum point width register.
- * PARAMETERS:	[IN] float pWidthMax: Maximum point width.
- *****************************************************************************/
+/**
+ * Sets maximum point width used to clamp dynamic point width.
+ * @param ctx Hardware context.
+ * @param pWidthMax Maximum point width.
+ */
 void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax)
 {
 	ctx->rasterizer.pointWidthMax = pWidthMax;
 	fimgQueueF(ctx, pWidthMax, FGRA_PSIZE_MAX);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetCoordReplace
- * SYNOPSIS:	This function is used only in point sprite rendering.
- *		Only one bit chooses generated texture coordinate for point sprite.
- * PARAMETERS:	[IN] unsigned int coordReplaceNum :
- *		     Attribute number for texture coord. of point sprite.
- *****************************************************************************/
+/**
+ * Selects attribute used as texture coordinate in point sprite mode.
+ * @param ctx Hardware context.
+ * @param coordReplaceNum Attribute index.
+ */
 void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum)
 {
 	ctx->rasterizer.spriteCoordAttrib = FGRA_COORDREPLACE_VAL(coordReplaceNum);
 	fimgQueue(ctx, FGRA_COORDREPLACE_VAL(coordReplaceNum), FGRA_COORDREPLACE);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetLineWidth
- * SYNOPSIS:	This function sets line width register.
- * PARAMETERS:	[IN] float lWidth: Line width.
- *****************************************************************************/
+/**
+ * Sets line width used for rendering lines.
+ * @param ctx Hardware context.
+ * @param lWidth Line width.
+ */
 void fimgSetLineWidth(fimgContext *ctx, float lWidth)
 {
 	ctx->rasterizer.lineWidth = lWidth;
 	fimgQueueF(ctx, lWidth, FGRA_LWIDTH);
 }
 
+/**
+ * Initializes hardware context of rasterizer block.
+ * @param ctx Hardware context.
+ */
 void fimgCreateRasterizerContext(fimgContext *ctx)
 {
 	ctx->rasterizer.pointWidth = 1.0f;
@@ -225,6 +240,10 @@ void fimgCreateRasterizerContext(fimgContext *ctx)
 	ctx->rasterizer.lineWidth = 1.0f;
 }
 
+/**
+ * Restores hardware context of rasterizer block.
+ * @param ctx Hardware context.
+ */
 void fimgRestoreRasterizerState(fimgContext *ctx)
 {
 	fimgWrite(ctx, ctx->rasterizer.samplePos, FGRA_PIX_SAMP);
