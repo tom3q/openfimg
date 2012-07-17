@@ -74,8 +74,10 @@ typedef union {
 	} bits;
 } fimgTextureCKYUV;
 
-/* TODO: Consider inlining some of the functions */
-
+/**
+ * Creates a texture object.
+ * @return Initialized texture object or NULL on error.
+ */
 fimgTexture *fimgCreateTexture(void)
 {
 	fimgTexture *texture;
@@ -94,11 +96,22 @@ fimgTexture *fimgCreateTexture(void)
 	return texture;
 }
 
+/**
+ * Destroys a texture object.
+ * @param texture Texture object to destroy.
+ */
 void fimgDestroyTexture(fimgTexture *texture)
 {
 	free(texture);
 }
 
+/**
+ * Initializes basic settings of texture object.
+ * @param texture Texture object.
+ * @param flags Extra texture flags.
+ * @param format Pixel format.
+ * @param addr Physical address of texture memory.
+ */
 void fimgInitTexture(fimgTexture *texture, unsigned int flags,
 				unsigned int format, unsigned long addr)
 {
@@ -108,6 +121,12 @@ void fimgInitTexture(fimgTexture *texture, unsigned int flags,
 	texture->baseAddr = addr;
 }
 
+/**
+ * Sets offset of selected mipmap level.
+ * @param texture Texture object.
+ * @param level Mipmap level.
+ * @param offset Offset in pixels.
+ */
 void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
 						unsigned int offset)
 {
@@ -117,6 +136,12 @@ void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
 	texture->offset[level - 1] = offset;
 }
 
+/**
+ * Gets offset of selected mipmap level.
+ * @param texture Texture object.
+ * @param level Mipmap level.
+ * @return Offset in pixels.
+ */
 unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level)
 {
 	if(level < 1 || level > FGTU_MAX_MIPMAP_LEVEL)
@@ -125,11 +150,22 @@ unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level)
 	return texture->offset[level - 1];
 }
 
+/**
+ * Marks texture cache to be invalidated on next rendering.
+ * @param ctx Hardware context.
+ */
 void fimgInvalidateTextureCache(fimgContext *ctx)
 {
 	ctx->invalTexCache = 1;
 }
 
+/**
+ * Configures selected texture unit to selected texture object.
+ * (Must be called with hardware locked.)
+ * @param ctx Hardware context.
+ * @param texture Texture object.
+ * @param unit Texture unit index.
+ */
 void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 {
 	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base +FGTU_TSTA(unit));
@@ -148,34 +184,33 @@ void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 	);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexMipmapLevel
-* SYNOPSIS:	This function sets texture mipmap level.
-* PARAMETERS:	[IN] unsigned int level: max level (<12)
-*****************************************************************************/
+/**
+ * Sets available mipmap levels of texture object.
+ * @param texture Texture object.
+ * @param level Mipmap level.
+ */
 void fimgSetTexMipmapLevel(fimgTexture *texture, int level)
 {
 	texture->maxLevel = level;
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexBaseAddr
-* SYNOPSIS:	This function sets texture base address
-* 		for selected texture unit.
-* PARAMETERS:	[IN] unsigned int addr: base address
-*****************************************************************************/
+/**
+ * Sets texture base address of texture object.
+ * @param texture Texture object.
+ * @param addr Physical address of texture data.
+ */
 void fimgSetTexBaseAddr(fimgTexture *texture, unsigned int addr)
 {
 	texture->baseAddr = addr;
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexUSize
-* SYNOPSIS:	This function sets a texture u size
-* 		for selected texture unit.
-* PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
-*		[IN]	unsigned int uSize: texture u size (0~2047)
-*****************************************************************************/
+/**
+ * Sets 2D texture size.
+ * @param texture Texture object.
+ * @param uSize Texture width.
+ * @param vSize Texture height.
+ * @param maxLevel Maximum mipmap level.
+ */
 void fimgSetTex2DSize(fimgTexture *texture,
 		unsigned int uSize, unsigned int vSize, unsigned int maxLevel)
 {
@@ -184,13 +219,13 @@ void fimgSetTex2DSize(fimgTexture *texture,
 	texture->maxLevel = maxLevel;
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetTexVSize
-* SYNOPSIS:	This function sets a texture v size
-* 		for selected texture unit.
-* PARAMETERS:	[IN]	unsigned int unit: texture unit (0~7)
-*		[IN]	unsigned int vSize: texture v size (0~2047)
-*****************************************************************************/
+/**
+ * Sets 3D texture size.
+ * @param texture Texture object.
+ * @param vSize Texture height.
+ * @param uSize Texture width.
+ * @param pSize Texture depth.
+ */
 void fimgSetTex3DSize(fimgTexture *texture, unsigned int vSize,
 				unsigned int uSize, unsigned int pSize)
 {
@@ -199,36 +234,71 @@ void fimgSetTex3DSize(fimgTexture *texture, unsigned int vSize,
 	texture->pSize = pSize;
 }
 
+/**
+ * Sets U addressing mode of texture.
+ * @param texture Texture object.
+ * @param mode Addressing mode.
+ */
 void fimgSetTexUAddrMode(fimgTexture *texture, unsigned mode)
 {
 	texture->control.uAddrMode = mode;
 }
 
+/**
+ * Sets V addressing mode of texture.
+ * @param texture Texture object.
+ * @param mode Addressing mode.
+ */
 void fimgSetTexVAddrMode(fimgTexture *texture, unsigned mode)
 {
 	texture->control.vAddrMode = mode;
 }
 
+/**
+ * Sets P addressing mode of texture.
+ * @param texture Texture object.
+ * @param mode Addressing mode.
+ */
 void fimgSetTexPAddrMode(fimgTexture *texture, unsigned mode)
 {
 	texture->control.pAddrMode = mode;
 }
 
+/**
+ * Sets texture minification filter.
+ * @param texture Texture object.
+ * @param mode Minification filter.
+ */
 void fimgSetTexMinFilter(fimgTexture *texture, unsigned mode)
 {
 	texture->control.minFilter = mode;
 }
 
+/**
+ * Sets texture magnification filter.
+ * @param texture Texture object.
+ * @param mode Magnification filter.
+ */
 void fimgSetTexMagFilter(fimgTexture *texture, unsigned mode)
 {
 	texture->control.magFilter = mode;
 }
 
+/**
+ * Controls mipmap enable state of texture.
+ * @param texture Texture object.
+ * @param mode Non-zero to enable mipmapping.
+ */
 void fimgSetTexMipmap(fimgTexture *texture, unsigned mode)
 {
 	texture->control.useMipmap = mode;
 }
 
+/**
+ * Sets texture coordinate system.
+ * @param texture Texture object.
+ * @param mode Non-zero to use non-parametric coordinate system.
+ */
 void fimgSetTexCoordSys(fimgTexture *texture, unsigned mode)
 {
 	texture->control.texCoordSys = mode;
