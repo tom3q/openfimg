@@ -69,13 +69,6 @@ int fimgWaitForCacheFlush(fimgContext *ctx,
 void fimgFinish(fimgContext *ctx);
 void fimgSoftReset(fimgContext *ctx);
 void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev);
-unsigned int fimgGetInterrupt(fimgContext *ctx);
-void fimgClearInterrupt(fimgContext *ctx);
-void fimgEnableInterrupt(fimgContext *ctx);
-void fimgDisableInterrupt(fimgContext *ctx);
-void fimgSetInterruptBlock(fimgContext *ctx, uint32_t pipeMask);
-void fimgSetInterruptState(fimgContext *ctx, uint32_t status);
-uint32_t fimgGetInterruptState(fimgContext *ctx);
 
 /*
  * Host interface
