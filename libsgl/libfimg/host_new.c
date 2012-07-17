@@ -1436,12 +1436,8 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 #endif
 
 	do {
-#if 0
 		fimgSelectiveFlush(ctx, FGHI_PIPELINE_FIFO
 				| FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF);
-#else
-		fimgFlush(ctx);
-#endif
 		fillVertexBuffer(ctx);
 		setupVertexBuffer(ctx);
 		drawAutoinc(ctx, 0, copied);
@@ -1493,12 +1489,8 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 #endif
 
 	do {
-#if 0
 		fimgSelectiveFlush(ctx, FGHI_PIPELINE_FIFO
 				| FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF);
-#else
-		fimgFlush(ctx);
-#endif
 		fillVertexBuffer(ctx);
 		setupVertexBuffer(ctx);
 		drawAutoinc(ctx, 0, copied);
@@ -1550,12 +1542,8 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 #endif
 
 	do {
-#if 0
 		fimgSelectiveFlush(ctx, FGHI_PIPELINE_FIFO
 				| FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF);
-#else
-		fimgFlush(ctx);
-#endif
 		fillVertexBuffer(ctx);
 		setupVertexBuffer(ctx);
 		drawAutoinc(ctx, 0, copied);
