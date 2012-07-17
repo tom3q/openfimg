@@ -35,16 +35,11 @@
 #define FGPE_DEPTHRANGE_HALF_F_SUB_N	(0x30014)
 #define FGPE_DEPTHRANGE_HALF_F_ADD_N	(0x30018)
 
-/*
- * Functions
- * TODO: Function inlining
+/**
+ * Configures primitive engine for processing selected primitive type.
+ * @param ctx Hardware context.
+ * @param type Primitive type.
  */
-/*****************************************************************************
- * FUNCTIONS:	fimgSetVertexContext
- * SYNOPSIS:	This function specifies the type of primitive to be drawn
- *		and the number of input attributes
- * PARAMETERS:	[IN] pVtx: the pointer of FGL_Vertex strucutre
- *****************************************************************************/
 void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 {
 	ctx->primitive.vctx.type = 1 << type; // See fimgPrimitiveType enum
@@ -57,21 +52,26 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
 }
 
+/**
+ * Specifies shading mode for selected vertex attribute.
+ * @param ctx Hardware context.
+ * @param en Non-zero to enable flat shading.
+ * @param attrib Attribute index.
+ */
 void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib)
 {
 	ctx->primitive.vctx.flatShadeEn  = !!en;
 	ctx->primitive.vctx.flatShadeSel = (!!en << attrib);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetViewportParams
- * SYNOPSIS:	This function specifies the viewport parameters.
- * PARAMETERS:	[IN] bYFlip: Not zero if you want y-flipped window coordindate
- *		     zero if otherwise
- *		[IN] x0, y0: origin of viewport in window coordindate system
- *		[IN] px, py: width and height of viewport in terms of pixel
- *		[IN] H: height of window in terms of pixel
- *****************************************************************************/
+/**
+ * Configures viewport parameters.
+ * @param ctx Hardware context.
+ * @param x0 X coordinate of viewport origin.
+ * @param y0 Y coordinate of viewport origin.
+ * @param px Viewport width.
+ * @param py Viewport height.
+ */
 void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float py)
 {
 	// local variable declaration
@@ -102,6 +102,10 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 	fimgQueueF(ctx, half_py, FGPE_VIEWPORT_HALF_PY);
 }
 
+/**
+ * Configures viewport parameters to bypass viewport transformation.
+ * @param ctx Hardware context.
+ */
 void fimgSetViewportBypass(fimgContext *ctx)
 {
 	ctx->primitive.ox = 0.0f;
@@ -121,13 +125,12 @@ void fimgSetViewportBypass(fimgContext *ctx)
 	fimgQueueF(ctx, 0.0f, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetDepthRange
- * SYNOPSIS:	This function defines an encoding for z-coordinate that's performed
- *		during the viewport transformation.
- * PARAMETERS:	[IN] n: near value ( n should be in [0, 1])
- *		[IN] f: far value (f should be in [0, 1])
- *****************************************************************************/
+/**
+ * Configures depth range of viewport transformation.
+ * @param ctx Hardware context.
+ * @param n Near depth value, from <0, 1> range.
+ * @param f Far depth value, from <0, 1> range.
+ */
 void fimgSetDepthRange(fimgContext *ctx, float n, float f)
 {
 	float half_distance = (f - n) * 0.5f;
@@ -140,12 +143,20 @@ void fimgSetDepthRange(fimgContext *ctx, float n, float f)
 	fimgQueueF(ctx, center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
 }
 
+/**
+ * Initializes hardware context of primitive engine.
+ * @param ctx Hardware context.
+ */
 void fimgCreatePrimitiveContext(fimgContext *ctx)
 {
 	ctx->primitive.halfDistance = 0.5f;
 	ctx->primitive.center = 0.5f;
 }
 
+/**
+ * Restores hardware context of primitive engine.
+ * @param ctx Hardware context.
+ */
 void fimgRestorePrimitiveState(fimgContext *ctx)
 {
 	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
