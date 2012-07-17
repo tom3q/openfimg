@@ -41,17 +41,16 @@
 #define FGPF_CBADDR		(0x70034)
 #define FGPF_FBW		(0x70038)
 
-/* TODO: Function inlining */
-
-/*****************************************************************************
-* FUNCTIONS:	fimgSetScissorParams
-* SYNOPSIS:	This function specifies an arbitary screen-aligned rectangle
-*		outside of which fragments will be discarded.
-* PARAMETERS:	[IN] xMax: the maximum x coordinates of scissor box.
-*		[IN] xMin: the minimum x coordinates of scissor box.
-*		[IN] yMax: the maximum y coordiantes of scissor box.
-*		[IN] yMin: the minimum y coordinates of scissor box.
-*****************************************************************************/
+/**
+ * Specifies parameters of scissor test.
+ * Scissor test, if enabled, discards fragments outside the specified rectangle.
+ * @see fimgSetScissorEnable
+ * @param ctx Hardware context.
+ * @param xMax Fragments with greater or equal x will be discarded.
+ * @param xMin Fragments with less x will be discarded.
+ * @param yMax Fragments with greater or equal y will be discarded.
+ * @param yMin Fragments with less y will be discarded.
+ */
 void fimgSetScissorParams(fimgContext *ctx,
 			  unsigned int xMax, unsigned int xMin,
 			  unsigned int yMax, unsigned int yMin)
@@ -71,27 +70,30 @@ void fimgSetScissorParams(fimgContext *ctx,
 	fimgQueue(ctx, ctx->fragment.scX.val, FGPF_SCISSOR_X);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetScissorParams
-* SYNOPSIS:	This function specifies an arbitary screen-aligned rectangle
-*		outside of which fragments will be discarded.
-* PARAMETERS:	[IN] enable - non-zero to enable scissor test
-*****************************************************************************/
+/**
+ * Controls enable state of scissor test.
+ * Scissor test, if enabled, discards fragments outside the specified rectangle.
+ * @see fimgSetScissorParams
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable scissor test.
+ */
 void fimgSetScissorEnable(fimgContext *ctx, int enable)
 {
 	ctx->fragment.scX.enable = !!enable;
 	fimgQueue(ctx, ctx->fragment.scX.val, FGPF_SCISSOR_X);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetAlphaParams
-* SYNOPSIS:	This function discards a fragment depending on the outcome of a
-*          	comparison between the fragment's alpha value and a constant
-*          	reference value.
-* PARAMETERS:	[IN] refAlpha: The reference value to which incoming alpha values
-*                    are compared. This value is clamped to the range 8bit value.
-*		[IN] mode: The alpha comparison function.
-*****************************************************************************/
+/**
+ * Specifies parameters of alpha test.
+ * Alpha test, if enabled, discards a fragment depending on result of
+ * comparison between alpha value of processed fragment and configured
+ * reference value.
+ * @see fimgSetAlphaEnable
+ * @param ctx Hardware context.
+ * @param refAlpha The reference value to which incoming alpha values
+ * are compared.
+ * @param mode The alpha comparison function.
+ */
 void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
 			fimgTestMode mode)
 {
@@ -100,28 +102,36 @@ void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
 	fimgQueue(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetAlphaEnable
-* SYNOPSIS:	This function discards a fragment depending on the outcome of a
-*		comparison between the fragment's alpha value and a constant
-*		reference value.
-* PARAMETERS:	[IN] enable - non-zero to enable alpha test
-*****************************************************************************/
+/**
+ * Controls enable state of alpha test.
+ * Alpha test, if enabled, discards a fragment depending on result of
+ * comparison between alpha value of processed fragment and configured
+ * reference value.
+ * @see fimgSetAlphaParams
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable alpha test.
+ */
 void fimgSetAlphaEnable(fimgContext *ctx, int enable)
 {
 	ctx->fragment.alpha.enable = !!enable;
 	fimgQueue(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetFrontStencilFunc
-* SYNOPSIS:	The stencil test conditionally discards a fragment based on the
-*		outcome of a comparison between the value in the stencil buffer
-*		and a reference value.
-* PARAMETERS:	[IN] mode - test comparison function
-*		[IN] ref - reference value
-*		[IN] mask - test mask
-*****************************************************************************/
+/**
+ * Specifies parameters of front stencil test.
+ * Stencil test, if enabled, conditionally discards fragments based on result
+ * of comparison between the value in the stencil buffer and reference value.
+ * In addition the value in stencil buffer is modified according to configured
+ * operation and test result.
+ * @see fimgSetFrontStencilOp
+ * @see fimgSetBackStencilFunc
+ * @see fimgSetBackStencilOp
+ * @see fimgSetStencilEnable
+ * @param ctx Hardware context.
+ * @param mode Test comparison function.
+ * @param ref Reference value.
+ * @param mask Test mask.
+ */
 void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 			     unsigned char ref, unsigned char mask)
 {
@@ -131,15 +141,21 @@ void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 	fimgQueue(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetFrontStencilOp
-* SYNOPSIS:	The stencil test conditionally discards a fragment based on the
-*		outcome of a comparison between the value in the stencil buffer
-*		and a reference value.
-* PARAMETERS:	[IN] sfail - action to take if stencil test fails
-*		[IN] dpfail - action to take if depth buffer test fails
-*		[IN] dppass - action to take if depth buffer test passes
-*****************************************************************************/
+/**
+ * Specifies operations on stencil buffer after front stencil test.
+ * Stencil test, if enabled, conditionally discards fragments based on result
+ * of comparison between the value in the stencil buffer and reference value.
+ * In addition the value in stencil buffer is modified according to configured
+ * operation and test result.
+ * @see fimgSetFrontStencilFunc
+ * @see fimgSetBackStencilFunc
+ * @see fimgSetBackStencilOp
+ * @see fimgSetStencilEnable
+ * @param ctx Hardware context.
+ * @param sfail Action to take if stencil test fails.
+ * @param dpfail Action to take if depth buffer test fails.
+ * @param dppass Action to take if depth buffer test passes.
+ */
 void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
 			   fimgTestAction dpfail, fimgTestAction dppass)
 {
@@ -149,15 +165,21 @@ void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
 	fimgQueue(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetBackStencilFunc
-* SYNOPSIS:	The stencil test conditionally discards a fragment based on the
-*		outcome of a comparison between the value in the stencil buffer
-*		and a reference value.
-* PARAMETERS:	[IN] mode - test comparison function
-*		[IN] ref - reference value
-*		[IN] mask - test mask
-*****************************************************************************/
+/**
+ * Specifies parameters of back stencil test.
+ * Stencil test, if enabled, conditionally discards fragments based on result
+ * of comparison between the value in the stencil buffer and reference value.
+ * In addition the value in stencil buffer is modified according to configured
+ * operation and test result.
+ * @see fimgSetBackStencilOp
+ * @see fimgSetFrontStencilFunc
+ * @see fimgSetFrontStencilOp
+ * @see fimgSetStencilEnable
+ * @param ctx Hardware context.
+ * @param mode Test comparison function.
+ * @param ref Reference value.
+ * @param mask Test mask.
+ */
 void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 			    unsigned char ref, unsigned char mask)
 {
@@ -167,15 +189,21 @@ void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 	fimgQueue(ctx, ctx->fragment.stBack.val, FGPF_BACKST);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetBackStencilOp
-* SYNOPSIS:	The stencil test conditionally discards a fragment based on the
-*		outcome of a comparison between the value in the stencil buffer
-*		and a reference value.
-* PARAMETERS:	[IN] sfail - action to take if stencil test fails
-*		[IN] dpfail - action to take if depth buffer test fails
-*		[IN] dppass - action to take if depth buffer test passes
-*****************************************************************************/
+/**
+ * Specifies operations on stencil buffer after back stencil test.
+ * Stencil test, if enabled, conditionally discards fragments based on result
+ * of comparison between the value in the stencil buffer and reference value.
+ * In addition the value in stencil buffer is modified according to configured
+ * operation and test result.
+ * @see fimgSetBackStencilFunc
+ * @see fimgSetFrontStencilFunc
+ * @see fimgSetFrontStencilOp
+ * @see fimgSetStencilEnable
+ * @param ctx Hardware context.
+ * @param sfail Action to take if stencil test fails.
+ * @param dpfail Action to take if depth buffer test fails.
+ * @param dppass Action to take if depth buffer test passes.
+ */
 void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
 			  fimgTestAction dpfail, fimgTestAction dppass)
 {
@@ -185,49 +213,66 @@ void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
 	fimgQueue(ctx, ctx->fragment.stBack.val, FGPF_BACKST);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetStencilEnable
-* SYNOPSIS:	The stencil test conditionally discards a fragment based on the
-*		outcome of a comparison between the value in the stencil buffer
-*		and a reference value.
-* PARAMETERS:	[IN] enable - non-zero to enable stencil test
-*****************************************************************************/
+/**
+ * Controls enable state of stencil test.
+ * Stencil test, if enabled, conditionally discards fragments based on result
+ * of comparison between the value in the stencil buffer and reference value.
+ * In addition the value in stencil buffer is modified according to configured
+ * operation and test result.
+ * @see fimgSetFrontStencilFunc
+ * @see fimgSetFrontStencilOp
+ * @see fimgSetBackStencilFunc
+ * @see fimgSetBackStencilFunc
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable stencil test.
+ */
 void fimgSetStencilEnable(fimgContext *ctx, int enable)
 {
 	ctx->fragment.stFront.enable = !!enable;
 	fimgQueue(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetDepthParams
-* SYNOPSIS:	This function specifies the value used for depth-buffer comparisons.
-* PARAMETERS:	[IN] mode: Specifies the depth-comparison function
-*****************************************************************************/
+/**
+ * Specifies test function of depth test.
+ * Depth test, if enabled, conditionally discards fragments based on comparision
+ * between depth value of processed fragment and value stored in depth buffer.
+ * @see fimgSetDepthEnable
+ * @param ctx Hardware context.
+ * @param mode Depth comparison function.
+ */
 void fimgSetDepthParams(fimgContext *ctx, fimgTestMode mode)
 {
 	ctx->fragment.depth.mode = mode;
 	fimgQueue(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetDepthEnable
-* SYNOPSIS:	This function specifies the value used for depth-buffer comparisons.
-* PARAMETERS:	[IN] enable: if non-zero, depth test is enabled
-*****************************************************************************/
+/**
+ * Controls enable state of depth test.
+ * Depth test, if enabled, conditionally discards fragments based on comparision
+ * between depth value of processed fragment and value stored in depth buffer.
+ * @see fimgSetDepthParams
+ * @param ctx Hardware context.
+ * @param enable If non-zero, depth test is enabled.
+ */
 void fimgSetDepthEnable(fimgContext *ctx, int enable)
 {
 	ctx->fragment.depth.enable = !!enable;
 	fimgQueue(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetBlendEquation
-* SYNOPSIS:	In RGB mode, pixels can be drawn using a function that blends
-*		the incoming (source) RGBA values with the RGBA values that are
-*		already in the framebuffer (the destination values).
-* PARAMETERS:	[in] alpha - alpha blend equation
-*		[in] color - color blend equation
-*****************************************************************************/
+/**
+ * Specifies blend equation for pixel blending.
+ * Blending, if enabled, combines color value of processed fragment with value
+ * already stored in framebuffer, according to configured blend equation,
+ * function and constant.
+ * @see fimgSetBlendEnable
+ * @see fimgSetBlendFunc
+ * @see fimgSetBlendFuncNoAlpha
+ * @see fimgSetBlendColor
+ * @param ctx Hardware context.
+ * @param alpha Alpha blend equation.
+ * @param color Color blend equation.
+ */
 void fimgSetBlendEquation(fimgContext *ctx,
 			  fimgBlendEquation alpha, fimgBlendEquation color)
 {
@@ -236,16 +281,21 @@ void fimgSetBlendEquation(fimgContext *ctx,
 	fimgQueue(ctx, ctx->fragment.blend.val, FGPF_BLEND);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetBlendFunc
-* SYNOPSIS:	In RGB mode, pixels can be drawn using a function that blends
-*		the incoming (source) RGBA values with the RGBA values that are
-*		already in the framebuffer (the destination values).
-* PARAMETERS:	[in] srcAlpha - source alpha blend function
-*		[in] srcColor - source color blend function
-*		[in] dstAlpha - destination alpha blend function
-*		[in] dstColor - destination color blend function
-*****************************************************************************/
+/**
+ * Specifies blend function for pixel blending.
+ * Blending, if enabled, combines color value of processed fragment with value
+ * already stored in framebuffer, according to configured blend equation,
+ * function and constant.
+ * @see fimgSetBlendEnable
+ * @see fimgSetBlendEquation
+ * @see fimgSetBlendFuncNoAlpha
+ * @see fimgSetBlendColor
+ * @param ctx Hardware context.
+ * @param srcAlpha Source alpha blend function.
+ * @param srcColor Source color blend function.
+ * @param dstAlpha Destination alpha blend function.
+ * @param dstColor Destination color blend function.
+ */
 void fimgSetBlendFunc(fimgContext *ctx,
 		      fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 		      fimgBlendFunction dstAlpha, fimgBlendFunction dstColor)
@@ -257,17 +307,21 @@ void fimgSetBlendFunc(fimgContext *ctx,
 	fimgQueue(ctx, ctx->fragment.blend.val, FGPF_BLEND);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetBlendFuncRGB565
-* SYNOPSIS:	In RGB mode, pixels can be drawn using a function that blends
-*		the incoming (source) RGBA values with the RGBA values that are
-*		already in the framebuffer (the destination values).
-*		(A variant with workaround for RGB565 mode.)
-* PARAMETERS:	[IN] srcAlpha - source alpha blend function
-*		[IN] srcColor - source color blend function
-*		[IN] dstAlpha - destination alpha blend function
-*		[IN] dstColor - destination color blend function
-*****************************************************************************/
+/**
+ * Specifies blend function for pixel blending, for pixel formats without alpha.
+ * Blending, if enabled, combines color value of processed fragment with value
+ * already stored in framebuffer, according to configured blend equation,
+ * function and constant.
+ * @see fimgSetBlendEnable
+ * @see fimgSetBlendEquation
+ * @see fimgSetBlendFunc
+ * @see fimgSetBlendColor
+ * @param ctx Hardware context.
+ * @param srcAlpha Source alpha blend function.
+ * @param srcColor Source color blend function.
+ * @param dstAlpha Destination alpha blend function.
+ * @param dstColor Destination color blend function.
+ */
 void fimgSetBlendFuncNoAlpha(fimgContext *ctx,
 			    fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 			    fimgBlendFunction dstAlpha, fimgBlendFunction dstColor)
@@ -300,50 +354,63 @@ void fimgSetBlendFuncNoAlpha(fimgContext *ctx,
 	fimgSetBlendFunc(ctx, srcAlpha, srcColor, dstAlpha, dstColor);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetBlendEnable
-* SYNOPSIS:	In RGB mode, pixels can be drawn using a function that blends
-*		the incoming (source) RGBA values with the RGBA values that are
-*		already in the framebuffer (the destination values).
-* PARAMETERS:	[in] enable - non-zero to enable blending
-*****************************************************************************/
+/**
+ * Controls enable state of blending.
+ * Blending, if enabled, combines color value of processed fragment with value
+ * already stored in framebuffer, according to configured blend equation,
+ * function and constant.
+ * @see fimgSetBlendEquation
+ * @see fimgSetBlendFunc
+ * @see fimgSetBlendFuncNoAlpha
+ * @see fimgSetBlendColor
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable blending.
+ */
 void fimgSetBlendEnable(fimgContext *ctx, int enable)
 {
 	ctx->fragment.blend.enable = !!enable;
 	fimgQueue(ctx, ctx->fragment.blend.val, FGPF_BLEND);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetBlendColor
-* SYNOPSIS:	This function set constant blend color.
-*          	This value can be used in blending.
-* PARAMETERS:	[IN] blendColor - RGBA-order 32bit color
-*****************************************************************************/
+/**
+ * Sets constant blend color.
+ * Blending, if enabled, combines color value of processed fragment with value
+ * already stored in framebuffer, according to configured blend equation,
+ * function and constant.
+ * @see fimgSetBlendEquation
+ * @see fimgSetBlendFunc
+ * @see fimgSetBlendFuncNoAlpha
+ * @see fimgSetBlendEnable
+ * @param ctx Hardware context.
+ * @param blendColor Blend color in RGBA8888 format.
+ */
 void fimgSetBlendColor(fimgContext *ctx, unsigned int blendColor)
 {
 	ctx->fragment.blendColor = blendColor;
 	fimgQueue(ctx, blendColor, FGPF_CCLR);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetDitherEnable
-* SYNOPSIS:	This function controls image dithering.
-* PARAMETERS:	[IN] enale - non-zero to enable dithering
-*****************************************************************************/
+/**
+ * Controls enable state image dithering.
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable dithering.
+ */
 void fimgSetDitherEnable(fimgContext *ctx, int enable)
 {
 	ctx->fragment.fbctl.dither = !!enable;
 	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetLogicalOpParams
-* SYNOPSIS:	A logical operation can be applied the fragment and value stored
-*		at the corresponding location in the framebuffer; the result
-*		replaces the current framebuffer value.
-* PARAMETERS:	[in] alpha - logical operation on alpha data
-*		[in[ color - logical operation on color data
-*****************************************************************************/
+/**
+ * Specifies parameters of logical operation on fragment values.
+ * A logical operation can be applied to processed fragment and value stored
+ * at the corresponding location in the framebuffer. The result is then
+ * written to the framebuffer.
+ * @see fimgSetLogicalOpEnable
+ * @param ctx Hardware context.
+ * @param alpha Logical operation on alpha data.
+ * @param color Logical operation on color data.
+ */
 void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
 			    fimgLogicalOperation color)
 {
@@ -352,41 +419,38 @@ void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
 	fimgQueue(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetLogicalOpEnable
-* SYNOPSIS:	A logical operation can be applied the fragment and value stored
-*          	at the corresponding location in the framebuffer; the result
-*          	replaces the current framebuffer value.
-* PARAMETERS:	[IN] enable: if non-zero, logical operation is enabled
-*****************************************************************************/
+/**
+ * Controls enable state of logical operation block.
+ * A logical operation can be applied to processed fragment and value stored
+ * at the corresponding location in the framebuffer. The result is then
+ * written to the framebuffer.
+ * @see fimgSetLogicalOpParams
+ * @param ctx Hardware context.
+ * @param enable If non-zero, logical operation is enabled.
+ */
 void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
 {
 	ctx->fragment.logop.enable = !!enable;
 	fimgQueue(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetColorBufWriteMask
-* SYNOPSIS:	enable and disable writing of frame(color) buffer color components
-* PARAMETERS:	[IN] r - whether red can or cannot be written into the frame buffer.
-*		[IN] g - whether green can or cannot be written into the frame buffer.
-*		[IN] b - whether blue can or cannot be written into the frame buffer.
-*		[IN] a - whether alpha can or cannot be written into the frame buffer.
-*****************************************************************************/
+/**
+ * Controls which color components are written to color buffer.
+ * @param ctx Hardware context.
+ * @param mask Bit mask with set bits corresponding to disabled components.
+ */
 void fimgSetColorBufWriteMask(fimgContext *ctx, unsigned int mask)
 {
 	ctx->fragment.mask.val = mask & 0xf;
 	fimgQueue(ctx, ctx->fragment.mask.val, FGPF_CBMSK);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetStencilBufWriteMask
-* SYNOPSIS:	control the front and/or back writing of individual bits
-*		in the stencil buffer.
-* PARAMETERS:	[IN] back - 0 - update front mask, non-zero - update back mask
-*		[IN] mask - A bit mask to enable and disable writing of individual
-*                    bits in the stencil buffer.
-*****************************************************************************/
+/**
+ * Controls which bits are written to stencil buffer.
+ * @param ctx Hardware context.
+ * @param back Non-zero to set mask of back stencil, front otherwise.
+ * @param mask Bit mask with set bits corresponding to writable bits.
+ */
 void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask)
 {
 	if(!back)
@@ -396,29 +460,23 @@ void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask)
 	fimgQueue(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetZBufWriteMask
-* SYNOPSIS:	enables or disables writing into the depth buffer.
-* PARAMETERS:	[IN] enable - specifies whether the depth buffer is enabled
-*		     for writing.
-*****************************************************************************/
+/**
+ * Controls whether writing to depth buffer is allowed.
+ * @param ctx Hardware context.
+ * @param enable Non-zero to enable writing to depth buffer.
+ */
 void fimgSetZBufWriteMask(fimgContext *ctx, int enable)
 {
 	ctx->fragment.dbmask.depth = !enable;
 	fimgQueue(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetFrameBufParams
-* SYNOPSIS:	specifies the value used for frame buffer control.
-* PARAMETERS:	[IN] opaqueAlpha - after alpha blending, the alpha value is
-*		     forced to opaque.
-*		[IN] thresholdAlpha - specifies an alpha value in the frame buffer
-*		     ARGB1555 format.
-*		[IN] constAlpha - specifies constant alpha value in the frame
-*		     buffer ARGB0888 format.
-*		[IN] format - specifies the format used for the frame buffer.
-*****************************************************************************/
+/**
+ * Controls framebuffer parameters such as pixel format, component swap, etc.
+ * @param ctx Hardware context.
+ * @param flags Extra flags altering framebuffer operation.
+ * @param format Pixel format.
+ */
 void fimgSetFrameBufParams(fimgContext *ctx,
 				unsigned int flags, unsigned int format)
 {
@@ -434,35 +492,35 @@ void fimgSetFrameBufParams(fimgContext *ctx,
 	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetZBufBaseAddr
-* SYNOPSIS:	Depth and Stencil buffer base address
-* PARAMETERS:	[IN] addr - specifies the value used for stencil/depth buffer
-*		     address.
-*****************************************************************************/
+/**
+ * Sets depth/stencil buffer base address.
+ * @param ctx Hardware context.
+ * @param addr Physical address of depth/stencil buffer.
+ */
 void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr)
 {
 	ctx->fragment.depthAddr = addr;
 	fimgQueue(ctx, addr, FGPF_DBADDR);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetColorBufBaseAddr
-* SYNOPSIS:	color buffer base address
-* PARAMETERS:	[IN] addr - specifies the value used for frame buffer address.
-*****************************************************************************/
+/**
+ * Sets color buffer base address.
+ * @param ctx Hardware context.
+ * @param addr Physical address of color buffer.
+ */
 void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr)
 {
 	ctx->fragment.colorAddr = addr;
 	fimgQueue(ctx, addr, FGPF_CBADDR);
 }
 
-/*****************************************************************************
-* FUNCTIONS:	fimgSetFrameBufSize
-* SYNOPSIS:	sert frame buffer width and height
-* PARAMETERS:	[IN] width - specifies the value used for frame buffer width
-*		[IN] height -specifies the value used for frame buffer height
-*****************************************************************************/
+/**
+ * Sets framebuffer width, height and Y-axis flip.
+ * @param ctx Hardware context.
+ * @param width Framebuffer width.
+ * @param height Framebuffer height.
+ * @param flipY Non-zero to enable Y-axis flip.
+ */
 void fimgSetFrameBufSize(fimgContext *ctx,
 			unsigned int width, unsigned int height, int flipY)
 {
@@ -472,6 +530,10 @@ void fimgSetFrameBufSize(fimgContext *ctx,
 	fimgQueue(ctx, width, FGPF_FBW);
 }
 
+/**
+ * Initializes hardware context of per-fragment block.
+ * @param ctx Hardware context.
+ */
 void fimgCreateFragmentContext(fimgContext *ctx)
 {
 	ctx->fragment.alpha.mode = FGPF_TEST_MODE_ALWAYS;
@@ -485,6 +547,10 @@ void fimgCreateFragmentContext(fimgContext *ctx)
 	ctx->fragment.fbctl.dither = 1;
 }
 
+/**
+ * Restores hardware context of per-fragment block.
+ * @param ctx Hardware context.
+ */
 void fimgRestoreFragmentState(fimgContext *ctx)
 {
 	fimgWrite(ctx, ctx->fragment.scY.val, FGPF_SCISSOR_Y);
