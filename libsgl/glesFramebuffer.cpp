@@ -123,7 +123,7 @@ FGLObjectManager<FGLRenderbuffer, FGL_MAX_RENDERBUFFER_OBJECTS> fglRenderbufferO
 
 GL_API void GL_APIENTRY glGenRenderbuffersOES (GLsizei n, GLuint* renderbuffers)
 {
-	if(n <= 0)
+	if (n <= 0)
 		return;
 
 	int name;
@@ -133,7 +133,7 @@ GL_API void GL_APIENTRY glGenRenderbuffersOES (GLsizei n, GLuint* renderbuffers)
 
 	do {
 		name = fglRenderbufferObjects.get(ctx);
-		if(name < 0) {
+		if (name < 0) {
 			glDeleteRenderbuffersOES (n - i, renderbuffers);
 			setError(GL_OUT_OF_MEMORY);
 			return;
@@ -149,14 +149,14 @@ GL_API void GL_APIENTRY glDeleteRenderbuffersOES (GLsizei n, const GLuint* rende
 {
 	unsigned name;
 
-	if(n <= 0)
+	if (n <= 0)
 		return;
 
 	do {
 		name = *renderbuffers;
 		renderbuffers++;
 
-		if(!fglRenderbufferObjects.isValid(name)) {
+		if (!fglRenderbufferObjects.isValid(name)) {
 			LOGD("Tried to free invalid renderbuffer %d", name);
 			continue;
 		}
@@ -181,19 +181,19 @@ GL_API void GL_APIENTRY glBindRenderbufferOES (GLenum target, GLuint renderbuffe
 		return;
 	}
 
-	if(renderbuffer == 0) {
+	if (renderbuffer == 0) {
 		binding->bind(0);
 		return;
 	}
 
-	if(!fglRenderbufferObjects.isValid(renderbuffer)
+	if (!fglRenderbufferObjects.isValid(renderbuffer)
 	    && fglRenderbufferObjects.get(renderbuffer, ctx) < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
 
 	FGLRenderbuffer *rb = fglRenderbufferObjects[renderbuffer];
-	if(rb == NULL) {
+	if (rb == NULL) {
 		rb = new FGLRenderbuffer(renderbuffer);
 		if (rb == NULL) {
 			setError(GL_OUT_OF_MEMORY);
@@ -263,7 +263,7 @@ GL_API void GL_APIENTRY glRenderbufferStorageOES (GLenum target,
 
 	if (!obj->surface) {
 		obj->surface = new FGLLocalSurface(size);
-		if(!obj->surface || !obj->surface->isValid()) {
+		if (!obj->surface || !obj->surface->isValid()) {
 			delete obj->surface;
 			obj->surface = 0;
 			setError(GL_OUT_OF_MEMORY);
@@ -274,14 +274,14 @@ GL_API void GL_APIENTRY glRenderbufferStorageOES (GLenum target,
 
 GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum pname, GLint* params)
 {
-	if(target != GL_FRAMEBUFFER_OES) {
+	if (target != GL_FRAMEBUFFER_OES) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
 
 	FGLContext *ctx = getContext();
 
-	if(!ctx->renderbuffer.isBound()) {
+	if (!ctx->renderbuffer.isBound()) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -323,8 +323,7 @@ GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum p
 	}
 
 	if (obj->mask & (FGL_ATTACHMENT_DEPTH | FGL_ATTACHMENT_STENCIL)) {
-		switch (pname)
-		{
+		switch (pname) {
 		case GL_RENDERBUFFER_RED_SIZE_OES:
 		case GL_RENDERBUFFER_GREEN_SIZE_OES:
 		case GL_RENDERBUFFER_BLUE_SIZE_OES:
@@ -363,7 +362,7 @@ FGLObjectManager<FGLFramebuffer, FGL_MAX_FRAMEBUFFER_OBJECTS> fglFramebufferObje
 
 GL_API void GL_APIENTRY glGenFramebuffersOES (GLsizei n, GLuint* framebuffers)
 {
-	if(n <= 0)
+	if (n <= 0)
 		return;
 
 	int name;
@@ -373,7 +372,7 @@ GL_API void GL_APIENTRY glGenFramebuffersOES (GLsizei n, GLuint* framebuffers)
 
 	do {
 		name = fglFramebufferObjects.get(ctx);
-		if(name < 0) {
+		if (name < 0) {
 			glDeleteFramebuffersOES (n - i, framebuffers);
 			setError(GL_OUT_OF_MEMORY);
 			return;
@@ -388,14 +387,14 @@ GL_API void GL_APIENTRY glDeleteFramebuffersOES (GLsizei n, const GLuint* frameb
 {
 	unsigned name;
 
-	if(n <= 0)
+	if (n <= 0)
 		return;
 
 	while(n--) {
 		name = *framebuffers;
 		framebuffers++;
 
-		if(!fglFramebufferObjects.isValid(name)) {
+		if (!fglFramebufferObjects.isValid(name)) {
 			LOGD("Tried to free invalid framebuffer %d", name);
 			continue;
 		}
@@ -420,19 +419,19 @@ GL_API void GL_APIENTRY glBindFramebufferOES (GLenum target, GLuint framebuffer)
 		return;
 	}
 
-	if(framebuffer == 0) {
+	if (framebuffer == 0) {
 		binding->bind(0);
 		return;
 	}
 
-	if(!fglFramebufferObjects.isValid(framebuffer)
+	if (!fglFramebufferObjects.isValid(framebuffer)
 	    && fglFramebufferObjects.get(framebuffer, ctx) < 0) {
 		setError(GL_INVALID_VALUE);
 		return;
 	}
 
 	FGLFramebuffer *fb = fglFramebufferObjects[framebuffer];
-	if(fb == NULL) {
+	if (fb == NULL) {
 		fb = new FGLFramebuffer(framebuffer);
 		if (fb == NULL) {
 			setError(GL_OUT_OF_MEMORY);
@@ -454,7 +453,7 @@ GL_API GLboolean GL_APIENTRY glIsFramebufferOES (GLuint framebuffer)
 
 GL_API GLenum GL_APIENTRY glCheckFramebufferStatusOES (GLenum target)
 {
-	if(target != GL_FRAMEBUFFER_OES) {
+	if (target != GL_FRAMEBUFFER_OES) {
 		setError(GL_INVALID_ENUM);
 		return 0;
 	}
@@ -474,7 +473,7 @@ GL_API void GL_APIENTRY glFramebufferRenderbufferOES(GLenum target,
 				GLenum attachment, GLenum renderbuffertarget,
 				GLuint renderbuffer)
 {
-	if(target != GL_FRAMEBUFFER_OES) {
+	if (target != GL_FRAMEBUFFER_OES) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -486,13 +485,13 @@ GL_API void GL_APIENTRY glFramebufferRenderbufferOES(GLenum target,
 			return;
 		}
 
-		if(!fglRenderbufferObjects.isValid(renderbuffer)) {
+		if (!fglRenderbufferObjects.isValid(renderbuffer)) {
 			setError(GL_INVALID_OPERATION);
 			return;
 		}
 
 		rb = fglRenderbufferObjects[renderbuffer];
-		if(rb == NULL) {
+		if (rb == NULL) {
 			rb = new FGLRenderbuffer(renderbuffer);
 			if (rb == NULL) {
 				setError(GL_OUT_OF_MEMORY);
@@ -512,8 +511,7 @@ GL_API void GL_APIENTRY glFramebufferRenderbufferOES(GLenum target,
 	FGLFramebuffer *fb = ctx->framebuffer.binding.get();
 
 	FGLAttachmentIndex index;
-	switch (attachment)
-	{
+	switch (attachment) {
 	case GL_COLOR_ATTACHMENT0_OES:
 		index = FGL_ATTACHMENT_COLOR;
 		break;
@@ -537,7 +535,7 @@ GL_API void GL_APIENTRY glFramebufferTexture2DOES (GLenum target,
 					GLenum attachment, GLenum textarget,
 					GLuint texture, GLint level)
 {
-	if(target != GL_FRAMEBUFFER_OES) {
+	if (target != GL_FRAMEBUFFER_OES) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -554,13 +552,13 @@ GL_API void GL_APIENTRY glFramebufferTexture2DOES (GLenum target,
 			return;
 		}
 
-		if(!fglTextureObjects.isValid(texture)) {
+		if (!fglTextureObjects.isValid(texture)) {
 			setError(GL_INVALID_OPERATION);
 			return;
 		}
 
 		tex = fglTextureObjects[texture];
-		if(tex == NULL) {
+		if (tex == NULL) {
 			tex = new FGLTexture(texture);
 			if (tex == NULL) {
 				setError(GL_OUT_OF_MEMORY);
@@ -580,8 +578,7 @@ GL_API void GL_APIENTRY glFramebufferTexture2DOES (GLenum target,
 
 	FGLFramebuffer *fb = ctx->framebuffer.binding.get();
 	FGLAttachmentIndex index;
-	switch (attachment)
-	{
+	switch (attachment) {
 	case GL_COLOR_ATTACHMENT0_OES:
 		index = FGL_ATTACHMENT_COLOR;
 		break;
@@ -601,7 +598,7 @@ GL_API void GL_APIENTRY glFramebufferTexture2DOES (GLenum target,
 
 GL_API void GL_APIENTRY glGetFramebufferAttachmentParameterivOES (GLenum target, GLenum attachment, GLenum pname, GLint* params)
 {
-	if(target != GL_FRAMEBUFFER_OES) {
+	if (target != GL_FRAMEBUFFER_OES) {
 		setError(GL_INVALID_OPERATION);
 		return;
 	}
@@ -614,8 +611,7 @@ GL_API void GL_APIENTRY glGetFramebufferAttachmentParameterivOES (GLenum target,
 	}
 
 	FGLAttachmentIndex index;
-	switch (attachment)
-	{
+	switch (attachment) {
 	case GL_COLOR_ATTACHMENT0_OES:
 		index = FGL_ATTACHMENT_COLOR;
 		break;
@@ -634,8 +630,7 @@ GL_API void GL_APIENTRY glGetFramebufferAttachmentParameterivOES (GLenum target,
 	FGLFramebufferAttachable *fba = fb->get(index);
 
 	if (fba) {
-		switch(pname)
-		{
+		switch (pname) {
 		case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_OES:
 			*params = fba->getType();
 			break;
@@ -643,7 +638,7 @@ GL_API void GL_APIENTRY glGetFramebufferAttachmentParameterivOES (GLenum target,
 			*params = fba->getName();
 			break;
 		case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL_OES:
-			if (fba->getType() != GL_TEXTURE_2D) {
+			if (fba->getType() != GL_TEXTURE) {
 				setError(GL_INVALID_ENUM);
 				return;
 			}
@@ -655,8 +650,7 @@ GL_API void GL_APIENTRY glGetFramebufferAttachmentParameterivOES (GLenum target,
 		return;
 	}
 
-	switch(pname)
-	{
+	switch (pname) {
 	case GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_OES:
 		*params = GL_NONE_OES;
 		break;
