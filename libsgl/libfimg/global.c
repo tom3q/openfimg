@@ -54,25 +54,23 @@ typedef union {
 	};
 } fimgCacheCtl;
 
-/* TODO: Function inlining */
-
-/*****************************************************************************
- * FUNCTIONS:	fimgGetPipelineStatus
- * SYNOPSIS:	This function obtains status of the pipeline
- * RETURNS:	fimgPipelineStatus conaining pipeline status
- *****************************************************************************/
+/**
+ * Obtains status of graphics pipeline.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ * @return Bit mask with set bits corresponding to busy parts of pipeline.
+ */
 uint32_t fimgGetPipelineStatus(fimgContext *ctx)
 {
 	return fimgRead(ctx, FGGB_PIPESTATE);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgFlush
- * SYNOPSIS:	This function flushes the fimg3d pipeline
- * PARAMETERS:	[IN] pipelineFlags: Specified pipeline states are flushed
- * RETURNS:	 0, on success
- *		-1, on timeout
- *****************************************************************************/
+/**
+ * Flushes complete graphics pipeline.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ * @return 0 on success, negative on timeout.
+ */
 int fimgFlush(fimgContext *ctx)
 {
 	/* Return if already flushed */
@@ -83,6 +81,13 @@ int fimgFlush(fimgContext *ctx)
 	return fimgWaitForFlush(ctx, FGHI_PIPELINE_ALL);
 }
 
+/**
+ * Flushes selected parts of graphics pipeline.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ * @param mask Mask of pipeline parts to be flushed.
+ * @return 0 on success, negative on error.
+ */
 int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask)
 {
 	/* Currently broken */
@@ -96,13 +101,15 @@ int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask)
 #endif
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgInvalidateCache
- * SYNOPSIS:
- * PARAMETERS:
- * RETURNS:
+/**
+ * Invalidates selected texture caches.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ * @param vtcclear Vertex texture cache mask.
+ * @param tcclear Texture cache mask.
+ * @return 0 on success, negative on error.
  *
- *****************************************************************************/
+ */
 int fimgInvalidateCache(fimgContext *ctx,
 				unsigned int vtcclear, unsigned int tcclear)
 {
@@ -119,13 +126,14 @@ int fimgInvalidateCache(fimgContext *ctx,
 	return 0;
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgFlushCache
- * SYNOPSIS:
- * PARAMETERS:
- * RETURNS:
- *
- *****************************************************************************/
+/**
+ * Initiates a flush of selected fragment caches.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ * @param ccflush Color cache mask.
+ * @param zcflush Z cache mask.
+ * @return 0 on success, negative on error.
+ */
 int fimgFlushCache(fimgContext *ctx, unsigned int ccflush, unsigned int zcflush)
 {
 	fimgCacheCtl ctl;
@@ -139,13 +147,14 @@ int fimgFlushCache(fimgContext *ctx, unsigned int ccflush, unsigned int zcflush)
 	return 0;
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgWaitForCacheFlush
- * SYNOPSIS:
- * PARAMETERS:
- * RETURNS:
- *
- *****************************************************************************/
+/**
+ * Waits for selected fragment caches to flush.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ * @param ccflush Color cache mask.
+ * @param zcflush Z cache mask.
+ * @return 0 on success, negative on error.
+ */
 int fimgWaitForCacheFlush(fimgContext *ctx,
 				unsigned int ccflush, unsigned int zcflush)
 {
@@ -160,13 +169,11 @@ int fimgWaitForCacheFlush(fimgContext *ctx,
 	return 0;
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgFinish
- * SYNOPSIS:
- * PARAMETERS:
- * RETURNS:
- *
- *****************************************************************************/
+/**
+ * Makes sure that any rendering that is in progress finishes and any data
+ * in caches is saved to buffers in memory.
+ * @param ctx Hardware context.
+ */
 void fimgFinish(fimgContext *ctx)
 {
 	fimgGetHardware(ctx);
@@ -177,10 +184,11 @@ void fimgFinish(fimgContext *ctx)
 	fimgPutHardware(ctx);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSoftReset
- * SYNOPSIS:	This function resets FIMG-3DSE, but the SFR values are not affected
- *****************************************************************************/
+/**
+ * Resets graphics pipeline without affecting register values.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ */
 void fimgSoftReset(fimgContext *ctx)
 {
 	fimgWrite(ctx, 1, FGGB_RST);
@@ -188,11 +196,14 @@ void fimgSoftReset(fimgContext *ctx)
 	fimgWrite(ctx, 0, FGGB_RST);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fglGetVersion
- * SYNOPSIS:	This function gets FIMG-3DSE version.
- * RETURNS:	Version of 3D hardware
- *****************************************************************************/
+/**
+ * Gets FIMG-3DSE version.
+ * (Must be called with hardware lock.)
+ * @param ctx Hardware context.
+ * @param major Points where to store major version.
+ * @param minor Points where to store minor version.
+ * @param rev Points where to store revision number.
+ */
 void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev)
 {
 	fimgVersion version;
@@ -209,17 +220,20 @@ void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev)
 		*rev = version.revision;
 }
 
+/**
+ * Initializes hardware context for global block.
+ * @param ctx Hardware context.
+ */
 void fimgCreateGlobalContext(fimgContext *ctx)
 {
-	// Nothing to initialize yet
+	// Nothing to initialize
 }
 
+/**
+ * Restores hardware context of global block.
+ * @param ctx Hardware context.
+ */
 void fimgRestoreGlobalState(fimgContext *ctx)
 {
-	//fimgWrite(ctx, 0, FGGB_INTMASK);
-	//fimgWrite(ctx, 0, FGGB_PIPEMASK);
-	//fimgWrite(ctx, 0, FGGB_INTPENDING);
-	//fimgWrite(ctx, ctx->global.intTarget, FGGB_PIPETGTSTATE);
-	//fimgWrite(ctx, ctx->global.intMask, FGGB_PIPEMASK);
-	//fimgWrite(ctx, ctx->global.intEn, FGGB_INTMASK);
+	// Nothing to restore
 }
