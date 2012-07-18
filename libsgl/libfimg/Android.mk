@@ -16,7 +16,6 @@ LOCAL_SRC_FILES := \
 	host_new.c \
 	primitive.c \
 	raster.c \
-	shaders.c \
 	system.c \
 	texture.c \
 	dump.c

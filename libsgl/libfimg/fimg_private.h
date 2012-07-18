@@ -172,46 +172,6 @@ typedef union {
 } fimgLODControl;
 
 /*
- * Shaders
- */
-
-#define FGSP_MAX_ATTRIBTBL_SIZE 12
-#define BUILD_SHADER_VERSION(major, minor)	(0xFFFF0000 | (((minor)&0xFF)<<8) | ((major) & 0xFF))
-#define VERTEX_SHADER_MAGIC 			(((('V')&0xFF)<<0)|((('S')&0xFF)<<8)|(((' ')&0xFF)<<16)|(((' ')&0xFF)<<24))
-#define PIXEL_SHADER_MAGIC 			(((('P')&0xFF)<<0)|((('S')&0xFF)<<8)|(((' ')&0xFF)<<16)|(((' ')&0xFF)<<24))
-#define SHADER_VERSION 				BUILD_SHADER_VERSION(8,0)
-#define FGVS_ATTRIB(i)				(3 - ((i) % 4))
-#define FGVS_ATTRIB_BANK(i)			(((i) / 4) & 3)
-
-/* Type definitions */
-typedef struct {
-	unsigned int	Magic;
-	unsigned int	Version;
-	unsigned int	HeaderSize;
-	unsigned int	fimgVersion;
-
-	unsigned int	InstructSize;
-	unsigned int	ConstFloatSize;
-	unsigned int	ConstIntSize;
-	unsigned int	ConstBoolSize;
-
-	unsigned int	InTableSize;
-	unsigned int	OutTableSize;
-	unsigned int	UniformTableSize;
-	unsigned int	SamTableSize;
-
-	unsigned int	reserved[6];
-} fimgShaderHeader;
-
-typedef struct {
-	int		validTableInfo;
-	unsigned int	outAttribTableSize;
-	unsigned int	inAttribTableSize;
-	unsigned int	vsOutAttribTable[12];
-	unsigned int	psInAttribTable[12];
-} fimgShaderAttribTable;
-
-/*
  * Per-fragment unit
  */
 

@@ -14,7 +14,6 @@ libfimg_la_SOURCES = \
 	host_new.c \
 	primitive.c \
 	raster.c \
-	shaders.c \
 	system.c \
 	texture.c
 
