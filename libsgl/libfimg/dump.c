@@ -55,6 +55,13 @@ static const struct block blocks[] = {
 #define VALUES_PER_LINE	(16)
 #define LINE_SIZE	(8 + 1)
 
+/**
+ * Dumps debugging data to files or standard output.
+ * @param ctx Hardware context.
+ * @param mode Rendering mode (optional, set to 0 if unused).
+ * @param count Count of vertices (optional, set to 0 if unused).
+ * @param func Name of calling function (or any string).
+ */
 void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *func)
 {
 #ifndef FIMG_USE_DUMP_FILE
