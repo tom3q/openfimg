@@ -11,7 +11,7 @@ libfimg_la_SOURCES = \
 	dump.c \
 	fragment.c \
 	global.c \
-	host_new.c \
+	host.c \
 	primitive.c \
 	raster.c \
 	system.c \

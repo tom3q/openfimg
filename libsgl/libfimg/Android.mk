@@ -13,7 +13,7 @@ LOCAL_SRC_FILES := \
 	compat.c \
 	fragment.c \
 	global.c \
-	host_new.c \
+	host.c \
 	primitive.c \
 	raster.c \
 	system.c \
