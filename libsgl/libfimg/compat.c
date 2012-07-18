@@ -42,6 +42,23 @@
 #define FGVS_IN_ATTR_IDX(i)	(0x20008 + 4*(i))
 #define FGVS_OUT_ATTR_IDX(i)	(0x20014 + 4*(i))
 
+#define FGPS_INSTMEM_START	(0x40000)
+#define FGPS_CFLOAT_START	(0x44000)
+#define FGPS_CINT_START		(0x48000)
+#define FGPS_CBOOL_START	(0x48400)
+
+#define FGPS_EXE_MODE		(0x4c800)
+#define FGPS_PC_START		(0x4c804)
+#define FGPS_PC_END		(0x4c808)
+#define FGPS_PC_COPY		(0x4c80c)
+#define FGPS_ATTRIB_NUM		(0x4c810)
+#define FGPS_IBSTATUS		(0x4c814)
+
+#define FGFP_TEXENV(unit)	(4 + 2*(unit))
+#define FGFP_COMBSCALE(unit)	(5 + 2*(unit))
+
+#define MAX_INSTR		(64)
+
 typedef union {
 	uint32_t val;
 	struct {
@@ -70,18 +87,6 @@ typedef union {
 	} attrib[4];
 } fimgVShaderAttrIdx;
 
-#define FGPS_INSTMEM_START	(0x40000)
-#define FGPS_CFLOAT_START	(0x44000)
-#define FGPS_CINT_START		(0x48000)
-#define FGPS_CBOOL_START	(0x48400)
-
-#define FGPS_EXE_MODE		(0x4c800)
-#define FGPS_PC_START		(0x4c804)
-#define FGPS_PC_END		(0x4c808)
-#define FGPS_PC_COPY		(0x4c80c)
-#define FGPS_ATTRIB_NUM		(0x4c810)
-#define FGPS_IBSTATUS		(0x4c814)
-
 typedef union {
 	uint32_t val;
 	struct {
@@ -91,228 +96,52 @@ typedef union {
 	};
 } fimgPShaderPCEnd;
 
-/*****************************************************************************
- * FUNCTIONS:	fimgLoadMatrix
- * SYNOPSIS:	This function loads the specified matrix (4x4) into const float
- *		registers of vertex shader.
- * PARAMETERS:	[IN] matrix - which matrix to load (FGL_MATRIX_*)
- *		[IN] pData - pointer to matrix elements in column-major ordering
- *****************************************************************************/
-void fimgLoadMatrix(fimgContext *ctx, uint32_t matrix, const float *pfData)
-{
-	ctx->compat.matrix[matrix] = pfData;
-	ctx->compat.matrixDirty[matrix] = 1;
-}
-
-/*
- * SHADERS
- */
-
 struct shaderBlock {
 	const uint32_t *data;
 	uint32_t len;
 };
+
 #define SHADER_BLOCK(blk)	{ blk, sizeof(blk) / 16 }
 
-/* Vertex shader */
-
-static const struct shaderBlock vertexConstFloat = SHADER_BLOCK(vert_cfloat);
-static const struct shaderBlock vertexHeader = SHADER_BLOCK(vert_header);
-static const struct shaderBlock vertexFooter = SHADER_BLOCK(vert_footer);
-
-static const struct shaderBlock texcoordTransform[] = {
-	SHADER_BLOCK(vert_texture0),
-	SHADER_BLOCK(vert_texture1)
+enum fimgSrcRegType {
+	REG_SRC_V = 0,
+	REG_SRC_R,
+	REG_SRC_C,
+	REG_SRC_I,
+	REG_SRC_AL,
+	REG_SRC_B,
+	REG_SRC_P,
+	REG_SRC_S,
+	REG_SRC_D,
+	REG_SRC_VFACE,
+	REG_SRC_VPOS
 };
 
-/* Pixel shader */
-
-static const struct shaderBlock pixelConstFloat = SHADER_BLOCK(frag_cfloat);
-static const struct shaderBlock pixelHeader = SHADER_BLOCK(frag_header);
-static const struct shaderBlock pixelFooter = SHADER_BLOCK(frag_footer);
-
-static const struct shaderBlock textureUnit[] = {
-	SHADER_BLOCK(frag_texture0),
-	SHADER_BLOCK(frag_texture1)
+enum fimgDstRegType {
+	REG_DST_O = 0,
+	REG_DST_R,
+	REG_DST_P,
+	REG_DST_A0,
+	REG_DST_AL
 };
 
-static const struct shaderBlock textureFunc[] = {
-	{ 0, 0 },
-	SHADER_BLOCK(frag_replace),
-	SHADER_BLOCK(frag_modulate),
-	SHADER_BLOCK(frag_decal),
-	SHADER_BLOCK(frag_blend),
-	SHADER_BLOCK(frag_add),
-	SHADER_BLOCK(frag_combine)
+struct registerMap {
+	union {
+		struct {
+			unsigned srcRegNum	:5;
+			unsigned srcRegType	:3;
+		};
+		uint8_t srcReg;
+	};
+	uint8_t srcSwizzle;
+	uint8_t movInstr;
+	uint8_t flags;
 };
 
-static const struct shaderBlock combineFunc[] = {
-	SHADER_BLOCK(frag_combine_replace),
-	SHADER_BLOCK(frag_combine_modulate),
-	SHADER_BLOCK(frag_combine_add),
-	SHADER_BLOCK(frag_combine_adds),
-	SHADER_BLOCK(frag_combine_interpolate),
-	SHADER_BLOCK(frag_combine_subtract),
-	SHADER_BLOCK(frag_combine_dot3),
-	SHADER_BLOCK(frag_combine_dot3) // for RGBA mode
-};
+#define MAP_FLAG_USED		(1 << 0)
+#define MAP_FLAG_INVALID	(1 << 1)
 
-static const struct shaderBlock combineArg0[] = {
-	SHADER_BLOCK(frag_combine_arg0tex),
-	SHADER_BLOCK(frag_combine_arg0const),
-	SHADER_BLOCK(frag_combine_arg0col),
-	SHADER_BLOCK(frag_combine_arg0prev)
-};
-
-static const struct shaderBlock combineArg1[] = {
-	SHADER_BLOCK(frag_combine_arg1tex),
-	SHADER_BLOCK(frag_combine_arg1const),
-	SHADER_BLOCK(frag_combine_arg1col),
-	SHADER_BLOCK(frag_combine_arg1prev)
-};
-
-static const struct shaderBlock combineArg2[] = {
-	SHADER_BLOCK(frag_combine_arg2tex),
-	SHADER_BLOCK(frag_combine_arg2const),
-	SHADER_BLOCK(frag_combine_arg2col),
-	SHADER_BLOCK(frag_combine_arg2prev)
-};
-
-static const struct shaderBlock *combineArg[] = {
-	combineArg0,
-	combineArg1,
-	combineArg2
-};
-
-static const struct shaderBlock combineArg0Mod[] = {
-	SHADER_BLOCK(frag_combine_arg0sc),
-	SHADER_BLOCK(frag_combine_arg0omsc),
-	SHADER_BLOCK(frag_combine_arg0sa),
-	SHADER_BLOCK(frag_combine_arg0omsa)
-};
-
-static const struct shaderBlock combineArg1Mod[] = {
-	SHADER_BLOCK(frag_combine_arg1sc),
-	SHADER_BLOCK(frag_combine_arg1omsc),
-	SHADER_BLOCK(frag_combine_arg1sa),
-	SHADER_BLOCK(frag_combine_arg1omsa)
-};
-
-static const struct shaderBlock combineArg2Mod[] = {
-	SHADER_BLOCK(frag_combine_arg2sc),
-	SHADER_BLOCK(frag_combine_arg2omsc),
-	SHADER_BLOCK(frag_combine_arg2sa),
-	SHADER_BLOCK(frag_combine_arg2omsa)
-};
-
-static const struct shaderBlock *combineArgMod[] = {
-	combineArg0Mod,
-	combineArg1Mod,
-	combineArg2Mod
-};
-
-static const struct shaderBlock combine_c = SHADER_BLOCK(frag_combine_col);
-static const struct shaderBlock combine_a = SHADER_BLOCK(frag_combine_a);
-static const struct shaderBlock combine_u = SHADER_BLOCK(frag_combine_uni);
-static const struct shaderBlock tex_swap = SHADER_BLOCK(frag_tex_swap);
-static const struct shaderBlock out_swap = SHADER_BLOCK(frag_out_swap);
-
-/* Shader functions */
-
-static inline volatile void *vsInstAddr(fimgContext *ctx, unsigned int slot)
-{
-	return ctx->base + FGVS_INSTMEM_START + 16*slot;
-}
-
-static inline uint32_t vsInstLen(fimgContext *ctx, volatile void *vaddr)
-{
-	return ((volatile char *)vaddr - (ctx->base + FGVS_INSTMEM_START)) / 16;
-}
-
-static inline volatile void *psInstAddr(fimgContext *ctx, unsigned int slot)
-{
-	return ctx->base + FGPS_INSTMEM_START + 16*slot;
-}
-
-static inline uint32_t psInstLen(fimgContext *ctx, volatile void *vaddr)
-{
-	return ((volatile char *)vaddr - (ctx->base + FGPS_INSTMEM_START)) / 16;
-}
-
-static uint32_t loadShaderBlock(const struct shaderBlock *blk,
-						volatile void *vaddr)
-{
-	uint32_t inst;
-	const uint32_t *data = blk->data;
-	volatile uint32_t *addr = (volatile uint32_t *)vaddr;
-
-	for (inst = 0; inst < blk->len; inst++) {
-#ifdef FIMG_DYNSHADER_DEBUG
-		LOGD("%p: %08x %08x %08x %08x", addr,
-					data[0], data[1], data[2], data[3]);
-#endif
-#if 0
-		asm ( 	"ldmia %0!, {r0-r3}"
-			"stmia %1!, {r0-r3}"
-			: "=r"(data), "=r"(addr)
-			: "0"(data), "1"(addr)
-			: "r0", "r1", "r2", "r3");
-#else
-		*(addr++) = *(data++);
-		*(addr++) = *(data++);
-		*(addr++) = *(data++);
-		*(addr++) = *(data++);
-#endif
-	}
-
-	return 4*inst;
-}
-
-static inline void setVertexShaderAttribCount(fimgContext *ctx, uint32_t count)
-{
-	fimgWrite(ctx, count, FGVS_ATTRIB_NUM);
-}
-
-static inline void setVertexShaderRange(fimgContext *ctx,
-					uint32_t start, uint32_t end)
-{
-	fimgVShaderPCRange PCRange;
-	fimgVShaderConfig Config;
-
-	PCRange.val = 0;
-	PCRange.PCStart = start;
-	PCRange.PCEnd = end;
-	fimgWrite(ctx, PCRange.val, FGVS_PCRANGE);
-
-	Config.val = 0;
-	Config.copyPC = 1;
-	Config.clrStatus = 1;
-	fimgWrite(ctx, Config.val, FGVS_CONFIG);
-}
-
-static inline void setPixelShaderState(fimgContext *ctx, int state)
-{
-	fimgWrite(ctx, !!state, FGPS_EXE_MODE);
-}
-
-static inline void setPixelShaderAttribCount(fimgContext *ctx, uint32_t count)
-{
-	fimgWrite(ctx, count, FGPS_ATTRIB_NUM);
-
-	while (fimgRead(ctx, FGPS_IBSTATUS) & 1);
-}
-
-static inline void setPixelShaderRange(fimgContext *ctx,
-					uint32_t start, uint32_t end)
-{
-	fimgWrite(ctx, start, FGPS_PC_START);
-	fimgWrite(ctx, end, FGPS_PC_END);
-	fimgWrite(ctx, 1, FGPS_PC_COPY);
-}
-
-/*
- * Shader optimization code
- */
+#define SWIZZLE(a, b, c, d)	((a) | ((b) << 2) | ((c) << 4) | ((d) << 6))
 
 typedef struct __attribute__ ((__packed__)) _fimgShaderInstruction {
 	struct {
@@ -432,6 +261,105 @@ enum fimgOpcodeType {
 	OP_TYPE_NORMAL,
 	OP_TYPE_MOVE
 };
+
+static const struct shaderBlock vertexConstFloat = SHADER_BLOCK(vert_cfloat);
+static const struct shaderBlock vertexHeader = SHADER_BLOCK(vert_header);
+static const struct shaderBlock vertexFooter = SHADER_BLOCK(vert_footer);
+
+static const struct shaderBlock texcoordTransform[] = {
+	SHADER_BLOCK(vert_texture0),
+	SHADER_BLOCK(vert_texture1)
+};
+
+static const struct shaderBlock pixelConstFloat = SHADER_BLOCK(frag_cfloat);
+static const struct shaderBlock pixelHeader = SHADER_BLOCK(frag_header);
+static const struct shaderBlock pixelFooter = SHADER_BLOCK(frag_footer);
+
+static const struct shaderBlock textureUnit[] = {
+	SHADER_BLOCK(frag_texture0),
+	SHADER_BLOCK(frag_texture1)
+};
+
+static const struct shaderBlock textureFunc[] = {
+	{ 0, 0 },
+	SHADER_BLOCK(frag_replace),
+	SHADER_BLOCK(frag_modulate),
+	SHADER_BLOCK(frag_decal),
+	SHADER_BLOCK(frag_blend),
+	SHADER_BLOCK(frag_add),
+	SHADER_BLOCK(frag_combine)
+};
+
+static const struct shaderBlock combineFunc[] = {
+	SHADER_BLOCK(frag_combine_replace),
+	SHADER_BLOCK(frag_combine_modulate),
+	SHADER_BLOCK(frag_combine_add),
+	SHADER_BLOCK(frag_combine_adds),
+	SHADER_BLOCK(frag_combine_interpolate),
+	SHADER_BLOCK(frag_combine_subtract),
+	SHADER_BLOCK(frag_combine_dot3),
+	SHADER_BLOCK(frag_combine_dot3) // for RGBA mode
+};
+
+static const struct shaderBlock combineArg0[] = {
+	SHADER_BLOCK(frag_combine_arg0tex),
+	SHADER_BLOCK(frag_combine_arg0const),
+	SHADER_BLOCK(frag_combine_arg0col),
+	SHADER_BLOCK(frag_combine_arg0prev)
+};
+
+static const struct shaderBlock combineArg1[] = {
+	SHADER_BLOCK(frag_combine_arg1tex),
+	SHADER_BLOCK(frag_combine_arg1const),
+	SHADER_BLOCK(frag_combine_arg1col),
+	SHADER_BLOCK(frag_combine_arg1prev)
+};
+
+static const struct shaderBlock combineArg2[] = {
+	SHADER_BLOCK(frag_combine_arg2tex),
+	SHADER_BLOCK(frag_combine_arg2const),
+	SHADER_BLOCK(frag_combine_arg2col),
+	SHADER_BLOCK(frag_combine_arg2prev)
+};
+
+static const struct shaderBlock *combineArg[] = {
+	combineArg0,
+	combineArg1,
+	combineArg2
+};
+
+static const struct shaderBlock combineArg0Mod[] = {
+	SHADER_BLOCK(frag_combine_arg0sc),
+	SHADER_BLOCK(frag_combine_arg0omsc),
+	SHADER_BLOCK(frag_combine_arg0sa),
+	SHADER_BLOCK(frag_combine_arg0omsa)
+};
+
+static const struct shaderBlock combineArg1Mod[] = {
+	SHADER_BLOCK(frag_combine_arg1sc),
+	SHADER_BLOCK(frag_combine_arg1omsc),
+	SHADER_BLOCK(frag_combine_arg1sa),
+	SHADER_BLOCK(frag_combine_arg1omsa)
+};
+
+static const struct shaderBlock combineArg2Mod[] = {
+	SHADER_BLOCK(frag_combine_arg2sc),
+	SHADER_BLOCK(frag_combine_arg2omsc),
+	SHADER_BLOCK(frag_combine_arg2sa),
+	SHADER_BLOCK(frag_combine_arg2omsa)
+};
+
+static const struct shaderBlock *combineArgMod[] = {
+	combineArg0Mod,
+	combineArg1Mod,
+	combineArg2Mod
+};
+
+static const struct shaderBlock combine_c = SHADER_BLOCK(frag_combine_col);
+static const struct shaderBlock combine_a = SHADER_BLOCK(frag_combine_a);
+static const struct shaderBlock combine_u = SHADER_BLOCK(frag_combine_uni);
+static const struct shaderBlock tex_swap = SHADER_BLOCK(frag_tex_swap);
+static const struct shaderBlock out_swap = SHADER_BLOCK(frag_out_swap);
 
 #ifndef FIMG_BYPASS_SHADER_OPTIMIZER
 static fimgOpcodeInfo opcodeMap[64] = {
@@ -654,52 +582,184 @@ static fimgOpcodeInfo opcodeMap[64] = {
 };
 #endif
 
-enum fimgSrcRegType {
-	REG_SRC_V = 0,
-	REG_SRC_R,
-	REG_SRC_C,
-	REG_SRC_I,
-	REG_SRC_AL,
-	REG_SRC_B,
-	REG_SRC_P,
-	REG_SRC_S,
-	REG_SRC_D,
-	REG_SRC_VFACE,
-	REG_SRC_VPOS
-};
+/*
+ * Utility functions
+ */
 
-enum fimgDstRegType {
-	REG_DST_O = 0,
-	REG_DST_R,
-	REG_DST_P,
-	REG_DST_A0,
-	REG_DST_AL
-};
-
-struct registerMap {
-	union {
-		struct {
-			unsigned srcRegNum	:5;
-			unsigned srcRegType	:3;
-		};
-		uint8_t srcReg;
-	};
-	uint8_t srcSwizzle;
-	uint8_t movInstr;
-	uint8_t flags;
-};
-
-#define MAP_FLAG_USED		(1 << 0)
-#define MAP_FLAG_INVALID	(1 << 1)
-
-#define SWIZZLE(a, b, c, d)	((a) | ((b) << 2) | ((c) << 4) | ((d) << 6))
-
-#ifdef FIMG_BYPASS_SHADER_OPTIMIZER
-static inline uint32_t optimizeShader(uint32_t *start, uint32_t *end)
+/**
+ * Loads block of shader code into shader program memory.
+ * @param blk Shader block descriptor.
+ * @param vaddr Address of first instruction slot.
+ * @return Loaded instruction count.
+ */
+static uint32_t loadShaderBlock(const struct shaderBlock *blk,
+						volatile void *vaddr)
 {
-	return (end - start) / 4;
-}
+	uint32_t inst;
+	const uint32_t *data = blk->data;
+	volatile uint32_t *addr = (volatile uint32_t *)vaddr;
+
+	for (inst = 0; inst < blk->len; inst++) {
+#ifdef FIMG_DYNSHADER_DEBUG
+		LOGD("%p: %08x %08x %08x %08x", addr,
+					data[0], data[1], data[2], data[3]);
+#endif
+#if 0
+		asm ( 	"ldmia %0!, {r0-r3}"
+			"stmia %1!, {r0-r3}"
+			: "=r"(data), "=r"(addr)
+			: "0"(data), "1"(addr)
+			: "r0", "r1", "r2", "r3");
 #else
+		*(addr++) = *(data++);
+		*(addr++) = *(data++);
+		*(addr++) = *(data++);
+		*(addr++) = *(data++);
+#endif
+	}
+
+	return 4*inst;
+}
+
+/**
+ * Sets input attribute count of vertex shader.
+ * (Must be called with hardware locked.)
+ * @param ctx Hardware context.
+ * @param count Attribute count.
+ */
+static inline void setVertexShaderAttribCount(fimgContext *ctx, uint32_t count)
+{
+	fimgWrite(ctx, count, FGVS_ATTRIB_NUM);
+}
+
+/**
+ * Sets instruction address range of vertex shader.
+ * (Must be called with hardware locked.)
+ * @param ctx Hardware context.
+ * @param start Address of first instruction.
+ * @param end Address of last instruction.
+ */
+static inline void setVertexShaderRange(fimgContext *ctx,
+					uint32_t start, uint32_t end)
+{
+	fimgVShaderPCRange PCRange;
+	fimgVShaderConfig Config;
+
+	PCRange.val = 0;
+	PCRange.PCStart = start;
+	PCRange.PCEnd = end;
+	fimgWrite(ctx, PCRange.val, FGVS_PCRANGE);
+
+	Config.val = 0;
+	Config.copyPC = 1;
+	Config.clrStatus = 1;
+	fimgWrite(ctx, Config.val, FGVS_CONFIG);
+}
+
+/**
+ * Sets pixel shader operation mode.
+ * (Must be called with hardware locked.)
+ * @param ctx Hardware context.
+ * @param state Non-zero to start pixel shader operation.
+ */
+static inline void setPixelShaderState(fimgContext *ctx, int state)
+{
+	fimgWrite(ctx, !!state, FGPS_EXE_MODE);
+}
+
+/**
+ * Sets input attribute count of pixel shader.
+ * (Must be called with hardware locked.)
+ * @param ctx Hardware context.
+ * @param count Attribute count.
+ */
+static inline void setPixelShaderAttribCount(fimgContext *ctx, uint32_t count)
+{
+	fimgWrite(ctx, count, FGPS_ATTRIB_NUM);
+
+	while (fimgRead(ctx, FGPS_IBSTATUS) & 1);
+}
+
+/**
+ * Sets instruction address range of pixel shader.
+ * (Must be called with hardware locked.)
+ * @param ctx Hardware context.
+ * @param start Address of first instruction.
+ * @param end Address of last instruction.
+ */
+static inline void setPixelShaderRange(fimgContext *ctx,
+					uint32_t start, uint32_t end)
+{
+	fimgWrite(ctx, start, FGPS_PC_START);
+	fimgWrite(ctx, end, FGPS_PC_END);
+	fimgWrite(ctx, 1, FGPS_PC_COPY);
+}
+
+/**
+ * Loads vector into pixel shader const float slots.
+ * @param ctx Hardware context.
+ * @param pfData Pointer to vector data.
+ * @param slot Number of first slot.
+ */
+static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
+								uint32_t slot)
+{
+	const uint32_t *data = (const uint32_t *)pfData;
+	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
+						+ FGPS_CFLOAT_START + 16*slot);
+#if 0
+	asm ( 	"ldmia %0!, {r0-r3}"
+		"stmia %1!, {r0-r3}"
+		: "=r"(data), "=r"(reg)
+		: "0"(data), "1"(reg)
+		: "r0", "r1", "r2", "r3");
+#else
+	*(reg++) = *(data++);
+	*(reg++) = *(data++);
+	*(reg++) = *(data++);
+	*(reg++) = *(data++);
+#endif
+}
+
+/**
+ * Loads matrix into vertex shader const float slots.
+ * @param ctx Hardware context.
+ * @param pfData Pointer to matrix data.
+ * @param slot Number of first slot.
+ */
+static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
+{
+	uint32_t i;
+	const uint32_t *data = (const uint32_t *)pfData;
+	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
+						+ FGVS_CFLOAT_START + 16*slot);
+	for (i = 0; i < 4; i++) {
+#if 0
+		asm ( 	"ldmia %0!, {r0-r3}"
+			"stmia %1!, {r0-r3}"
+			: "=r"(data), "=r"(reg)
+			: "0"(data), "1"(reg)
+			: "r0", "r1", "r2", "r3");
+#else
+		*(reg++) = *(data++);
+		*(reg++) = *(data++);
+		*(reg++) = *(data++);
+		*(reg++) = *(data++);
+#endif
+	}
+}
+
+/*
+ * Shader optimization code
+ */
+
+#ifndef FIMG_BYPASS_SHADER_OPTIMIZER
+/**
+ * Calculates composition of two swizzles.
+ * @param a First swizzle.
+ * @param b Second swizzle.
+ * @return Resulting composition of two swizzles.
+ */
 static inline uint8_t mergeSwizzle(uint8_t a, uint8_t b)
 {
 	uint8_t swizzle = 0;
@@ -717,9 +777,19 @@ static inline uint8_t mergeSwizzle(uint8_t a, uint8_t b)
 
 	return swizzle;
 }
+#endif
 
+/**
+ * Performs low level optimization of shader program.
+ * @param start Pointer to first instruction of shader program.
+ * @param end Pointer to memory after last instruction of shader program.
+ * @return Number of instructions in optimized shader program.
+ */
 static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 {
+#ifdef FIMG_BYPASS_SHADER_OPTIMIZER
+	return (end - start) / 4;
+#else /* FIMG_BYPASS_SHADER_OPTIMIZER */
 	struct registerMap map[32];
 	unsigned int deps[32];
 	int reg;
@@ -929,22 +999,32 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
 	}
 
 	return instrPtr - instrStart;
+#endif /* FIMG_BYPASS_SHADER_OPTIMIZER */
 }
-#endif
 
 /*
  * Shader generation code
  */
 
-#define MAX_INSTR	(64)
-
-static inline uint32_t *SHADER_SLOT(uint32_t *buf, uint32_t slot)
+/**
+ * Calculates pointer to selected slot of selected shader cache buffer.
+ * @param buf Shader cache buffer.
+ * @param slot Index of program slot.
+ * @return Pointer to selected slot.
+ */
+static inline uint32_t *shaderSlotAddr(uint32_t *buf, uint32_t slot)
 {
 	return buf
 		+ slot*MAX_INSTR*sizeof(fimgShaderInstruction)/sizeof(uint32_t);
 }
 
-void fimgCompatBuildVertexShader(fimgContext *ctx, uint32_t slot)
+/**
+ * Builds vertex shader program according to current pipeline configuration
+ * and stores it in selected slot of vertex shader cache.
+ * @param ctx Hardware context.
+ * @param slot Slot index.
+ */
+static void buildVertexShader(fimgContext *ctx, uint32_t slot)
 {
 	uint32_t unit;
 	uint32_t *addr;
@@ -957,7 +1037,7 @@ void fimgCompatBuildVertexShader(fimgContext *ctx, uint32_t slot)
 			exit(1);
 		}
 	}
-	start = addr = SHADER_SLOT(ctx->compat.vshaderBuf, slot);
+	start = addr = shaderSlotAddr(ctx->compat.vshaderBuf, slot);
 
 	addr += loadShaderBlock(&vertexHeader, addr);
 
@@ -976,7 +1056,11 @@ void fimgCompatBuildVertexShader(fimgContext *ctx, uint32_t slot)
 	ctx->compat.vertexShaders[slot].state = ctx->compat.vsState;
 }
 
-void fimgCompatLoadVertexShader(fimgContext *ctx)
+/**
+ * Loads current vertex shader program and parameters into vertex shader memory.
+ * @param ctx Hardware context.
+ */
+static void loadVertexShader(fimgContext *ctx)
 {
 	volatile uint32_t *reg;
 	struct shaderBlock blk;
@@ -985,8 +1069,8 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	reg = vsInstAddr(ctx, 0);
-	blk.data = SHADER_SLOT(ctx->compat.vshaderBuf, slot);
+	reg = (volatile uint32_t *)(ctx->base + FGVS_INSTMEM_START);
+	blk.data = shaderSlotAddr(ctx->compat.vshaderBuf, slot);
 	blk.len = vs->instrCount;
 	loadShaderBlock(&blk, reg);
 
@@ -1001,7 +1085,13 @@ void fimgCompatLoadVertexShader(fimgContext *ctx)
 #endif
 }
 
-void fimgCompatBuildPixelShader(fimgContext *ctx, uint32_t slot)
+/**
+ * Builds pixel shader program according to current pipeline configuration
+ * and stores it in selected slot of pixel shader cache.
+ * @param ctx Hardware context.
+ * @param slot Slot index.
+ */
+static void buildPixelShader(fimgContext *ctx, uint32_t slot)
 {
 	uint32_t unit, arg;
 	uint32_t *addr;
@@ -1017,7 +1107,7 @@ void fimgCompatBuildPixelShader(fimgContext *ctx, uint32_t slot)
 			exit(1);
 		}
 	}
-	start = addr = SHADER_SLOT(ctx->compat.pshaderBuf, slot);
+	start = addr = shaderSlotAddr(ctx->compat.pshaderBuf, slot);
 
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Generating basic shader code");
@@ -1081,7 +1171,11 @@ void fimgCompatBuildPixelShader(fimgContext *ctx, uint32_t slot)
 	ctx->compat.pixelShaders[slot].state = ctx->compat.psState;
 }
 
-void fimgCompatLoadPixelShader(fimgContext *ctx)
+/**
+ * Loads current pixel shader program and parameters into pixel shader memory.
+ * @param ctx Hardware context.
+ */
+static void loadPixelShader(fimgContext *ctx)
 {
 	volatile uint32_t *reg;
 	struct shaderBlock blk;
@@ -1090,8 +1184,8 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	reg = psInstAddr(ctx, 0);
-	blk.data = SHADER_SLOT(ctx->compat.pshaderBuf, slot);
+	reg = (volatile uint32_t *)(ctx->base + FGPS_INSTMEM_START);
+	blk.data = shaderSlotAddr(ctx->compat.pshaderBuf, slot);
 	blk.len = ps->instrCount;
 	loadShaderBlock(&blk, reg);
 
@@ -1106,206 +1200,26 @@ void fimgCompatLoadPixelShader(fimgContext *ctx)
 #endif
 }
 
-void fimgCompatSetTextureFunc(fimgContext *ctx, uint32_t unit, fimgTexFunc func)
-{
-	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_MODE, func);
-	FGFP_BITFIELD_SET_IDX(ctx->compat.vsState.vs, VS_TEX_EN,
-					unit, func != FGFP_TEXFUNC_NONE);
-
-	switch (func) {
-	case FGFP_TEXFUNC_NONE:
-		ctx->compat.psMask[unit] = FGFP_TEX_MODE_MASK;
-		break;
-	case FGFP_TEXFUNC_COMBINE:
-		ctx->compat.psMask[unit] = ~0UL;
-		break;
-	default:
-		ctx->compat.psMask[unit] =
-				FGFP_TEX_MODE_MASK | FGFP_TEX_SWAP_MASK;
-	}
-}
-
-void fimgCompatSetColorCombiner(fimgContext *ctx, uint32_t unit,
-							fimgCombFunc func)
-{
-	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_COMBC_FUNC, func);
-}
-
-void fimgCompatSetAlphaCombiner(fimgContext *ctx, uint32_t unit,
-							fimgCombFunc func)
-{
-	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_COMBA_FUNC, func);
-}
-
-void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, uint32_t unit,
-					uint32_t arg, fimgCombArgSrc src)
-{
-	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBC_SRC, arg, src);
-}
-
-void fimgCompatSetColorCombineArgMod(fimgContext *ctx, uint32_t unit,
-					uint32_t arg, fimgCombArgMod mod)
-{
-	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBC_MOD, arg, mod);
-}
-
-void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, uint32_t unit,
-					uint32_t arg, fimgCombArgSrc src)
-{
-	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_SRC, arg, src);
-}
-
-void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, uint32_t unit,
-					uint32_t arg, fimgCombArgMod mod)
-{
-	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_MOD, arg, mod & 1);
-}
-
-void fimgCompatSetColorScale(fimgContext *ctx, uint32_t unit, float scale)
-{
-	ctx->compat.texture[unit].scale[0] = scale;
-	ctx->compat.texture[unit].scale[1] = scale;
-	ctx->compat.texture[unit].scale[2] = scale;
-
-	ctx->compat.texture[unit].dirty = 1;
-}
-
-void fimgCompatSetAlphaScale(fimgContext *ctx, uint32_t unit, float scale)
-{
-	ctx->compat.texture[unit].scale[3] = scale;
-
-	ctx->compat.texture[unit].dirty = 1;
-}
-
-void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
-					float r, float g, float b, float a)
-{
-	ctx->compat.texture[unit].env[0] = r;
-	ctx->compat.texture[unit].env[1] = g;
-	ctx->compat.texture[unit].env[2] = b;
-	ctx->compat.texture[unit].env[3] = a;
-
-	ctx->compat.texture[unit].dirty = 1;
-}
-
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
-{
-	ctx->compat.texture[unit].texture = tex;
-	if (tex)
-		FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit],
-				TEX_SWAP, !!(tex->reserved2 & FGTU_TEX_BGR));
-}
-
-void fimgCreateCompatContext(fimgContext *ctx)
-{
-	uint32_t unit;
-	fimgTextureCompat *texture;
-
-	texture = ctx->compat.texture;
-
-	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
-		uint32_t reg = 0;
-
-		FGFP_BITFIELD_SET(reg, TEX_COMBC_FUNC, FGFP_COMBFUNC_MODULATE);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 0, FGFP_COMBARG_TEX);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 0, FGFP_COMBARG_SRC_COLOR);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 1, FGFP_COMBARG_PREV);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 1, FGFP_COMBARG_SRC_COLOR);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 2, FGFP_COMBARG_CONST);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 2, FGFP_COMBARG_SRC_ALPHA);
-
-		FGFP_BITFIELD_SET(reg, TEX_COMBA_FUNC, FGFP_COMBFUNC_MODULATE);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 0, FGFP_COMBARG_TEX);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 0, FGFP_COMBARG_SRC_ALPHA & 1);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 1, FGFP_COMBARG_PREV);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 1, FGFP_COMBARG_SRC_ALPHA & 1);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 2, FGFP_COMBARG_CONST);
-		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 2, FGFP_COMBARG_SRC_ALPHA & 1);
-
-		ctx->compat.texture[unit].scale[0] = 1.0;
-		ctx->compat.texture[unit].scale[1] = 1.0;
-		ctx->compat.texture[unit].scale[2] = 1.0;
-		ctx->compat.texture[unit].scale[3] = 1.0;
-
-		ctx->compat.psState.tex[unit] = reg;
-	}
-
-	for (unit = 0; unit < VS_CACHE_SIZE; ++unit)
-		FGFP_BITFIELD_SET(ctx->compat.vertexShaders[unit].state.vs,
-								VS_INVALID, 1);
-
-	for (unit = 0; unit < PS_CACHE_SIZE; ++unit)
-		FGFP_BITFIELD_SET(ctx->compat.pixelShaders[unit].state.ps,
-								PS_INVALID, 1);
-
-	ctx->compat.psMask[FIMG_NUM_TEXTURE_UNITS] = 0xffffffff;
-}
-
-#define FGFP_TEXENV(unit)	(4 + 2*(unit))
-#define FGFP_COMBSCALE(unit)	(5 + 2*(unit))
-
-#if 0
-static void setPSConstBool(fimgContext *ctx, int val, uint32_t slot)
-{
-	uint32_t reg;
-
-	reg = fimgRead(ctx, FGPS_CBOOL_START);
-	reg &= ~(!val << slot);
-	reg |= !!val << slot;
-	fimgWrite(ctx, reg, FGPS_CBOOL_START);
-}
-#endif
-
-static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
-								uint32_t slot)
-{
-	const uint32_t *data = (const uint32_t *)pfData;
-	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
-						+ FGPS_CFLOAT_START + 16*slot);
-#if 0
-	asm ( 	"ldmia %0!, {r0-r3}"
-		"stmia %1!, {r0-r3}"
-		: "=r"(data), "=r"(reg)
-		: "0"(data), "1"(reg)
-		: "r0", "r1", "r2", "r3");
-#else
-	*(reg++) = *(data++);
-	*(reg++) = *(data++);
-	*(reg++) = *(data++);
-	*(reg++) = *(data++);
-#endif
-}
-
-static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
-{
-	uint32_t i;
-	const uint32_t *data = (const uint32_t *)pfData;
-	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
-						+ FGVS_CFLOAT_START + 16*slot);
-	for (i = 0; i < 4; i++) {
-#if 0
-		asm ( 	"ldmia %0!, {r0-r3}"
-			"stmia %1!, {r0-r3}"
-			: "=r"(data), "=r"(reg)
-			: "0"(data), "1"(reg)
-			: "r0", "r1", "r2", "r3");
-#else
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-#endif
-	}
-}
-
+/**
+ * Compares two vertex shader configurations.
+ * @param ctx Hardware context.
+ * @param a First vertex shader configuration.
+ * @param b Second vertex shader configuration.
+ * @return 0 if equal, non-zero otherwise.
+ */
 static int compareVertexShaders(fimgContext *ctx,
 			fimgVertexShaderState *a, fimgVertexShaderState *b)
 {
 	return a->val[0] != b->val[0];
 }
 
-#define NELEM(i)	(sizeof(i)/sizeof(*i))
-
+/**
+ * Compares two pixel shader configurations.
+ * @param ctx Hardware context.
+ * @param a First pixel shader configuration.
+ * @param b Second pixel shader configuration.
+ * @return 0 if equal, non-zero otherwise.
+ */
 static int comparePixelShaders(fimgContext *ctx,
 			fimgPixelShaderState *a, fimgPixelShaderState *b)
 {
@@ -1318,6 +1232,10 @@ static int comparePixelShaders(fimgContext *ctx,
 	return 0;
 }
 
+/**
+ * Validates vertex shader program and rebuilds it if needed.
+ * @param ctx Hardware context.
+ */
 static void validateVertexShader(fimgContext *ctx)
 {
 	unsigned int i;
@@ -1364,10 +1282,14 @@ static void validateVertexShader(fimgContext *ctx)
 	i = ctx->compat.vsEvictCounter++;
 	ctx->compat.vsEvictCounter %= VS_CACHE_SIZE;
 
-	fimgCompatBuildVertexShader(ctx, i);
+	buildVertexShader(ctx, i);
 	ctx->compat.curVsNum = i;
 }
 
+/**
+ * Validates pixel shader program and rebuilds it if needed.
+ * @param ctx Hardware context.
+ */
 static void validatePixelShader(fimgContext *ctx)
 {
 	unsigned int i;
@@ -1414,10 +1336,230 @@ static void validatePixelShader(fimgContext *ctx)
 	i = ctx->compat.psEvictCounter++;
 	ctx->compat.psEvictCounter %= PS_CACHE_SIZE;
 
-	fimgCompatBuildPixelShader(ctx, i);
+	buildPixelShader(ctx, i);
 	ctx->compat.curPsNum = i;
 }
 
+/*
+ * Public functions
+ */
+
+/**
+ * Sets texture function of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param func Texture function.
+ */
+void fimgCompatSetTextureFunc(fimgContext *ctx, uint32_t unit, fimgTexFunc func)
+{
+	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_MODE, func);
+	FGFP_BITFIELD_SET_IDX(ctx->compat.vsState.vs, VS_TEX_EN,
+					unit, func != FGFP_TEXFUNC_NONE);
+
+	switch (func) {
+	case FGFP_TEXFUNC_NONE:
+		ctx->compat.psMask[unit] = FGFP_TEX_MODE_MASK;
+		break;
+	case FGFP_TEXFUNC_COMBINE:
+		ctx->compat.psMask[unit] = ~0UL;
+		break;
+	default:
+		ctx->compat.psMask[unit] =
+				FGFP_TEX_MODE_MASK | FGFP_TEX_SWAP_MASK;
+	}
+}
+
+/**
+ * Sets color combiner function of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param func Color combiner function.
+ */
+void fimgCompatSetColorCombiner(fimgContext *ctx, uint32_t unit,
+							fimgCombFunc func)
+{
+	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_COMBC_FUNC, func);
+}
+
+/**
+ * Sets alpha combiner function of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param func Alpha combiner function.
+ */
+void fimgCompatSetAlphaCombiner(fimgContext *ctx, uint32_t unit,
+							fimgCombFunc func)
+{
+	FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit], TEX_COMBA_FUNC, func);
+}
+
+/**
+ * Sets source of selected color combiner argument of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param arg Index of argument.
+ * @param func Combiner argument source.
+ */
+void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgSrc src)
+{
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBC_SRC, arg, src);
+}
+
+/**
+ * Sets mode of selected color combiner argument of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param arg Index of argument.
+ * @param mod Combiner argument mode.
+ */
+void fimgCompatSetColorCombineArgMod(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgMod mod)
+{
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBC_MOD, arg, mod);
+}
+
+/**
+ * Sets source of selected alpha combiner argument of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param arg Index of argument.
+ * @param func Combiner argument source.
+ */
+void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgSrc src)
+{
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_SRC, arg, src);
+}
+
+/**
+ * Sets mode of selected alpha combiner argument of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param arg Index of argument.
+ * @param mod Combiner argument source.
+ */
+void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgMod mod)
+{
+	FGFP_BITFIELD_SET_IDX(ctx->compat.psState.tex[unit], TEX_COMBA_MOD, arg, mod & 1);
+}
+
+/**
+ * Sets color scale factor of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param scale Color scale factor.
+ */
+void fimgCompatSetColorScale(fimgContext *ctx, uint32_t unit, float scale)
+{
+	ctx->compat.texture[unit].scale[0] = scale;
+	ctx->compat.texture[unit].scale[1] = scale;
+	ctx->compat.texture[unit].scale[2] = scale;
+
+	ctx->compat.texture[unit].dirty = 1;
+}
+
+/**
+ * Sets alpha scale factor of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param scale Alpha scale factor.
+ */
+void fimgCompatSetAlphaScale(fimgContext *ctx, uint32_t unit, float scale)
+{
+	ctx->compat.texture[unit].scale[3] = scale;
+
+	ctx->compat.texture[unit].dirty = 1;
+}
+
+/**
+ * Sets environment color of selected texture unit.
+ * @param ctx Hardware context.
+ * @param unit Index of texture unit.
+ * @param r Red component of environment color.
+ * @param g Green component of environment color.
+ * @param b Blue component of environment color.
+ * @param a Alpha component of environment color.
+ */
+void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
+					float r, float g, float b, float a)
+{
+	ctx->compat.texture[unit].env[0] = r;
+	ctx->compat.texture[unit].env[1] = g;
+	ctx->compat.texture[unit].env[2] = b;
+	ctx->compat.texture[unit].env[3] = a;
+
+	ctx->compat.texture[unit].dirty = 1;
+}
+
+/**
+ * Binds pointed texture object to selected texture unit.
+ * @param ctx Hardware context.
+ * @param tex Texture object.
+ * @param unit Index of texture unit.
+ */
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
+{
+	ctx->compat.texture[unit].texture = tex;
+	if (tex)
+		FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit],
+				TEX_SWAP, !!(tex->reserved2 & FGTU_TEX_BGR));
+}
+
+/**
+ * Initializes hardware context of fixed pipeline emulation block.
+ * @param ctx Hardware context.
+ */
+void fimgCreateCompatContext(fimgContext *ctx)
+{
+	uint32_t unit;
+	fimgTextureCompat *texture;
+
+	texture = ctx->compat.texture;
+
+	for (unit = 0; unit < FIMG_NUM_TEXTURE_UNITS; unit++, texture++) {
+		uint32_t reg = 0;
+
+		FGFP_BITFIELD_SET(reg, TEX_COMBC_FUNC, FGFP_COMBFUNC_MODULATE);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 0, FGFP_COMBARG_TEX);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 0, FGFP_COMBARG_SRC_COLOR);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 1, FGFP_COMBARG_PREV);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 1, FGFP_COMBARG_SRC_COLOR);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_SRC, 2, FGFP_COMBARG_CONST);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBC_MOD, 2, FGFP_COMBARG_SRC_ALPHA);
+
+		FGFP_BITFIELD_SET(reg, TEX_COMBA_FUNC, FGFP_COMBFUNC_MODULATE);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 0, FGFP_COMBARG_TEX);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 0, FGFP_COMBARG_SRC_ALPHA & 1);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 1, FGFP_COMBARG_PREV);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 1, FGFP_COMBARG_SRC_ALPHA & 1);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_SRC, 2, FGFP_COMBARG_CONST);
+		FGFP_BITFIELD_SET_IDX(reg, TEX_COMBA_MOD, 2, FGFP_COMBARG_SRC_ALPHA & 1);
+
+		ctx->compat.texture[unit].scale[0] = 1.0;
+		ctx->compat.texture[unit].scale[1] = 1.0;
+		ctx->compat.texture[unit].scale[2] = 1.0;
+		ctx->compat.texture[unit].scale[3] = 1.0;
+
+		ctx->compat.psState.tex[unit] = reg;
+	}
+
+	for (unit = 0; unit < VS_CACHE_SIZE; ++unit)
+		FGFP_BITFIELD_SET(ctx->compat.vertexShaders[unit].state.vs,
+								VS_INVALID, 1);
+
+	for (unit = 0; unit < PS_CACHE_SIZE; ++unit)
+		FGFP_BITFIELD_SET(ctx->compat.pixelShaders[unit].state.ps,
+								PS_INVALID, 1);
+
+	ctx->compat.psMask[FIMG_NUM_TEXTURE_UNITS] = 0xffffffff;
+}
+
+/**
+ * Validates fixed pipeline emulation setup and rebuilds it if needed.
+ * @param ctx Hardware context.
+ */
 void fimgCompatFlush(fimgContext *ctx)
 {
 	uint32_t i;
@@ -1425,7 +1567,7 @@ void fimgCompatFlush(fimgContext *ctx)
 
 	validateVertexShader(ctx);
 	if (!ctx->compat.vshaderLoaded) {
-		fimgCompatLoadVertexShader(ctx);
+		loadVertexShader(ctx);
 		setVertexShaderAttribCount(ctx, ctx->numAttribs);
 		ctx->compat.vshaderLoaded = 1;
 	}
@@ -1441,7 +1583,7 @@ void fimgCompatFlush(fimgContext *ctx)
 	validatePixelShader(ctx);
 	if (!ctx->compat.pshaderLoaded) {
 		setPixelShaderState(ctx, 0);
-		fimgCompatLoadPixelShader(ctx);
+		loadPixelShader(ctx);
 		psStopped = 1;
 		ctx->compat.pshaderLoaded = 1;
 	}
@@ -1477,6 +1619,22 @@ void fimgCompatFlush(fimgContext *ctx)
 	}
 }
 
+/**
+ * Sets data pointer of selected matrix and marks it to be reloaded.
+ * @param ctx Hardware context.
+ * @param matrix Which matrix to load (FGL_MATRIX_*).
+ * @param pData Pointer to matrix elements in column-major ordering.
+ */
+void fimgLoadMatrix(fimgContext *ctx, uint32_t matrix, const float *pfData)
+{
+	ctx->compat.matrix[matrix] = pfData;
+	ctx->compat.matrixDirty[matrix] = 1;
+}
+
+/**
+ * Restores fixed pipeline compatibility block context.
+ * @param ctx Hardware context.
+ */
 void fimgRestoreCompatState(fimgContext *ctx)
 {
 	uint32_t i;
