@@ -39,12 +39,11 @@
 
 #define FIMG_SFR_SIZE 0x80000
 
-/*****************************************************************************
- * FUNCTION:	fimgDeviceOpen
- * SYNOPSIS:	This function opens and maps the G3D device.
- * RETURNS:	 0, on success
- *		-errno, on error
- *****************************************************************************/
+/**
+ * Opens G3D device and maps GPU registers into application address space.
+ * @param ctx Hardware context.
+ * @return 0 on success, negative on error.
+ */
 int fimgDeviceOpen(fimgContext *ctx)
 {
 	ctx->fd = open("/dev/s3c-g3d", O_RDWR | O_SYNC, 0);
@@ -66,10 +65,10 @@ int fimgDeviceOpen(fimgContext *ctx)
 	return 0;
 }
 
-/*****************************************************************************
- * FUNCTION:	fimgDeviceClose
- * SYNOPSIS:	This function closes the 3D device
- *****************************************************************************/
+/**
+ * Unmaps GPU registers and closes G3D device.
+ * @param ctx Hardware context.
+ */
 void fimgDeviceClose(fimgContext *ctx)
 {
 #ifndef FIMG_DEBUG_IOMEM_ACCESS
@@ -84,11 +83,10 @@ void fimgDeviceClose(fimgContext *ctx)
 	Context management
 */
 
-/*****************************************************************************
- * FUNCTION:	fimgCreateContext
- * SYNOPSIS:	This function creates a device context
- * RETURNS:	created context or NULL on error
- *****************************************************************************/
+/**
+ * Creates a hardware context.
+ * @return A pointer to hardware context struct or NULL on error.
+ */
 fimgContext *fimgCreateContext(void)
 {
 	fimgContext *ctx;
@@ -126,10 +124,10 @@ fimgContext *fimgCreateContext(void)
 	return ctx;
 }
 
-/*****************************************************************************
- * FUNCTION:	fimgDestroyContext
- * SYNOPSIS:	This function destroys a device context
- *****************************************************************************/
+/**
+ * Destroys a hardware context.
+ * @param ctx Hardware context.
+ */
 void fimgDestroyContext(fimgContext *ctx)
 {
 	fimgDeviceClose(ctx);
@@ -142,10 +140,10 @@ void fimgDestroyContext(fimgContext *ctx)
 	free(ctx);
 }
 
-/*****************************************************************************
- * FUNCTION:	fimgRestoreContext
- * SYNOPSIS:	This function restores a device context to hardware registers
- *****************************************************************************/
+/**
+ * Restores full hardware context to hardware.
+ * @param ctx Hardware context.
+ */
 void fimgRestoreContext(fimgContext *ctx)
 {
 //	fprintf(stderr, "fimg: Restoring global state\n"); fflush(stderr);
@@ -172,13 +170,12 @@ void fimgRestoreContext(fimgContext *ctx)
 	Power management
 */
 
-/*****************************************************************************
- * FUNCTION:	fimgAcquireHardwareLock
- * SYNOPSIS:	This function claims the hardware for exclusive use
- * RETURNS:	0 on success,
- *		positive value if the context needs to be restored,
- *		negative value on error
- *****************************************************************************/
+/**
+ * Claims the hardware for exclusive use, possibly powering it up.
+ * @param ctx Hardware context.
+ * @return 0 on success, positive if context restore is needed,
+ * negative on error.
+ */
 int fimgAcquireHardwareLock(fimgContext *ctx)
 {
 	int ret;
@@ -201,12 +198,12 @@ int fimgAcquireHardwareLock(fimgContext *ctx)
 	return ret;
 }
 
-/*****************************************************************************
- * FUNCTION:	fimgReleaseHardwareLock
- * SYNOPSIS:	This function ends exclusive use of the hardware
- * RETURNS:	0 on success,
- *		negative value on error
- *****************************************************************************/
+/**
+ * Releases the hardware, possibly allowing it to be powered down after
+ * finishing any pending work.
+ * @param ctx Hardware context.
+ * @return 0 on success, negative on error.
+ */
 int fimgReleaseHardwareLock(fimgContext *ctx)
 {
 #ifdef FIMG_DEBUG_IOMEM_ACCESS
@@ -222,13 +219,12 @@ int fimgReleaseHardwareLock(fimgContext *ctx)
 	return 0;
 }
 
-/*****************************************************************************
- * FUNCTION:	fimgWaitForFlush
- * SYNOPSIS:	This function waits for the hardware to flush the pipeline
- * RETURNS:	0 on success,
- *		negative value on error
- * ARGUMENTS:	target - requested pipeline stages to be flushed
- *****************************************************************************/
+/**
+ * Waits for hardware to flush graphics pipeline.
+ * @param ctx Hardware context.
+ * @param target Bit mask of pipeline parts to be flushed.
+ * @return 0 on success, negative on error.
+ */
 int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
 {
 	if(ioctl(ctx->fd, S3C_G3D_FLUSH, target)) {
@@ -239,4 +235,3 @@ int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
 
 	return 0;
 }
-
