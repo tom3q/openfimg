@@ -53,6 +53,11 @@ typedef enum {
  * Utils
  */
 
+/**
+ * Sets output attribute count of host interface.
+ * @param ctx Hardware context.
+ * @param count Attribute count.
+ */
 void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
 {
 #ifdef FIMG_INTERPOLATION_WORKAROUND
@@ -63,12 +68,11 @@ void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
 	ctx->numAttribs = count;
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetAttribute
- * SYNOPSIS:	This function specifies the property of attribute
- * PARAMETERS:	[IN] attribIdx: the index of attribute, which is in [0-15]
- *		[IN] pAttribInfo: fimgAttribute
- *****************************************************************************/
+/**
+ * This function specifies the property of attribute
+ * @param attribIdx the index of attribute, which is in [0-15]
+ * @param AttribInfo fimgAttribute
+ */
 void fimgSetAttribute(fimgContext *ctx, unsigned int idx,
 					unsigned int type, unsigned int numComp)
 {
@@ -76,12 +80,11 @@ void fimgSetAttribute(fimgContext *ctx, unsigned int idx,
 	ctx->host.attrib[idx].numcomp = FGHI_NUMCOMP(numComp);
 }
 
-/*****************************************************************************
- * FUNCTIONS:	fimgSetVtxBufAttrib
- * SYNOPSIS:	This function defines the property of attribute in vertex buffer
- * PARAMETERS:	[IN] attribIdx: the index of attribute
- *            	[IN] pAttribInfo: fimgVtxBufAttrib
- *****************************************************************************/
+/**
+ * This function defines the property of attribute in vertex buffer
+ * @param attribIdx the index of attribute
+ * @param AttribInfo fimgVtxBufAttrib
+ */
 static inline void setVtxBufAttrib(fimgContext *ctx, unsigned char idx,
 		unsigned short base, unsigned char stride, unsigned short range)
 {
@@ -161,7 +164,12 @@ static const int vertexWordsToVertexCount[] = {
 	VERTEX_BUFFER_WORDS / 47,
 };
 
-/* Calculate how many vertices will fit into vertex buffer with given config */
+/**
+ * Calculates how many vertices will fit into vertex buffer with given config.
+ * @param arrays Pointer to array of attribute array descriptors.
+ * @param count Count of attribute array descriptors.
+ * @return Count of vertices that will fit into vertex buffer.
+ */
 static unsigned int calculateBatchSize(fimgArray *arrays, int count)
 {
 	fimgArray *a = arrays;
@@ -180,6 +188,10 @@ static unsigned int calculateBatchSize(fimgArray *arrays, int count)
 	return vertexWordsToVertexCount[size];
 }
 
+/**
+ * Copies vertex data from local memory to hardware vertex buffer.
+ * @param ctx Hardware context.
+ */
 static void fillVertexBuffer(fimgContext *ctx)
 {
 	volatile uint32_t *reg =
@@ -212,6 +224,15 @@ static void fillVertexBuffer(fimgContext *ctx)
  * Unindexed
  */
 
+/**
+ * Packs attribute data into words (unindexed variant).
+ * @param ctx Hardware context.
+ * @param buf Destination buffer.
+ * @param a Attribute array descriptor.
+ * @param pos Index of first vertex.
+ * @param cnt Vertex count.
+ * @return Size (in bytes) of packed data.
+ */
 static uint32_t packAttribute(fimgContext *ctx, uint32_t *buf,
 						fimgArray *a, int pos, int cnt)
 {
@@ -312,7 +333,15 @@ static uint32_t packAttribute(fimgContext *ctx, uint32_t *buf,
 	return size;
 }
 
-/* Generic vertex copy */
+/**
+ * Prepares input vertex data for hardware processing (unindexed,
+ * direct variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param first Pointer to index of first unprocessed vertex.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVertices1To1(fimgContext *ctx, fimgArray *arrays,
 						uint32_t *first, uint32_t *count)
 {
@@ -349,6 +378,15 @@ static uint32_t copyVertices1To1(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (unindexed,
+ * line strip variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param first Pointer to index of first unprocessed vertex.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesLinestrip(fimgContext *ctx,
 			fimgArray *arrays, uint32_t *first, uint32_t *count)
 {
@@ -388,6 +426,15 @@ static uint32_t copyVerticesLinestrip(fimgContext *ctx,
 	return batchSize;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (unindexed,
+ * lines variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param first Pointer to index of first unprocessed vertex.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesLines(fimgContext *ctx, fimgArray *arrays,
 						uint32_t *first, uint32_t *count)
 {
@@ -430,6 +477,15 @@ static uint32_t copyVerticesLines(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (unindexed,
+ * triangle strip variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param first Pointer to index of first unprocessed vertex.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTristrip(fimgContext *ctx,
 			fimgArray *arrays, uint32_t *first, uint32_t *count)
 {
@@ -476,6 +532,15 @@ static uint32_t copyVerticesTristrip(fimgContext *ctx,
 	return batchSize + 1;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (unindexed,
+ * triangle fan).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param first Pointer to index of first unprocessed vertex.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTrifan(fimgContext *ctx,
 			fimgArray *arrays, uint32_t *first, uint32_t *count)
 {
@@ -529,6 +594,15 @@ static uint32_t copyVerticesTrifan(fimgContext *ctx,
 	return batchSize + 2;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (unindexed,
+ * triangles variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param first Pointer to index of first unprocessed vertex.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTris(fimgContext *ctx, fimgArray *arrays,
 					uint32_t *first, uint32_t *count)
 {
@@ -575,6 +649,15 @@ static uint32_t copyVerticesTris(fimgContext *ctx, fimgArray *arrays,
  * Indexed uint16_t
  */
 
+/**
+ * Packs attribute data into words (uint16_t indexed variant).
+ * @param ctx Hardware context.
+ * @param buf Destination buffer.
+ * @param a Attribute array descriptor.
+ * @param idx Array of vertex indices.
+ * @param cnt Vertex count.
+ * @return Size (in bytes) of packed data.
+ */
 static uint32_t packAttributeIdx16(fimgContext *ctx, uint32_t *buf,
 				fimgArray *a, const uint16_t *idx, int cnt)
 {
@@ -726,6 +809,16 @@ static uint32_t packAttributeIdx16(fimgContext *ctx, uint32_t *buf,
 	return size;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint16_t indexed,
+ * direct variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVertices1To1Idx16(fimgContext *ctx, fimgArray *arrays,
 			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -756,6 +849,16 @@ static uint32_t copyVertices1To1Idx16(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint16_t indexed,
+ * line strip variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesLinestripIdx16(fimgContext *ctx, fimgArray *arrays,
 			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -789,7 +892,16 @@ static uint32_t copyVerticesLinestripIdx16(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
-
+/**
+ * Prepares input vertex data for hardware processing (uint16_t indexed,
+ * lines variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesLinesIdx16(fimgContext *ctx, fimgArray *arrays,
 				const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -826,6 +938,16 @@ static uint32_t copyVerticesLinesIdx16(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint16_t indexed,
+ * triangle strip variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
 			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -863,6 +985,16 @@ static uint32_t copyVerticesTristripIdx16(fimgContext *ctx, fimgArray *arrays,
 	return batchSize + 1;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint16_t indexed,
+ * triangle fan variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
 			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -902,6 +1034,16 @@ static uint32_t copyVerticesTrifanIdx16(fimgContext *ctx, fimgArray *arrays,
 	return batchSize + 2;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint16_t indexed,
+ * triangles variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTrisIdx16(fimgContext *ctx, fimgArray *arrays,
 			const uint16_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -942,6 +1084,15 @@ static uint32_t copyVerticesTrisIdx16(fimgContext *ctx, fimgArray *arrays,
  * Indexed uint8_t
  */
 
+/**
+ * Packs attribute data into words (uint8_t indexed variant).
+ * @param ctx Hardware context.
+ * @param buf Destination buffer.
+ * @param a Attribute array descriptor.
+ * @param idx Array of vertex indices.
+ * @param cnt Vertex count.
+ * @return Size (in bytes) of packed data.
+ */
 static uint32_t packAttributeIdx8(fimgContext *ctx, uint32_t *buf,
 				fimgArray *a, const uint8_t *idx, int cnt)
 {
@@ -1093,6 +1244,16 @@ static uint32_t packAttributeIdx8(fimgContext *ctx, uint32_t *buf,
 	return size;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint8_t indexed,
+ * direct variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVertices1To1Idx8(fimgContext *ctx, fimgArray *arrays,
 			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -1123,6 +1284,16 @@ static uint32_t copyVertices1To1Idx8(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint8_t indexed,
+ * line strip variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesLinestripIdx8(fimgContext *ctx, fimgArray *arrays,
 			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -1156,7 +1327,16 @@ static uint32_t copyVerticesLinestripIdx8(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
-
+/**
+ * Prepares input vertex data for hardware processing (uint8_t indexed,
+ * lines variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesLinesIdx8(fimgContext *ctx, fimgArray *arrays,
 			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -1193,6 +1373,16 @@ static uint32_t copyVerticesLinesIdx8(fimgContext *ctx, fimgArray *arrays,
 	return batchSize;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint8_t indexed,
+ * triangle strip variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
 			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -1230,6 +1420,16 @@ static uint32_t copyVerticesTristripIdx8(fimgContext *ctx, fimgArray *arrays,
 	return batchSize + 1;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint8_t indexed,
+ * triangle fan variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
 			const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -1269,6 +1469,16 @@ static uint32_t copyVerticesTrifanIdx8(fimgContext *ctx, fimgArray *arrays,
 	return batchSize + 2;
 }
 
+/**
+ * Prepares input vertex data for hardware processing (uint8_t indexed,
+ * triangles variant).
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ * @param indices Array of vertex indices.
+ * @param pos Pointer to index of first vertex index.
+ * @param count Pointer to count of unprocessed vertices.
+ * @return Amount of vertices available to send to hardware.
+ */
 static uint32_t copyVerticesTrisIdx8(fimgContext *ctx, fimgArray *arrays,
 				const uint8_t *indices, uint32_t *pos, uint32_t *count)
 {
@@ -1365,6 +1575,12 @@ static const struct primitiveHandler primitiveHandler[FGPE_PRIMITIVE_MAX] = {
 	},
 };
 
+/**
+ * Sends a request to hardware to draw a sequence of vertices.
+ * @param ctx Hardware context.
+ * @param first Index of first vertex in vertex buffer.
+ * @param count Vertex count.
+ */
 static inline void drawAutoinc(fimgContext *ctx,
 				uint32_t first, uint32_t count)
 {
@@ -1372,6 +1588,11 @@ static inline void drawAutoinc(fimgContext *ctx,
 	fimgWrite(ctx, first, FGHI_FIFO_ENTRY);
 }
 
+/**
+ * Configures hardware for attributes according to attribute array descriptors.
+ * @param ctx Hardware context.
+ * @param arrays Array of attribute array descriptors.
+ */
 static void setupAttributes(fimgContext *ctx, fimgArray *arrays)
 {
 	fimgAttribute last;
@@ -1387,6 +1608,10 @@ static void setupAttributes(fimgContext *ctx, fimgArray *arrays)
 	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
 }
 
+/**
+ * Configures hardware vertex buffer parameters.
+ * @param ctx Hardware context.
+ */
 static void setupVertexBuffer(fimgContext *ctx)
 {
 	unsigned int i;
@@ -1397,6 +1622,13 @@ static void setupVertexBuffer(fimgContext *ctx)
 	}
 }
 
+/**
+ * Draws a sequence of vertices described by array descriptors.
+ * @param ctx Hardware context.
+ * @param mode Primitive type.
+ * @param arrays Array of attribute array descriptors.
+ * @param count Vertex count.
+ */
 void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 					fimgArray *arrays, unsigned int count)
 {
@@ -1449,6 +1681,15 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 	fimgPutHardware(ctx);
 }
 
+/**
+ * Draws a sequence of vertices described by array descriptors and a sequence
+ * of uint8_t indices.
+ * @param ctx Hardware context.
+ * @param mode Primitive type.
+ * @param arrays Array of attribute array descriptors.
+ * @param count Vertex count.
+ * @param indices Array of vertex indices.
+ */
 void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 		fimgArray *arrays, unsigned int count, const uint8_t *indices)
 {
@@ -1502,6 +1743,15 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 	fimgPutHardware(ctx);
 }
 
+/**
+ * Draws a sequence of vertices described by array descriptors and a sequence
+ * of uint16_t indices.
+ * @param ctx Hardware context.
+ * @param mode Primitive type.
+ * @param arrays Array of attribute array descriptors.
+ * @param count Vertex count.
+ * @param indices Array of vertex indices.
+ */
 void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 		fimgArray *arrays, unsigned int count, const uint16_t *indices)
 {
@@ -1559,6 +1809,10 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
  * Context management
  */
 
+/**
+ * Creates hardware context for host interface block.
+ * @param ctx Hardware context.
+ */
 void fimgCreateHostContext(fimgContext *ctx)
 {
 	int i;
@@ -1578,6 +1832,10 @@ void fimgCreateHostContext(fimgContext *ctx)
 		ctx->host.attrib[i].val = template.val;
 }
 
+/**
+ * Restores hardware context of host interface block.
+ * @param ctx Hardware context.
+ */
 void fimgRestoreHostState(fimgContext *ctx)
 {
 	fimgWrite(ctx, 1, FGHI_IDXOFFSET);
