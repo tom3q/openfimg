@@ -686,9 +686,6 @@ static inline void fimgGetHardware(fimgContext *ctx)
 
 	switch (ret) {
 	case 2:
-		fimgFlushCache(ctx, 3, 3);
-		fimgSelectiveFlush(ctx, FGHI_PIPELINE_CCACHE);
-		fimgWaitForCacheFlush(ctx, 3, 3);
 		/* Fall through */
 	case 1:
 		fimgRestoreContext(ctx);
