@@ -398,8 +398,7 @@ public:
 /*
  * Android native window render surface
  */
-
-class FGLWindowSurface : public FGLRenderSurface {
+class FGLAndroidWindowSurface : public FGLRenderSurface {
 	class Rect {
 	public:
 		int32_t left;
@@ -614,7 +613,7 @@ class FGLWindowSurface : public FGLRenderSurface {
 	}
 
 public:
-	FGLWindowSurface(EGLDisplay dpy, uint32_t config,
+	FGLAndroidWindowSurface(EGLDisplay dpy, uint32_t config,
 				uint32_t colorFormat, uint32_t depthFormat,
 				android_native_window_t *window) :
 		FGLRenderSurface(dpy, config, colorFormat, depthFormat),
@@ -640,7 +639,7 @@ public:
 		bytesPerPixel = pix->pixelSize;
 	}
 
-	~FGLWindowSurface()
+	~FGLAndroidWindowSurface()
 	{
 		if (buffer)
 			buffer->common.decRef(&buffer->common);
@@ -967,7 +966,7 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 		return NULL;
 	}
 
-	return new FGLWindowSurface(dpy, config, pixelFormat, depthFormat, win);
+	return new FGLAndroidWindowSurface(dpy, config, pixelFormat, depthFormat, win);
 }
 
 /*
