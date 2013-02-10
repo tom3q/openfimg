@@ -312,7 +312,7 @@ int FGLFramebufferManager::get(void)
  * Frame buffer window surface
  */
 
-class FGLWindowSurface : public FGLRenderSurface {
+class FGLFramebufferWindowSurface : public FGLRenderSurface {
 	int	bytesPerPixel;
 	int	fd;
 	int	bufferCount;
@@ -326,7 +326,7 @@ class FGLWindowSurface : public FGLRenderSurface {
 	FGLFramebufferManager *manager;
 
 public:
-	FGLWindowSurface(EGLDisplay dpy, uint32_t config,
+	FGLFramebufferWindowSurface(EGLDisplay dpy, uint32_t config,
 				uint32_t pixelFormat, uint32_t depthFormat,
 				int fileDesc) :
 		FGLRenderSurface(dpy, config, pixelFormat, depthFormat),
@@ -369,7 +369,7 @@ public:
 		manager = new FGLFramebufferManager(fd, bufferCount, height); 
 	}
 
-	~FGLWindowSurface()
+	~FGLFramebufferWindowSurface()
 	{
 		if (vbase != NULL)
 			munmap(vbase, vlen);
@@ -567,7 +567,7 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 		return NULL;
 	}
 
-	return new FGLWindowSurface(dpy, config, pixelFormat, depthFormat, fd);
+	return new FGLFramebufferWindowSurface(dpy, config, pixelFormat, depthFormat, fd);
 }
 
 #define EGLFunc	__eglMustCastToProperFunctionPointerType
