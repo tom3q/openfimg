@@ -38,18 +38,30 @@ typedef struct _fimgContext fimgContext;
  * Global block
  */
 
+/** Flush vertex FIFO. */
 #define FGHI_PIPELINE_FIFO	(1 << 0)
+/** Flush host interface. */
 #define FGHI_PIPELINE_HOSTIF	(1 << 1)
+/** Flush vertex shader FIFO. */
 #define FGHI_PIPELINE_HVF	(1 << 2)
+/** Flush vertex cache. */
 #define FGHI_PIPELINE_VCACHE	(1 << 3)
+/** Flush vertex shader. */
 #define FGHI_PIPELINE_VSHADER	(1 << 4)
+/** Flush primitive engine. */
 #define FGHI_PIPELINE_PRIM_ENG	(1 << 8)
+/** Flush triangle setup engine. */
 #define FGHI_PIPELINE_TRI_ENG	(1 << 9)
+/** Flush rasterizer. */
 #define FGHI_PIPELINE_RA_ENG	(1 << 10)
+/** Flush pixel shader. */
 #define FGHI_PIPELINE_PSHADER	(1 << 12)
+/** Flush per-fragment unit. */
 #define FGHI_PIPELINE_PER_FRAG	(1 << 16)
+/** Flush color cache. */
 #define FGHI_PIPELINE_CCACHE	(1 << 18)
 
+/** Flush complete rendering pipeline without color cache. */
 #define FGHI_PIPELINE_ALL ( \
 	FGHI_PIPELINE_FIFO | FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF | \
 	FGHI_PIPELINE_VCACHE | FGHI_PIPELINE_VSHADER | FGHI_PIPELINE_PRIM_ENG |\
@@ -74,33 +86,44 @@ void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev);
  * Host interface
  */
 
+/** Number of attributes supported by libfimg. */
 #define FIMG_ATTRIB_NUM		9
 
 /* Type definitions */
+/**
+ * Calculates NUMCOMP value based on number of components.
+ * @param i Number of components.
+ * @return NUMCOMP value.
+ */
 #define FGHI_NUMCOMP(i)		((i) - 1)
 
+/** Vertex attribute data types supported by FIMG-3DSE. */
 typedef enum {
-	FGHI_ATTRIB_DT_BYTE = 0,
-	FGHI_ATTRIB_DT_SHORT,
-	FGHI_ATTRIB_DT_INT,
-	FGHI_ATTRIB_DT_FIXED,
-	FGHI_ATTRIB_DT_UBYTE,
-	FGHI_ATTRIB_DT_USHORT,
-	FGHI_ATTRIB_DT_UINT,
-	FGHI_ATTRIB_DT_FLOAT,
-	FGHI_ATTRIB_DT_NBYTE,
-	FGHI_ATTRIB_DT_NSHORT,
-	FGHI_ATTRIB_DT_NINT,
-	FGHI_ATTRIB_DT_NFIXED,
-	FGHI_ATTRIB_DT_NUBYTE,
-	FGHI_ATTRIB_DT_NUSHORT,
-	FGHI_ATTRIB_DT_NUINT,
-	FGHI_ATTRIB_DT_HALF_FLOAT
+	FGHI_ATTRIB_DT_BYTE = 0,	/**< 8-bit signed. */
+	FGHI_ATTRIB_DT_SHORT,		/**< 16-bit signed. */
+	FGHI_ATTRIB_DT_INT,		/**< 32-bit signed. */
+	FGHI_ATTRIB_DT_FIXED,		/**< 16.16 fixed point. */
+	FGHI_ATTRIB_DT_UBYTE,		/**< 8-bit unsigned. */
+	FGHI_ATTRIB_DT_USHORT,		/**< 16-bit unsigned. */
+	FGHI_ATTRIB_DT_UINT,		/**< 32-bit unsigned. */
+	FGHI_ATTRIB_DT_FLOAT,		/**< 1/8/23 floating point. */
+	FGHI_ATTRIB_DT_NBYTE,		/**< 8-bit normalized signed. */
+	FGHI_ATTRIB_DT_NSHORT,		/**< 16-bit normalized signed. */
+	FGHI_ATTRIB_DT_NINT,		/**< 32-bit normalized signed. */
+	FGHI_ATTRIB_DT_NFIXED,		/**< 16.16 normalized fixed point. */
+	FGHI_ATTRIB_DT_NUBYTE,		/**< 8-bit normalized unsigned. */
+	FGHI_ATTRIB_DT_NUSHORT,		/**< 16-bit normalized unsigned. */
+	FGHI_ATTRIB_DT_NUINT,		/**< 32-bit normalized unsigned. */
+	FGHI_ATTRIB_DT_HALF_FLOAT	/**< 1/5/10 floating point. */
 } fimgHostDataType;
 
+/** Structure describing layout of vertex attribute array. */
 typedef struct {
+	/** Pointer to vertex attribute data. */
 	const void	*pointer;
+	/** Stride of single vertex. */
 	uint16_t	stride;
+	/** Width of single vertex. */
 	uint16_t	width;
 } fimgArray;
 
@@ -122,15 +145,17 @@ void fimgSetAttribCount(fimgContext *ctx, unsigned char count);
  */
 
 /* Type definitions */
+
+/** Primitive types supported by FIMG-3DSE. */
 typedef enum {
-	FGPE_POINT_SPRITE = 0,
-	FGPE_POINTS,
-	FGPE_LINE_STRIP,
-	FGPE_LINE_LOOP,
-	FGPE_LINES,
-	FGPE_TRIANGLE_STRIP,
-	FGPE_TRIANGLE_FAN,
-	FGPE_TRIANGLES,
+	FGPE_POINT_SPRITE = 0,	/**< Point sprites */
+	FGPE_POINTS,		/**< Separate points */
+	FGPE_LINE_STRIP,	/**< Line strips */
+	FGPE_LINE_LOOP,		/**< Line loops */
+	FGPE_LINES,		/**< Separate lines */
+	FGPE_TRIANGLE_STRIP,	/**< Triangle strips */
+	FGPE_TRIANGLE_FAN,	/**< Triangle fans */
+	FGPE_TRIANGLES,		/**< Separate triangles */
 	FGPE_PRIMITIVE_MAX,
 } fimgPrimitiveType;
 
@@ -147,10 +172,12 @@ void fimgSetDepthRange(fimgContext *ctx, float n, float f);
  */
 
 /* Type definitions */
+
+/** Polygon face for face culling. */
 typedef enum {
-	FGRA_BFCULL_FACE_BACK = 0,
-	FGRA_BFCULL_FACE_FRONT,
-	FGRA_BFCULL_FACE_BOTH = 3
+	FGRA_BFCULL_FACE_BACK = 0,	/**< Cull back face */
+	FGRA_BFCULL_FACE_FRONT,		/**< Cull front face */
+	FGRA_BFCULL_FACE_BOTH = 3	/**< Cull both faces */
 } fimgCullingFace;
 
 /* Functions */
@@ -187,25 +214,31 @@ int fimgLoadPShader(fimgContext *ctx,
  * Texture engine
  */
 
+/** Max. mipmap level supported by FIMG-3DSE. */
 #define FGTU_MAX_MIPMAP_LEVEL	11
 
 /* Type definitions */
+
+/** Texture type. */
 enum {
-	FGTU_TSTA_TYPE_2D = 1,
-	FGTU_TSTA_TYPE_CUBE,
-	FGTU_TSTA_TYPE_3D
+	FGTU_TSTA_TYPE_2D = 1,	/**< 2D texture */
+	FGTU_TSTA_TYPE_CUBE,	/**< Cube map texture */
+	FGTU_TSTA_TYPE_3D	/**< 3D texture */
 };
 
+/** Texture color expansion mode. */
 enum {
-	FGTU_TSTA_TEX_EXP_DUP = 0,
-	FGTU_TSTA_TEX_EXP_ZERO
+	FGTU_TSTA_TEX_EXP_DUP = 0,	/**< Duplicate LSB. */
+	FGTU_TSTA_TEX_EXP_ZERO		/**< Expand with zeroes. */
 };
 
+/** Texture alpha component position. */
 enum {
-	FGTU_TSTA_AFORMAT_ARGB = 0,
-	FGTU_TSTA_AFORMAT_RGBA
+	FGTU_TSTA_AFORMAT_ARGB = 0,	/**< Alpha component in MSB/MSb. */
+	FGTU_TSTA_AFORMAT_RGBA		/**< Alpha component in LSB/LSb. */
 };
 
+/** Texture palette format. */
 enum {
 	FGTU_TSTA_PAL_TEX_FORMAT_1555 = 0,
 	FGTU_TSTA_PAL_TEX_FORMAT_565,
@@ -213,6 +246,7 @@ enum {
 	FGTU_TSTA_PAL_TEX_FORMAT_8888
 };
 
+/** Texture pixel format. */
 enum {
 	FGTU_TSTA_TEXTURE_FORMAT_1555 = 0,
 	FGTU_TSTA_TEXTURE_FORMAT_565,
@@ -232,34 +266,40 @@ enum {
 	FGTU_TSTA_TEXTURE_FORMAT_UY1VY0
 };
 
+/** Texture addressing mode. */
 enum {
 	FGTU_TSTA_ADDR_MODE_REPEAT = 0,
 	FGTU_TSTA_ADDR_MODE_FLIP,
 	FGTU_TSTA_ADDR_MODE_CLAMP
 };
 
+/** Texture coordinate calculation mode. */
 enum {
-	FGTU_TSTA_TEX_COOR_PARAM = 0,
-	FGTU_TSTA_TEX_COOR_NON_PARAM
+	FGTU_TSTA_TEX_COOR_PARAM = 0,	/**< Parametric (STRQ) */
+	FGTU_TSTA_TEX_COOR_NON_PARAM	/**< Non-parametric (direct) */
 };
 
+/** Texture filtering mode. */
 enum {
 	FGTU_TSTA_FILTER_NEAREST = 0,
 	FGTU_TSTA_FILTER_LINEAR
 };
 
+/** Texture mipmap mode. */
 enum {
 	FGTU_TSTA_MIPMAP_DISABLED = 0,
 	FGTU_TSTA_MIPMAP_NEAREST,
 	FGTU_TSTA_MIPMAP_LINEAR
 };
 
+/** Vertex texture addressing mode. */
 enum {
 	FGTU_VTSTA_MOD_REPEAT = 0,
 	FGTU_VTSTA_MOD_FLIP,
 	FGTU_VTSTA_MOD_CLAMP
 };
 
+/** Texture component order. */
 enum {
 	FGTU_TEX_RGBA	= (1 << 0),
 	FGTU_TEX_BGR	= (1 << 1)
@@ -300,13 +340,20 @@ void fimgInvalidateTextureCache(fimgContext *ctx);
 
 #define FIMG_NUM_TEXTURE_UNITS	2
 
+/** Transformation matrices */
 typedef enum {
 	FGFP_MATRIX_TRANSFORM = 0,
 	FGFP_MATRIX_LIGHTING,
 	FGFP_MATRIX_TEXTURE
 } fimgMatrix;
+/**
+ * Returns index of texture coordinate matrix of given texture unit.
+ * @param i Texture unit index.
+ * @return Index of matrix.
+ */
 #define FGFP_MATRIX_TEXTURE(i)	(FGFP_MATRIX_TEXTURE + (i))
 
+/** Texturing functions. */
 typedef enum {
 	FGFP_TEXFUNC_NONE = 0,
 	FGFP_TEXFUNC_REPLACE,
@@ -317,6 +364,7 @@ typedef enum {
 	FGFP_TEXFUNC_COMBINE
 } fimgTexFunc;
 
+/** Texture combiner modes. */
 typedef enum {
 	FGFP_COMBFUNC_REPLACE = 0,
 	FGFP_COMBFUNC_MODULATE,
@@ -328,6 +376,7 @@ typedef enum {
 	FGFP_COMBFUNC_DOT3_RGBA
 } fimgCombFunc;
 
+/** Texture combiner argument source. */
 typedef enum {
 	FGFP_COMBARG_TEX = 0,
 	FGFP_COMBARG_CONST,
@@ -335,6 +384,7 @@ typedef enum {
 	FGFP_COMBARG_PREV
 } fimgCombArgSrc;
 
+/** Texture combiner argument mode. */
 typedef enum {
 	FGFP_COMBARG_SRC_COLOR = 0,
 	FGFP_COMBARG_ONE_MINUS_SRC_COLOR,
@@ -369,6 +419,8 @@ void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit);
  */
 
 /* Type definitions */
+
+/** Test modes. */
 typedef enum {
 	FGPF_TEST_MODE_NEVER = 0,
 	FGPF_TEST_MODE_ALWAYS,
@@ -384,6 +436,8 @@ typedef enum {
  *	WORKAROUND
  *	Inconsistent with fimgTestMode due to hardware bug
  */
+
+/** Stencil test modes. */
 typedef enum {
 	FGPF_STENCIL_MODE_NEVER = 0,
 	FGPF_STENCIL_MODE_ALWAYS,
@@ -395,6 +449,7 @@ typedef enum {
 	FGPF_STENCIL_MODE_NOTEQUAL
 } fimgStencilMode;
 
+/** Test actions. */
 typedef enum {
 	FGPF_TEST_ACTION_KEEP = 0,
 	FGPF_TEST_ACTION_ZERO,
@@ -406,6 +461,7 @@ typedef enum {
 	FGPF_TEST_ACTION_DECR_WRAP
 } fimgTestAction;
 
+/** Blend equations. */
 typedef enum {
 	FGPF_BLEND_EQUATION_ADD = 0,
 	FGPF_BLEND_EQUATION_SUB,
@@ -414,6 +470,7 @@ typedef enum {
 	FGPF_BLEND_EQUATION_MAX
 } fimgBlendEquation;
 
+/** Blend functions. */
 typedef enum {
 	FGPF_BLEND_FUNC_ZERO = 0,
 	FGPF_BLEND_FUNC_ONE,
@@ -432,6 +489,7 @@ typedef enum {
 	FGPF_BLEND_FUNC_SRC_ALPHA_SATURATE
 } fimgBlendFunction;
 
+/** Pixel logical operations. */
 typedef enum {
 	FGPF_LOGOP_CLEAR = 0,
 	FGPF_LOGOP_AND,
@@ -451,6 +509,7 @@ typedef enum {
 	FGPF_LOGOP_SET
 } fimgLogicalOperation;
 
+/** Framebuffer color modes. */
 typedef enum {
 	FGPF_COLOR_MODE_555 = 0,
 	FGPF_COLOR_MODE_565,
@@ -460,8 +519,9 @@ typedef enum {
 	FGPF_COLOR_MODE_8888
 } fimgColorMode;
 
+/** Special framebuffer flags. */
 enum {
-	FGPF_COLOR_MODE_BGR = (1 << 1)
+	FGPF_COLOR_MODE_BGR = (1 << 1)	/**< Component order is BGR */
 };
 
 /* Functions */
