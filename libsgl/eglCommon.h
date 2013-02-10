@@ -46,11 +46,11 @@ struct FGLExtensionMap {
 #define EGL_ERR_DEBUG
 
 #ifdef EGL_ERR_DEBUG
-#define setError(a) ( \
-	LOGD("EGL error %s in %s in line %d", #a, __func__, __LINE__), \
-	fglEGLSetError(a))
+#define setError(err) ( \
+	LOGD("EGL error %s in %s in line %d", #err, __func__, __LINE__), \
+	fglEGLSetError(err))
 #else
-#define setError fglEGLSetError
+#define setError(err) fglEGLSetError(err)
 #endif
 
 #define FGL_DISPLAY_MAGIC	0x444c4746 /* FGLD */
