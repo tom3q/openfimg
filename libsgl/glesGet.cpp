@@ -34,7 +34,6 @@
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
 #include "libfimg/fimg.h"
-#include "s3c_g2d.h"
 
 /*
 	Client API information

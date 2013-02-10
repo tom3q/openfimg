@@ -33,7 +33,6 @@
 #include "glesCommon.h"
 #include "fglobjectmanager.h"
 #include "libfimg/fimg.h"
-#include "s3c_g2d.h"
 
 GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
 {

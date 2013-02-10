@@ -35,7 +35,6 @@
 #include "fglobjectmanager.h"
 #include "fglimage.h"
 #include "libfimg/fimg.h"
-#include "s3c_g2d.h"
 
 /*
 	Texturing

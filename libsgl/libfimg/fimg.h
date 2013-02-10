@@ -142,15 +142,6 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0,
 void fimgSetViewportBypass(fimgContext *ctx);
 void fimgSetDepthRange(fimgContext *ctx, float n, float f);
 
-enum {
-	FIMG_VIEWPORT_X,
-	FIMG_VIEWPORT_Y,
-	FIMG_VIEWPORT_W,
-	FIMG_VIEWPORT_H,
-	FIMG_DEPTH_RANGE_NEAR,
-	FIMG_DEPTH_RANGE_FAR
-};
-
 /*
  * Raster engine
  */
@@ -169,7 +160,6 @@ void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units);
 void fimgSetFaceCullEnable(fimgContext *ctx, int enable);
 void fimgSetFaceCullFace(fimgContext *ctx, unsigned int face);
 void fimgSetFaceCullFront(fimgContext *ctx, int bCW);
-void fimgSetFaceCullControl(fimgContext *ctx, int bCW,fimgCullingFace face);
 void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax);
 void fimgSetLODControl(fimgContext *ctx, unsigned int attrib,
 					int lod, int ddx, int ddy);
@@ -179,17 +169,6 @@ void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin);
 void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax);
 void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum);
 void fimgSetLineWidth(fimgContext *ctx, float lWidth);
-
-enum {
-	FIMG_CULL_FACE_EN,
-	FIMG_DEPTH_OFFSET_EN,
-	FIMG_POINT_SIZE,
-	FIMG_LINE_WIDTH,
-	FIMG_CULL_FACE_MODE,
-	FIMG_FRONT_FACE,
-	FIMG_DEPTH_OFFSET_FACTOR,
-	FIMG_DEPTH_OFFSET_UNITS
-};
 
 /*
  * Shaders
@@ -364,9 +343,6 @@ typedef enum {
 } fimgCombArgMod;
 
 void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, const float *pData);
-void fimgEnableTexture(fimgContext *ctx, unsigned int unit);
-void fimgDisableTexture(fimgContext *ctx, unsigned int unit);
-void fimgCompatLoadPixelShader(fimgContext *ctx);
 void fimgCompatSetTextureFunc(fimgContext *ctx, unsigned unit, fimgTexFunc func);
 void fimgCompatSetColorCombiner(fimgContext *ctx, unsigned unit,
 							fimgCombFunc func);
@@ -530,29 +506,6 @@ void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
 void fimgSetFrameBufSize(fimgContext *ctx,
 			unsigned int width, unsigned int height, int flipY);
-
-enum {
-	FIMG_SCISSOR_TEST,
-	FIMG_ALPHA_TEST,
-	FIMG_STENCIL_TEST,
-	FIMG_DEPTH_TEST,
-	FIMG_BLEND,
-	FIMG_DITHER,
-	FIMG_COLOR_LOGIC_OP,
-	FIMG_FRONT_STENCIL_FUNC,
-	FIMG_FRONT_STENCIL_MASK,
-	FIMG_FRONT_STENCIL_REF,
-	FIMG_FRONT_STENCIL_SFAIL,
-	FIMG_FRONT_STENCIL_DPFAIL,
-	FIMG_FRONT_STENCIL_DPPASS,
-	FIMG_BACK_STENCIL_FUNC,
-	FIMG_BACK_STENCIL_MASK,
-	FIMG_BACK_STENCIL_REF,
-	FIMG_BACK_STENCIL_SFAIL,
-	FIMG_BACK_STENCIL_DPFAIL,
-	FIMG_BACK_STENCIL_DPPASS,
-	FIMG_DEPTH_FUNC
-};
 
 /*
  * OS support
