@@ -342,23 +342,23 @@ typedef enum {
 	FGFP_COMBARG_ONE_MINUS_SRC_ALPHA
 } fimgCombArgMod;
 
-void fimgLoadMatrix(fimgContext *ctx, unsigned int matrix, const float *pData);
-void fimgCompatSetTextureFunc(fimgContext *ctx, unsigned unit, fimgTexFunc func);
-void fimgCompatSetColorCombiner(fimgContext *ctx, unsigned unit,
+void fimgLoadMatrix(fimgContext *ctx, uint32_t matrix, const float *pData);
+void fimgCompatSetTextureFunc(fimgContext *ctx, uint32_t unit, fimgTexFunc func);
+void fimgCompatSetColorCombiner(fimgContext *ctx, uint32_t unit,
 							fimgCombFunc func);
-void fimgCompatSetAlphaCombiner(fimgContext *ctx, unsigned unit,
+void fimgCompatSetAlphaCombiner(fimgContext *ctx, uint32_t unit,
 							fimgCombFunc func);
-void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgSrc src);
-void fimgCompatSetColorCombineArgMod(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgMod mod);
-void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgSrc src);
-void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, unsigned unit,
-					unsigned arg, fimgCombArgMod src);
-void fimgCompatSetColorScale(fimgContext *ctx, unsigned unit, float scale);
-void fimgCompatSetAlphaScale(fimgContext *ctx, unsigned unit, float scale);
-void fimgCompatSetEnvColor(fimgContext *ctx, unsigned unit,
+void fimgCompatSetColorCombineArgSrc(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgSrc src);
+void fimgCompatSetColorCombineArgMod(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgMod mod);
+void fimgCompatSetAlphaCombineArgSrc(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgSrc src);
+void fimgCompatSetAlphaCombineArgMod(fimgContext *ctx, uint32_t unit,
+					uint32_t arg, fimgCombArgMod src);
+void fimgCompatSetColorScale(fimgContext *ctx, uint32_t unit, float scale);
+void fimgCompatSetAlphaScale(fimgContext *ctx, uint32_t unit, float scale);
+void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
 					float r, float g, float b, float a);
 void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit);
 
