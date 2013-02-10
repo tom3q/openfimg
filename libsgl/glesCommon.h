@@ -98,9 +98,9 @@ extern pthread_mutex_t glErrorKeyMutex;
 extern pthread_key_t glErrorKey;
 
 #ifdef GLES_ERR_DEBUG
-#define setError(a) ( \
-	LOGD("GLES error %s in %s", #a, __func__), \
-	_setError(a))
+#define setError(error) ( \
+	LOGD("GLES error %s in %s", #error, __func__), \
+	_setError(error))
 static inline void _setError(GLenum error)
 #else
 static inline void setError(GLenum error)
