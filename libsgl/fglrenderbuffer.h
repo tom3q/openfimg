@@ -31,37 +31,64 @@
 
 struct FGLRenderbuffer;
 
+/**
+ * A wrapper class for renderbuffer object binding.
+ * The class wraps an FGLObjectBinding object into a class that can be
+ * embedded as a member in another class.
+ */
 class FGLRenderbufferBinding {
 	FGLObjectBinding<FGLRenderbuffer, FGLRenderbufferBinding> binding;
 
 public:
+	/** Default constructor. */
 	FGLRenderbufferBinding() :
 		binding(this) {};
 
+	/**
+	 * Checks if there is a renderbuffer object bound to this binding.
+	 * @return True if there is a renderbuffer object bound, otherwise false.
+	 */
 	inline bool isBound(void)
 	{
 		return binding.isBound();
 	}
 
+	/**
+	 * Binds a renderbuffer object to this binding.
+	 * @param o Pointer of FGLObject of renderbuffer object to bind.
+	 */
 	inline void bind(FGLObject<FGLRenderbuffer, FGLRenderbufferBinding> *o)
 	{
 		binding.bind(o);
 	}
 
+	/**
+	 * Returns renderbuffer object bound to this binding.
+	 * @return Pointer to bound renderbuffer object.
+	 */
 	inline FGLRenderbuffer *get(void)
 	{
 		return binding.get();
 	}
 };
 
+/** A class representing OpenGL ES renderbuffer object */
 struct FGLRenderbuffer : public FGLFramebufferAttachable {
 	FGLObject<FGLRenderbuffer, FGLRenderbufferBinding> object;
 	unsigned int name;
 
+	/**
+	 * Creates a renderbuffer object with given name.
+	 * @param name Name of the object.
+	 */
 	FGLRenderbuffer(unsigned int name) :
 		object(this),
 		name(name) {}
 
+	/**
+	 * Class destructor.
+	 * Deletes the backing surface and then destroys the object.
+	 */
 	virtual ~FGLRenderbuffer()
 	{
 		delete surface;

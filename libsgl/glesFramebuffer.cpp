@@ -64,6 +64,13 @@ void fglSetDepthStencilBuffer(FGLContext *gl, FGLSurface *zbuf,
  * Renderbuffers
  */
 
+/**
+ * Sets format information of framebuffer attachable object.
+ * Determines attachment mask and pixel format based on GLES format.
+ * @param fba Framebuffer attachable object to configure.
+ * @param format Requested format.
+ * @return Zero on success, negative on unsupported format.
+ */
 static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 								GLenum format)
 {
@@ -119,6 +126,7 @@ static int fglSetRenderbufferFormatInfo(FGLFramebufferAttachable *fba,
 	return 0;
 }
 
+/** Renderbuffer object namespace manager. */
 FGLObjectManager<FGLRenderbuffer, FGL_MAX_RENDERBUFFER_OBJECTS> fglRenderbufferObjects;
 
 GL_API void GL_APIENTRY glGenRenderbuffersOES (GLsizei n, GLuint* renderbuffers)
@@ -358,6 +366,7 @@ GL_API void GL_APIENTRY glGetRenderbufferParameterivOES (GLenum target, GLenum p
  * Framebuffer Objects
  */
 
+/** Framebuffer object namespace manager. */
 FGLObjectManager<FGLFramebuffer, FGL_MAX_FRAMEBUFFER_OBJECTS> fglFramebufferObjects;
 
 GL_API void GL_APIENTRY glGenFramebuffersOES (GLsizei n, GLuint* framebuffers)

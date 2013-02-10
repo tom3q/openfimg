@@ -25,10 +25,10 @@
 #include "fglsurface.h"
 #include "glesFramebuffer.h"
 
-/*
- * Render surface base class
+/**
+ * Render surface base class.
+ * Render surfaces are used as framebuffers for rendering operations.
  */
-
 class FGLRenderSurface {
 	enum {
 		TERMINATED	= 0x80000000,
@@ -39,18 +39,34 @@ class FGLRenderSurface {
 	uint32_t	flags;
 
 protected:
+	/** Surface backing color buffer. */
 	FGLSurface	*color;
+	/** Surface backing depth buffer. */
 	FGLSurface	*depth;
+	/** Format of color buffer. */
 	uint32_t	colorFormat;
+	/** Format of depth buffer. */
 	uint32_t	depthFormat;
+	/** Render surface width. */
 	uint32_t	width;
+	/** Render surface height. */
 	uint32_t	height;
 
 public:
+	/** EGL display owning this render surface. */
 	EGLDisplay	dpy;
+	/** EGL configuration used by this render surface. */
 	uint32_t	config;
+	/** EGL context bound currently to this render surface. */
 	EGLContext	ctx;
 
+	/**
+	 * Constructs render surface base.
+	 * @param dpy EGL display owning the surface.
+	 * @param config EGL configuration used for this surface.
+	 * @param colorFormat Color format.
+	 * @param depthFormat Depth format.
+	 */
 	FGLRenderSurface(EGLDisplay dpy, uint32_t config,
 				uint32_t colorFormat, uint32_t depthFormat) :
 		magic(MAGIC),
@@ -63,6 +79,10 @@ public:
 		config(config),
 		ctx(0) {}
 
+	/**
+	 * Render surface destructor.
+	 * Also destroys backing surfaces.
+	 */
 	virtual ~FGLRenderSurface()
 	{
 		magic = 0;
@@ -70,6 +90,11 @@ public:
 		delete color;
 	}
 
+	/**
+	 * Binds render surface to given rendering context.
+	 * @param gl Rendering context.
+	 * @return EGL_TRUE on success, EGL_FALSE on failure.
+	 */
 	virtual bool bindDrawSurface(FGLContext *gl)
 	{
 		fglSetColorBuffer(gl, color, width, height, colorFormat);
@@ -78,35 +103,81 @@ public:
 		return EGL_TRUE;
 	}
 
+	/**
+	 * Gets horizontal resolution of the surface.
+	 * @return Horizontal resolution (as specified by EGL specification).
+	 */
 	virtual EGLint getHorizontalResolution() const
 	{
 		return (0 * EGL_DISPLAY_SCALING) * (1.0f / 25.4f);
 	}
 
+	/**
+	 * Gets vertical resolution of the surface.
+	 * @return Vertical resolution (as specified by EGL specification).
+	 */
 	virtual EGLint getVerticalResolution() const
 	{
 		return (0 * EGL_DISPLAY_SCALING) * (1.0f / 25.4f);
 	}
 
+	/**
+	 * Gets refresh rate of the surface.
+	 * @return Refresh rate (as specified by EGL specification).
+	 */
 	virtual EGLint getRefreshRate() const
 	{
 		return (60 * EGL_DISPLAY_SCALING);
 	}
 
+	/**
+	 * Sets swap rectangle of the surface.
+	 * @param l Left-most X coordinate of swap rectangle.
+	 * @param t Top-most Y coordinate of swap rectangle.
+	 * @param w Width of swap rectangle.
+	 * @param h Height of swap rectangle.
+	 * @return EGL_TRUE on success, EGL_FALSE on failure.
+	 */
 	virtual bool setSwapRectangle(EGLint l,
 						EGLint t, EGLint w, EGLint h)
 	{
 		return EGL_FALSE;
 	}
 
+	/**
+	 * Connects the surface to backing storage.
+	 * @return EGL_TRUE on success, EGL_FALSE on failure.
+	 */
 	virtual bool connect() { return EGL_TRUE; }
+	/** Disconnects the surface from backing storage. */
 	virtual void disconnect() {}
+	/**
+	 * Determines buffer swap behavior of the surface.
+	 * @return Swap behavior value as specified by EGL specification.
+	 */
 	virtual EGLint getSwapBehavior() const  { return EGL_BUFFER_PRESERVED; }
+	/**
+	 * Posts current framebuffer for displaying and gets next framebuffer
+	 * ready for rendering.
+	 * @return EGL_TRUE on success, EGL_FALSE on failure.
+	 */
 	virtual bool swapBuffers()  { return EGL_FALSE; }
+	/**
+	 * Gets native buffer backing this surface.
+	 * @return Handle to native buffer.
+	 */
 	virtual EGLClientBuffer getRenderBuffer() const { return 0; }
 
+	/**
+	 * Checks initialization status of the surface.
+	 * @return True if the surface is initialized, otherwise false.
+	 */
 	virtual bool initCheck() const = 0;
 
+	/**
+	 * Checks validity of the surface.
+	 * @return True if the surface is valid, otherwise false.
+	 */
 	bool isValid() const
 	{
 		if (magic != MAGIC)
@@ -114,19 +185,44 @@ public:
 		return magic == MAGIC;
 	}
 
+	/**
+	 * Marks the surface for termination.
+	 * The surface will be destroyed when no context is bound to it.
+	 */
 	void terminate()
 	{
 		flags |= TERMINATED;
 	}
 
+	/**
+	 * Checks if the surface is marked for termination.
+	 * @return True if the surface is marked for termination,
+	 * otherwise false.
+	 */
 	bool isTerminated() const
 	{
 		return flags & TERMINATED;
 	}
 
+	/**
+	 * Gets depth format of the surface.
+	 * @return Depth format.
+	 */
 	uint32_t getDepthFormat() const { return depthFormat; }
+	/**
+	 * Gets color format of the surface.
+	 * @return Color format.
+	 */
 	uint32_t getColorFormat() const { return colorFormat; }
+	/**
+	 * Gets width of the surface.
+	 * @return Width.
+	 */
 	uint32_t getWidth() const { return width; }
+	/**
+	 * Gets height of the surface.
+	 * @return Height.
+	 */
 	uint32_t getHeight() const { return height; }
 };
 

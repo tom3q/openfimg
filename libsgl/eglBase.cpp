@@ -51,15 +51,22 @@
 #include "fglsurface.h"
 #include "glesFramebuffer.h"
 
+/** Major version of implemented EGL specification. */
 #define FGL_EGL_MAJOR		1
+/** Minor version of implemented EGL specification. */
 #define FGL_EGL_MINOR		4
 
+/** Vendor string of EGL implementation. */
 static const char *const gVendorString     = "OpenFIMG";
+/** Version string of EGL implementation. */
 static const char *const gVersionString    = "1.4 pre-alpha";
+/** Supported client rendering APIs. */
 static const char *const gClientApisString = "OpenGL_ES";
+/** Supported EGL extensions. */
 static const char *const gExtensionsString = "" PLATFORM_EXTENSIONS_STRING;
 
 #ifndef PLATFORM_HAS_FAST_TLS
+/** TLS key for thread-specific EGL context pointer. */
 pthread_key_t eglContextKey = -1;
 #endif
 
@@ -67,10 +74,12 @@ pthread_key_t eglContextKey = -1;
  * Display
  */
 
+/** A class representing an EGL display. */
 struct FGLDisplay {
 	EGLBoolean initialized;
 	pthread_mutex_t lock;
 
+	/** Default constructor. */
 	FGLDisplay() :
 		initialized(0)
 	{
@@ -78,8 +87,14 @@ struct FGLDisplay {
 	}
 };
 
+/** Default EGL display. */
 static FGLDisplay display;
 
+/**
+ * Checks whether given display has been initialized.
+ * @param dpy EGL display.
+ * @return EGL_TRUE if the display has been initialized, EGL_FALSE otherwise.
+ */
 static inline EGLBoolean fglIsDisplayInitialized(EGLDisplay dpy)
 {
 	EGLBoolean ret;
@@ -91,7 +106,9 @@ static inline EGLBoolean fglIsDisplayInitialized(EGLDisplay dpy)
 	return ret;
 }
 
+/** Mutex protecting EGL error history TLS key. */
 static pthread_mutex_t eglErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
+/** TLS key for thread-specific EGL error history pointer. */
 static pthread_key_t eglErrorKey = (pthread_key_t)-1;
 
 /*
@@ -108,6 +125,10 @@ EGLAPI EGLint EGLAPIENTRY eglGetError(void)
 	return error;
 }
 
+/**
+ * Sets EGL error code.
+ * @param error Error code to set.
+ */
 void fglEGLSetError(EGLint error)
 {
 	if(unlikely(eglErrorKey == (pthread_key_t)-1)) {
@@ -219,6 +240,7 @@ EGLAPI const char *EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name)
  * Configurations
  */
 
+/** A helper class used for comparing EGL config attributes */
 struct FGLConfigMatcher {
 	GLint key;
 	bool (*match)(GLint reqValue, GLint confValue);
@@ -250,6 +272,10 @@ struct FGLConfigMatcher {
 #define FGL_MAX_VIEWPORT_PIXELS \
 				(FGL_MAX_VIEWPORT_DIMS*FGL_MAX_VIEWPORT_DIMS)
 
+/**
+ * Attributes common for all EGL configurations.
+ * The array must be sorted by attribute keys!
+ */
 static const FGLConfigPair baseConfigAttributes[] = {
 	{ EGL_CONFIG_CAVEAT,              EGL_NONE                          },
 	{ EGL_LEVEL,                      0                                 },
@@ -279,6 +305,10 @@ static const FGLConfigPair baseConfigAttributes[] = {
 
 /* Configs are platform specific. See egl[Platform].cpp. */
 
+/**
+ * Comparison policies for particular EGL configuration attributes.
+ * The array must be sorted by attribute keys!
+ */
 static const FGLConfigMatcher gConfigManagement[] = {
 	{ EGL_BUFFER_SIZE,                FGLConfigMatcher::atLeast },
 	{ EGL_ALPHA_SIZE,                 FGLConfigMatcher::atLeast },
@@ -314,6 +344,10 @@ static const FGLConfigMatcher gConfigManagement[] = {
 	{ EGL_CONFORMANT,                 FGLConfigMatcher::mask    }
 };
 
+/**
+ * Default attribute values for EGL configurations.
+ * The array must be sorted by attribute keys!
+ */
 static const FGLConfigPair defaultConfigAttributes[] = {
 /*
  * attributes that are not specified are simply ignored, if a particular
@@ -326,6 +360,13 @@ static const FGLConfigPair defaultConfigAttributes[] = {
  * Internal configuration management
  */
 
+/**
+ * Gets value of requested attribute of requested EGL config.
+ * @param config EGL config index.
+ * @param attribute Requested attribute.
+ * @param value Pointer where to store the value.
+ * @return True if the value could be found, otherwise false.
+ */
 static bool fglGetConfigAttrib(uint32_t config, EGLint attribute, EGLint *value)
 {
 	size_t numConfigs = gPlatformConfigsNum;
@@ -360,6 +401,13 @@ static bool fglGetConfigAttrib(uint32_t config, EGLint attribute, EGLint *value)
 	return false;
 }
 
+/**
+ * Gets information about pixel and depth format of given EGL configuration.
+ * @param config EGL configuration.
+ * @param pixelFormat Pointer pointing where to store the pixel format.
+ * @param depthFormat Pointer pointing where to store the depth format.
+ * @return True on success, false on error.
+ */
 static bool fglGetConfigFormatInfo(uint32_t config,
 				uint32_t *pixelFormat, uint32_t *depthFormat)
 {
@@ -395,6 +443,13 @@ static bool fglGetConfigFormatInfo(uint32_t config,
 	return true;
 }
 
+/**
+ * Checks if given EGL configuration and pixel format match.
+ * @param config EGL configuration.
+ * @param fmt Pixel format.
+ * @return True if the configuration and pixel format match, false if not
+ * or in case of error.
+ */
 bool fglEGLValidatePixelFormat(uint32_t config, uint32_t fmt)
 {
 	EGLint bpp, red, green, blue, alpha;
@@ -433,6 +488,13 @@ bool fglEGLValidatePixelFormat(uint32_t config, uint32_t fmt)
 	return true;
 }
 
+/**
+ * Checks if given attribute of given EGL configuration matches given value.
+ * @param i EGL configuration index.
+ * @param attr Attribute to check.
+ * @param val Value to check.
+ * @return Non-zero if matches, zero if not.
+ */
 static int fglIsAttributeMatching(int i, EGLint attr, EGLint val)
 {
 	/* look for the attribute in all of our configs */
@@ -621,8 +683,18 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy,
  * EGL PBuffer surface
  */
 
+/** A class representing a render surface used for off-screen rendering. */
 class FGLPbufferSurface : public FGLRenderSurface {
 public:
+	/**
+	 * Class constructor.
+	 * @param dpy EGL display to which the surface shall belong.
+	 * @param config EGL configuration to use.
+	 * @param colorFormat Color format to use.
+	 * @param depthFormat Depth format to use.
+	 * @param width Width of the surface to create in pixels.
+	 * @param height Height of the surface to create in pixels.
+	 */
 	FGLPbufferSurface(EGLDisplay dpy, uint32_t config,
 				uint32_t colorFormat, uint32_t depthFormat,
 				uint32_t width, uint32_t height) :
@@ -1014,6 +1086,12 @@ EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx)
 	return EGL_TRUE;
 }
 
+/**
+ * Unbinds context from rendering surface and client API.
+ * Deletes the surface if it was marked for termination before.
+ * Destroys the context if it was marked for termination before.
+ * @param c Context to unbind.
+ */
 static void fglUnbindContext(FGLContext *c)
 {
 	/* Make sure all the work finished */
@@ -1037,6 +1115,13 @@ static void fglUnbindContext(FGLContext *c)
 		fglDestroyContext(c);
 }
 
+/**
+ * Binds context with rendering surface and client API.
+ * Unbinds current context if present.
+ * @param gl Context to bind.
+ * @param d Rendering surface to bind.
+ * @return EGL_TRUE on success, EGL_FALSE on failure.
+ */
 static EGLBoolean fglMakeCurrent(FGLContext *gl, FGLRenderSurface *d)
 {
 	FGLContext *current = getGlThreadSpecific();
@@ -1268,6 +1353,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglCopyBuffers(EGLDisplay dpy, EGLSurface surface,
 
 #define EGLFunc		__eglMustCastToProperFunctionPointerType
 
+/** List of functions implementing GLES extensions */
 static const FGLExtensionMap gExtensionMap[] = {
 	{ "glDrawTexsOES",
 		(EGLFunc)&glDrawTexsOES },

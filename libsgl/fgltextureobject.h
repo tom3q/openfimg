@@ -30,39 +30,76 @@
 struct FGLTexture;
 struct FGLTextureState;
 
+/**
+ * An FGLObject that points to an FGLTexture object and can be bound
+ * to an FGLObjectBinding of an FGLTextureState object.
+ */
 typedef FGLObject<FGLTexture, FGLTextureState> FGLTextureObject;
+/**
+ * An FGLObjectBinding that points to a FGLTextureState object to which
+ * an FGLObject of an FGLTexture object can be bound.
+ */
 typedef FGLObjectBinding<FGLTexture, FGLTextureState> FGLTextureObjectBinding;
 
+/** A class representing OpenGL ES texture object. */
 struct FGLTexture : public FGLFramebufferAttachable {
+	/** FGLObject that can be bound to FGLTextureState */
 	FGLTextureObject object;
 
+	/** Name of the texture object. */
 	unsigned int	name;
-	/* Memory surface */
+	/** Memory surface */
 	using FGLFramebufferAttachable::surface;
-	/* GL state */
+	/** Texture width */
 	using FGLFramebufferAttachable::width;
+	/** Texture height */
 	using FGLFramebufferAttachable::height;
+	/** Flag indicating that the texture is compressed. */
 	GLboolean	compressed;
+	/** Highest mipmap level supported by this texture. */
 	GLint		maxLevel;
+	/** OpenGL ES image format. */
 	using FGLFramebufferAttachable::format;
+	/** OpenGL ES image type. */
 	GLenum		type;
+	/** Minification filter. */
 	GLenum		minFilter;
+	/** Magnification filter. */
 	GLenum		magFilter;
+	/** S wrap mode. */
 	GLenum		sWrap;
+	/** T wrap mode. */
 	GLenum		tWrap;
+	/** Flag indicating whether to automatically generate mipmaps. */
 	GLboolean	genMipmap;
+	/** Texture crop rectangle. Used for glDrawTex*. */
 	GLint		cropRect[4];
+	/** The eglImage backing the texture. */
 	FGLImage	*eglImage;
+	/** Reciprocal of #width. Used for glDrawTex*. */
 	GLfloat		invWidth;
+	/** Reciprocal of #height. Used for glDrawTex*. */
 	GLfloat		invHeight;
+	/** Flag indicating that #invWidth and #invHeight are valid. */
 	bool		invReady;
+	/** OpenGL ES texture target. */
 	GLenum		target;
-	/* HW state */
+	/** libfimg texture object backing this texture. */
 	fimgTexture	*fimg;
+	/** Flag indicating that this texture needs format conversion. */
 	bool		convert;
+	/** Flag indicating that this texture is valid. */
 	bool		valid;
+	/**
+	 * Flag indicating that this texture has been modified since
+	 * last rendering using it.
+	 */
 	bool		dirty;
 
+	/**
+	 * Creates texture object.
+	 * @param name Texture object name.
+	 */
 	FGLTexture(unsigned int name = 0) :
 		object(this),
 		name(name),
@@ -87,6 +124,12 @@ struct FGLTexture : public FGLFramebufferAttachable {
 		valid = true;
 	}
 
+	/**
+	 * Destroys texture object.
+	 * If eglImage is backing the texture it is disconnected, otherwise
+	 * the backing surface is deleted. The backing libfimg texture object
+	 * is also destroyed.
+	 */
 	virtual ~FGLTexture()
 	{
 		if(!isValid())
@@ -100,11 +143,20 @@ struct FGLTexture : public FGLFramebufferAttachable {
 		fimgDestroyTexture(fimg);
 	}
 
+	/**
+	 * Checks whether the texture is valid.
+	 * @return True if the texture is valid, otherwise false.
+	 */
 	inline bool isValid(void)
 	{
 		return valid;
 	}
 
+	/**
+	 * Checks whether the texture is complete.
+	 * A texture is considered complete if it has backing surface.
+	 * @return True if the texture is complete, otherwise false.
+	 */
 	inline bool isComplete(void)
 	{
 		return (surface != 0);

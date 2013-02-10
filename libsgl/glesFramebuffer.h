@@ -22,10 +22,26 @@
 #ifndef _GLESFRAMEBUFFER_H_
 #define _GLESFRAMEBUFFER_H_
 
+/**
+ * Sets color buffer of default GLES framebuffer.
+ * @param gl Rendering context.
+ * @param cbuf Backing surface.
+ * @param width Suface width.
+ * @param height Surface height.
+ * @param format Surface color format.
+ */
 extern void fglSetColorBuffer(FGLContext *gl, FGLSurface *cbuf,
 				unsigned int width, unsigned int height,
 				unsigned int format);
 
+/**
+ * Sets depth/stencil buffer of default GLES framebuffer.
+ * @param gl Rendering context.
+ * @param zbuf Backing surface.
+ * @param width Suface width.
+ * @param height Surface height.
+ * @param format Surface depth and stencil format.
+ */
 extern void fglSetDepthStencilBuffer(FGLContext *gl, FGLSurface *zbuf,
 				unsigned int width, unsigned int height,
 				unsigned int format);

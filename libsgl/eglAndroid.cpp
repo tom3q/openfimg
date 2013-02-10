@@ -71,6 +71,8 @@ using namespace android;
  */
 
 /* RGB 565 configs */
+
+/** RGB565, no depth, no stencil configuration */
 static const FGLConfigPair configAttributes0[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -82,6 +84,7 @@ static const FGLConfigPair configAttributes0[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
 };
 
+/** RGB565, no depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes1[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -93,6 +96,7 @@ static const FGLConfigPair configAttributes1[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
 };
 
+/** RGB565, 24-bit depth, no stencil configuration */
 static const FGLConfigPair configAttributes2[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -104,6 +108,7 @@ static const FGLConfigPair configAttributes2[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGB_565 },
 };
 
+/** RGB565, 24-bit depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes3[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -116,6 +121,8 @@ static const FGLConfigPair configAttributes3[] = {
 };
 
 /* XBGR 888 configs */
+
+/** XBGR8888, no depth, no stencil configuration */
 static const FGLConfigPair configAttributes4[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -127,6 +134,7 @@ static const FGLConfigPair configAttributes4[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
 };
 
+/** XBGR8888, no depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes5[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -138,6 +146,7 @@ static const FGLConfigPair configAttributes5[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
 };
 
+/** XBGR8888, 24-bit depth, no stencil configuration */
 static const FGLConfigPair configAttributes6[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -149,6 +158,7 @@ static const FGLConfigPair configAttributes6[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBX_8888 },
 };
 
+/** XBGR8888, 24-bit depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes7[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -161,6 +171,8 @@ static const FGLConfigPair configAttributes7[] = {
 };
 
 /* ABGR 8888 configs */
+
+/** ABGR8888, no depth, no stencil configuration */
 static const FGLConfigPair configAttributes8[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -172,6 +184,7 @@ static const FGLConfigPair configAttributes8[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
 };
 
+/** ABGR8888, no depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes9[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -183,6 +196,7 @@ static const FGLConfigPair configAttributes9[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
 };
 
+/** ABGR8888, 24-bit depth, no stencil configuration */
 static const FGLConfigPair configAttributes10[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -194,6 +208,7 @@ static const FGLConfigPair configAttributes10[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_RGBA_8888 },
 };
 
+/** ABGR8888, 24-bit depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes11[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -206,6 +221,8 @@ static const FGLConfigPair configAttributes11[] = {
 };
 
 /* ARGB 8888 configs */
+
+/** ARGB8888, no depth, no stencil configuration */
 static const FGLConfigPair configAttributes12[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -217,6 +234,7 @@ static const FGLConfigPair configAttributes12[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
 };
 
+/** ARGB8888, no depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes13[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -228,6 +246,7 @@ static const FGLConfigPair configAttributes13[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
 };
 
+/** ARGB8888, 24-bit depth, no stencil configuration */
 static const FGLConfigPair configAttributes14[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -239,6 +258,7 @@ static const FGLConfigPair configAttributes14[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
 };
 
+/** ARGB8888, 24-bit depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes15[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -250,7 +270,10 @@ static const FGLConfigPair configAttributes15[] = {
 	{ EGL_NATIVE_VISUAL_ID, GGL_PIXEL_FORMAT_BGRA_8888 },
 };
 
-/* Exported to platform-independent EGL code */
+/**
+ * EGL configurations supported on Android.
+ * Exported to platform-independent EGL code.
+ */
 const FGLConfigs gPlatformConfigs[] = {
 	{ configAttributes0, NELEM(configAttributes0)   },
 	{ configAttributes1, NELEM(configAttributes1)   },
@@ -270,7 +293,7 @@ const FGLConfigs gPlatformConfigs[] = {
 	{ configAttributes15, NELEM(configAttributes15) },
 };
 
-/* Exported to platform-independent EGL code */
+/** Number of exported EGL configurations */
 const int gPlatformConfigsNum = NELEM(gPlatformConfigs);
 
 /*
@@ -280,6 +303,10 @@ const int gPlatformConfigsNum = NELEM(gPlatformConfigs);
 
 #define FB_DEVICE_NAME	"/dev/graphics/fb0"
 
+/**
+ * Reads framebuffer base address from framebuffer device.
+ * @return Physical address of framebuffer.
+ */
 static inline unsigned long getFramebufferAddress(void)
 {
 	static unsigned long address = 0;
@@ -306,6 +333,11 @@ static inline unsigned long getFramebufferAddress(void)
 	return address;
 }
 
+/**
+ * Returns physical address of Android native buffer.
+ * @param buffer Buffer to obtain physical address of.
+ * @return Physical address of given buffer.
+ */
 static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer)
 {
 	const private_handle_t *hnd = (const private_handle_t *)buffer->handle;
@@ -324,10 +356,11 @@ static unsigned long fglGetBufferPhysicalAddress(android_native_buffer_t *buffer
 	return 0;
 }
 
-/*
- * Android image surface
+/**
+ * Android image surface.
+ * Implements FGLSurface interface on top of an Android native buffer.
+ * Used to provide access to Android native buffers inside EGL and GLES.
  */
-
 class FGLImageSurface : public FGLSurface {
 	const gralloc_module_t	*module;
 	EGLImageKHR		image;
@@ -395,8 +428,10 @@ public:
 	virtual bool isValid(void) { return image != 0; };
 };
 
-/*
- * Android native window render surface
+/**
+ * Android native window render surface.
+ * Provides framebuffer for rendering operations received from Android graphics
+ * stack.
  */
 class FGLAndroidWindowSurface : public FGLRenderSurface {
 	class Rect {
@@ -613,6 +648,15 @@ class FGLAndroidWindowSurface : public FGLRenderSurface {
 	}
 
 public:
+	/**
+	 * Class constructor.
+	 * Constructs a window surface from Android native window.
+	 * @param dpy EGL display to which the surface shall belong.
+	 * @param config Index of EGL configuration to use.
+	 * @param colorFormat Requested color format. (See ::FGLPixelFormatEnum)
+	 * @param depthFormat Requested depth format.
+	 * @param window Android native window.
+	 */
 	FGLAndroidWindowSurface(EGLDisplay dpy, uint32_t config,
 				uint32_t colorFormat, uint32_t depthFormat,
 				android_native_window_t *window) :
@@ -639,6 +683,11 @@ public:
 		bytesPerPixel = pix->pixelSize;
 	}
 
+	/**
+	 * Class destructor.
+	 * Destroys the surface and frees any references inside Android graphics
+	 * stack.
+	 */
 	~FGLAndroidWindowSurface()
 	{
 		if (buffer)
@@ -917,6 +966,13 @@ public:
  * Platform glue
  */
 
+/**
+ * Finds internal pixel format corresponding to Android pixel format.
+ * @param format Android pixel format.
+ * @param fglFormat Pointer to variable where internal pixel format shall
+ * be stored.
+ * @return True if corresponding format was found, otherwise false.
+ */
 static bool fglNativeToFGLPixelFormat(int format, uint32_t *fglFormat)
 {
 	uint32_t fmt;
@@ -942,6 +998,16 @@ static bool fglNativeToFGLPixelFormat(int format, uint32_t *fglFormat)
 	return true;
 }
 
+/**
+ * Creates native window surface based on user parameters.
+ * This function is a glue between generic and platform-specific EGL parts.
+ * @param dpy EGL display to which the surface shall belong.
+ * @param config EGL configuration which shall be used.
+ * @param pixelFormat Preferred pixel format.
+ * @param depthFormat Requested depth format.
+ * @param window EGL native window backing the surface.
+ * @return Created render surface or NULL on error.
+ */
 FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 		uint32_t config, uint32_t pixelFormat, uint32_t depthFormat,
 		EGLNativeWindowType window)
@@ -1011,7 +1077,16 @@ EGLClientBuffer eglGetRenderBufferANDROID(EGLDisplay dpy, EGLSurface draw)
 	return d->getRenderBuffer();
 }
 
+/**
+ * A class representing an image backed by an Android native buffer.
+ * Used to import native buffers to GLES.
+ */
 struct FGLAndroidImage : FGLImage {
+	/**
+	 * Class constructor.
+	 * @param buf Android native buffer.
+	 * @param fmt Pixel format.
+	 */
 	FGLAndroidImage(void *buf, uint32_t fmt)
 	{
 		pixelFormat	= fmt;
@@ -1027,6 +1102,7 @@ struct FGLAndroidImage : FGLImage {
 		surface = new FGLImageSurface(native_buffer);
 	}
 
+	/** Class destructor. */
 	virtual ~FGLAndroidImage()
 	{
 		android_native_buffer_t *native_buffer =
@@ -1126,6 +1202,7 @@ EGLBoolean eglDestroyImageKHR(EGLDisplay dpy, EGLImageKHR img)
 
 #define EGLFunc	__eglMustCastToProperFunctionPointerType
 
+/** List of platform-specific EGL functions */
 const FGLExtensionMap gPlatformExtensionMap[] = {
 	{ "eglCreateImageKHR",
 		(EGLFunc)&eglCreateImageKHR },

@@ -25,35 +25,68 @@
 #include <GLES/gl.h>
 #include <cmath>
 
+/** 4-dimensional floating point vector. */
 typedef GLfloat FGLvec4f[4];
+/** 3-dimensional floating point vector. */
 typedef GLfloat FGLvec3f[3];
+/** 2-dimensional floating point vector. */
 typedef GLfloat FGLvec2f[2];
 
+/**
+ * Converts unsigned byte value into clamped floating point value.
+ * @param c Unsigned byte value to convert.
+ * @return Resulting clamped floating point value.
+ */
 static inline GLclampf clampfFromUByte(GLubyte c)
 {
 	return (GLclampf)c / ((1 << 8) - 1);
 }
 
+/**
+ * Converts signed byte value into clamped floating point value.
+ * @param c Signed byte value to convert.
+ * @return Resulting clamped floating point value.
+ */
 static inline GLclampf clampfFromByte(GLbyte c)
 {
 	return (GLclampf)(2*c + 1) / ((1 << 8) - 1);
 }
 
+/**
+ * Converts unsigned short value into clamped floating point value.
+ * @param c Unsigned short value to convert.
+ * @return Resulting clamped floating point value.
+ */
 static inline GLclampf clampfFromUShort(GLushort c)
 {
 	return (GLclampf)c / ((1 << 16) - 1);
 }
 
+/**
+ * Converts signed short value into clamped floating point value.
+ * @param c Signed short value to convert.
+ * @return Resulting clamped floating point value.
+ */
 static inline GLclampf clampfFromShort(GLshort c)
 {
 	return (GLclampf)(2*c + 1) / ((1 << 16) - 1);
 }
 
+/**
+ * Converts integer value into clamped floating point value.
+ * @param c Integer value to convert.
+ * @return Resulting clamped floating point value.
+ */
 static inline GLclampf clampfFromInt(GLint c)
 {
 	return (GLclampf)(2*c + 1) / (0xffffffff);
 }
 
+/**
+ * Converts fixed point value into floating point value.
+ * @param c Fixed point value to convert.
+ * @return Resulting floating point value.
+ */
 static inline GLfloat floatFromFixed(GLfixed c)
 {
 	const double div = 1.0f / 65536.0f;
@@ -61,6 +94,11 @@ static inline GLfloat floatFromFixed(GLfixed c)
 	return (float)(div * tmp);
 }
 
+/**
+ * Clamps floating point value into [0.0; 1.0] range.
+ * @param f Floating point value to clamp.
+ * @return Clamped value.
+ */
 static inline GLclampf clampFloat(GLclampf f)
 {
 	if(f < 0)
@@ -72,6 +110,11 @@ static inline GLclampf clampFloat(GLclampf f)
 	return f;
 }
 
+/**
+ * Clamps fixed point value into [0.0; 1.0] range.
+ * @param x Fixed point value to clamp.
+ * @return Clamped value.
+ */
 static inline GLclampx clampFixed(GLclampx x)
 {
 	if(x < 0)
@@ -83,26 +126,51 @@ static inline GLclampx clampFixed(GLclampx x)
 	return x;
 }
 
+/**
+ * Converts clamped floating point value into unsigned byte value.
+ * @param c Clamped floating point value.
+ * @return Resulting unsigned byte value.
+ */
 static inline GLubyte ubyteFromClampf(GLclampf c)
 {
 	return c * ((1 << 8) - 1);
 }
 
+/**
+ * Converts clamped fixed point value into unsigned byte value.
+ * @param c Clamped fixed point value.
+ * @return Resulting unsigned byte value.
+ */
 static inline GLubyte ubyteFromClampx(GLclampx c)
 {
 	return ubyteFromClampf(floatFromFixed(c));
 }
 
+/**
+ * Converts floating point value into integer value.
+ * @param f Floating point value.
+ * @return Resulting integer value.
+ */
 static inline GLint intFromFloat(GLfloat f)
 {
 	return (GLint)f;
 }
 
+/**
+ * Converts fixed point value into integer value.
+ * @param x Fixed point value.
+ * @return Resulting integer value.
+ */
 static inline GLint intFromFixed(GLfixed x)
 {
 	return x >> 16;
 }
 
+/**
+ * Converts clamped floating point value into integer value.
+ * @param c Clamped floating point value.
+ * @return Resulting integer value.
+ */
 static inline GLint intFromClampf(GLclampf c)
 {
 	if (c < 0.5f)
@@ -110,46 +178,91 @@ static inline GLint intFromClampf(GLclampf c)
 	return 1;
 }
 
+/**
+ * Converts clamped fixed point value into integer value.
+ * @param c Clamped fixed point value.
+ * @return Resulting integer value.
+ */
 static inline GLint intFromClampx(GLclampx c)
 {
 	return intFromClampf(floatFromFixed(c));
 }
 
+/**
+ * Converts floating point value into fixed point value.
+ * @param f Floating point value.
+ * @return Resulting fixed point value.
+ */
 static inline GLfixed fixedFromFloat(GLfloat f)
 {
 	return f * (1 << 16);
 }
 
+/**
+ * Converts integer value into fixed point value.
+ * @param i Floating point value.
+ * @return Resulting fixed point value.
+ */
 static inline GLfixed fixedFromInt(GLint i)
 {
 	return i << 16;
 }
 
+/**
+ * Converts boolean value into fixed point value.
+ * @param b Boolean value.
+ * @return Resulting fixed point value.
+ */
 static inline GLfixed fixedFromBool(GLboolean b)
 {
 	return (!!b) << 16;
 }
 
+/**
+ * Converts floating point value into boolean value.
+ * @param f Floating point value.
+ * @return Resulting boolean value.
+ */
 static inline GLboolean boolFromFloat(GLfloat f)
 {
 	return f != 0;
 }
 
+/**
+ * Converts fixed point value into boolean value.
+ * @param x Fixed point value.
+ * @return Resulting boolean value.
+ */
 static inline GLboolean boolFromFixed(GLfixed x)
 {
 	return !!x;
 }
 
+/**
+ * Converts integer value into boolean value.
+ * @param i Integer value.
+ * @return Resulting boolean value.
+ */
 static inline GLboolean boolFromInt(GLint i)
 {
 	return !!i;
 }
 
+/**
+ * Converts normalized floating point value into integer value.
+ * @param f Normalized floating point value.
+ * @return Resulting integer value.
+ */
 static inline GLint intFromNormalized(GLfloat f)
 {
         return (double)f*2147483648.0f - 0.5f*f - 0.5f;
 }
 
+/**
+ * Rounds floating point value to nearest integer value.
+ * @param f Floating point value.
+ * @return Nearest integer value.
+ */
 static inline GLint round(GLfloat f)
 {
 	return (f > 0.0f) ? floor(f + 0.5f) : ceil(f - 0.5f);

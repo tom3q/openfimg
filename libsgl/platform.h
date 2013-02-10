@@ -74,11 +74,19 @@ static inline FGLContext* getGlThreadSpecific()
 
 extern pthread_key_t eglContextKey;
 
+/**
+ * Gets current rendering context of the thread.
+ * @return Pointer to current context or NULL if none.
+ */
 static inline FGLContext* getGlThreadSpecific()
 {
 	return (FGLContext *)pthread_getspecific(eglContextKey);
 }
 
+/**
+ * Sets current rendering context of the thread.
+ * @param value Rendering context to set as current.
+ */
 static inline void setGlThreadSpecific(FGLContext* value)
 {
 	pthread_setspecific(eglContextKey, value);
@@ -89,20 +97,52 @@ static inline void setGlThreadSpecific(FGLContext* value)
 
 #include <cstdio>
 
+/** Log tag used for errors. */
 #define LOG_ERR		"E"
+/** Log tag used for warnings. */
 #define LOG_WARN	"W"
+/** Log tag used for information. */
 #define LOG_INFO	"I"
+/** Log tag used for debugging messages. */
 #define LOG_DBG		"D"
 
+/**
+ * Helper macro for generic log printing.
+ * @param lvl Message level (log tag).
+ * @param file File that emits the message.
+ * @param line Line which emits the message.
+ * @param fmt Message format (as in printf).
+ * @param ... Format arguments.
+ */
 #define pr_log(lvl, file, line, fmt, ...)	\
 	fprintf(stderr, "[libsgl:%s] %s: %d: " fmt "\n", lvl, file, line, ##__VA_ARGS__)
 
+/**
+ * Prints error message.
+ * @param fmt Message format (as in printf).
+ * @param ... Format arguments.
+ */
 #define LOGE(fmt, ...)	\
 		pr_log(LOG_ERR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+/**
+ * Prints warning message.
+ * @param fmt Message format (as in printf).
+ * @param ... Format arguments.
+ */
 #define LOGW(fmt, ...)	\
 		pr_log(LOG_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+/**
+ * Prints informational message.
+ * @param fmt Message format (as in printf).
+ * @param ... Format arguments.
+ */
 #define LOGI(fmt, ...)	\
 		pr_log(LOG_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+/**
+ * Prints debug message.
+ * @param fmt Message format (as in printf).
+ * @param ... Format arguments.
+ */
 #define LOGD(fmt, ...)	\
 		pr_log(LOG_DBG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 

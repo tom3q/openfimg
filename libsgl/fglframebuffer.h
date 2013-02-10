@@ -30,14 +30,20 @@
 #include "fglframebufferattachable.h"
 #include "fglpixelformat.h"
 
+/** Attachment points supported by OpenFIMG */
 enum FGLAttachmentIndex {
 	FGL_ATTACHMENT_COLOR = 0,
 	FGL_ATTACHMENT_DEPTH,
 	FGL_ATTACHMENT_STENCIL,
 
+	/** Number of supported attachment points. */
 	FGL_ATTACHMENT_NUM
 };
 
+/**
+ * Abstract framebuffer class.
+ * Defines an interface for all classes providing framebuffers.
+ */
 class FGLAbstractFramebuffer {
 protected:
 	bool dirty;
@@ -48,6 +54,10 @@ protected:
 	uint32_t depthFormat;
 
 public:
+	/**
+	 * Default constructor.
+	 * Creates and initializes the generic part of a framebuffer.
+	 */
 	FGLAbstractFramebuffer() :
 		dirty(true),
 		width(0),
@@ -55,41 +65,95 @@ public:
 		colorFormat(FGL_PIXFMT_NONE),
 		depthFormat(0) {};
 
+	/** Class destructor. */
 	virtual ~FGLAbstractFramebuffer() {}
 
+	/**
+	 * Gets width of the framebuffer.
+	 * @return Width of the framebuffer.
+	 */
 	inline uint32_t getWidth(void) const { return width; }
+	/**
+	 * Gets height of the framebuffer.
+	 * @return Height of the framebuffer.
+	 */
 	inline uint32_t getHeight(void) const { return height; }
+	/**
+	 * Gets color format of the framebuffer.
+	 * @return Color format of the framebuffer.
+	 */
 	inline uint32_t getColorFormat(void) const { return colorFormat; }
+	/**
+	 * Gets depth format of the framebuffer.
+	 * @return Depth format of the framebuffer.
+	 */
 	inline uint32_t getDepthFormat(void) const { return depthFormat; }
 
+	/**
+	 * Checks if the framebuffer is valid.
+	 * @return True if the framebuffer is valid, otherwise false.
+	 */
 	virtual bool isValid(void) = 0;
+	/**
+	 * Checks status of the framebuffer.
+	 * @return Value representing framebuffer status according to OpenGL ES
+	 * Framebuffer Object extension.
+	 */
 	virtual GLenum checkStatus(void) = 0;
+	/**
+	 * Gets attachment bound to given attachment point.
+	 * @param from Attachment point.
+	 * @return Attachment bound to given attachment point.
+	 */
 	virtual FGLFramebufferAttachable *get(enum FGLAttachmentIndex from) = 0;
 
+	/**
+	 * Checks if framebuffer configuration is dirty.
+	 * @return True if framebuffer configuration has changed since last
+	 * call to markClean(), otherwise false.
+	 */
 	inline bool isDirty(void) const
 	{
 		return dirty;
 	}
 
+	/** Marks framebuffer configuration as dirty */
 	inline void markDirty(void)
 	{
 		dirty = true;
 	}
 
+	/** Marks framebuffer configuration as clean */
 	inline void markClean(void)
 	{
 		dirty = false;
 	}
 
+	/**
+	 * Gets framebuffer name.
+	 * @return Name of the framebuffer.
+	 */
 	virtual GLint getName(void) const { return 0; }
 };
 
 struct FGLFramebufferState;
 
+/**
+ * An FGLObject that points to an FGLFramebuffer object and can be bound
+ * to an FGLObjectBinding of an FGLFramebufferState object.
+ */
 typedef FGLObject<FGLFramebuffer, FGLFramebufferState> FGLFramebufferObject;
+/**
+ * An FGLObjectBinding that points to a FGLFramebufferState object to which
+ * an FGLObject of an FGLFramebuffer object can be bound.
+ */
 typedef FGLObjectBinding<FGLFramebuffer,
 			FGLFramebufferState> FGLFramebufferObjectBinding;
 
+/**
+ * A class that implements a framebuffer in terms of OpenGL ES Framebuffer
+ * Object extension.
+ */
 class FGLFramebuffer : public FGLAbstractFramebuffer {
 	FGLFramebufferAttachableBinding binding[FGL_ATTACHMENT_NUM];
 	unsigned int name;
@@ -100,8 +164,13 @@ class FGLFramebuffer : public FGLAbstractFramebuffer {
 						FGLFramebufferAttachable *fba);
 
 public:
+	/** FGLObject that can be bound to FGLFramebufferState */
 	FGLFramebufferObject object;
 
+	/**
+	 * Constructor creating a framebuffer.
+	 * @param name Framebuffer name.
+	 */
 	FGLFramebuffer(unsigned int name = 0) :
 		FGLAbstractFramebuffer(),
 		name(name),
@@ -112,6 +181,12 @@ public:
 			binding[i] = FGLFramebufferAttachableBinding(this);
 	}
 
+	/**
+	 * Attaches a framebuffer attachable object to given attachment point.
+	 * Any object previously bound to this binding point will be unbound.
+	 * @param where Attachment point.
+	 * @param what Framebuffer attachable object (or NULL to unbind).
+	 */
 	void attach(FGLAttachmentIndex where,
 					FGLFramebufferAttachable *what)
 	{
@@ -157,10 +232,12 @@ public:
 	}
 };
 
+/** A class that implements a legacy EGL-controlled framebuffer. */
 class FGLDefaultFramebuffer : public FGLAbstractFramebuffer {
 	FGLFramebufferAttachable image[FGL_ATTACHMENT_NUM];
 
 public:
+	/** Default constructor. */
 	FGLDefaultFramebuffer() {}
 
 	virtual FGLFramebufferAttachable *get(enum FGLAttachmentIndex from)
@@ -178,6 +255,14 @@ public:
 		return 0;
 	}
 
+	/**
+	 * Connects EGL surface to selected attachment point.
+	 * @param where Attachment point.
+	 * @param buf EGL surface.
+	 * @param width Surface width.
+	 * @param height Surface height.
+	 * @param format Surface format.
+	 */
 	void setupSurface(enum FGLAttachmentIndex where, FGLSurface *buf,
 		unsigned int width, unsigned int height, unsigned int format)
 	{

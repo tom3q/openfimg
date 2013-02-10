@@ -24,17 +24,27 @@
 
 struct FGLSurface;
 
+/** A class representing an image as defined by EGL_KHR_image_base extension. */
 struct FGLImage {
+/** A magic number used to mark image objects created by OpenFIMG. */
 #define FGL_IMAGE_MAGIC 0x00474d49
+	/** Magic number used for object validation. */
 	uint32_t magic;
+	/** Pixel format of the image. */
 	uint32_t pixelFormat;
+	/** Width of the image. */
 	uint32_t width;
+	/** Height of the image. */
 	uint32_t height;
 	void *buffer;
+	/** Surface backing the image. */
 	FGLSurface *surface;
+	/** A flag indicating that the image is marked for deletion. */
 	bool terminated;
+	/** Reference counter. */
 	uint32_t refCount;
 
+	/** Constructor creating an image object. */
 	FGLImage() :
 		magic(FGL_IMAGE_MAGIC),
 		buffer(0),
@@ -42,24 +52,42 @@ struct FGLImage {
 		terminated(false),
 		refCount(0) {}
 
+	/** Class destructor. */
 	virtual ~FGLImage() {}
 
+	/**
+	 * Checks whether the image is valid.
+	 * The image is assumed to be valid if magic number matches and there
+	 * is a backing storage attached.
+	 * @return True if the image is valid, otherwise false.
+	 */
 	bool isValid()
 	{
 		return magic == FGL_IMAGE_MAGIC && surface != NULL;
 	}
 
+	/** Increases reference count of the image. */
 	void connect()
 	{
 		++refCount;
 	}
 
+	/**
+	 * Decreases reference count of the image.
+	 * If reference counter goes down to 0 and the image is marked for
+	 * termination, it will be deleted.
+	 */
 	void disconnect()
 	{
 		if(--refCount == 0 && terminated)
 			delete this;
 	}
 
+	/**
+	 * Marks the image for termination.
+	 * The image will be terminated as soon as reference counts goes down
+	 * to 0.
+	 */
 	void terminate()
 	{
 		terminated = true;

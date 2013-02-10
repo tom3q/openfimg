@@ -40,6 +40,7 @@
 	Texturing
 */
 
+/** Texture object namespace manager. */
 FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
 
 GL_API void GL_APIENTRY glGenTextures (GLsizei n, GLuint *textures)
@@ -134,6 +135,14 @@ GL_API void GL_APIENTRY glBindTexture (GLenum target, GLuint texture)
 	binding->bind(&tex->object);
 }
 
+/**
+ * Determines format information for specified GLES format and type.
+ * @param format GLES pixel format.
+ * @param type GLES pixel type.
+ * @param conv Pointer pointing where to store flag indicating whether this
+ * format needs conversion.
+ * @return Internal pixel format index.
+ */
 static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 {
 	*conv = 0;
@@ -174,6 +183,10 @@ static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 	}
 }
 
+/**
+ * Generates mipmaps for given texture.
+ * @param obj Texture to generate mipmaps for.
+ */
 static void fglGenerateMipmaps(FGLTexture *obj)
 {
 	int level = 0;
@@ -329,6 +342,14 @@ processNextLevel:
 	goto processNextLevel;
 }
 
+/**
+ * Calculates texture mipmap parameters and total size in memory.
+ * @param obj Texture to process.
+ * @param width Texture width.
+ * @param height Texture height.
+ * @param bpp Texture pixel size in bytes.
+ * @return Texture size in bytes.
+ */
 static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 					unsigned int height, unsigned int bpp)
 {
@@ -366,6 +387,13 @@ static size_t fglCalculateMipmaps(FGLTexture *obj, unsigned int width,
 	return offset;
 }
 
+/**
+ * Copies texture image from client buffer to texture memory.
+ * Direct copy (fastest) variant.
+ * @param obj Texture object.
+ * @param level Mipmap level.
+ * @param pixels Client buffer.
+ */
 static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 						const GLvoid *pixels)
 {
@@ -385,6 +413,14 @@ static void fglLoadTextureDirect(FGLTexture *obj, unsigned level,
 	memcpy((uint8_t *)obj->surface->vaddr + offset, pixels, size);
 }
 
+/**
+ * Copies texture image from client buffer to texture memory.
+ * Line-by-line variant.
+ * @param obj Texture object.
+ * @param level Mipmap level.
+ * @param pixels Client buffer.
+ * @param alignment Line width alignment.
+ */
 static void fglLoadTexture(FGLTexture *obj, unsigned level,
 		    const GLvoid *pixels, unsigned alignment)
 {
@@ -411,16 +447,38 @@ static void fglLoadTexture(FGLTexture *obj, unsigned level,
 	} while(--height);
 }
 
+/**
+ * Packs 4 8-bit color components into a packed ARGB8888 word.
+ * @param r Red color component.
+ * @param g Green color component.
+ * @param b Blue color component.
+ * @param a Alpha component.
+ * @return Packed ARGB8888 pixel value.
+ */
 static inline uint32_t fglPackARGB8888(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
 	return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
+/**
+ * Packs 2 8-bit color components into a packed AL88 word.
+ * @param a Alpha component.
+ * @param l Luminance component.
+ * @return Packed AL88 pixel value.
+ */
 static inline uint16_t fglPackAL88(uint8_t l, uint8_t a)
 {
 	return (a << 8) | l;
 }
 
+/**
+ * Copies texture image from client buffer to texture memory.
+ * Variant with pixel format conversion to supported format.
+ * @param obj Texture object.
+ * @param level Mipmap level.
+ * @param pixels Client buffer.
+ * @param alignment Line width alignment.
+ */
 static void fglConvertTexture(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment)
 {
@@ -504,6 +562,11 @@ static void fglConvertTexture(FGLTexture *obj, unsigned level,
 	}
 }
 
+/**
+ * Waits until the hardware stops accessing given texture.
+ * @param ctx Rendering context.
+ * @param tex Texture to wait for.
+ */
 static inline void fglWaitForTexture(FGLContext *ctx, FGLTexture *tex)
 {
 	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i) {
@@ -694,6 +757,18 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 }
 
+/**
+ * Copies part of texture image from client buffer to texture memory.
+ * Line-by-line variant.
+ * @param obj Texture object.
+ * @param level Mipmap level.
+ * @param pixels Client buffer.
+ * @param alignment Line width alignment.
+ * @param x Left-most coordinate of the region.
+ * @param y Bottom-most coordinate of the region.
+ * @param w Width of the region.
+ * @param h Height of the region.
+ */
 static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment,
 			unsigned x, unsigned y, unsigned w, unsigned h)
@@ -723,6 +798,18 @@ static void fglLoadTexturePartial(FGLTexture *obj, unsigned level,
 	} while (--h);
 }
 
+/**
+ * Copies part of texture image from client buffer to texture memory.
+ * Variant with pixel format conversion to supported format.
+ * @param obj Texture object.
+ * @param level Mipmap level.
+ * @param pixels Client buffer.
+ * @param alignment Line width alignment.
+ * @param x Left-most coordinate of the region.
+ * @param y Bottom-most coordinate of the region.
+ * @param w Width of the region.
+ * @param h Height of the region.
+ */
 static void fglConvertTexturePartial(FGLTexture *obj, unsigned level,
 			const GLvoid *pixels, unsigned alignment,
 			unsigned x, unsigned y, unsigned w, unsigned h)

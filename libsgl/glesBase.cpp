@@ -40,7 +40,9 @@
 	Error handling
 */
 
+/** Mutex protecting GLES per-thread error history key */
 pthread_mutex_t glErrorKeyMutex = PTHREAD_MUTEX_INITIALIZER;
+/** TLS key of GLES per-thread error history. */
 pthread_key_t glErrorKey = (pthread_key_t)-1;
 
 GL_API GLenum GL_APIENTRY glGetError (void)
@@ -140,6 +142,7 @@ GL_API void GL_APIENTRY glMultiTexCoord4x (GLenum target,
  * Buffer objects
  */
 
+/** Buffer object namespace manager. */
 FGLObjectManager<FGLBuffer, FGL_MAX_BUFFER_OBJECTS> fglBufferObjects;
 
 GL_API void GL_APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
@@ -319,6 +322,16 @@ GL_API GLboolean GL_APIENTRY glIsBuffer (GLuint buffer)
  * Arrays
  */
 
+/**
+ * Sets configuration of given vertex attribute array.
+ * @param ctx Rendering context.
+ * @param idx Attribute index.
+ * @param size Attribute size (number of components).
+ * @param type Attribute data type.
+ * @param stride Attribute stride.
+ * @param width Attribute width (without padding).
+ * @param pointer Pointer to attribute array.
+ */
 static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
 					GLint type, GLint stride, GLint width,
 					const GLvoid *pointer)
@@ -544,6 +557,11 @@ GL_API void GL_APIENTRY glTexCoordPointer (GLint size, GLenum type,
 				size, fglType, stride, fglStride, pointer);
 }
 
+/**
+ * Helper function to enable selected attribute array.
+ * @param ctx Rendering context.
+ * @param idx Attribute index.
+ */
 static void fglEnableClientState(FGLContext *ctx, GLint idx)
 {
 	ctx->array[idx].enabled = GL_TRUE;
@@ -580,10 +598,16 @@ GL_API void GL_APIENTRY glEnableClientState (GLenum array)
 	fglEnableClientState(ctx, idx);
 }
 
+/** Default attribute sizes. */
 static const GLint fglDefaultAttribSize[4 + FGL_MAX_TEXTURE_UNITS] = {
 	4, 3, 4, 1, 4, 4
 };
 
+/**
+ * Helper function to disable selected attribute array.
+ * @param ctx Rendering context.
+ * @param idx Attribute index.
+ */
 static void fglDisableClientState(FGLContext *ctx, GLint idx)
 {
 	ctx->array[idx].enabled = GL_FALSE;
@@ -657,6 +681,12 @@ GL_API void GL_APIENTRY glShadeModel (GLenum mode)
 	ctx->rasterizer.shadeModel = mode;
 }
 
+/**
+ * Sets up transformation matrices for rendering.
+ * Calculates model-view-projection matrix. Passes appropriate matrices
+ * to libfimg.
+ * @param ctx Rendering context.
+ */
 static inline void fglSetupMatrices(FGLContext *ctx)
 {
 	if (ctx->matrix.dirty[FGL_MATRIX_MODELVIEW]
@@ -697,6 +727,13 @@ static inline void fglSetupMatrices(FGLContext *ctx)
 	} while (i--);
 }
 
+/**
+ * Sets up textures for rendering.
+ * Determines which textures are used for rendering, binds textures to
+ * texture units using libfimg, manages texture surface flushing and
+ * libfimg texture cache invalidation.
+ * @param ctx Rendering context.
+ */
 static inline void fglSetupTextures(FGLContext *ctx)
 {
 	bool flush = false;
@@ -741,6 +778,13 @@ static void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
 static void fglSetBlending(FGLContext *ctx);
 static void fglSetColorMask(FGLContext *ctx);
 
+/**
+ * Sets up framebuffer for rendering.
+ * Determines which framebuffer shall be used for rendering and configures
+ * libfimg framebuffer settings.
+ * @param ctx Rendering context.
+ * @return Zero on success, negative if current framebuffer is invalid.
+ */
 static inline int fglSetupFramebuffer(FGLContext *ctx)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
@@ -1387,6 +1431,14 @@ GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
 	Per-fragment operations
 */
 
+/**
+ * Configures scissor test parameters.
+ * @param ctx Rendering context.
+ * @param x Left-most X coordinate of allowed area.
+ * @param y Bottom-most Y coordinate of allowed area.
+ * @param width Width of allowed area.
+ * @param height Height of allowed area.
+ */
 static inline void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
 						GLsizei width, GLsizei height)
 {
@@ -1419,6 +1471,11 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
 		fglSetScissor(ctx, x, y, width, height);
 }
 
+/**
+ * Configures alpha test function.
+ * @param func Alpha test function.
+ * @param ref Reference value in hardware format.
+ */
 static inline void fglAlphaFunc (GLenum func, GLubyte ref)
 {
 	fimgTestMode fglFunc;
@@ -1513,6 +1570,11 @@ GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
 	ctx->perFragment.stencil.mask = mask;
 }
 
+/**
+ * Helper function translating GLES test action to libfimg test action.
+ * @param action GLES test action.
+ * @return libfimg test action or -1 on invalid GLES test action.
+ */
 static inline GLint fglActionFromEnum(GLenum action)
 {
 	GLint fglAction;
@@ -1613,6 +1675,10 @@ GL_API void GL_APIENTRY glDepthFunc (GLenum func)
 	ctx->perFragment.depthFunc = func;
 }
 
+/**
+ * Configures libfimg blending parameters.
+ * @param ctx Rendering context.
+ */
 static void fglSetBlending(FGLContext *ctx)
 {
 	fimgBlendFunction fglSrc, fglDest;
@@ -1780,6 +1846,7 @@ GL_API void GL_APIENTRY glLogicOp (GLenum opcode)
 	ctx->perFragment.logicOp = opcode;
 }
 
+/** Color component mapping of RGBA color format. */
 static const int componentPositionsRGBA[] = {
 	3,	/* FGL_COMP_RED */
 	2,	/* FGL_COMP_GREEN */
@@ -1787,6 +1854,7 @@ static const int componentPositionsRGBA[] = {
 	0	/* FGL_COMP_ALPHA */
 };
 
+/** Color component mapping of BGRA color format. */
 static const int componentPositionsBGRA[] = {
 	1,	/* FGL_COMP_RED */
 	2,	/* FGL_COMP_GREEN */
@@ -1794,11 +1862,16 @@ static const int componentPositionsBGRA[] = {
 	0	/* FGL_COMP_ALPHA */
 };
 
+/** Color component mappings of supported color formats variants. */
 static const int *componentPositions[] = {
 	componentPositionsRGBA,
 	componentPositionsBGRA
 };
 
+/**
+ * Configures color component masking in libfimg.
+ * @param ctx Rendering context.
+ */
 static inline void fglSetColorMask(FGLContext *ctx)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
@@ -1857,6 +1930,11 @@ GL_API void GL_APIENTRY glStencilMask (GLuint mask)
 	Enable/disable
 */
 
+/**
+ * Helper function to manage GLES enables and disables.
+ * @param cap Capability to enable/disable.
+ * @param state Indicates whether to enable or disable the capability.
+ */
 static inline void fglSet(GLenum cap, bool state)
 {
 	FGLContext *ctx = getContext();
@@ -2098,6 +2176,10 @@ GL_API void GL_APIENTRY glPointParameterxv (GLenum pname, const GLfixed *params)
 	Context management
 */
 
+/**
+ * Creates rendering context.
+ * @return Created rendering context or NULL on error.
+ */
 FGLContext *fglCreateContext(void)
 {
 	fimgContext *fimg;
@@ -2124,6 +2206,11 @@ extern FGLObjectManager<FGLTexture, FGL_MAX_TEXTURE_OBJECTS> fglTextureObjects;
 extern FGLObjectManager<FGLFramebuffer, FGL_MAX_FRAMEBUFFER_OBJECTS> fglFramebufferObjects;
 extern FGLObjectManager<FGLRenderbuffer, FGL_MAX_RENDERBUFFER_OBJECTS> fglRenderbufferObjects;
 
+/**
+ * Destroys rendering context.
+ * All objects allocated by this context will be freed.
+ * @param ctx Rendering context to destroy.
+ */
 void fglDestroyContext(FGLContext *ctx)
 {
 	fglBufferObjects.clean(ctx);

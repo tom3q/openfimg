@@ -24,6 +24,11 @@
 
 #include <pthread.h>
 
+/**
+ * A class that manages namespaces of GL objects.
+ * @tparam T Type of managed objects.
+ * @tparam size Size of namespace.
+ */
 template<typename T, int size>
 class FGLObjectManager {
 	/* Array of pointers addressed by used names */
@@ -35,6 +40,7 @@ class FGLObjectManager {
 	bool		valid;
 	pthread_mutex_t	mutex;
 public:
+	/** Constructs object manager object. */
 	FGLObjectManager() :
 		pool(NULL), unused(NULL), valid(false)
 	{
@@ -71,6 +77,7 @@ public:
 		valid = true;
 	}
 
+	/** Destroys object manager object. */
 	~FGLObjectManager()
 	{
 		delete[] owners;
@@ -80,6 +87,11 @@ public:
 		pthread_mutex_destroy(&mutex);
 	}
 
+	/**
+	 * Allocates an object name.
+	 * @param owner Unique ID of name owner.
+	 * @return Allocated name or -1 on failure.
+	 */
 	inline int get(void *owner)
 	{
 		int name;
@@ -104,6 +116,12 @@ public:
 		return name;
 	}
 
+	/**
+	 * Tries to allocate selected name.
+	 * @param name Name to allocate.
+	 * @param owner Unique ID of name owner.
+	 * @return Allocated name or -1 on failure.
+	 */
 	inline int get(unsigned name, void *owner)
 	{
 		if (name == 0 || name > size)
@@ -129,6 +147,10 @@ public:
 		return name;
 	}
 
+	/**
+	 * Frees an object name.
+	 * @param name Name to free.
+	 */
 	inline void put(unsigned name)
 	{
 		pthread_mutex_lock(&mutex);
@@ -141,6 +163,10 @@ public:
 		pthread_mutex_unlock(&mutex);
 	}
 
+	/**
+	 * Destroys all objects held by given owner and frees their names.
+	 * @param owner Owner to destroy objects of.
+	 */
 	inline void clean(void *owner)
 	{
 		pthread_mutex_lock(&mutex);
@@ -159,16 +185,31 @@ public:
 		pthread_mutex_unlock(&mutex);
 	}
 
+	/**
+	 * Returns a constant reference to the pointer of object of given name.
+	 * @param name Name of requested object.
+	 * @return A reference to a pointer pointing to object of given name.
+	 */
 	inline const T* &operator[](unsigned name) const
 	{
 		return pool[name - 1];
 	}
 
+	/**
+	 * Returns a reference to the pointer of object of given name.
+	 * @param name Name of requested object.
+	 * @return A reference to a pointer pointing to object of given name.
+	 */
 	inline T* &operator[](unsigned name)
 	{
 		return pool[name - 1];
 	}
 
+	/**
+	 * Checks if given name is already assigned.
+	 * @param name Name to check.
+	 * @return True if the name is assigned, otherwise false.
+	 */
 	inline bool isValid(unsigned name)
 	{
 		if (!name || name > size)

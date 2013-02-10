@@ -26,7 +26,8 @@
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 
-enum {
+/** Indices of color components inside a multi-component value. */
+enum FGLColorComponent {
 	FGL_COMP_RED = 0,
 	FGL_COMP_GREEN,
 	FGL_COMP_BLUE,
@@ -48,7 +49,8 @@ enum {
 	FGL_COMP_V = 3
 };
 
-enum {
+/** Pixel formats supported inside OpenFIMG. */
+enum FGLPixelFormatEnum {
 	/* Unspecified format */
 	FGL_PIXFMT_NONE = 0,
 	/* Renderable formats */
@@ -79,25 +81,46 @@ enum {
 	FGL_PIXFMT_UY1VY0,
 };
 
-/* Defined to be equal to respective FGPF_ and FGTU_ flags in fimg.h */
-enum {
+/**
+ * Flags defining special characteristics of pixel format.
+ * Defined to be equal to respective FGPF_ and FGTU_ flags in fimg.h
+ */
+enum FGLPixelFormatFlags {
+	/** Alpha component is located in least significant bit. */
 	FGL_PIX_ALPHA_LSB	= (1 << 0),
+	/** Color component order is BGR (as opposed to RGB). */
 	FGL_PIX_BGR		= (1 << 1),
+	/** Alpha component must be set to opaque value. */
 	FGL_PIX_OPAQUE		= (1 << 2)
 };
 
+/** A class holding information about pixel format */
 struct FGLPixelFormat {
 	struct {
+		/** Index of first bit of the component. */
 		uint8_t pos;
+		/** Bits used by the component. */
 		uint8_t size;
-	} comp[4];
+	} comp[4]; /**< List of color components. (See ::FGLColorComponent) */
+	/** Read format as specified by OpenGL ES specification. */
 	GLenum readFormat;
+	/** Read type as specified by OpenGL ES specification. */
 	GLenum readType;
+	/** Pixel size in bytes. */
 	uint32_t pixelSize;
+	/** Texture format for libfimg. */
 	uint32_t texFormat;
+	/** Framebuffer format for libfimg. */
 	uint32_t pixFormat;
+	/** Special characteristics. (See ::FGLPixelFormatFlags.) */
 	uint32_t flags;
 
+	/**
+	 * Gets a pointer to FGLPixelFormat object describing pixel format
+	 * with given ID.
+	 * @param format ID of pixel format.
+	 * @return Pointer to FGLPixelFormat object describing the format.
+	 */
 	static const FGLPixelFormat *get(unsigned int format);
 
 private:

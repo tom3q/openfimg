@@ -28,22 +28,38 @@
 
 struct FGLRenderSurface;
 
+/** Helper structure for storing EGL attribute key-value pairs. */
 struct FGLConfigPair {
+	/** EGL attribute key. */
 	EGLint key;
+	/** EGL attribute value. */
 	EGLint value;
 };
 
+/** Helper structure for storing list of EGL configurations. */
 struct FGLConfigs {
+	/** Array of EGL attributes */
 	const FGLConfigPair *array;
+	/** Number of EGL attribues in the array. */
 	int size;
 };
 
+/** Helper structure for storing EGL function pointers. */
 struct FGLExtensionMap {
+	/** Function name. */
 	const char *const name;
+	/** Function pointer */
 	__eglMustCastToProperFunctionPointerType address;
 };
 
+/** Define to enable logging of EGL errors. */
 #define EGL_ERR_DEBUG
+
+/**
+ * \def setError
+ * Sets last EGL error code.
+ * @param err Error code.
+ */
 
 #ifdef EGL_ERR_DEBUG
 #define setError(err) ( \
@@ -53,8 +69,14 @@ struct FGLExtensionMap {
 #define setError(err) fglEGLSetError(err)
 #endif
 
+/** Magic value used to mark EGL displays of OpenFIMG. */
 #define FGL_DISPLAY_MAGIC	0x444c4746 /* FGLD */
 
+/**
+ * Checks whether given EGL display is a valid display of OpenFIMG.
+ * @param dpy Display to check.
+ * @return True if the display is valid, false otherwise.
+ */
 static inline bool fglEGLValidateDisplay(EGLDisplay dpy)
 {
 	return (uint32_t)dpy == FGL_DISPLAY_MAGIC;

@@ -39,9 +39,13 @@
 	Client API information
 */
 
+/** Vendor string of OpenGL ES implementation. */
 static char const * const gVendorString     = "OpenFIMG";
+/** Renderer string of OpenGL ES implementation. */
 static char const * const gRendererString   = "FIMG-3DSE";
+/** Version string of OpenGL ES implementation. */
 static char const * const gVersionString    = "OpenGL ES-CM 1.1";
+/** Extensions supported by this OpenGL ES implementation. */
 static char const * const gExtensionsString =
 	"GL_OES_byte_coordinates "
 	"GL_OES_fixed_point "
@@ -62,9 +66,11 @@ static char const * const gExtensionsString =
 	"GL_ARB_texture_non_power_of_two"
 ;
 
+/** Compressed texture formats supported by this OpenGL ES implementation. */
 static const GLint fglCompressedTextureFormats[] = {
 };
 
+/** Pixel format supported by this OpenGL ES implementation. */
 const FGLPixelFormat FGLPixelFormat::table[] = {
 	/*
 	 * FGL_PIXFMT_NONE
@@ -507,25 +513,72 @@ GL_API const GLubyte * GL_APIENTRY glGetString (GLenum name)
 	}
 }
 
+/**
+ * Abstract class for state query response container.
+ * Defines an interface used by implementation of GL state queries to create
+ * response with requested data types.
+ */
 struct FGLStateGetter {
+	/** Creates empty state query response. */
 	FGLStateGetter() : _n(0) {}
 
+	/**
+	 * Adds one integer value to the response.
+	 * @param i Integer value to add.
+	 */
 	virtual void putInteger(GLint i) = 0;
+	/**
+	 * Adds multiple integer values to the response.
+	 * @param i Array of integer values to add.
+	 * @param count Number of values to add.
+	 */
 	virtual void putIntegers(const GLint *i, unsigned count) = 0;
+	/**
+	 * Adds one floating point value to the response.
+	 * @param f Floating point value to add.
+	 */
 	virtual void putFloat(GLfloat f) = 0;
+	/**
+	 * Adds multiple floating point values to the response.
+	 * @param f Array of floating point values to add.
+	 * @param count Number of values to add.
+	 */
 	virtual void putFloats(const GLfloat *f, unsigned count) = 0;
+	/**
+	 * Adds one boolean value to the response.
+	 * @param b Boolean value to add.
+	 */
 	virtual void putBoolean(GLboolean b) = 0;
+	/**
+	 * Adds one fixed point value to the response.
+	 * @param x Fixed point value to add.
+	 */
 	virtual void putFixed(GLfixed x) = 0;
+	/**
+	 * Adds one enumerated value to the response.
+	 * @param e Enumerated value to add.
+	 */
 	virtual void putEnum(GLenum e) = 0;
+	/**
+	 * Adds one normalized floating point value to the response.
+	 * @param f Normalized floating point value to add.
+	 */
 	virtual void putNormalized(GLfloat f) = 0;
 
+	/** Destroys the response. */
 	virtual ~FGLStateGetter() {}
 
 protected:
+	/** Number of stored values. */
 	int _n;
 };
 
+/** State getter class for receiving floating point values. */
 struct FGLFloatGetter : FGLStateGetter {
+	/**
+	 * Creates empty state query response.
+	 * @param f Buffer for received values.
+	 */
 	FGLFloatGetter(GLfloat *f) : _f(f) {}
 
 	virtual void putInteger(GLint i) { _f[_n++] = i; }
@@ -551,7 +604,12 @@ private:
 	GLfloat *_f;
 };
 
+/** State getter class for receiving fixed point values. */
 struct FGLFixedGetter : FGLStateGetter {
+	/**
+	 * Creates empty state query response.
+	 * @param x Buffer for received values.
+	 */
 	FGLFixedGetter(GLfixed *x) : _x(x) {}
 
 	virtual void putInteger(GLint i) { _x[_n++] = fixedFromInt(i); }
@@ -577,7 +635,12 @@ private:
 	GLfixed *_x;
 };
 
+/** State getter class for receiving integers values. */
 struct FGLIntegerGetter : FGLStateGetter {
+	/**
+	 * Creates empty state query response.
+	 * @param i Buffer for received values.
+	 */
 	FGLIntegerGetter(GLint *i) : _i(i) {}
 
 	virtual void putInteger(GLint i) { _i[_n++] = i; }
@@ -603,7 +666,12 @@ private:
 	GLint *_i;
 };
 
+/** State getter class for receiving boolean values. */
 struct FGLBooleanGetter : FGLStateGetter {
+	/**
+	 * Creates empty state query response.
+	 * @param b Buffer for received values.
+	 */
 	FGLBooleanGetter(GLboolean *b) : _b(b) {}
 
 	virtual void putInteger(GLint i) { _b[_n++] = !!i; }
@@ -629,6 +697,7 @@ private:
 	GLboolean *_b;
 };
 
+/** Helper array mapping matrix index to GLES enumeration. */
 static const GLenum matrixModeTable[FGL_MATRIX_TEXTURE(FGL_MAX_TEXTURE_UNITS)] = {
 	GL_PROJECTION_MATRIX,
 	GL_MODELVIEW_MATRIX,
@@ -637,6 +706,12 @@ static const GLenum matrixModeTable[FGL_MATRIX_TEXTURE(FGL_MAX_TEXTURE_UNITS)] =
 	GL_TEXTURE_MATRIX
 };
 
+/**
+ * Creates response for given state query in given state getter object.
+ * @param ctx Rendering context.
+ * @param pname State query.
+ * @param state State getter object.
+ */
 void fglGetState(FGLContext *ctx, GLenum pname, FGLStateGetter &state)
 {
 	switch (pname) {

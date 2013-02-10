@@ -29,6 +29,11 @@
 #include "types.h"
 #include "fglpixelformat.h"
 
+/**
+ * Maps GLES texture unit enum into internal texture unit index.
+ * @param texture GLES texture unit enum.
+ * @return Texture unit index or negative on invalid enum.
+ */
 static inline GLint unitFromTextureEnum(GLenum texture)
 {
 	GLint unit;
@@ -71,6 +76,12 @@ static inline GLint unitFromTextureEnum(GLenum texture)
 	Context management
 */
 
+/**
+ * \fn getContext
+ * Gets pointer to current rendering context.
+ * @return Current rendering context or NULL if there is no current context.
+ */
+
 #ifdef GLES_DEBUG
 #define getContext() ( \
 	LOGD("%s called getContext()", __func__), \
@@ -98,11 +109,19 @@ extern pthread_mutex_t glErrorKeyMutex;
 extern pthread_key_t glErrorKey;
 
 #ifdef GLES_ERR_DEBUG
+/**
+ * Sets last GLES error code.
+ * @param error Error code.
+ */
 #define setError(error) ( \
 	LOGD("GLES error %s in %s", #error, __func__), \
 	_setError(error))
 static inline void _setError(GLenum error)
 #else
+/**
+ * Sets last GLES error code.
+ * @param error Error code.
+ */
 static inline void setError(GLenum error)
 #endif
 {

@@ -72,6 +72,11 @@ GL_API void GL_APIENTRY glPixelStorei (GLenum pname, GLint param)
 	Reading pixels
 */
 
+/**
+ * Unpacks pixel in RGB555 format into 4 byte values.
+ * @param dst Output array.
+ * @param src Packet input pixel.
+ */
 static inline void unpackPixel555(uint8_t *dst, uint16_t src)
 {
 	dst[0] = (src & 0x7c00) >> 7;
@@ -80,6 +85,15 @@ static inline void unpackPixel555(uint8_t *dst, uint16_t src)
 	dst[3] = 0xff;
 }
 
+/**
+ * Converts specified framebuffer area from RGBA555 into RGBA8888 format.
+ * @param ctx Rendering context.
+ * @param dst Output array.
+ * @param x Left-most X coordinate of region to convert.
+ * @param y Bottom-most Y coordinate of region to convert.
+ * @param width Width of region to convert.
+ * @param height Height of region to convert.
+ */
 static void convertToUByteRGBA555(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
@@ -107,6 +121,11 @@ static void convertToUByteRGBA555(FGLContext *ctx, uint8_t *dst,
 	} while (--height);
 }
 
+/**
+ * Unpacks pixel in RGB565 format into 4 byte values.
+ * @param dst Output array.
+ * @param src Packet input pixel.
+ */
 static inline void unpackPixel565(uint8_t *dst, uint16_t src)
 {
 	dst[0] = (src & 0xf800) >> 8;
@@ -115,6 +134,15 @@ static inline void unpackPixel565(uint8_t *dst, uint16_t src)
 	dst[3] = 0xff;
 }
 
+/**
+ * Converts specified framebuffer area from RGBA565 into RGBA8888 format.
+ * @param ctx Rendering context.
+ * @param dst Output array.
+ * @param x Left-most X coordinate of region to convert.
+ * @param y Bottom-most Y coordinate of region to convert.
+ * @param width Width of region to convert.
+ * @param height Height of region to convert.
+ */
 static void convertToUByteRGBA565(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
@@ -142,6 +170,11 @@ static void convertToUByteRGBA565(FGLContext *ctx, uint8_t *dst,
 	} while (--height);
 }
 
+/**
+ * Unpacks pixel in RGBA4444 format into 4 byte values.
+ * @param dst Output array.
+ * @param src Packet input pixel.
+ */
 static inline void unpackPixel4444(uint8_t *dst, uint16_t src)
 {
 	dst[0] = (src & 0x0f00) >> 4;
@@ -150,6 +183,15 @@ static inline void unpackPixel4444(uint8_t *dst, uint16_t src)
 	dst[3] = (src & 0xf000) >> 8;
 }
 
+/**
+ * Converts specified framebuffer area from RGBA4444 into RGBA8888 format.
+ * @param ctx Rendering context.
+ * @param dst Output array.
+ * @param x Left-most X coordinate of region to convert.
+ * @param y Bottom-most Y coordinate of region to convert.
+ * @param width Width of region to convert.
+ * @param height Height of region to convert.
+ */
 static void convertToUByteRGBA4444(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
@@ -177,6 +219,11 @@ static void convertToUByteRGBA4444(FGLContext *ctx, uint8_t *dst,
 	} while (--height);
 }
 
+/**
+ * Unpacks pixel in RGBA1555 format into 4 byte values.
+ * @param dst Output array.
+ * @param src Packet input pixel.
+ */
 static inline void unpackPixel1555(uint8_t *dst, uint16_t src)
 {
 	dst[0] = (src & 0x7c00) >> 7;
@@ -185,6 +232,15 @@ static inline void unpackPixel1555(uint8_t *dst, uint16_t src)
 	dst[3] = (src & 0x8000) ? 0xff : 0x00;
 }
 
+/**
+ * Converts specified framebuffer area from RGBA1555 into RGBA8888 format.
+ * @param ctx Rendering context.
+ * @param dst Output array.
+ * @param x Left-most X coordinate of region to convert.
+ * @param y Bottom-most Y coordinate of region to convert.
+ * @param width Width of region to convert.
+ * @param height Height of region to convert.
+ */
 static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
@@ -212,6 +268,11 @@ static void convertToUByteRGBA1555(FGLContext *ctx, uint8_t *dst,
 	} while (--height);
 }
 
+/**
+ * Unpacks pixel in BGRA8888 format into 4 byte values.
+ * @param dst Output array.
+ * @param src Packet input pixel.
+ */
 static inline void unpackPixel8888(uint32_t *dst, uint32_t src)
 {
 	register uint32_t rgba;
@@ -223,6 +284,15 @@ static inline void unpackPixel8888(uint32_t *dst, uint32_t src)
 	*dst = rgba;
 }
 
+/**
+ * Converts specified framebuffer area from BGRA8888 into RGBA8888 format.
+ * @param ctx Rendering context.
+ * @param dst Output array.
+ * @param x Left-most X coordinate of region to convert.
+ * @param y Bottom-most Y coordinate of region to convert.
+ * @param width Width of region to convert.
+ * @param height Height of region to convert.
+ */
 static void convertToUByteBGRA8888(FGLContext *ctx, uint32_t *dst,
 			uint32_t x, uint32_t y, uint32_t width, uint32_t height)
 {
@@ -249,12 +319,24 @@ static void convertToUByteBGRA8888(FGLContext *ctx, uint32_t *dst,
 	} while (--height);
 }
 
+/**
+ * Byte by byte copy between two buffers.
+ * @param dst Destination buffer.
+ * @param src Source buffer.
+ * @param len Number of bytes to copy.
+ */
 static void fallbackCopy(uint8_t *dst, const uint8_t *src, unsigned len)
 {
 	while (len--)
 		*dst++ = *src++;
 }
 
+/**
+ * 16-byte wide optimized burst copy between two buffers.
+ * @param dst Destination buffer.
+ * @param src Source buffer.
+ * @param len Number of bytes to copy.
+ */
 static void burstCopy16(void *dst, const void *src, unsigned len)
 {
 	const uint8_t *s = (const uint8_t *)src;
@@ -419,7 +501,12 @@ GL_API void GL_APIENTRY glReadPixels (GLint x, GLint y,
 /*
 	Clearing buffers
 */
-
+/**
+ * 16-bit by 16-bit buffer fill.
+ * @param buf Destination buffer.
+ * @param val Fill value.
+ * @param cnt Number of 16-bit values to set.
+ */
 static void *fillSingle16(void *buf, uint16_t val, size_t cnt)
 {
 	uint16_t *buf16 = (uint16_t *)buf;
@@ -431,6 +518,13 @@ static void *fillSingle16(void *buf, uint16_t val, size_t cnt)
 	return buf16;
 }
 
+/**
+ * 16-bit by 16-bit buffer fill with masking.
+ * @param buf Destination buffer.
+ * @param val Fill value.
+ * @param mask Bit mask of bits to preserve.
+ * @param cnt Number of 16-bit values to set.
+ */
 static void *fillSingle16masked(void *buf, uint16_t val,
 						uint16_t mask, size_t cnt)
 {
@@ -446,6 +540,12 @@ static void *fillSingle16masked(void *buf, uint16_t val,
 	return buf16;
 }
 
+/**
+ * 32-bit by 32-bit buffer fill.
+ * @param buf Destination buffer.
+ * @param val Fill value.
+ * @param cnt Number of 32-bit values to set.
+ */
 static void *fillSingle32(void *buf, uint32_t val, size_t cnt)
 {
 	uint32_t *buf32 = (uint32_t *)buf;
@@ -457,6 +557,12 @@ static void *fillSingle32(void *buf, uint32_t val, size_t cnt)
 	return buf32;
 }
 
+/**
+ * 32-byte wide optimized buffer fill by 32-bit pattern.
+ * @param buf Destination buffer.
+ * @param val Fill value.
+ * @param cnt Number of 32-byte blocks to set.
+ */
 static void *fillBurst32(void *buf, uint32_t val, size_t cnt)
 {
 	asm volatile (
@@ -480,6 +586,13 @@ static void *fillBurst32(void *buf, uint32_t val, size_t cnt)
 	return buf;
 }
 
+/**
+ * 32-bit by 32-bit buffer fill with masking.
+ * @param buf Destination buffer.
+ * @param val Fill value.
+ * @param mask Bit mask of bits to preserve.
+ * @param cnt Number of 32-bit values to set.
+ */
 static void *fillSingle32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
 {
 	uint32_t *buf32 = (uint32_t *)buf;
@@ -494,6 +607,13 @@ static void *fillSingle32masked(void *buf, uint32_t val, uint32_t mask, size_t c
 	return buf32;
 }
 
+/**
+ * 32-byte wide optimized buffer fill by 32-bit pattern with masking.
+ * @param buf Destination buffer.
+ * @param val Fill value.
+ * @param mask Bit mask of bits to preserve.
+ * @param cnt Number of 32-byte blocks to set.
+ */
 static void *fillBurst32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
 {
 	asm volatile (
@@ -526,6 +646,12 @@ static void *fillBurst32masked(void *buf, uint32_t val, uint32_t mask, size_t cn
 	return buf;
 }
 
+/**
+ * Fills given buffer with 32-bit values.
+ * @param buf Buffer to fill.
+ * @param val Value to fill with.
+ * @param cnt Number of 32-bit values to store.
+ */
 static void fill32(void *buf, uint32_t val, size_t cnt)
 {
 	uint32_t *buf32 = (uint32_t *)buf;
@@ -549,6 +675,13 @@ static void fill32(void *buf, uint32_t val, size_t cnt)
 		fillSingle32(buf32, val, cnt % 8);
 }
 
+/**
+ * Fills given buffer with 32-bit values with masking.
+ * @param buf Buffer to fill.
+ * @param val Value to fill with.
+ * @param mask Bit mask of bits to modify.
+ * @param cnt Number of 32-bit values to store.
+ */
 static void fill32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
 {
 	uint32_t *buf32 = (uint32_t *)buf;
@@ -575,6 +708,12 @@ static void fill32masked(void *buf, uint32_t val, uint32_t mask, size_t cnt)
 		fillSingle32masked(buf32, val, mask, cnt % 8);
 }
 
+/**
+ * Fills given buffer with 16-bit values.
+ * @param buf Buffer to fill.
+ * @param val Value to fill with.
+ * @param cnt Number of 16-bit values to store.
+ */
 static void fill16(void *buf, uint16_t val, size_t cnt)
 {
 	uint16_t *buf16 = (uint16_t *)buf;
@@ -598,6 +737,13 @@ static void fill16(void *buf, uint16_t val, size_t cnt)
 		fillSingle16(buf16, val, cnt % 16);
 }
 
+/**
+ * Fills given buffer with 16-bit values with masking.
+ * @param buf Buffer to fill.
+ * @param val Value to fill with.
+ * @param mask Bit mask of bits to modify.
+ * @param cnt Number of 16-bit values to store.
+ */
 static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
 {
 	uint16_t *buf16 = (uint16_t *)buf;
@@ -625,6 +771,14 @@ static void fill16masked(void *buf, uint16_t val, uint16_t mask, size_t cnt)
 		fillSingle16masked(buf16, val, mask, cnt % 16);
 }
 
+/**
+ * Calculates color fill value and mask based on context settings.
+ * @param ctx Rendering context.
+ * @param mask Pointer pointing where to store calculated mask.
+ * @param is32bpp Pointer pointing where to store flag telling whether the
+ * fill value is 32-bit.
+ * @return Fill color value.
+ */
 static uint32_t getFillColor(FGLContext *ctx,
 						uint32_t *mask, bool *is32bpp)
 {
@@ -680,6 +834,14 @@ static uint32_t getFillColor(FGLContext *ctx,
 	return val;
 }
 
+/**
+ * Calculates depth fill value and mask based on context settings.
+ * @param ctx Rendering context.
+ * @param mask Pointer pointing where to store calculated fill mask.
+ * @param mode Bit mask telling which parts of the buffer to fill.
+ * @param depthFormat Format of the buffer.
+ * @return Calculated depth fill value.
+ */
 static inline uint32_t getFillDepth(FGLContext *ctx,
 			uint32_t *mask, GLbitfield mode, uint32_t depthFormat)
 {
@@ -711,6 +873,16 @@ static inline uint32_t getFillDepth(FGLContext *ctx,
 	return val;
 }
 
+/**
+ * Clears requested area of color buffer.
+ * @param ctx Rendering context.
+ * @param lineByLine Indicates whether to clear line-by-line.
+ * @param stride Width of the buffer.
+ * @param l Left-most coordinate of requested area.
+ * @param t Top-most coordinate of requested area.
+ * @param w Width of requested area.
+ * @param h Height of requested area.
+ */
 static inline void fglColorClear(FGLContext *ctx, bool lineByLine,
 		uint32_t stride, int32_t l, int32_t t, int32_t w, int32_t h)
 {
@@ -776,6 +948,17 @@ static inline void fglColorClear(FGLContext *ctx, bool lineByLine,
 	draw->flush();
 }
 
+/**
+ * Clears requested area of depth buffer.
+ * @param ctx Rendering context.
+ * @param lineByLine Indicates whether to clear line-by-line.
+ * @param stride Width of the buffer.
+ * @param l Left-most coordinate of requested area.
+ * @param t Top-most coordinate of requested area.
+ * @param w Width of requested area.
+ * @param h Height of requested area.
+ * @param mode Mask indicating which parts of the buffer to clear.
+ */
 static inline void fglDepthClear(FGLContext *ctx, bool lineByLine,
 		uint32_t stride, int32_t l, int32_t t, int32_t w, int32_t h,
 		GLbitfield mode)
@@ -824,6 +1007,11 @@ static inline void fglDepthClear(FGLContext *ctx, bool lineByLine,
 	depth->flush();
 }
 
+/**
+ * Clears requested buffers.
+ * @param ctx Rendering context.
+ * @param mode Mask indicating which buffers to clear.
+ */
 static void fglClear(FGLContext *ctx, GLbitfield mode)
 {
 	FUNCTION_TRACER;

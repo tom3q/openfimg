@@ -32,28 +32,68 @@
 #include <EGL/eglext.h>
 #include "types.h"
 
+/**
+ * Base class representing abstract backing surface (2D buffer).
+ * Defines an interface for classes implementing specific surfaces.
+ */
 class FGLSurface {
 public:
+	/** Physical address of the surface. */
 	intptr_t	paddr;
+	/** Virtual address of the surface. */
 	void		*vaddr;
+	/** Size (in bytes) of the surface. */
 	size_t		size;
 
+	/** Default constructor creating null surface. */
 			FGLSurface() : paddr(0), vaddr(0), size(0) {};
+	/**
+	 * Creates specified surface.
+	 * @param p Physical address of the surface.
+	 * @param v Virtual address of the surface.
+	 * @param s Size of the surface in bytes.
+	 */
 			FGLSurface(unsigned long p, void *v, unsigned long s) :
 				paddr(p), vaddr(v), size(s) {};
+	/** Destroys the surface. */
 	virtual		~FGLSurface() {};
 
+	/**
+	 * Flushes the surface to memory.
+	 * This operation ensures that any writes to the surface has been
+	 * finished and written back to the memory. This might include
+	 * waiting for native graphics stack, flushing caches, etc.
+	 */
 	virtual void	flush(void) = 0;
+	/**
+	 * Locks the surface for exclusive use.
+	 * @param usage Flags indicating usage.
+	 * @return 0 on success, non-zero on failure.
+	 */
 	virtual int	lock(int usage = 0) = 0;
+	/**
+	 * Unlocks the surface.
+	 * @return 0 on success, non-zero on failure.
+	 */
 	virtual int	unlock(void) = 0;
 
+	/**
+	 * Checks if the surface is valid.
+	 * @return True if the surface is valid, otherwise false.
+	 */
 	virtual bool	isValid(void) = 0;
 };
 
+/** A class implementing a surface backed by internally allocated memory. */
 class FGLLocalSurface : public FGLSurface {
 	int		fd;
 public:
+	/**
+	 * Creates a local surface.
+	 * @param size Size of the surface in bytes.
+	 */
 			FGLLocalSurface(unsigned long size);
+	/** Destroys the surface. */
 	virtual		~FGLLocalSurface();
 
 	virtual void	flush(void);
@@ -63,9 +103,17 @@ public:
 	virtual bool	isValid(void) { return fd >= 0; };
 };
 
+/** A class implementing a surface backed by external (native) buffer. */
 class FGLExternalSurface : public FGLSurface {
 public:
+	/**
+	 * Creates an external surface.
+	 * @param v Virtual address of the surface.
+	 * @param p Physical address of the surface.
+	 * @param s Size of the surface in bytes.
+	 */
 			FGLExternalSurface(void *v, intptr_t p, size_t s);
+	/** Destroys the surface. */
 	virtual		~FGLExternalSurface();
 
 	virtual void	flush(void);

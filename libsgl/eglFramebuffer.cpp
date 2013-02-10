@@ -65,6 +65,8 @@
  */
 
 /* RGB 565 configs */
+
+/** RGB565, no depth, no stencil configuration */
 static const FGLConfigPair configAttributes0[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -75,6 +77,7 @@ static const FGLConfigPair configAttributes0[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
+/** RGB565, no depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes1[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -85,6 +88,7 @@ static const FGLConfigPair configAttributes1[] = {
 	{ EGL_STENCIL_SIZE,     8 },
 };
 
+/** RGB565, 24-bit depth, no stencil configuration */
 static const FGLConfigPair configAttributes2[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -95,6 +99,7 @@ static const FGLConfigPair configAttributes2[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
+/** RGB565, 24-bit depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes3[] = {
 	{ EGL_BUFFER_SIZE,     16 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -106,6 +111,8 @@ static const FGLConfigPair configAttributes3[] = {
 };
 
 /* RGB 888 configs */
+
+/** XRGB8888, no depth, no stencil configuration */
 static const FGLConfigPair configAttributes4[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -116,6 +123,7 @@ static const FGLConfigPair configAttributes4[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
+/** XRGB8888, no depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes5[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -126,6 +134,7 @@ static const FGLConfigPair configAttributes5[] = {
 	{ EGL_STENCIL_SIZE,     8 },
 };
 
+/** XRGB8888, 24-bit depth, no stencil configuration */
 static const FGLConfigPair configAttributes6[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -136,6 +145,7 @@ static const FGLConfigPair configAttributes6[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
+/** XRGB8888, 24-bit depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes7[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       0 },
@@ -147,6 +157,8 @@ static const FGLConfigPair configAttributes7[] = {
 };
 
 /* ARGB 8888 configs */
+
+/** ARGB8888, no depth, no stencil configuration */
 static const FGLConfigPair configAttributes8[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -157,6 +169,7 @@ static const FGLConfigPair configAttributes8[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
+/** ARGB8888, no depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes9[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -167,6 +180,7 @@ static const FGLConfigPair configAttributes9[] = {
 	{ EGL_STENCIL_SIZE,     8 },
 };
 
+/** ARGB8888, 24-bit depth, no stencil configuration */
 static const FGLConfigPair configAttributes10[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -177,6 +191,7 @@ static const FGLConfigPair configAttributes10[] = {
 	{ EGL_STENCIL_SIZE,     0 },
 };
 
+/** ARGB8888, 24-bit depth, 8-bit stencil configuration */
 static const FGLConfigPair configAttributes11[] = {
 	{ EGL_BUFFER_SIZE,     32 },
 	{ EGL_ALPHA_SIZE,       8 },
@@ -187,6 +202,10 @@ static const FGLConfigPair configAttributes11[] = {
 	{ EGL_STENCIL_SIZE,     8 },
 };
 
+/**
+ * EGL configurations supported by direct framebuffer access.
+ * Exported to platform-independent EGL code.
+ */
 const FGLConfigs gPlatformConfigs[] = {
 	{ configAttributes0, NELEM(configAttributes0)   },
 	{ configAttributes1, NELEM(configAttributes1)   },
@@ -202,17 +221,30 @@ const FGLConfigs gPlatformConfigs[] = {
 	{ configAttributes11, NELEM(configAttributes11) },
 };
 
+/** Number of exported EGL configurations */
 const int gPlatformConfigsNum = NELEM(gPlatformConfigs);
 
 /*
  * Frame buffer operations
  */
 
+/**
+ * Framebuffer surface.
+ * Implements FGLSurface interface on top of a standard Linux framebuffer.
+ * Used to provide access to framebuffer memory inside EGL and GLES.
+ */
 class FGLFramebufferSurface : public FGLSurface {
 public:
+	/**
+	 * Class constructor.
+	 * @param paddr Physical address of framebuffer memory.
+	 * @param vaddr Virtual address of framebuffer memory.
+	 * @param length Size of framebuffer memory in bytes.
+	 */
 	FGLFramebufferSurface(unsigned long paddr,
 					void *vaddr, unsigned long length) :
 		FGLSurface(paddr, vaddr, length) {}
+	/** Class destructor. */
 	virtual ~FGLFramebufferSurface() {}
 
 	virtual void flush(void) {}
@@ -233,6 +265,10 @@ public:
 	}
 };
 
+/**
+ * Framebuffer memory manager class.
+ * Implements multiple buffering using available framebuffer memory.
+ */
 class FGLFramebufferManager {
 	int _fd;
 	int _count;
@@ -241,10 +277,26 @@ class FGLFramebufferManager {
 	int _read;
 	bool _empty;
 public:
+	/**
+	 * Class constructor.
+	 * @param fd File descriptor of the framebuffer.
+	 * @param bufCount Number of buffers to create.
+	 * @param yres Vertical resolution of each buffer.
+	 */
 	FGLFramebufferManager(int fd, int bufCount, int yres);
+	/** Class destructor. */
 	~FGLFramebufferManager();
 
+	/**
+	 * Shows given buffer on the screen.
+	 * @param yoffset Vertical offset of the buffer.
+	 * @return 0 on success, negative on error.
+	 */
 	int put(unsigned int yoffset);
+	/**
+	 * Gets next buffer ready for rendering.
+	 * @return Vertical offset of received buffer.
+	 */
 	int get(void);
 };
 
@@ -264,6 +316,7 @@ FGLFramebufferManager::~FGLFramebufferManager()
 	delete[] _buffers;
 }
 
+/** Define to block until the buffer gets physically showed on the screen. */
 #define FRAMEBUFFER_USE_VSYNC
 
 int FGLFramebufferManager::put(unsigned int yoffset)
@@ -312,6 +365,11 @@ int FGLFramebufferManager::get(void)
  * Frame buffer window surface
  */
 
+/**
+ * Framebuffer window render surface.
+ * Provides framebuffer for rendering operations directly from Linux
+ * framebuffer device.
+ */
 class FGLFramebufferWindowSurface : public FGLRenderSurface {
 	int	bytesPerPixel;
 	int	fd;
@@ -326,6 +384,15 @@ class FGLFramebufferWindowSurface : public FGLRenderSurface {
 	FGLFramebufferManager *manager;
 
 public:
+	/**
+	 * Class constructor.
+	 * Constructs a window surface from Linux framebuffer device.
+	 * @param dpy EGL display to which the surface shall belong.
+	 * @param config Index of EGL configuration to use.
+	 * @param pixelFormat Requested color format. (See ::FGLPixelFormatEnum)
+	 * @param depthFormat Requested depth format.
+	 * @param fileDesc File descriptor of opened framebuffer device.
+	 */
 	FGLFramebufferWindowSurface(EGLDisplay dpy, uint32_t config,
 				uint32_t pixelFormat, uint32_t depthFormat,
 				int fileDesc) :
@@ -369,6 +436,7 @@ public:
 		manager = new FGLFramebufferManager(fd, bufferCount, height); 
 	}
 
+	/** Class destructor. */
 	~FGLFramebufferWindowSurface()
 	{
 		if (vbase != NULL)
@@ -480,6 +548,7 @@ public:
 	}
 };
 
+/** 32-bit pixel formats supported by framebuffer. */
 static uint32_t framebufferFormats32bpp[] = {
 	FGL_PIXFMT_XRGB8888,
 	FGL_PIXFMT_ARGB8888,
@@ -487,6 +556,7 @@ static uint32_t framebufferFormats32bpp[] = {
 	FGL_PIXFMT_ABGR8888
 };
 
+/** 16-bit pixel formats supported by framebuffer. */
 static uint32_t framebufferFormats16bpp[] = {
 	FGL_PIXFMT_XRGB1555,
 	FGL_PIXFMT_RGB565,
@@ -494,6 +564,14 @@ static uint32_t framebufferFormats16bpp[] = {
 	FGL_PIXFMT_ARGB1555
 };
 
+/**
+ * Finds pixel format compatible with given framebuffer configuration.
+ * @param vinfo Framebuffer configuration.
+ * @param fglFormat Pointer pointing where to store the found format.
+ * @param formats Arrays of formats to check for compatibility.
+ * @param count Count of formats in formats array.
+ * @return True if appropriate format was found, otherwise false.
+ */
 static bool fglFindCompatiblePixelFormat(const fb_var_screeninfo *vinfo,
 		uint32_t *fglFormat, const uint32_t *formats, uint32_t count)
 {
@@ -525,6 +603,13 @@ static bool fglFindCompatiblePixelFormat(const fb_var_screeninfo *vinfo,
 	return false;
 }
 
+/**
+ * Finds internal pixel format corresponding to framebuffer pixel format.
+ * @param vinfo Framebuffer configuration.
+ * @param fglFormat Pointer to variable where internal pixel format shall
+ * be stored.
+ * @return True if corresponding format was found, otherwise false.
+ */
 static bool fglNativeToFGLPixelFormat(const fb_var_screeninfo *vinfo,
 							uint32_t *fglFormat)
 {
@@ -544,6 +629,16 @@ static bool fglNativeToFGLPixelFormat(const fb_var_screeninfo *vinfo,
 	return false;
 }
 
+/**
+ * Creates native window surface based on user parameters.
+ * This function is a glue between generic and platform-specific EGL parts.
+ * @param dpy EGL display to which the surface shall belong.
+ * @param config EGL configuration which shall be used.
+ * @param pixelFormat Preferred pixel format.
+ * @param depthFormat Requested depth format.
+ * @param window EGL native window backing the surface.
+ * @return Created render surface or NULL on error.
+ */
 FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 		uint32_t config, uint32_t pixelFormat, uint32_t depthFormat,
 		EGLNativeWindowType window)
@@ -572,6 +667,7 @@ FGLRenderSurface *platformCreateWindowSurface(EGLDisplay dpy,
 
 #define EGLFunc	__eglMustCastToProperFunctionPointerType
 
+/** List of platform-specific EGL functions */
 const FGLExtensionMap gPlatformExtensionMap[] = {
 	{ NULL, NULL },
 };

@@ -28,11 +28,11 @@ class FGLObject;
 template<typename T1, typename T2>
 class FGLObjectBindingIterator;
 
-/*
- * FGLObjectBinding
- *
- * An object that allows a single object of type T1 to be bound to an object
+/**
+ * A class that allows a single object of type T1 to be bound to an object
  * of type T2 using appropriate FGLObject object.
+ * @tparam T1 Type of the object.
+ * @tparam T2 Type of the binding point.
  */
 template<typename T1, typename T2>
 class FGLObjectBinding {
@@ -42,22 +42,38 @@ class FGLObjectBinding {
 	FGLObjectBinding<T1, T2> *prev;
 
 public:
+	/**
+	 * Constructs a binding object.
+	 * @param parent Object owning the binding.
+	 */
 	FGLObjectBinding(T2 *parent = 0) :
 		parent(parent),
 		object(0),
 		next(this),
 		prev(this) {};
 
+	/**
+	 * Class destructor.
+	 * Unbinds bound object (if present) and destroys the binding.
+	 */
 	~FGLObjectBinding()
 	{
 		bind(0);
 	}
 
+	/**
+	 * Checks if there is an object bound to the binding.
+	 * @return True if there is a bound object, otherwise false.
+	 */
 	inline bool isBound(void)
 	{
 		return object != 0;
 	}
 
+	/**
+	 * Binds object to the binding.
+	 * @param o Pointer to FGLObject of object to bind.
+	 */
 	inline void bind(FGLObject<T1, T2> *o)
 	{
 		if (object)
@@ -66,6 +82,10 @@ public:
 			o->bind(this);
 	}
 
+	/**
+	 * Gets bound object.
+	 * @return Bound object or NULL if there is no bound object.
+	 */
 	inline T1* get(void)
 	{
 		T1 *ptr = 0;
@@ -74,6 +94,10 @@ public:
 		return ptr;
 	}
 
+	/**
+	 * Gets pointer to object owning the binding.
+	 * @return Pointer to object owning the binding.
+	 */
 	inline T2* getParent(void)
 	{
 		return parent;
@@ -83,11 +107,11 @@ public:
 	friend class FGLObjectBindingIterator<T1, T2>;
 };
 
-/*
- * FGLObjectBindingIterator
- *
- * An object that allows to access all objects of type T2, to which
+/**
+ * A class that allows to access all objects of type T2, to which
  * a given object of type T1 is bound using its FGLObject object.
+ * @tparam T1 Type of the object.
+ * @tparam T2 Type of the binding point.
  */
 template<typename T1, typename T2>
 class FGLObjectBindingIterator {
@@ -95,11 +119,16 @@ class FGLObjectBindingIterator {
 	FGLObjectBinding<T1, T2> *ptr;
 
 public:
+	/**
+	 * Gets object binding pointed by the iterator.
+	 * @return Pointer to object binding pointed by the iterator.
+	 */
 	T2 *get(void)
 	{
 		return ptr->getParent();
 	}
 
+	/** Advances the iterator to next object binding. */
 	FGLObjectBindingIterator<T1, T2> &operator++(void)
 	{
 		if (ptr != &object->sentinel)
@@ -108,6 +137,7 @@ public:
 		return *this;
 	}
 
+	/** Advances the iterator to next object binding. */
 	FGLObjectBindingIterator<T1, T2> &operator++(int)
 	{
 		FGLObjectBindingIterator<T1, T2> copy = *this;
@@ -118,26 +148,45 @@ public:
 		return copy;
 	}
 
+	/**
+	 * Equality operator.
+	 * Compares iterator position with other iterator.
+	 * @param op Iterator to compare with.
+	 * @return True if both iterators point to the same position,
+	 * otherwise false.
+	 */
 	bool operator==(const FGLObjectBindingIterator<T1, T2> &op)
 	{
 		return ptr == op.ptr;
 	}
 
+	/**
+	 * Inequality operator.
+	 * Compares iterator position with other iterator.
+	 * @param op Iterator to compare with.
+	 * @return False if both iterators point to the same position,
+	 * otherwise true.
+	 */
 	bool operator!=(const FGLObjectBindingIterator<T1, T2> &op)
 	{
 		return ptr != op.ptr;
 	}
 
+	/**
+	 * Constructs object binding iterator.
+	 * @param o Object of which bindings are iterated.
+	 * @param p Binding to start from.
+	 */
 	FGLObjectBindingIterator(FGLObject<T1, T2> *o,
 						FGLObjectBinding<T1, T2> *p) :
 		object(o), ptr(p) {}
 };
 
-/*
- * FGLObject
- *
- * An object that allows a single object of type T1 to be bound to multiple
+/**
+ * A class that allows a single object of type T1 to be bound to multiple
  * objects of type T2 using appropriate FGLObjectBinding objects.
+ * @tparam T1 Type of the object.
+ * @tparam T2 Type of the binding point.
  */
 template<typename T1, typename T2>
 class FGLObject {
@@ -145,19 +194,32 @@ class FGLObject {
 	T1 *parent;
 
 public:
+	/**
+	 * Constructs a bindable object.
+	 * @param parent Object owning the object being created.
+	 */
 	FGLObject(T1 *parent = 0) :
 		parent(parent) {};
 
+	/**
+	 * Class destructor.
+	 * Unbinds all bindings and destroys the object.
+	 */
 	~FGLObject()
 	{
 		unbindAll();
 	}
 
+	/**
+	 * Gets pointer to object owning this object.
+	 * @return Pointer to object owning this object.
+	 */
 	inline T1 *get(void)
 	{
 		return parent;
 	}
 
+	/** Unbinds the object from all bound bindings. */
 	inline void unbindAll(void)
 	{
 		FGLObjectBinding<T1, T2> *b = sentinel.next;
@@ -170,6 +232,10 @@ public:
 		sentinel.next = sentinel.prev = &sentinel;
 	}
 
+	/**
+	 * Unbinds given binding.
+	 * @param b Binding to unbind.
+	 */
 	inline void unbind(FGLObjectBinding<T1, T2> *b)
 	{
 		if (!isBound(b))
@@ -181,6 +247,11 @@ public:
 		b->object = 0;
 	}
 
+	/**
+	 * Binds the object to given binding.
+	 * Any object currently bound to this binding will be unbound.
+	 * @param b Binding to bind to.
+	 */
 	inline void bind(FGLObjectBinding<T1, T2> *b)
 	{
 		b->bind(0);
@@ -193,16 +264,28 @@ public:
 		b->object = this;
 	}
 
+	/**
+	 * Checks if the object is bound to any binding.
+	 * @return True if the object is bound, otherwise false.
+	 */
 	inline bool isBound(FGLObjectBinding<T1, T2> *b)
 	{
 		return b->object == this;
 	}
 
+	/**
+	 * Gets iterator to the first bound binding.
+	 * @return Iterator pointing to the first binding bound to the object.
+	 */
 	inline FGLObjectBindingIterator<T1, T2> begin(void)
 	{
 		return FGLObjectBindingIterator<T1, T2>(this, sentinel.next);
 	}
 
+	/**
+	 * Gets iterator pointing after last bound binding.
+	 * @return Iterator pointing after last binding bound to the object.
+	 */
 	inline FGLObjectBindingIterator<T1, T2> end(void)
 	{
 		return FGLObjectBindingIterator<T1, T2>(this, &sentinel);
