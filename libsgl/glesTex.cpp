@@ -184,162 +184,415 @@ static int fglGetFormatInfo(GLenum format, GLenum type, bool *conv)
 }
 
 /**
- * Generates mipmaps for given texture.
- * @param obj Texture to generate mipmaps for.
+ * Scales source image by factor of two in both dimensions. (RGB565 variant)
+ * @param dstData Destination image buffer.
+ * @param srcData Source image buffer.
+ * @param w Source image width (assumed to be greater or equal 2).
+ * @param h Source image height (assumed to be greater or equal 2).
  */
-static void fglGenerateMipmaps(FGLTexture *obj)
+static void fglDownscaleBy2RGB565(void *dstData, const void *srcData,
+				  unsigned int w, unsigned int h)
 {
-	int level = 0;
-	int skip = 1;
+	const uint16_t *src = (const uint16_t *)srcData;
+	uint16_t *dst = (uint16_t *)dstData;
+	const uint32_t mask = 0x07e0f81f;
+	unsigned int srcW = w;
 
-	int w = obj->width;
-	int h = obj->height;
-	if ((w&h) == 1)
-		return;
+	w /= 2;
+	h /= 2;
 
-	w = (w>>1) ? : 1;
-	h = (h>>1) ? : 1;
+	if (!w || !h) {
+		/* 1D textures need special handling */
+		for (unsigned int x = 0; x < (w + h); ++x) {
+			uint32_t grb, rgb;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
 
-	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
-	void *curLevel = obj->surface->vaddr;
-	void *nextLevel = (uint8_t *)obj->surface->vaddr
-			+ pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, 1);
+			p00 = (p00 | (p00 << 16)) & mask;
+			p10 = (p10 | (p10 << 16)) & mask;
 
-processNextLevel:
-	++level;
-	int stride = w;
-	int bs = w;
-	switch (obj->pixFormat) {
-	case FGL_PIXFMT_RGB565: {
-		uint16_t const * src = (uint16_t const *)curLevel;
-		uint16_t* dst = (uint16_t*)nextLevel;
-		const uint32_t mask = 0x07E0F81F;
-		for (int y=0 ; y<h ; y++) {
-			size_t offset = (y*2) * bs;
-			for (int x=0 ; x<w ; x++) {
-				uint32_t p00 = src[offset];
-				uint32_t p10 = src[offset+1];
-				uint32_t p01 = src[offset+bs];
-				uint32_t p11 = src[offset+bs+1];
-				p00 = (p00 | (p00 << 16)) & mask;
-				p01 = (p01 | (p01 << 16)) & mask;
-				p10 = (p10 | (p10 << 16)) & mask;
-				p11 = (p11 | (p11 << 16)) & mask;
-				uint32_t grb = ((p00 + p10 + p01 + p11) >> 2) & mask;
-				uint32_t rgb = (grb & 0xFFFF) | (grb >> 16);
-				dst[x + y*stride] = rgb;
-				offset += 2;
-			}
+			grb = ((p00 + p10) >> 1) & mask;
+			rgb = (grb & 0xffff) | (grb >> 16);
+
+			dst[x] = rgb;
 		}
-		break; }
-	case FGL_PIXFMT_RGBA5551: {
-		uint16_t const * src = (uint16_t const *)curLevel;
-		uint16_t* dst = (uint16_t*)nextLevel;
-		for (int y=0 ; y<h ; y++) {
-			size_t offset = (y*2) * bs;
-			for (int x=0 ; x<w ; x++) {
-				uint32_t p00 = src[offset];
-				uint32_t p10 = src[offset+1];
-				uint32_t p01 = src[offset+bs];
-				uint32_t p11 = src[offset+bs+1];
-				uint32_t r = ((p00>>11)+(p10>>11)+(p01>>11)+(p11>>11)+2)>>2;
-				uint32_t g = (((p00>>6)+(p10>>6)+(p01>>6)+(p11>>6)+2)>>2)&0x3F;
-				uint32_t b = ((p00&0x3E)+(p10&0x3E)+(p01&0x3E)+(p11&0x3E)+4)>>3;
-				uint32_t a = ((p00&1)+(p10&1)+(p01&1)+(p11&1)+2)>>2;
-				dst[x + y*stride] = (r<<11)|(g<<6)|(b<<1)|a;
-				offset += 2;
-			}
-		}
-		break; }
-	case FGL_PIXFMT_XRGB8888:
-	case FGL_PIXFMT_ARGB8888:
-	case FGL_PIXFMT_XBGR8888:
-	case FGL_PIXFMT_ABGR8888: {
-		uint32_t const * src = (uint32_t const *)curLevel;
-		uint32_t* dst = (uint32_t*)nextLevel;
-		for (int y=0 ; y<h ; y++) {
-			size_t offset = (y*2) * bs;
-			for (int x=0 ; x<w ; x++) {
-				uint32_t p00 = src[offset];
-				uint32_t p10 = src[offset+1];
-				uint32_t p01 = src[offset+bs];
-				uint32_t p11 = src[offset+bs+1];
-				uint32_t rb00 = p00 & 0x00FF00FF;
-				uint32_t rb01 = p01 & 0x00FF00FF;
-				uint32_t rb10 = p10 & 0x00FF00FF;
-				uint32_t rb11 = p11 & 0x00FF00FF;
-				uint32_t ga00 = (p00 >> 8) & 0x00FF00FF;
-				uint32_t ga01 = (p01 >> 8) & 0x00FF00FF;
-				uint32_t ga10 = (p10 >> 8) & 0x00FF00FF;
-				uint32_t ga11 = (p11 >> 8) & 0x00FF00FF;
-				uint32_t rb = (rb00 + rb01 + rb10 + rb11)>>2;
-				uint32_t ga = (ga00 + ga01 + ga10 + ga11)>>2;
-				uint32_t rgba = (rb & 0x00FF00FF) | ((ga & 0x00FF00FF)<<8);
-				dst[x + y*stride] = rgba;
-				offset += 2;
-			}
-		}
-		break; }
-	case FGL_PIXFMT_AL88:
-		skip = 2;
-		/* Fall-through */
-	case FGL_PIXFMT_L8: {
-		uint8_t const * src = (uint8_t const *)curLevel;
-		uint8_t* dst = (uint8_t*)nextLevel;
-		bs *= skip;
-		stride *= skip;
-		for (int y=0 ; y<h ; y++) {
-			size_t offset = (y*2) * bs;
-			for (int x=0 ; x<w ; x++) {
-				for (int c=0 ; c<skip ; c++) {
-					uint32_t p00 = src[c+offset];
-					uint32_t p10 = src[c+offset+skip];
-					uint32_t p01 = src[c+offset+bs];
-					uint32_t p11 = src[c+offset+bs+skip];
-					dst[x + y*stride + c] = (p00 + p10 + p01 + p11) >> 2;
-				}
-				offset += 2*skip;
-			}
-		}
-		break; }
-	case FGL_PIXFMT_RGBA4444: {
-		uint16_t const * src = (uint16_t const *)curLevel;
-		uint16_t* dst = (uint16_t*)nextLevel;
-		for (int y=0 ; y<h ; y++) {
-			size_t offset = (y*2) * bs;
-			for (int x=0 ; x<w ; x++) {
-				uint32_t p00 = src[offset];
-				uint32_t p10 = src[offset+1];
-				uint32_t p01 = src[offset+bs];
-				uint32_t p11 = src[offset+bs+1];
-				p00 = ((p00 << 12) & 0x0F0F0000) | (p00 & 0x0F0F);
-				p10 = ((p10 << 12) & 0x0F0F0000) | (p10 & 0x0F0F);
-				p01 = ((p01 << 12) & 0x0F0F0000) | (p01 & 0x0F0F);
-				p11 = ((p11 << 12) & 0x0F0F0000) | (p11 & 0x0F0F);
-				uint32_t rbga = (p00 + p10 + p01 + p11) >> 2;
-				uint32_t rgba = (rbga & 0x0F0F) | ((rbga>>12) & 0xF0F0);
-				dst[x + y*stride] = rgba;
-				offset += 2;
-			}
-		}
-		break; }
-	default:
-		LOGE("Unsupported format (%d)", obj->pixFormat);
+
 		return;
 	}
 
-	// exit condition: we just processed the 1x1 LODs
-	if ((w&h) == 1)
+	for (unsigned int y = 0; y < h; ++y) {
+		for (unsigned int x = 0; x < w; ++x) {
+			uint32_t grb, rgb;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+			uint32_t p01 = src[2 * x + srcW];
+			uint32_t p11 = src[2 * x + srcW + 1];
+
+			p00 = (p00 | (p00 << 16)) & mask;
+			p01 = (p01 | (p01 << 16)) & mask;
+			p10 = (p10 | (p10 << 16)) & mask;
+			p11 = (p11 | (p11 << 16)) & mask;
+
+			grb = ((p00 + p10 + p01 + p11) >> 2) & mask;
+			rgb = (grb & 0xffff) | (grb >> 16);
+
+			dst[x] = rgb;
+		}
+
+		src += 2 * srcW;
+		dst += w;
+	}
+}
+
+/**
+ * Scales source image by factor of two in both dimensions. (RGBA5551 variant)
+ * @param dstData Destination image buffer.
+ * @param srcData Source image buffer.
+ * @param w Source image width (assumed to be greater or equal 2).
+ * @param h Source image height (assumed to be greater or equal 2).
+ */
+static void fglDownscaleBy2RGBA5551(void *dstData, const void *srcData,
+				   unsigned int w, unsigned int h)
+{
+	const uint16_t *src = (const uint16_t *)srcData;
+	uint16_t *dst = (uint16_t *)dstData;
+	const uint32_t mask = 0xF83E07C1;
+	unsigned int srcW = w;
+
+	w /= 2;
+	h /= 2;
+
+	if (!w || !h) {
+		/* 1D textures need special handling */
+		for (unsigned int x = 0; x < (w + h); ++x) {
+			uint32_t grb, rgb;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+
+			p00 = (p00 | (p00 << 16)) & mask;
+			p10 = (p10 | (p10 << 16)) & mask;
+
+			grb = ((p00 + p10) >> 1) & mask;
+			rgb = (grb & 0xffff) | (grb >> 16);
+
+			dst[x] = rgb;
+		}
+
 		return;
+	}
 
-	w = (w>>1) ? : 1;
-	h = (h>>1) ? : 1;
+	for (unsigned int y = 0; y < h; ++y) {
+		for (unsigned int x = 0; x < w; ++x) {
+			uint32_t grb, rgb;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+			uint32_t p01 = src[2 * x + srcW];
+			uint32_t p11 = src[2 * x + srcW + 1];
 
-	curLevel = nextLevel;
-	nextLevel = (uint8_t *)obj->surface->vaddr
-		+ pix->pixelSize*fimgGetTexMipmapOffset(obj->fimg, level + 1);
+			p00 = (p00 | (p00 << 16)) & mask;
+			p01 = (p01 | (p01 << 16)) & mask;
+			p10 = (p10 | (p10 << 16)) & mask;
+			p11 = (p11 | (p11 << 16)) & mask;
 
-	goto processNextLevel;
+			grb = ((p00 + p10 + p01 + p11) >> 2) & mask;
+			rgb = (grb & 0xffff) | (grb >> 16);
+
+			dst[x] = rgb;
+		}
+
+		src += 2 * srcW;
+		dst += w;
+	}
+}
+
+/**
+ * Scales source image by factor of two in both dimensions. (ARGB8888 variant)
+ * @param dstData Destination image buffer.
+ * @param srcData Source image buffer.
+ * @param w Source image width (assumed to be greater or equal 2).
+ * @param h Source image height (assumed to be greater or equal 2).
+ */
+static void fglDownscaleBy2ARGB8888(void *dstData, const void *srcData,
+				    unsigned int w, unsigned int h)
+{
+	uint32_t const * src = (uint32_t const *)srcData;
+	uint32_t* dst = (uint32_t*)dstData;
+	unsigned int srcW = w;
+
+	w /= 2;
+	h /= 2;
+
+	if (!w || !h) {
+		/* 1D textures need special handling */
+		for (unsigned int x = 0; x < (w + h); ++x) {
+			uint32_t rgba;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+			uint32_t rb00 = p00 & 0x00FF00FF;
+			uint32_t rb10 = p10 & 0x00FF00FF;
+			uint32_t ga00 = (p00 >> 8) & 0x00FF00FF;
+			uint32_t ga10 = (p10 >> 8) & 0x00FF00FF;
+			uint32_t rb = (rb00 + rb10) >> 1;
+			uint32_t ga = (ga00 + ga10) >> 1;
+
+			rgba = (rb & 0x00FF00FF) | ((ga & 0x00FF00FF) << 8);
+			dst[x] = rgba;
+		}
+
+		return;
+	}
+
+	for (unsigned int y = 0; y < h; ++y) {
+		for (unsigned int x = 0; x < w ; ++x) {
+			uint32_t rgba;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+			uint32_t p01 = src[2 * x + srcW];
+			uint32_t p11 = src[2 * x + srcW + 1];
+			uint32_t rb00 = p00 & 0x00FF00FF;
+			uint32_t rb01 = p01 & 0x00FF00FF;
+			uint32_t rb10 = p10 & 0x00FF00FF;
+			uint32_t rb11 = p11 & 0x00FF00FF;
+			uint32_t ga00 = (p00 >> 8) & 0x00FF00FF;
+			uint32_t ga01 = (p01 >> 8) & 0x00FF00FF;
+			uint32_t ga10 = (p10 >> 8) & 0x00FF00FF;
+			uint32_t ga11 = (p11 >> 8) & 0x00FF00FF;
+			uint32_t rb = (rb00 + rb01 + rb10 + rb11) >> 2;
+			uint32_t ga = (ga00 + ga01 + ga10 + ga11) >> 2;
+
+			rgba = (rb & 0x00FF00FF) | ((ga & 0x00FF00FF) << 8);
+			dst[x] = rgba;
+		}
+
+		src += 2 * srcW;
+		dst += w;
+	}
+}
+
+/**
+ * Scales source image by factor of two in both dimensions. (AL88 variant)
+ * @param dstData Destination image buffer.
+ * @param srcData Source image buffer.
+ * @param w Source image width (assumed to be greater or equal 2).
+ * @param h Source image height (assumed to be greater or equal 2).
+ */
+static void fglDownscaleBy2AL88(void *dstData, const void *srcData,
+				unsigned int w, unsigned int h)
+{
+	uint8_t const * src = (uint8_t const *)srcData;
+	uint8_t* dst = (uint8_t*)dstData;
+	unsigned int srcW = w;
+
+	w /= 2;
+	h /= 2;
+
+	srcW *= 2;
+
+	if (!w || !h) {
+		/* 1D textures need special handling */
+		for (unsigned int x = 0; x < (w + h); ++x) {
+			uint32_t p00 = src[4 * x];
+			uint32_t p10 = src[4 * x + 2];
+
+			dst[2 * x] = (p00 + p10) >> 1;
+
+			p00 = src[1 + 4 * x];
+			p10 = src[1 + 4 * x + 2];
+
+			dst[2 * x + 1] = (p00 + p10) >> 1;
+		}
+
+		return;
+	}
+
+	for (unsigned int y = 0; y < h; ++y) {
+		for (unsigned int x = 0; x < w; ++x) {
+			uint32_t p00 = src[4 * x];
+			uint32_t p10 = src[4 * x + 2];
+			uint32_t p01 = src[4 * x + srcW];
+			uint32_t p11 = src[4 * x + srcW + 2];
+
+			dst[2 * x] = (p00 + p10 + p01 + p11) >> 2;
+
+			p00 = src[1 + 4 * x];
+			p10 = src[1 + 4 * x + 2];
+			p01 = src[1 + 4 * x + srcW];
+			p11 = src[1 + 4 * x + srcW + 2];
+
+			dst[2 * x + 1] = (p00 + p10 + p01 + p11) >> 2;
+		}
+
+		src += 2 * srcW;
+		dst += 2 * w;
+	}
+}
+
+/**
+ * Scales source image by factor of two in both dimensions. (L8 variant)
+ * @param dstData Destination image buffer.
+ * @param srcData Source image buffer.
+ * @param w Source image width (assumed to be greater or equal 2).
+ * @param h Source image height (assumed to be greater or equal 2).
+ */
+static void fglDownscaleBy2L8(void *dstData, const void *srcData,
+			      unsigned int w, unsigned int h)
+{
+	uint8_t const * src = (uint8_t const *)srcData;
+	uint8_t* dst = (uint8_t*)dstData;
+	unsigned int srcW = w;
+
+	w /= 2;
+	h /= 2;
+
+	if (!w || !h) {
+		/* 1D textures need special handling */
+		for (unsigned int x = 0; x < (w + h); ++x) {
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+
+			dst[x] = (p00 + p10) >> 1;
+		}
+
+		return;
+	}
+
+	for (unsigned int y = 0; y < h; ++y) {
+		for (unsigned int x = 0; x < w; ++x) {
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+			uint32_t p01 = src[2 * x + srcW];
+			uint32_t p11 = src[2 * x + srcW + 1];
+
+			dst[x] = (p00 + p10 + p01 + p11) >> 2;
+		}
+
+		src += 2 * srcW;
+		dst += w;
+	}
+}
+
+/**
+ * Scales source image by factor of two in both dimensions. (RGBA4444 variant)
+ * @param dstData Destination image buffer.
+ * @param srcData Source image buffer.
+ * @param w Source image width (assumed to be greater or equal 2).
+ * @param h Source image height (assumed to be greater or equal 2).
+ */
+static void fglDownscaleBy2RGBA4444(void *dstData, const void *srcData,
+				    unsigned int w, unsigned int h)
+{
+	uint16_t const * src = (uint16_t const *)srcData;
+	uint16_t* dst = (uint16_t*)dstData;
+	unsigned int srcW = w;
+
+	w /= 2;
+	h /= 2;
+
+	if (!w || !h) {
+		/* 1D textures need special handling */
+		for (unsigned int x = 0; x < (w + h); ++x) {
+			uint32_t rbga, rgba;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+
+			p00 = ((p00 << 12) & 0x0F0F0000) | (p00 & 0x0F0F);
+			p10 = ((p10 << 12) & 0x0F0F0000) | (p10 & 0x0F0F);
+
+			rbga = (p00 + p10) >> 1;
+			rgba = (rbga & 0x0F0F) | ((rbga >> 12) & 0xF0F0);
+
+			dst[x] = rgba;
+		}
+
+		return;
+	}
+
+	for (unsigned int y = 0; y < h; ++y) {
+		for (unsigned int x = 0; x < w; ++x) {
+			uint32_t rbga, rgba;
+			uint32_t p00 = src[2 * x];
+			uint32_t p10 = src[2 * x + 1];
+			uint32_t p01 = src[2 * x + srcW];
+			uint32_t p11 = src[2 * x + srcW + 1];
+
+			p00 = ((p00 << 12) & 0x0F0F0000) | (p00 & 0x0F0F);
+			p10 = ((p10 << 12) & 0x0F0F0000) | (p10 & 0x0F0F);
+			p01 = ((p01 << 12) & 0x0F0F0000) | (p01 & 0x0F0F);
+			p11 = ((p11 << 12) & 0x0F0F0000) | (p11 & 0x0F0F);
+
+			rbga = (p00 + p10 + p01 + p11) >> 2;
+			rgba = (rbga & 0x0F0F) | ((rbga >> 12) & 0xF0F0);
+
+			dst[x] = rgba;
+		}
+
+		src += 2 * srcW;
+		dst += w;
+	}
+}
+
+/**
+ * Generates mipmaps for given texture.
+ * @param obj Texture to generate mipmaps for.
+ */
+static void fglGenerateMipmaps(FGLTexture *obj, unsigned int baseLevel)
+{
+	const FGLPixelFormat *pix = FGLPixelFormat::get(obj->pixFormat);
+	void *curLevel, *nextLevel;
+	unsigned int w = obj->width;
+	unsigned int h = obj->height;
+	unsigned int srcW;
+	unsigned int level;
+	unsigned int offset;
+
+	offset = fimgGetTexMipmapOffset(obj->fimg, baseLevel);
+	nextLevel = (uint8_t *)obj->surface->vaddr + pix->pixelSize*offset;
+
+	/* Calculate dimensions of base level */
+	w >>= baseLevel;
+	h >>= baseLevel;
+
+	for (level = baseLevel; level < obj->maxLevel; ++level) {
+		if (!w)
+			w = 1;
+		if (!h)
+			h = 1;
+
+		offset = fimgGetTexMipmapOffset(obj->fimg, level + 1);
+		curLevel = nextLevel;
+		nextLevel = (uint8_t *)obj->surface->vaddr
+						+ pix->pixelSize*offset;
+
+		switch (obj->pixFormat) {
+		case FGL_PIXFMT_RGB565:
+			fglDownscaleBy2RGB565(nextLevel, curLevel, w, h);
+			break;
+		case FGL_PIXFMT_RGBA5551:
+			fglDownscaleBy2RGBA5551(nextLevel, curLevel, w, h);
+			break;
+		case FGL_PIXFMT_XRGB8888:
+		case FGL_PIXFMT_ARGB8888:
+		case FGL_PIXFMT_XBGR8888:
+		case FGL_PIXFMT_ABGR8888:
+			fglDownscaleBy2ARGB8888(nextLevel, curLevel, w, h);
+			break;
+		case FGL_PIXFMT_AL88:
+			fglDownscaleBy2AL88(nextLevel, curLevel, w, h);
+			break;
+		case FGL_PIXFMT_L8:
+			fglDownscaleBy2L8(nextLevel, curLevel, w, h);
+			break;
+		case FGL_PIXFMT_RGBA4444:
+			fglDownscaleBy2RGBA4444(nextLevel, curLevel, w, h);
+			break;
+		default:
+			LOGE("Unsupported format (%d)", obj->pixFormat);
+			return;
+		}
+
+		w /= 2;
+		h /= 2;
+	}
 }
 
 /**
@@ -661,6 +914,9 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 						       ctx->unpackAlignment);
 			}
 
+			if (obj->genMipmap)
+				fglGenerateMipmaps(obj, level);
+
 			obj->dirty = true;
 		}
 
@@ -751,7 +1007,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 		}
 
 		if (obj->genMipmap)
-			fglGenerateMipmaps(obj);
+			fglGenerateMipmaps(obj, 0);
 
 		obj->dirty = true;
 	}
@@ -990,6 +1246,9 @@ GL_API void GL_APIENTRY glTexSubImage2D (GLenum target, GLint level,
 	else
 		fglLoadTexturePartial(obj, level, pixels,
 			ctx->unpackAlignment, xoffset, yoffset, width, height);
+
+	if (obj->genMipmap)
+		fglGenerateMipmaps(obj, level);
 
 	obj->dirty = true;
 }
