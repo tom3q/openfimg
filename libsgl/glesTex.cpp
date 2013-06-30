@@ -541,8 +541,6 @@ static void fglGenerateMipmaps(FGLTexture *obj, unsigned int baseLevel)
 	void *curLevel, *nextLevel;
 	unsigned int w = obj->width;
 	unsigned int h = obj->height;
-	unsigned int srcW;
-	unsigned int level;
 	unsigned int offset;
 
 	offset = fimgGetTexMipmapOffset(obj->fimg, baseLevel);
@@ -552,7 +550,7 @@ static void fglGenerateMipmaps(FGLTexture *obj, unsigned int baseLevel)
 	w >>= baseLevel;
 	h >>= baseLevel;
 
-	for (level = baseLevel; level < obj->maxLevel; ++level) {
+	for (int level = baseLevel; level < obj->maxLevel; ++level) {
 		if (!w)
 			w = 1;
 		if (!h)
