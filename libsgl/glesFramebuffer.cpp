@@ -271,7 +271,7 @@ GL_API void GL_APIENTRY glRenderbufferStorageOES (GLenum target,
 
 	if (!obj->surface) {
 		obj->surface = new FGLLocalSurface(size);
-		if (!obj->surface || !obj->surface->isValid()) {
+		if (!obj->surface || !obj->surface->bindContext(ctx)) {
 			delete obj->surface;
 			obj->surface = 0;
 			setError(GL_OUT_OF_MEMORY);

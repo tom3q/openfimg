@@ -974,7 +974,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	/* (Re)allocate the texture if needed */
 	if (!obj->surface) {
 		obj->surface = new FGLLocalSurface(size);
-		if(!obj->surface || !obj->surface->isValid()) {
+		if(!obj->surface || !obj->surface->bindContext(ctx)) {
 			delete obj->surface;
 			obj->surface = 0;
 			obj->width = 0;
@@ -988,7 +988,7 @@ GL_API void GL_APIENTRY glTexImage2D (GLenum target, GLint level,
 	}
 
 	fimgInitTexture(obj->fimg, pix->flags,
-					pix->texFormat, obj->surface->paddr);
+					pix->texFormat, obj->surface->handle);
 	fimgSetTex2DSize(obj->fimg, width, height, obj->maxLevel);
 
 	/* Copy the image (with conversion if needed) */
@@ -1324,7 +1324,7 @@ GL_API void GL_APIENTRY glEGLImageTargetTexture2DOES (GLenum target,
 
 	// Setup fimgTexture
 	fimgInitTexture(tex->fimg,
-			cfg->flags, cfg->texFormat, tex->surface->paddr);
+			cfg->flags, cfg->texFormat, tex->surface->handle);
 	fimgSetTex2DSize(tex->fimg, image->width, image->height, tex->maxLevel);
 	fimgSetTexMipmap(tex->fimg, FGTU_TSTA_MIPMAP_DISABLED);
 	if (target == GL_TEXTURE_EXTERNAL_OES)

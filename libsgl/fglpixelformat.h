@@ -114,6 +114,8 @@ struct FGLPixelFormat {
 	uint32_t pixFormat;
 	/** Special characteristics. (See ::FGLPixelFormatFlags.) */
 	uint32_t flags;
+	/** FourCC for use with DRM */
+	uint32_t fourCC;
 
 	/**
 	 * Gets a pointer to FGLPixelFormat object describing pixel format

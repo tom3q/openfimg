@@ -25,76 +25,15 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
 #include "fimg_private.h"
 #include "shaders/vert.h"
 #include "shaders/frag.h"
-
-#define FGVS_INSTMEM_START	(0x10000)
-#define FGVS_CFLOAT_START	(0x14000)
-#define FGVS_CINT_START		(0x18000)
-#define FGVS_CBOOL_START	(0x18400)
-
-#define FGVS_CONFIG		(0x1c800)
-#define FGVS_STATUS		(0x1c804)
-#define FGVS_PCRANGE		(0x20000)
-#define FGVS_ATTRIB_NUM		(0x20004)
-
-#define FGVS_IN_ATTR_IDX(i)	(0x20008 + 4*(i))
-#define FGVS_OUT_ATTR_IDX(i)	(0x20014 + 4*(i))
-
-#define FGPS_INSTMEM_START	(0x40000)
-#define FGPS_CFLOAT_START	(0x44000)
-#define FGPS_CINT_START		(0x48000)
-#define FGPS_CBOOL_START	(0x48400)
-
-#define FGPS_EXE_MODE		(0x4c800)
-#define FGPS_PC_START		(0x4c804)
-#define FGPS_PC_END		(0x4c808)
-#define FGPS_PC_COPY		(0x4c80c)
-#define FGPS_ATTRIB_NUM		(0x4c810)
-#define FGPS_IBSTATUS		(0x4c814)
 
 #define FGFP_TEXENV(unit)	(4 + 2*(unit))
 #define FGFP_COMBSCALE(unit)	(5 + 2*(unit))
 
 #define MAX_INSTR		(64)
-
-typedef union {
-	uint32_t val;
-	struct {
-		unsigned copyPC		:1;
-		unsigned clrStatus	:1;
-		unsigned		:30;
-	};
-} fimgVShaderConfig;
-
-typedef union {
-	uint32_t val;
-	struct {
-		unsigned PCStart	:9;
-		unsigned		:7;
-		unsigned PCEnd		:9;
-		unsigned		:6;
-		unsigned ignorePCEnd	:1;
-	};
-} fimgVShaderPCRange;
-
-typedef union {
-	uint32_t val;
-	struct {
-		unsigned num		:4;
-		unsigned		:4;
-	} attrib[4];
-} fimgVShaderAttrIdx;
-
-typedef union {
-	uint32_t val;
-	struct {
-		unsigned PCEnd		:9;
-		unsigned ignorePCEnd	:1;
-		unsigned		:22;
-	};
-} fimgPShaderPCEnd;
 
 struct shaderBlock {
 	const uint32_t *data;
@@ -592,107 +531,20 @@ static fimgOpcodeInfo opcodeMap[64] = {
  * @param vaddr Address of first instruction slot.
  * @return Loaded instruction count.
  */
-static uint32_t loadShaderBlock(const struct shaderBlock *blk,
-						volatile void *vaddr)
+static uint32_t loadShaderBlock(const struct shaderBlock *blk, void *vaddr)
 {
+#ifdef FIMG_DYNSHADER_DEBUG
 	uint32_t inst;
 	const uint32_t *data = blk->data;
-	volatile uint32_t *addr = (volatile uint32_t *)vaddr;
+	uint32_t *addr = (uint32_t *)vaddr;
 
-	for (inst = 0; inst < blk->len; inst++) {
-#ifdef FIMG_DYNSHADER_DEBUG
+	for (inst = 0; inst < blk->len; inst++, addr += 4, data += 4)
 		LOGD("%p: %08x %08x %08x %08x", addr,
 					data[0], data[1], data[2], data[3]);
 #endif
-#if 0
-		asm ( 	"ldmia %0!, {r0-r3}"
-			"stmia %1!, {r0-r3}"
-			: "=r"(data), "=r"(addr)
-			: "0"(data), "1"(addr)
-			: "r0", "r1", "r2", "r3");
-#else
-		*(addr++) = *(data++);
-		*(addr++) = *(data++);
-		*(addr++) = *(data++);
-		*(addr++) = *(data++);
-#endif
-	}
+	memcpy(vaddr, blk->data, 4 * sizeof(uint32_t) * blk->len);
 
-	return 4*inst;
-}
-
-/**
- * Sets input attribute count of vertex shader.
- * (Must be called with hardware locked.)
- * @param ctx Hardware context.
- * @param count Attribute count.
- */
-static inline void setVertexShaderAttribCount(fimgContext *ctx, uint32_t count)
-{
-	fimgWrite(ctx, count, FGVS_ATTRIB_NUM);
-}
-
-/**
- * Sets instruction address range of vertex shader.
- * (Must be called with hardware locked.)
- * @param ctx Hardware context.
- * @param start Address of first instruction.
- * @param end Address of last instruction.
- */
-static inline void setVertexShaderRange(fimgContext *ctx,
-					uint32_t start, uint32_t end)
-{
-	fimgVShaderPCRange PCRange;
-	fimgVShaderConfig Config;
-
-	PCRange.val = 0;
-	PCRange.PCStart = start;
-	PCRange.PCEnd = end;
-	fimgWrite(ctx, PCRange.val, FGVS_PCRANGE);
-
-	Config.val = 0;
-	Config.copyPC = 1;
-	Config.clrStatus = 1;
-	fimgWrite(ctx, Config.val, FGVS_CONFIG);
-}
-
-/**
- * Sets pixel shader operation mode.
- * (Must be called with hardware locked.)
- * @param ctx Hardware context.
- * @param state Non-zero to start pixel shader operation.
- */
-static inline void setPixelShaderState(fimgContext *ctx, int state)
-{
-	fimgWrite(ctx, !!state, FGPS_EXE_MODE);
-}
-
-/**
- * Sets input attribute count of pixel shader.
- * (Must be called with hardware locked.)
- * @param ctx Hardware context.
- * @param count Attribute count.
- */
-static inline void setPixelShaderAttribCount(fimgContext *ctx, uint32_t count)
-{
-	fimgWrite(ctx, count, FGPS_ATTRIB_NUM);
-
-	while (fimgRead(ctx, FGPS_IBSTATUS) & 1);
-}
-
-/**
- * Sets instruction address range of pixel shader.
- * (Must be called with hardware locked.)
- * @param ctx Hardware context.
- * @param start Address of first instruction.
- * @param end Address of last instruction.
- */
-static inline void setPixelShaderRange(fimgContext *ctx,
-					uint32_t start, uint32_t end)
-{
-	fimgWrite(ctx, start, FGPS_PC_START);
-	fimgWrite(ctx, end, FGPS_PC_END);
-	fimgWrite(ctx, 1, FGPS_PC_COPY);
+	return 4 * blk->len;
 }
 
 /**
@@ -704,21 +556,23 @@ static inline void setPixelShaderRange(fimgContext *ctx,
 static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
 								uint32_t slot)
 {
-	const uint32_t *data = (const uint32_t *)pfData;
-	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
-						+ FGPS_CFLOAT_START + 16*slot);
-#if 0
-	asm ( 	"ldmia %0!, {r0-r3}"
-		"stmia %1!, {r0-r3}"
-		: "=r"(data), "=r"(reg)
-		: "0"(data), "1"(reg)
-		: "r0", "r1", "r2", "r3");
-#else
-	*(reg++) = *(data++);
-	*(reg++) = *(data++);
-	*(reg++) = *(data++);
-	*(reg++) = *(data++);
-#endif
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
+	int ret;
+
+	submit.requests = &req;
+	submit.nr_requests = 1;
+
+	req.type = G3D_REQUEST_SHADER_DATA;
+	req.data = (void *)pfData;
+	req.length = 4 * sizeof(uint32_t);
+	req.shader_data.unit = G3D_SHADER_PIXEL;
+	req.shader_data.type = G3D_SHADER_DATA_FLOAT;
+	req.shader_data.offset = 4 * slot;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_SHADER_DATA failed (%d)", ret);
 }
 
 /**
@@ -729,24 +583,23 @@ static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
  */
 static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 {
-	uint32_t i;
-	const uint32_t *data = (const uint32_t *)pfData;
-	volatile uint32_t *reg = (volatile uint32_t *)(ctx->base
-						+ FGVS_CFLOAT_START + 16*slot);
-	for (i = 0; i < 4; i++) {
-#if 0
-		asm ( 	"ldmia %0!, {r0-r3}"
-			"stmia %1!, {r0-r3}"
-			: "=r"(data), "=r"(reg)
-			: "0"(data), "1"(reg)
-			: "r0", "r1", "r2", "r3");
-#else
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-		*(reg++) = *(data++);
-#endif
-	}
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
+	int ret;
+
+	submit.requests = &req;
+	submit.nr_requests = 1;
+
+	req.type = G3D_REQUEST_SHADER_DATA;
+	req.data = (void *)pfData;
+	req.length = 16 * sizeof(uint32_t);
+	req.shader_data.unit = G3D_SHADER_VERTEX;
+	req.shader_data.type = G3D_SHADER_DATA_FLOAT;
+	req.shader_data.offset = 4 * slot;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_SHADER_DATA failed (%d)", ret);
 }
 
 /*
@@ -1062,26 +915,43 @@ static void buildVertexShader(fimgContext *ctx, uint32_t slot)
  */
 static void loadVertexShader(fimgContext *ctx)
 {
-	volatile uint32_t *reg;
-	struct shaderBlock blk;
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
 	uint32_t slot = ctx->compat.curVsNum;
 	struct fimgVertexShaderProgram *vs = &ctx->compat.vertexShaders[slot];
+	int ret;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	reg = (volatile uint32_t *)(ctx->base + FGVS_INSTMEM_START);
-	blk.data = shaderSlotAddr(ctx->compat.vshaderBuf, slot);
-	blk.len = vs->instrCount;
-	loadShaderBlock(&blk, reg);
+	submit.requests = &req;
+	submit.nr_requests = 1;
 
-	setVertexShaderRange(ctx, 0, vs->instrCount - 1);
+	req.type = G3D_REQUEST_SHADER_PROGRAM;
+	req.data = shaderSlotAddr(ctx->compat.vshaderBuf, slot);
+	req.length = 4 * sizeof(uint32_t) * vs->instrCount;
+	req.shader_program.unit = G3D_SHADER_VERTEX;
+	req.shader_program.num_attrib = ctx->numAttribs;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_SHADER_PROGRAM failed (%d)", ret);
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
-	reg = (volatile uint32_t *)(ctx->base + FGVS_CFLOAT_START);
-	loadShaderBlock(&vertexConstFloat, reg);
+	req.type = G3D_REQUEST_SHADER_DATA_INIT;
+	req.data = (void *)vertexConstFloat.data;
+	req.length = 4 * sizeof(uint32_t) * vertexConstFloat.len;
+	req.shader_data_init.unit = G3D_SHADER_VERTEX;
+	req.shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
+						4 * vertexConstFloat.len;
+	req.shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
+	req.shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_SHADER_DATA_INIT failed (%d)", ret);
 #ifdef FIMG_DYNSHADER_DEBUG
-	LOGD("Loaded pixel shader");
+	LOGD("Loaded vertex shader");
 #endif
 }
 
@@ -1177,24 +1047,41 @@ static void buildPixelShader(fimgContext *ctx, uint32_t slot)
  */
 static void loadPixelShader(fimgContext *ctx)
 {
-	volatile uint32_t *reg;
-	struct shaderBlock blk;
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
 	uint32_t slot = ctx->compat.curPsNum;
 	struct fimgPixelShaderProgram *ps = &ctx->compat.pixelShaders[slot];
+	int ret;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	reg = (volatile uint32_t *)(ctx->base + FGPS_INSTMEM_START);
-	blk.data = shaderSlotAddr(ctx->compat.pshaderBuf, slot);
-	blk.len = ps->instrCount;
-	loadShaderBlock(&blk, reg);
+	submit.requests = &req;
+	submit.nr_requests = 1;
 
-	setPixelShaderRange(ctx, 0, ps->instrCount - 1);
+	req.type = G3D_REQUEST_SHADER_PROGRAM;
+	req.data = shaderSlotAddr(ctx->compat.pshaderBuf, slot);
+	req.length = 4 * sizeof(uint32_t) * ps->instrCount;
+	req.shader_program.unit = G3D_SHADER_PIXEL;
+	req.shader_program.num_attrib = FIMG_ATTRIB_NUM - 1;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_SHADER_PROGRAM failed (%d)", ret);
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
-	reg = (volatile uint32_t *)(ctx->base + FGPS_CFLOAT_START);
-	loadShaderBlock(&pixelConstFloat, reg);
+	req.type = G3D_REQUEST_SHADER_DATA_INIT;
+	req.data = (void *)pixelConstFloat.data;
+	req.length = 4 * sizeof(uint32_t) * pixelConstFloat.len;
+	req.shader_data_init.unit = G3D_SHADER_PIXEL;
+	req.shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
+						4 * pixelConstFloat.len;
+	req.shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
+	req.shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_SHADER_DATA_INIT failed (%d)", ret);
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loaded pixel shader");
 #endif
@@ -1499,12 +1386,16 @@ void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
  * @param tex Texture object.
  * @param unit Index of texture unit.
  */
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit)
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
+					uint32_t unit, int dirty)
 {
 	ctx->compat.texture[unit].texture = tex;
-	if (tex)
+	if (tex) {
 		FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit],
-				TEX_SWAP, !!(tex->reserved2 & FGTU_TEX_BGR));
+				TEX_SWAP, !!(tex->flags & FGTU_TEX_BGR));
+		if (dirty)
+			tex->flags |= G3D_TEXTURE_DIRTY;
+	}
 }
 
 /**
@@ -1563,12 +1454,10 @@ void fimgCreateCompatContext(fimgContext *ctx)
 void fimgCompatFlush(fimgContext *ctx)
 {
 	uint32_t i;
-	int psStopped = 0;
 
 	validateVertexShader(ctx);
 	if (!ctx->compat.vshaderLoaded) {
 		loadVertexShader(ctx);
-		setVertexShaderAttribCount(ctx, ctx->numAttribs);
 		ctx->compat.vshaderLoaded = 1;
 	}
 
@@ -1582,9 +1471,7 @@ void fimgCompatFlush(fimgContext *ctx)
 
 	validatePixelShader(ctx);
 	if (!ctx->compat.pshaderLoaded) {
-		setPixelShaderState(ctx, 0);
 		loadPixelShader(ctx);
-		psStopped = 1;
 		ctx->compat.pshaderLoaded = 1;
 	}
 
@@ -1600,22 +1487,12 @@ void fimgCompatFlush(fimgContext *ctx)
 		if (!ctx->compat.texture[i].dirty)
 			continue;
 
-		if (!psStopped) {
-			setPixelShaderState(ctx, 0);
-			psStopped = 1;
-		}
-
 		loadPSConstFloat(ctx, ctx->compat.texture[i].env,
 							FGFP_TEXENV(i));
 		loadPSConstFloat(ctx, ctx->compat.texture[i].scale,
 							FGFP_COMBSCALE(i));
 
 		ctx->compat.texture[i].dirty = 0;
-	}
-
-	if (psStopped) {
-		setPixelShaderAttribCount(ctx, FIMG_ATTRIB_NUM - 1);
-		setPixelShaderState(ctx, 1);
 	}
 }
 

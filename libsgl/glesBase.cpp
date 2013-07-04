@@ -736,7 +736,6 @@ static inline void fglSetupMatrices(FGLContext *ctx)
  */
 static inline void fglSetupTextures(FGLContext *ctx)
 {
-	bool flush = false;
 	int i = FGL_MAX_TEXTURE_UNITS - 1;
 
 	do {
@@ -756,21 +755,17 @@ static inline void fglSetupTextures(FGLContext *ctx)
 		}
 
 		/* Texture is ready */
-		if (tex->dirty) {
-			tex->surface->flush();
-			tex->dirty = false;
-			flush = true;
-		}
-
-		fimgCompatSetupTexture(ctx->fimg, tex->fimg, i);
+		fimgCompatSetupTexture(ctx->fimg, tex->fimg, i, tex->dirty);
 		fimgCompatSetTextureFunc(ctx->fimg,
 					i, ctx->texture[i].fglFunc);
 
 		ctx->busyTexture[i] = tex;
-	} while (i--);
 
-	if (flush)
-		fimgInvalidateTextureCache(ctx->fimg);
+		if (tex->dirty) {
+			tex->surface->flush();
+			tex->dirty = false;
+		}
+	} while (i--);
 }
 
 static void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
@@ -789,6 +784,7 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 	FGLFramebufferAttachable *fba;
+	fimgFramebuffer fimgFb;
 
 	if (!fb->isValid())
 		return -1;
@@ -806,9 +802,13 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 
 	int flipY = (fba->getType() != GL_TEXTURE);
 
-	fimgSetFrameBufSize(ctx->fimg, width, height, flipY);
-	fimgSetFrameBufParams(ctx->fimg, pix->flags, pix->pixFormat);
-	fimgSetColorBufBaseAddr(ctx->fimg, fba->surface->paddr);
+	fimgFb.width = width;
+	fimgFb.height = height;
+	fimgFb.flipY = flipY;
+	fimgFb.format = pix->pixFormat;
+	fimgFb.chandle = fba->surface->handle;
+	fimgFb.coffset = fba->surface->offset;
+	fimgFb.flags = pix->flags;
 
 	int depthMask = 0, depthTest = 0;
 	int stencilMask = 0, stencilTest = 0;
@@ -827,10 +827,14 @@ static inline int fglSetupFramebuffer(FGLContext *ctx)
 		stencilTest = ctx->enable.stencilTest;
 	}
 
-	if (depthFormat)
-		fimgSetZBufBaseAddr(ctx->fimg, fba->surface->paddr);
-	else
-		fimgSetZBufBaseAddr(ctx->fimg, 0);
+	if (depthFormat) {
+		fimgFb.zhandle = fba->surface->handle;
+		fimgFb.zoffset = fba->surface->offset;
+	} else {
+		fimgFb.zhandle = 0;
+	}
+
+	fimgSetFramebuffer(ctx->fimg, &fimgFb);
 
 	fimgSetZBufWriteMask(ctx->fimg, depthMask);
 	fimgSetDepthEnable(ctx->fimg, depthTest);
@@ -959,8 +963,11 @@ GL_API void GL_APIENTRY glDrawArrays (GLenum mode, GLint first, GLsizei count)
 	* as the buffered geometry transfer code doesn't get well
 	* with them.
 	*/
-		const uint8_t indices[2] = { count - 1, 0 };
-		fimgDrawElementsUByteIdx(ctx->fimg,
+		uint16_t indices[2];
+		
+		indices[0] = count - 1;
+		indices[1] = 0;
+		fimgDrawElementsUShortIdx(ctx->fimg,
 						fglMode, arrays, 2, indices);
 	}
 }

@@ -25,16 +25,6 @@
 
 #include "fimg_private.h"
 
-#define PRIMITIVE_OFFSET		0x30000
-
-#define FGPE_VERTEX_CONTEXT		(0x30000)
-#define FGPE_VIEWPORT_OX		(0x30004)
-#define FGPE_VIEWPORT_OY		(0x30008)
-#define FGPE_VIEWPORT_HALF_PX		(0x3000c)
-#define FGPE_VIEWPORT_HALF_PY		(0x30010)
-#define FGPE_DEPTHRANGE_HALF_F_SUB_N	(0x30014)
-#define FGPE_DEPTHRANGE_HALF_F_ADD_N	(0x30018)
-
 /**
  * Configures primitive engine for processing selected primitive type.
  * @param ctx Hardware context.
@@ -42,14 +32,14 @@
  */
 void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
 {
-	ctx->primitive.vctx.type = 1 << type; // See fimgPrimitiveType enum
+	ctx->hw.primitive.vctx.type = 1 << type; // See fimgPrimitiveType enum
 #ifdef FIMG_INTERPOLATION_WORKAROUND
-	ctx->primitive.vctx.vsOut = FIMG_ATTRIB_NUM - 1; // WORKAROUND
+	ctx->hw.primitive.vctx.vsOut = FIMG_ATTRIB_NUM - 1; // WORKAROUND
 #else
-	ctx->primitive.vctx.vsOut = ctx->numAttribs - 1; // Without position
+	ctx->hw.primitive.vctx.vsOut = ctx->numAttribs - 1; // Without position
 #endif
 
-	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
+	fimgQueue(ctx, ctx->hw.primitive.vctx.val, FGPE_VERTEX_CONTEXT);
 }
 
 /**
@@ -60,8 +50,8 @@ void fimgSetVertexContext(fimgContext *ctx, unsigned int type)
  */
 void fimgSetShadingMode(fimgContext *ctx, int en, unsigned attrib)
 {
-	ctx->primitive.vctx.flatShadeEn  = !!en;
-	ctx->primitive.vctx.flatShadeSel = (!!en << attrib);
+	ctx->hw.primitive.vctx.flatShadeEn  = !!en;
+	ctx->hw.primitive.vctx.flatShadeSel = (!!en << attrib);
 }
 
 /**
@@ -91,10 +81,10 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
 		oy = y0 + half_py;
 	}
 
-	ctx->primitive.ox = ox;
-	ctx->primitive.oy = oy;
-	ctx->primitive.halfPX = half_px;
-	ctx->primitive.halfPY = half_py;
+	ctx->hw.primitive.ox = ox;
+	ctx->hw.primitive.oy = oy;
+	ctx->hw.primitive.halfPX = half_px;
+	ctx->hw.primitive.halfPY = half_py;
 
 	fimgQueueF(ctx, ox, FGPE_VIEWPORT_OX);
 	fimgQueueF(ctx, oy, FGPE_VIEWPORT_OY);
@@ -108,18 +98,18 @@ void fimgSetViewportParams(fimgContext *ctx, float x0, float y0, float px, float
  */
 void fimgSetViewportBypass(fimgContext *ctx)
 {
-	ctx->primitive.ox = 0.0f;
-	ctx->primitive.oy = ctx->fbHeight;
-	ctx->primitive.halfPX = 1.0f;
-	ctx->primitive.halfPY = -1.0f;
+	ctx->hw.primitive.ox = 0.0f;
+	ctx->hw.primitive.oy = ctx->fbHeight;
+	ctx->hw.primitive.halfPX = 1.0f;
+	ctx->hw.primitive.halfPY = -1.0f;
 
 	fimgQueueF(ctx, 0.0f, FGPE_VIEWPORT_OX);
 	fimgQueueF(ctx, ctx->fbHeight, FGPE_VIEWPORT_OY);
 	fimgQueueF(ctx, 1.0f, FGPE_VIEWPORT_HALF_PX);
 	fimgQueueF(ctx, -1.0f, FGPE_VIEWPORT_HALF_PY);
 
-	ctx->primitive.halfDistance = 1.0f;
-	ctx->primitive.center = 0.0f;
+	ctx->hw.primitive.halfDistance = 1.0f;
+	ctx->hw.primitive.center = 0.0f;
 
 	fimgQueueF(ctx, 1.0f, FGPE_DEPTHRANGE_HALF_F_SUB_N);
 	fimgQueueF(ctx, 0.0f, FGPE_DEPTHRANGE_HALF_F_ADD_N);
@@ -136,8 +126,8 @@ void fimgSetDepthRange(fimgContext *ctx, float n, float f)
 	float half_distance = (f - n) * 0.5f;
 	float center = (f + n) * 0.5f;
 
-	ctx->primitive.halfDistance = half_distance;
-	ctx->primitive.center = center;
+	ctx->hw.primitive.halfDistance = half_distance;
+	ctx->hw.primitive.center = center;
 
 	fimgQueueF(ctx, half_distance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
 	fimgQueueF(ctx, center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
@@ -149,21 +139,6 @@ void fimgSetDepthRange(fimgContext *ctx, float n, float f)
  */
 void fimgCreatePrimitiveContext(fimgContext *ctx)
 {
-	ctx->primitive.halfDistance = 0.5f;
-	ctx->primitive.center = 0.5f;
-}
-
-/**
- * Restores hardware context of primitive engine.
- * @param ctx Hardware context.
- */
-void fimgRestorePrimitiveState(fimgContext *ctx)
-{
-	fimgWrite(ctx, ctx->primitive.vctx.val, FGPE_VERTEX_CONTEXT);
-	fimgWriteF(ctx, ctx->primitive.ox, FGPE_VIEWPORT_OX);
-	fimgWriteF(ctx, ctx->primitive.oy, FGPE_VIEWPORT_OY);
-	fimgWriteF(ctx, ctx->primitive.halfPX, FGPE_VIEWPORT_HALF_PX);
-	fimgWriteF(ctx, ctx->primitive.halfPY, FGPE_VIEWPORT_HALF_PY);
-	fimgWriteF(ctx, ctx->primitive.halfDistance, FGPE_DEPTHRANGE_HALF_F_SUB_N);
-	fimgWriteF(ctx, ctx->primitive.center, FGPE_DEPTHRANGE_HALF_F_ADD_N);
+	ctx->hw.primitive.halfDistance = 0.5f;
+	ctx->hw.primitive.center = 0.5f;
 }

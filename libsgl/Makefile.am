@@ -8,7 +8,9 @@ AM_CPPFLAGS = \
 lib_LTLIBRARIES = \
 	libGLES_fimg.la
 
-libGLES_fimg_la_LIBADD = libfimg/libfimg.la
+libGLES_fimg_la_LIBADD = \
+	libfimg/libfimg.la
+	$(DEPS_LIBS)
 
 libGLES_fimg_la_SOURCES = \
 	eglBase.cpp \

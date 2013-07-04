@@ -26,7 +26,7 @@
 #define FGL_NPOT_TEXTURES
 
 /** Number of available texture units */
-#define FGL_MAX_TEXTURE_UNITS		2
+#define FGL_MAX_TEXTURE_UNITS		FIMG_NUM_TEXTURE_UNITS
 /** Texture object namespace size */
 #define FGL_MAX_TEXTURE_OBJECTS		1024
 /** Buffer object namespace size */

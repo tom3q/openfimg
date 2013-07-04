@@ -36,14 +36,14 @@ def c2, 0.5, 0.5, 0.5, 0.5
 def c3, 4.0, 4.0, 4.0, 4.0
 
 # Texture environment color 0
-# def c4, 0.0, 0.0, 0.0, 0.0
+def c4, 0.0, 0.0, 0.0, 0.0
 # Combiner scale 0
-# def c5, 1.0, 1.0, 1.0, 1.0
+def c5, 1.0, 1.0, 1.0, 1.0
 
 # Texture environment color 1
-# def c6, 0.0, 0.0, 0.0, 0.0
+def c6, 0.0, 0.0, 0.0, 0.0
 # Combiner scale 1
-# def c7, 1.0, 1.0, 1.0, 1.0
+def c7, 1.0, 1.0, 1.0, 1.0
 
 % f header
 

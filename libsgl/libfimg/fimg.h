@@ -69,18 +69,7 @@ typedef struct _fimgContext fimgContext;
 	FGHI_PIPELINE_PER_FRAG )
 
 /* Functions */
-uint32_t fimgGetPipelineStatus(fimgContext *ctx);
-int fimgFlush(fimgContext *ctx);
-int fimgSelectiveFlush(fimgContext *ctx, uint32_t mask);
-int fimgInvalidateCache(fimgContext *ctx,
-				unsigned int vtcclear, unsigned int tcclear);
-int fimgFlushCache(fimgContext *ctx,
-				unsigned int ccflush, unsigned int zcflush);
-int fimgWaitForCacheFlush(fimgContext *ctx,
-				unsigned int ccflush, unsigned int zcflush);
 void fimgFinish(fimgContext *ctx);
-void fimgSoftReset(fimgContext *ctx);
-void fimgGetVersion(fimgContext *ctx, int *major, int *minor, int *rev);
 
 /*
  * Host interface
@@ -318,7 +307,6 @@ void fimgSetTexMipmapOffset(fimgTexture *texture, unsigned int level,
 unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level);
 void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit);
 void fimgSetTexMipmapLevel(fimgTexture *texture, int level);
-void fimgSetTexBaseAddr(fimgTexture *texture, unsigned int addr);
 void fimgSetTex2DSize(fimgTexture *texture,
 		unsigned int uSize, unsigned int vSize, unsigned int maxLevel);
 void fimgSetTex3DSize(fimgTexture *texture, unsigned int vSize,
@@ -330,7 +318,6 @@ void fimgSetTexMinFilter(fimgTexture *texture, unsigned mode);
 void fimgSetTexMagFilter(fimgTexture *texture, unsigned mode);
 void fimgSetTexMipmap(fimgTexture *texture, unsigned mode);
 void fimgSetTexCoordSys(fimgTexture *texture, unsigned mode);
-void fimgInvalidateTextureCache(fimgContext *ctx);
 
 /*
  * OpenGL 1.1 compatibility
@@ -410,7 +397,8 @@ void fimgCompatSetColorScale(fimgContext *ctx, uint32_t unit, float scale);
 void fimgCompatSetAlphaScale(fimgContext *ctx, uint32_t unit, float scale);
 void fimgCompatSetEnvColor(fimgContext *ctx, uint32_t unit,
 					float r, float g, float b, float a);
-void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex, uint32_t unit);
+void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
+					uint32_t unit, int dirty);
 
 #endif
 
@@ -524,11 +512,19 @@ enum {
 	FGPF_COLOR_MODE_BGR = (1 << 1)	/**< Component order is BGR */
 };
 
+typedef struct {
+	unsigned width;
+	unsigned height;
+	unsigned flipY;
+	unsigned format;
+	unsigned chandle;
+	unsigned coffset;
+	unsigned zhandle;
+	unsigned zoffset;
+	unsigned flags;
+} fimgFramebuffer;
+
 /* Functions */
-void fimgSetScissorParams(fimgContext *ctx,
-			  unsigned int xMax, unsigned int xMin,
-			  unsigned int yMax, unsigned int yMin);
-void fimgSetScissorEnable(fimgContext *ctx, int enable);
 void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
 			fimgTestMode mode);
 void fimgSetAlphaEnable(fimgContext *ctx, int enable);
@@ -560,12 +556,7 @@ void fimgSetLogicalOpEnable(fimgContext *ctx, int enable);
 void fimgSetColorBufWriteMask(fimgContext *ctx, unsigned int mask);
 void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask);
 void fimgSetZBufWriteMask(fimgContext *ctx, int enable);
-void fimgSetFrameBufParams(fimgContext *ctx,
-				unsigned int flags, unsigned int format);
-void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr);
-void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr);
-void fimgSetFrameBufSize(fimgContext *ctx,
-			unsigned int width, unsigned int height, int flipY);
+void fimgSetFramebuffer(fimgContext *ctx, fimgFramebuffer *fb);
 
 /*
  * OS support
@@ -573,12 +564,14 @@ void fimgSetFrameBufSize(fimgContext *ctx,
 
 fimgContext *fimgCreateContext(void);
 void fimgDestroyContext(fimgContext *ctx);
-void fimgRestoreContext(fimgContext *ctx);
-int fimgAcquireHardwareLock(fimgContext *ctx);
-int fimgReleaseHardwareLock(fimgContext *ctx);
 int fimgDeviceOpen(fimgContext *ctx);
 void fimgDeviceClose(fimgContext *ctx);
 int fimgWaitForFlush(fimgContext *ctx, uint32_t target);
+int fimgCreateGEM(fimgContext *ctx, unsigned long size, unsigned int *handle);
+void fimgDestroyGEMHandle(fimgContext *ctx, unsigned int handle);
+void *fimgMapGEM(fimgContext *ctx, unsigned int handle, unsigned long size);
+int fimgExportGEM(fimgContext *ctx, unsigned int handle);
+int fimgImportGEM(fimgContext *ctx, int fd, unsigned int *handle);
 
 //=============================================================================
 

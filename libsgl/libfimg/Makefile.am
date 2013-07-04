@@ -19,3 +19,5 @@ libfimg_la_SOURCES = \
 
 MAINTAINERCLEANFILES = \
 	Makefile.in
+
+libfimg_la_LIBADD = $(DEPS_LIBS)

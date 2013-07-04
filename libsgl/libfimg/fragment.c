@@ -23,65 +23,8 @@
 # include <config.h>
 #endif
 
+#include <sys/ioctl.h>
 #include "fimg_private.h"
-
-#define FGPF_SCISSOR_X		(0x70000)
-#define FGPF_SCISSOR_Y		(0x70004)
-#define FGPF_ALPHAT		(0x70008)
-#define FGPF_FRONTST		(0x7000c)
-#define FGPF_BACKST		(0x70010)
-#define FGPF_DEPTHT		(0x70014)
-#define FGPF_CCLR		(0x70018)
-#define FGPF_BLEND		(0x7001c)
-#define FGPF_LOGOP		(0x70020)
-#define FGPF_CBMSK		(0x70024)
-#define FGPF_DBMSK		(0x70028)
-#define FGPF_FBCTL		(0x7002c)
-#define FGPF_DBADDR		(0x70030)
-#define FGPF_CBADDR		(0x70034)
-#define FGPF_FBW		(0x70038)
-
-/**
- * Specifies parameters of scissor test.
- * Scissor test, if enabled, discards fragments outside the specified rectangle.
- * @see fimgSetScissorEnable
- * @param ctx Hardware context.
- * @param xMax Fragments with greater or equal x will be discarded.
- * @param xMin Fragments with less x will be discarded.
- * @param yMax Fragments with greater or equal y will be discarded.
- * @param yMin Fragments with less y will be discarded.
- */
-void fimgSetScissorParams(fimgContext *ctx,
-			  unsigned int xMax, unsigned int xMin,
-			  unsigned int yMax, unsigned int yMin)
-{
-	if (ctx->flipY) {
-		unsigned int tmp = ctx->fbHeight - yMax;
-		yMax = ctx->fbHeight - yMin;
-		yMin = tmp;
-	}
-
-	ctx->fragment.scY.max = yMax;
-	ctx->fragment.scY.min = yMin;
-	fimgQueue(ctx, ctx->fragment.scY.val, FGPF_SCISSOR_Y);
-
-	ctx->fragment.scX.max = xMax;
-	ctx->fragment.scX.min = xMin;
-	fimgQueue(ctx, ctx->fragment.scX.val, FGPF_SCISSOR_X);
-}
-
-/**
- * Controls enable state of scissor test.
- * Scissor test, if enabled, discards fragments outside the specified rectangle.
- * @see fimgSetScissorParams
- * @param ctx Hardware context.
- * @param enable Non-zero to enable scissor test.
- */
-void fimgSetScissorEnable(fimgContext *ctx, int enable)
-{
-	ctx->fragment.scX.enable = !!enable;
-	fimgQueue(ctx, ctx->fragment.scX.val, FGPF_SCISSOR_X);
-}
 
 /**
  * Specifies parameters of alpha test.
@@ -97,9 +40,9 @@ void fimgSetScissorEnable(fimgContext *ctx, int enable)
 void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
 			fimgTestMode mode)
 {
-	ctx->fragment.alpha.value = refAlpha;
-	ctx->fragment.alpha.mode = mode;
-	fimgQueue(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
+	ctx->hw.fragment.alpha.value = refAlpha;
+	ctx->hw.fragment.alpha.mode = mode;
+	fimgQueue(ctx, ctx->hw.fragment.alpha.val, FGPF_ALPHAT);
 }
 
 /**
@@ -113,8 +56,8 @@ void fimgSetAlphaParams(fimgContext *ctx, unsigned int refAlpha,
  */
 void fimgSetAlphaEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.alpha.enable = !!enable;
-	fimgQueue(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
+	ctx->hw.fragment.alpha.enable = !!enable;
+	fimgQueue(ctx, ctx->hw.fragment.alpha.val, FGPF_ALPHAT);
 }
 
 /**
@@ -135,10 +78,10 @@ void fimgSetAlphaEnable(fimgContext *ctx, int enable)
 void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 			     unsigned char ref, unsigned char mask)
 {
-	ctx->fragment.stFront.mode = mode;
-	ctx->fragment.stFront.ref = ref;
-	ctx->fragment.stFront.mask = mask;
-	fimgQueue(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
+	ctx->hw.prot.stFront.mode = mode;
+	ctx->hw.prot.stFront.ref = ref;
+	ctx->hw.prot.stFront.mask = mask;
+	fimgQueue(ctx, ctx->hw.prot.stFront.val, FGPF_FRONTST);
 }
 
 /**
@@ -159,10 +102,10 @@ void fimgSetFrontStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
 			   fimgTestAction dpfail, fimgTestAction dppass)
 {
-	ctx->fragment.stFront.sfail = sfail;
-	ctx->fragment.stFront.dpfail = dpfail;
-	ctx->fragment.stFront.dppass = dppass;
-	fimgQueue(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
+	ctx->hw.prot.stFront.sfail = sfail;
+	ctx->hw.prot.stFront.dpfail = dpfail;
+	ctx->hw.prot.stFront.dppass = dppass;
+	fimgQueue(ctx, ctx->hw.prot.stFront.val, FGPF_FRONTST);
 }
 
 /**
@@ -183,10 +126,10 @@ void fimgSetFrontStencilOp(fimgContext *ctx, fimgTestAction sfail,
 void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 			    unsigned char ref, unsigned char mask)
 {
-	ctx->fragment.stBack.mode = mode;
-	ctx->fragment.stBack.ref = ref;
-	ctx->fragment.stBack.mask = mask;
-	fimgQueue(ctx, ctx->fragment.stBack.val, FGPF_BACKST);
+	ctx->hw.fragment.stBack.mode = mode;
+	ctx->hw.fragment.stBack.ref = ref;
+	ctx->hw.fragment.stBack.mask = mask;
+	fimgQueue(ctx, ctx->hw.fragment.stBack.val, FGPF_BACKST);
 }
 
 /**
@@ -207,10 +150,10 @@ void fimgSetBackStencilFunc(fimgContext *ctx, fimgStencilMode mode,
 void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
 			  fimgTestAction dpfail, fimgTestAction dppass)
 {
-	ctx->fragment.stBack.sfail = sfail;
-	ctx->fragment.stBack.dpfail = dpfail;
-	ctx->fragment.stBack.dppass = dppass;
-	fimgQueue(ctx, ctx->fragment.stBack.val, FGPF_BACKST);
+	ctx->hw.fragment.stBack.sfail = sfail;
+	ctx->hw.fragment.stBack.dpfail = dpfail;
+	ctx->hw.fragment.stBack.dppass = dppass;
+	fimgQueue(ctx, ctx->hw.fragment.stBack.val, FGPF_BACKST);
 }
 
 /**
@@ -228,8 +171,8 @@ void fimgSetBackStencilOp(fimgContext *ctx, fimgTestAction sfail,
  */
 void fimgSetStencilEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.stFront.enable = !!enable;
-	fimgQueue(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
+	ctx->hw.prot.stFront.enable = !!enable;
+	fimgQueue(ctx, ctx->hw.prot.stFront.val, FGPF_FRONTST);
 }
 
 /**
@@ -242,8 +185,8 @@ void fimgSetStencilEnable(fimgContext *ctx, int enable)
  */
 void fimgSetDepthParams(fimgContext *ctx, fimgTestMode mode)
 {
-	ctx->fragment.depth.mode = mode;
-	fimgQueue(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
+	ctx->hw.prot.depth.mode = mode;
+	fimgQueue(ctx, ctx->hw.prot.depth.val, FGPF_DEPTHT);
 }
 
 /**
@@ -256,8 +199,8 @@ void fimgSetDepthParams(fimgContext *ctx, fimgTestMode mode)
  */
 void fimgSetDepthEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.depth.enable = !!enable;
-	fimgQueue(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
+	ctx->hw.prot.depth.enable = !!enable;
+	fimgQueue(ctx, ctx->hw.prot.depth.val, FGPF_DEPTHT);
 }
 
 /**
@@ -276,9 +219,9 @@ void fimgSetDepthEnable(fimgContext *ctx, int enable)
 void fimgSetBlendEquation(fimgContext *ctx,
 			  fimgBlendEquation alpha, fimgBlendEquation color)
 {
-	ctx->fragment.blend.ablendequation = alpha;
-	ctx->fragment.blend.cblendequation = color;
-	fimgQueue(ctx, ctx->fragment.blend.val, FGPF_BLEND);
+	ctx->hw.fragment.blend.ablendequation = alpha;
+	ctx->hw.fragment.blend.cblendequation = color;
+	fimgQueue(ctx, ctx->hw.fragment.blend.val, FGPF_BLEND);
 }
 
 /**
@@ -300,11 +243,11 @@ void fimgSetBlendFunc(fimgContext *ctx,
 		      fimgBlendFunction srcAlpha, fimgBlendFunction srcColor,
 		      fimgBlendFunction dstAlpha, fimgBlendFunction dstColor)
 {
-	ctx->fragment.blend.asrcblendfunc = srcAlpha;
-	ctx->fragment.blend.csrcblendfunc = srcColor;
-	ctx->fragment.blend.adstblendfunc = dstAlpha;
-	ctx->fragment.blend.cdstblendfunc = dstColor;
-	fimgQueue(ctx, ctx->fragment.blend.val, FGPF_BLEND);
+	ctx->hw.fragment.blend.asrcblendfunc = srcAlpha;
+	ctx->hw.fragment.blend.csrcblendfunc = srcColor;
+	ctx->hw.fragment.blend.adstblendfunc = dstAlpha;
+	ctx->hw.fragment.blend.cdstblendfunc = dstColor;
+	fimgQueue(ctx, ctx->hw.fragment.blend.val, FGPF_BLEND);
 }
 
 /**
@@ -368,8 +311,8 @@ void fimgSetBlendFuncNoAlpha(fimgContext *ctx,
  */
 void fimgSetBlendEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.blend.enable = !!enable;
-	fimgQueue(ctx, ctx->fragment.blend.val, FGPF_BLEND);
+	ctx->hw.fragment.blend.enable = !!enable;
+	fimgQueue(ctx, ctx->hw.fragment.blend.val, FGPF_BLEND);
 }
 
 /**
@@ -386,7 +329,7 @@ void fimgSetBlendEnable(fimgContext *ctx, int enable)
  */
 void fimgSetBlendColor(fimgContext *ctx, unsigned int blendColor)
 {
-	ctx->fragment.blendColor = blendColor;
+	ctx->hw.fragment.blendColor = blendColor;
 	fimgQueue(ctx, blendColor, FGPF_CCLR);
 }
 
@@ -397,8 +340,8 @@ void fimgSetBlendColor(fimgContext *ctx, unsigned int blendColor)
  */
 void fimgSetDitherEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.fbctl.dither = !!enable;
-	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
+	ctx->hw.prot.fbctl.dither = !!enable;
+	fimgQueue(ctx, ctx->hw.prot.fbctl.val, FGPF_FBCTL);
 }
 
 /**
@@ -414,9 +357,9 @@ void fimgSetDitherEnable(fimgContext *ctx, int enable)
 void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
 			    fimgLogicalOperation color)
 {
-	ctx->fragment.logop.alpha = alpha;
-	ctx->fragment.logop.color = color;
-	fimgQueue(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
+	ctx->hw.fragment.logop.alpha = alpha;
+	ctx->hw.fragment.logop.color = color;
+	fimgQueue(ctx, ctx->hw.fragment.logop.val, FGPF_LOGOP);
 }
 
 /**
@@ -430,8 +373,8 @@ void fimgSetLogicalOpParams(fimgContext *ctx, fimgLogicalOperation alpha,
  */
 void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
 {
-	ctx->fragment.logop.enable = !!enable;
-	fimgQueue(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
+	ctx->hw.fragment.logop.enable = !!enable;
+	fimgQueue(ctx, ctx->hw.fragment.logop.val, FGPF_LOGOP);
 }
 
 /**
@@ -441,8 +384,8 @@ void fimgSetLogicalOpEnable(fimgContext *ctx, int enable)
  */
 void fimgSetColorBufWriteMask(fimgContext *ctx, unsigned int mask)
 {
-	ctx->fragment.mask.val = mask & 0xf;
-	fimgQueue(ctx, ctx->fragment.mask.val, FGPF_CBMSK);
+	ctx->hw.fragment.mask.val = mask & 0xf;
+	fimgQueue(ctx, ctx->hw.fragment.mask.val, FGPF_CBMSK);
 }
 
 /**
@@ -454,10 +397,10 @@ void fimgSetColorBufWriteMask(fimgContext *ctx, unsigned int mask)
 void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask)
 {
 	if(!back)
-		ctx->fragment.dbmask.frontmask = ~mask;
+		ctx->hw.prot.dbmask.frontmask = ~mask;
 	else
-		ctx->fragment.dbmask.backmask = ~mask;
-	fimgQueue(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
+		ctx->hw.prot.dbmask.backmask = ~mask;
+	fimgQueue(ctx, ctx->hw.prot.dbmask.val, FGPF_DBMSK);
 }
 
 /**
@@ -467,67 +410,8 @@ void fimgSetStencilBufWriteMask(fimgContext *ctx, int back, unsigned char mask)
  */
 void fimgSetZBufWriteMask(fimgContext *ctx, int enable)
 {
-	ctx->fragment.dbmask.depth = !enable;
-	fimgQueue(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
-}
-
-/**
- * Controls framebuffer parameters such as pixel format, component swap, etc.
- * @param ctx Hardware context.
- * @param flags Extra flags altering framebuffer operation.
- * @param format Pixel format.
- */
-void fimgSetFrameBufParams(fimgContext *ctx,
-				unsigned int flags, unsigned int format)
-{
-	ctx->fragment.fbctl.opaque = 0;
-	ctx->fragment.fbctl.alphathreshold = 0;
-	ctx->fragment.fbctl.alphaconst = 255;
-	ctx->fragment.fbctl.colormode = format;
-#ifdef FIMG_FIXED_PIPELINE
-	FGFP_BITFIELD_SET(ctx->compat.psState.ps,
-			PS_SWAP, !!(flags & FGPF_COLOR_MODE_BGR));
-#endif
-	ctx->fbFlags = flags;
-	fimgQueue(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
-}
-
-/**
- * Sets depth/stencil buffer base address.
- * @param ctx Hardware context.
- * @param addr Physical address of depth/stencil buffer.
- */
-void fimgSetZBufBaseAddr(fimgContext *ctx, unsigned int addr)
-{
-	ctx->fragment.depthAddr = addr;
-	fimgQueue(ctx, addr, FGPF_DBADDR);
-}
-
-/**
- * Sets color buffer base address.
- * @param ctx Hardware context.
- * @param addr Physical address of color buffer.
- */
-void fimgSetColorBufBaseAddr(fimgContext *ctx, unsigned int addr)
-{
-	ctx->fragment.colorAddr = addr;
-	fimgQueue(ctx, addr, FGPF_CBADDR);
-}
-
-/**
- * Sets framebuffer width, height and Y-axis flip.
- * @param ctx Hardware context.
- * @param width Framebuffer width.
- * @param height Framebuffer height.
- * @param flipY Non-zero to enable Y-axis flip.
- */
-void fimgSetFrameBufSize(fimgContext *ctx,
-			unsigned int width, unsigned int height, int flipY)
-{
-	ctx->fragment.bufWidth = width;
-	ctx->fbHeight = height;
-	ctx->flipY = flipY;
-	fimgQueue(ctx, width, FGPF_FBW);
+	ctx->hw.prot.dbmask.depth = !enable;
+	fimgQueue(ctx, ctx->hw.prot.dbmask.val, FGPF_DBMSK);
 }
 
 /**
@@ -536,36 +420,58 @@ void fimgSetFrameBufSize(fimgContext *ctx,
  */
 void fimgCreateFragmentContext(fimgContext *ctx)
 {
-	ctx->fragment.alpha.mode = FGPF_TEST_MODE_ALWAYS;
-	ctx->fragment.depth.mode = FGPF_TEST_MODE_LESS;
-	ctx->fragment.stFront.mode = FGPF_STENCIL_MODE_ALWAYS;
-	ctx->fragment.stFront.mask = 0xff;
-	ctx->fragment.stBack.mode = FGPF_STENCIL_MODE_ALWAYS;
-	ctx->fragment.stBack.mask = 0xff;
-	ctx->fragment.blend.asrcblendfunc = FGPF_BLEND_FUNC_ONE;
-	ctx->fragment.blend.csrcblendfunc = FGPF_BLEND_FUNC_ONE;
-	ctx->fragment.fbctl.dither = 1;
+	ctx->hw.fragment.alpha.mode = FGPF_TEST_MODE_ALWAYS;
+	ctx->hw.prot.depth.mode = FGPF_TEST_MODE_LESS;
+	ctx->hw.prot.stFront.mode = FGPF_STENCIL_MODE_ALWAYS;
+	ctx->hw.prot.stFront.mask = 0xff;
+	ctx->hw.fragment.stBack.mode = FGPF_STENCIL_MODE_ALWAYS;
+	ctx->hw.fragment.stBack.mask = 0xff;
+	ctx->hw.fragment.blend.asrcblendfunc = FGPF_BLEND_FUNC_ONE;
+	ctx->hw.fragment.blend.csrcblendfunc = FGPF_BLEND_FUNC_ONE;
+	ctx->hw.prot.fbctl.dither = 1;
 }
 
 /**
- * Restores hardware context of per-fragment block.
+ * Controls framebuffer parameters such as pixel format, component swap, etc.
  * @param ctx Hardware context.
+ * @param fb Structure containing framebuffer parameters.
  */
-void fimgRestoreFragmentState(fimgContext *ctx)
+void fimgSetFramebuffer(fimgContext *ctx, fimgFramebuffer *fb)
 {
-	fimgWrite(ctx, ctx->fragment.scY.val, FGPF_SCISSOR_Y);
-	fimgWrite(ctx, ctx->fragment.scX.val, FGPF_SCISSOR_X);
-	fimgWrite(ctx, ctx->fragment.alpha.val, FGPF_ALPHAT);
-	fimgWrite(ctx, ctx->fragment.stBack.val, FGPF_BACKST);
-	fimgWrite(ctx, ctx->fragment.stFront.val, FGPF_FRONTST);
-	fimgWrite(ctx, ctx->fragment.depth.val, FGPF_DEPTHT);
-	fimgWrite(ctx, ctx->fragment.blend.val, FGPF_BLEND);
-	fimgWrite(ctx, ctx->fragment.blendColor, FGPF_CCLR);
-	fimgWrite(ctx, ctx->fragment.fbctl.val, FGPF_FBCTL);
-	fimgWrite(ctx, ctx->fragment.logop.val, FGPF_LOGOP);
-	fimgWrite(ctx, ctx->fragment.mask.val, FGPF_CBMSK);
-	fimgWrite(ctx, ctx->fragment.dbmask.val, FGPF_DBMSK);
-	fimgWrite(ctx, ctx->fragment.depthAddr, FGPF_DBADDR);
-	fimgWrite(ctx, ctx->fragment.colorAddr, FGPF_CBADDR);
-	fimgWrite(ctx, ctx->fragment.bufWidth, FGPF_FBW);
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
+	struct drm_exynos_g3d_framebuffer g3d_fb;
+	int ret;
+
+	ctx->hw.prot.fbctl.opaque = 0;
+	ctx->hw.prot.fbctl.alphathreshold = 0;
+	ctx->hw.prot.fbctl.alphaconst = 255;
+	ctx->hw.prot.fbctl.colormode = fb->format;
+#ifdef FIMG_FIXED_PIPELINE
+	FGFP_BITFIELD_SET(ctx->compat.psState.ps,
+			PS_SWAP, !!(fb->flags & FGPF_COLOR_MODE_BGR));
+#endif
+	ctx->fbFlags = fb->flags;
+	ctx->fbHeight = fb->height;
+	ctx->flipY = fb->flipY;
+	fimgQueue(ctx, ctx->hw.prot.fbctl.val, FGPF_FBCTL);
+
+	g3d_fb.fbctl = ctx->hw.prot.fbctl.val;
+	g3d_fb.coffset = fb->coffset;
+	g3d_fb.doffset = fb->zoffset;
+	g3d_fb.width = fb->width;
+
+	submit.requests = &req;
+	submit.nr_requests = 1;
+
+	req.type = G3D_REQUEST_FRAMEBUFFER_SETUP;
+	req.framebuffer.flags = fb->flags;
+	req.framebuffer.chandle = fb->chandle;
+	req.framebuffer.zhandle = fb->zhandle;
+	req.length = sizeof(g3d_fb);
+	req.data = &g3d_fb;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_FRAMEBUFFER_SETUP failed (%d)", ret);
 }

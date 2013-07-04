@@ -25,21 +25,6 @@
 
 #include "fimg_private.h"
 
-#define FGRA_PIX_SAMP		(0x38000)
-#define FGRA_D_OFF_EN		(0x38004)
-#define FGRA_D_OFF_FACTOR	(0x38008)
-#define FGRA_D_OFF_UNITS	(0x3800c)
-#define FGRA_D_OFF_R_IN		(0x38010)
-#define FGRA_BFCULL		(0x38014)
-#define FGRA_YCLIP		(0x38018)
-#define FGRA_LODCTL		(0x3c000)
-#define FGRA_XCLIP		(0x3c004)
-#define FGRA_PWIDTH		(0x3801c)
-#define FGRA_PSIZE_MIN		(0x38020)
-#define FGRA_PSIZE_MAX		(0x38024)
-#define FGRA_COORDREPLACE	(0x38028)
-#define FGRA_LWIDTH		(0x3802c)
-
 #define FGRA_COORDREPLACE_VAL(i)	(1 << (i))
 
 /**
@@ -49,7 +34,7 @@
  */
 void fimgSetPixelSamplePos(fimgContext *ctx, int corner)
 {
-	ctx->rasterizer.samplePos = !!corner;
+	ctx->hw.rasterizer.samplePos = !!corner;
 	fimgQueue(ctx, !!corner, FGRA_PIX_SAMP);
 }
 
@@ -61,7 +46,7 @@ void fimgSetPixelSamplePos(fimgContext *ctx, int corner)
  */
 void fimgEnableDepthOffset(fimgContext *ctx, int enable)
 {
-	ctx->rasterizer.dOffEn = !!enable;
+	ctx->hw.rasterizer.dOffEn = !!enable;
 	fimgQueue(ctx, !!enable, FGRA_D_OFF_EN);
 }
 
@@ -74,8 +59,8 @@ void fimgEnableDepthOffset(fimgContext *ctx, int enable)
  */
 void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
 {
-	ctx->rasterizer.dOffFactor = factor;
-	ctx->rasterizer.dOffUnits = units;
+	ctx->hw.rasterizer.dOffFactor = factor;
+	ctx->hw.rasterizer.dOffUnits = units;
 	fimgQueueF(ctx, factor, FGRA_D_OFF_FACTOR);
 	fimgQueueF(ctx, units, FGRA_D_OFF_UNITS);
 }
@@ -89,8 +74,8 @@ void fimgSetDepthOffsetParam(fimgContext *ctx, float factor, float units)
  */
 void fimgSetFaceCullEnable(fimgContext *ctx, int enable)
 {
-	ctx->rasterizer.cull.enable = !!enable;
-	fimgQueue(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
+	ctx->hw.rasterizer.cull.enable = !!enable;
+	fimgQueue(ctx, ctx->hw.rasterizer.cull.val, FGRA_BFCULL);
 }
 
 /**
@@ -103,8 +88,8 @@ void fimgSetFaceCullEnable(fimgContext *ctx, int enable)
  */
 void fimgSetFaceCullFace(fimgContext *ctx, unsigned int face)
 {
-	ctx->rasterizer.cull.face = face;
-	fimgQueue(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
+	ctx->hw.rasterizer.cull.face = face;
+	fimgQueue(ctx, ctx->hw.rasterizer.cull.val, FGRA_BFCULL);
 }
 
 /**
@@ -117,8 +102,8 @@ void fimgSetFaceCullFace(fimgContext *ctx, unsigned int face)
  */
 void fimgSetFaceCullFront(fimgContext *ctx, int bCW)
 {
-	ctx->rasterizer.cull.clockwise = !!bCW;
-	fimgQueue(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
+	ctx->hw.rasterizer.cull.clockwise = !!bCW;
+	fimgQueue(ctx, ctx->hw.rasterizer.cull.val, FGRA_BFCULL);
 }
 
 /**
@@ -135,12 +120,13 @@ void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 		ymin = tmp;
 	}
 
-	ctx->rasterizer.yClip.maxval = ymax;
-	ctx->rasterizer.yClip.minval = ymin;
+	ctx->hw.rasterizer.yClip.maxval = ymax;
+	ctx->hw.rasterizer.yClip.minval = ymin;
 
-	fimgQueue(ctx, ctx->rasterizer.yClip.val, FGRA_YCLIP);
+	fimgQueue(ctx, ctx->hw.rasterizer.yClip.val, FGRA_YCLIP);
 }
 
+#if 0
 /**
  * Configures generation of LOD coefficients for selected attribute.
  * @param ctx Hardware context.
@@ -152,12 +138,13 @@ void fimgSetYClip(fimgContext *ctx, unsigned int ymin, unsigned int ymax)
 void fimgSetLODControl(fimgContext *ctx, unsigned int attrib,
 						int lod, int ddx, int ddy)
 {
-	ctx->rasterizer.lodGen.coef[attrib].lod = lod;
-	ctx->rasterizer.lodGen.coef[attrib].ddx = ddx;
-	ctx->rasterizer.lodGen.coef[attrib].ddy = ddy;
+	ctx->hw.rasterizer.lodGen.coef[attrib].lod = lod;
+	ctx->hw.rasterizer.lodGen.coef[attrib].ddx = ddx;
+	ctx->hw.rasterizer.lodGen.coef[attrib].ddy = ddy;
 
-	fimgQueue(ctx, ctx->rasterizer.lodGen.val, FGRA_LODCTL);
+	fimgQueue(ctx, ctx->hw.rasterizer.lodGen.val, FGRA_LODCTL);
 }
+#endif
 
 /**
  * Configures X coordinate range for early fragment clipping.
@@ -167,10 +154,10 @@ void fimgSetLODControl(fimgContext *ctx, unsigned int attrib,
  */
 void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
 {
-	ctx->rasterizer.xClip.maxval = xmax;
-	ctx->rasterizer.xClip.minval = xmin;
+	ctx->hw.rasterizer.xClip.maxval = xmax;
+	ctx->hw.rasterizer.xClip.minval = xmin;
 
-	fimgQueue(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
+	fimgQueue(ctx, ctx->hw.rasterizer.xClip.val, FGRA_XCLIP);
 }
 
 /**
@@ -180,7 +167,7 @@ void fimgSetXClip(fimgContext *ctx, unsigned int xmin, unsigned int xmax)
  */
 void fimgSetPointWidth(fimgContext *ctx, float pWidth)
 {
-	ctx->rasterizer.pointWidth = pWidth;
+	ctx->hw.rasterizer.pointWidth = pWidth;
 	fimgQueueF(ctx, pWidth, FGRA_PWIDTH);
 }
 
@@ -191,7 +178,7 @@ void fimgSetPointWidth(fimgContext *ctx, float pWidth)
  */
 void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin)
 {
-	ctx->rasterizer.pointWidthMin = pWidthMin;
+	ctx->hw.rasterizer.pointWidthMin = pWidthMin;
 	fimgQueueF(ctx, pWidthMin, FGRA_PSIZE_MIN);
 }
 
@@ -202,7 +189,7 @@ void fimgSetMinimumPointWidth(fimgContext *ctx, float pWidthMin)
  */
 void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax)
 {
-	ctx->rasterizer.pointWidthMax = pWidthMax;
+	ctx->hw.rasterizer.pointWidthMax = pWidthMax;
 	fimgQueueF(ctx, pWidthMax, FGRA_PSIZE_MAX);
 }
 
@@ -213,7 +200,7 @@ void fimgSetMaximumPointWidth(fimgContext *ctx, float pWidthMax)
  */
 void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum)
 {
-	ctx->rasterizer.spriteCoordAttrib = FGRA_COORDREPLACE_VAL(coordReplaceNum);
+	ctx->hw.rasterizer.spriteCoordAttrib = FGRA_COORDREPLACE_VAL(coordReplaceNum);
 	fimgQueue(ctx, FGRA_COORDREPLACE_VAL(coordReplaceNum), FGRA_COORDREPLACE);
 }
 
@@ -224,7 +211,7 @@ void fimgSetCoordReplace(fimgContext *ctx, unsigned int coordReplaceNum)
  */
 void fimgSetLineWidth(fimgContext *ctx, float lWidth)
 {
-	ctx->rasterizer.lineWidth = lWidth;
+	ctx->hw.rasterizer.lineWidth = lWidth;
 	fimgQueueF(ctx, lWidth, FGRA_LWIDTH);
 }
 
@@ -234,29 +221,8 @@ void fimgSetLineWidth(fimgContext *ctx, float lWidth)
  */
 void fimgCreateRasterizerContext(fimgContext *ctx)
 {
-	ctx->rasterizer.pointWidth = 1.0f;
-	ctx->rasterizer.pointWidthMin = 1.0f;
-	ctx->rasterizer.pointWidthMax = 2048.0f;
-	ctx->rasterizer.lineWidth = 1.0f;
-}
-
-/**
- * Restores hardware context of rasterizer block.
- * @param ctx Hardware context.
- */
-void fimgRestoreRasterizerState(fimgContext *ctx)
-{
-	fimgWrite(ctx, ctx->rasterizer.samplePos, FGRA_PIX_SAMP);
-	fimgWrite(ctx, ctx->rasterizer.dOffEn, FGRA_D_OFF_EN);
-	fimgWriteF(ctx, ctx->rasterizer.dOffFactor, FGRA_D_OFF_FACTOR);
-	fimgWriteF(ctx, ctx->rasterizer.dOffUnits, FGRA_D_OFF_UNITS);
-	fimgWrite(ctx, ctx->rasterizer.cull.val, FGRA_BFCULL);
-	fimgWrite(ctx, ctx->rasterizer.yClip.val, FGRA_YCLIP);
-	fimgWriteF(ctx, ctx->rasterizer.pointWidth, FGRA_PWIDTH);
-	fimgWriteF(ctx, ctx->rasterizer.pointWidthMin, FGRA_PSIZE_MIN);
-	fimgWriteF(ctx, ctx->rasterizer.pointWidthMax, FGRA_PSIZE_MAX);
-	fimgWrite(ctx, ctx->rasterizer.spriteCoordAttrib, FGRA_COORDREPLACE);
-	fimgWriteF(ctx, ctx->rasterizer.lineWidth, FGRA_LWIDTH);
-	fimgWrite(ctx, ctx->rasterizer.lodGen.val, FGRA_LODCTL);
-	fimgWrite(ctx, ctx->rasterizer.xClip.val, FGRA_XCLIP);
+	ctx->hw.rasterizer.pointWidth = 1.0f;
+	ctx->hw.rasterizer.pointWidthMin = 1.0f;
+	ctx->hw.rasterizer.pointWidthMax = 2048.0f;
+	ctx->hw.rasterizer.lineWidth = 1.0f;
 }

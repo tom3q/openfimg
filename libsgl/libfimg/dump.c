@@ -64,71 +64,26 @@ static const struct block blocks[] = {
  */
 void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *func)
 {
-#ifndef FIMG_USE_DUMP_FILE
-	const struct block *b;
-	char buf[VALUES_PER_LINE * LINE_SIZE + 1];
-	char *s;
-
-	LOGD("DUMP %d %d (%s %d %d)", getpid(), ctx->fd, func, mode, count);
-
-	for (b = blocks; b->length; ++b) {
-		unsigned addr	= b->start;
-		unsigned len	= b->length;
-		do {
-			unsigned i;
-			s = buf;
-			for (i = 0; i < VALUES_PER_LINE && len; ++i) {
-				sprintf(s, "%08x ", fimgRead(ctx, addr));
-				addr += 4;
-				len -= 4;
-				s += LINE_SIZE;
-			}
-			*(--s) = '\0';
-			LOGD("%s", buf);
-		} while (len);
-	}
-#else
-	const struct block *b;
-	char buf[VALUES_PER_LINE * LINE_SIZE + 1];
-	char *s;
 	FILE *file;
+#ifdef FIMG_FIXED_PIPELINE
 	unsigned i;
+#endif
 	int ret;
-
-	file = fopen(FIMG_DUMP_FILE_PATH "/fimg.dmp", "a+");
-	if (!file)
-		return;
-
-	fprintf(file, "DUMP %d %d (%s %d %d)\n",
-					getpid(), ctx->fd, func, mode, count);
-
-	for (b = blocks; b->length; ++b) {
-		unsigned addr	= b->start;
-		unsigned len	= b->length;
-		do {
-			s = buf;
-			for (i = 0; i < VALUES_PER_LINE && len; ++i) {
-				fprintf(file, "%08x ", fimgRead(ctx, addr));
-				addr += 4;
-				len -= 4;
-				s += LINE_SIZE;
-			}
-			*(--s) = '\0';
-			fprintf(file, "\n");
-		} while (len);
-	}
-
-	fclose(file);
 
 	file = fopen(FIMG_DUMP_FILE_PATH "/geometry.dmp", "a+");
 	if (!file)
 		return;
 
 	ret = fwrite(&ctx->vertexDataSize, sizeof(ctx->vertexDataSize), 1, file);
-	ret = fwrite(ctx->vertexData, ctx->vertexDataSize, 1, file);
+	if (ret != 1)
+		goto err_close;
 
-	fclose(file);
+	ret = fwrite(ctx->vertexData, ctx->vertexDataSize, 1, file);
+	if (ret != 1)
+		goto err_close;
 #ifdef FIMG_FIXED_PIPELINE
+	fclose(file);
+
 	file = fopen(FIMG_DUMP_FILE_PATH "/matrix.dmp", "a+");
 	if (!file)
 		return;
@@ -145,9 +100,10 @@ void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *
 			ret = fwrite(ctx->compat.matrix[i], sizeof(float), 16, file);
 		else
 			ret = fwrite(dummy, sizeof(float), 16, file);
+		if (ret != 16)
+			goto err_close;
 	}
-
+#endif
+err_close:
 	fclose(file);
-#endif
-#endif
 }

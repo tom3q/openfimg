@@ -29,15 +29,14 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <xf86drm.h>
+
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include "fimg_private.h"
-#include "s3c_g3d.h"
-
-#define FIMG_SFR_SIZE 0x80000
 
 /**
  * Opens G3D device and maps GPU registers into application address space.
@@ -46,21 +45,13 @@
  */
 int fimgDeviceOpen(fimgContext *ctx)
 {
-	ctx->fd = open("/dev/s3c-g3d", O_RDWR | O_SYNC, 0);
+	ctx->fd = drmOpen("exynos", NULL);
 	if(ctx->fd < 0) {
-		LOGE("Couldn't open /dev/s3c-g3d (%s).", strerror(errno));
+		LOGE("Couldn't open /dev/dri/card0 (%s).", strerror(errno));
 		return -errno;
 	}
-#ifndef FIMG_DEBUG_IOMEM_ACCESS
-	ctx->base = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ,
-					MAP_SHARED, ctx->fd, 0);
-	if(ctx->base == MAP_FAILED) {
-		LOGE("Couldn't mmap FIMG registers (%s).", strerror(errno));
-		close(ctx->fd);
-		return -errno;
-	}
-#endif
-	LOGD("Opened /dev/s3c-g3d (%d).", ctx->fd);
+
+	LOGD("Opened /dev/dri/card0 (%d).", ctx->fd);
 
 	return 0;
 }
@@ -71,12 +62,9 @@ int fimgDeviceOpen(fimgContext *ctx)
  */
 void fimgDeviceClose(fimgContext *ctx)
 {
-#ifndef FIMG_DEBUG_IOMEM_ACCESS
-	munmap((void *)ctx->base, FIMG_SFR_SIZE);
-#endif
 	close(ctx->fd);
 
-	LOGD("fimg3D: Closed /dev/s3c-g3d (%d).", ctx->fd);
+	LOGD("fimg3D: Closed /dev/dri/card0 (%d).", ctx->fd);
 }
 
 /**
@@ -90,17 +78,19 @@ void fimgDeviceClose(fimgContext *ctx)
 fimgContext *fimgCreateContext(void)
 {
 	fimgContext *ctx;
-	uint32_t *queue;
+	struct g3d_state_entry *queue;
 
-	if ((ctx = malloc(sizeof(*ctx))) == NULL)
+	if ((ctx = calloc(1, sizeof(*ctx))) == NULL)
 		return NULL;
 
-	if ((queue = malloc(2*(FIMG_MAX_QUEUE_LEN + 1)*sizeof(uint32_t))) == NULL) {
+	queue = calloc(FIMG_MAX_QUEUE_LEN + 1, sizeof(*queue));
+	if (!queue) {
 		free(ctx);
 		return NULL;
 	}
-
-	memset(ctx, 0, sizeof(fimgContext));
+	ctx->queueLen = FIMG_MAX_QUEUE_LEN;
+	ctx->queueStart = queue;
+	ctx->queue = queue;
 
 	if(fimgDeviceOpen(ctx)) {
 		free(queue);
@@ -108,7 +98,6 @@ fimgContext *fimgCreateContext(void)
 		return NULL;
 	}
 
-	fimgCreateGlobalContext(ctx);
 	fimgCreateHostContext(ctx);
 	fimgCreatePrimitiveContext(ctx);
 	fimgCreateRasterizerContext(ctx);
@@ -116,10 +105,6 @@ fimgContext *fimgCreateContext(void)
 #ifdef FIMG_FIXED_PIPELINE
 	fimgCreateCompatContext(ctx);
 #endif
-
-	ctx->queue = queue;
-	ctx->queue[0] = 0;
-	ctx->queueStart = queue;
 
 	return ctx;
 }
@@ -141,83 +126,8 @@ void fimgDestroyContext(fimgContext *ctx)
 }
 
 /**
- * Restores full hardware context to hardware.
- * @param ctx Hardware context.
- */
-void fimgRestoreContext(fimgContext *ctx)
-{
-//	fprintf(stderr, "fimg: Restoring global state\n"); fflush(stderr);
-	fimgRestoreGlobalState(ctx);
-//	fprintf(stderr, "fimg: Restoring host state\n"); fflush(stderr);
-	fimgRestoreHostState(ctx);
-//	fprintf(stderr, "fimg: Restoring primitive state\n"); fflush(stderr);
-	fimgRestorePrimitiveState(ctx);
-//	fprintf(stderr, "fimg: Restoring rasterizer state\n"); fflush(stderr);
-	fimgRestoreRasterizerState(ctx);
-//	fprintf(stderr, "fimg: Restoring fragment state\n"); fflush(stderr);
-	fimgRestoreFragmentState(ctx);
-#ifdef FIMG_FIXED_PIPELINE
-//	fprintf(stderr, "fimg: Restoring compat state\n"); fflush(stderr);
-	fimgRestoreCompatState(ctx);
-#endif
-
-	ctx->queue = ctx->queueStart;
-	ctx->queue[0] = 0;
-	ctx->queueLen = 0;
-}
-
-/**
 	Power management
 */
-
-/**
- * Claims the hardware for exclusive use, possibly powering it up.
- * @param ctx Hardware context.
- * @return 0 on success, positive if context restore is needed,
- * negative on error.
- */
-int fimgAcquireHardwareLock(fimgContext *ctx)
-{
-	int ret;
-
-	if((ret = ioctl(ctx->fd, S3C_G3D_LOCK, 0)) < 0) {
-		LOGE("Could not acquire the hardware lock");
-		return -1;
-	}
-#ifdef FIMG_DEBUG_IOMEM_ACCESS
-	ctx->base = mmap(NULL, FIMG_SFR_SIZE, PROT_WRITE | PROT_READ,
-					MAP_SHARED, ctx->fd, 0);
-	if(ctx->base == MAP_FAILED) {
-		LOGE("Couldn't mmap FIMG registers (%s).", strerror(errno));
-		close(ctx->fd);
-		return -errno;
-	}
-#endif
-	ctx->locked = 1;
-
-	return ret;
-}
-
-/**
- * Releases the hardware, possibly allowing it to be powered down after
- * finishing any pending work.
- * @param ctx Hardware context.
- * @return 0 on success, negative on error.
- */
-int fimgReleaseHardwareLock(fimgContext *ctx)
-{
-#ifdef FIMG_DEBUG_IOMEM_ACCESS
-	munmap((void *)ctx->base, FIMG_SFR_SIZE);
-#endif
-	if(ioctl(ctx->fd, S3C_G3D_UNLOCK, 0)) {
-		LOGE("Could not release the hardware lock");
-		return -1;
-	}
-
-	ctx->locked = 0;
-
-	return 0;
-}
 
 /**
  * Waits for hardware to flush graphics pipeline.
@@ -227,10 +137,155 @@ int fimgReleaseHardwareLock(fimgContext *ctx)
  */
 int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
 {
-	if(ioctl(ctx->fd, S3C_G3D_FLUSH, target)) {
-		LOGE("Could not flush the hardware pipeline");
-		fimgDumpState(ctx, 0, 0, __func__);
-		return -1;
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
+	int ret;
+
+	submit.requests = &req;
+	submit.nr_requests = 1;
+
+	req.type = G3D_REQUEST_FENCE;
+	req.fence.flags = G3D_FENCE_FLUSH;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0) {
+		LOGE("G3D_REQUEST_FENCE failed (%d)", ret);
+		return ret;
+	}
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_WAIT);
+	if (ret < 0) {
+		LOGE("DRM_IOCTL_EXYNOS_G3D_WAIT failed (%d)", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+/**
+ * Makes sure that any rendering that is in progress finishes and any data
+ * in caches is saved to buffers in memory.
+ * @param ctx Hardware context.
+ */
+void fimgFinish(fimgContext *ctx)
+{
+	fimgWaitForFlush(ctx, FGHI_PIPELINE_ALL);
+}
+
+/* Register queue */
+void fimgQueueFlush(fimgContext *ctx)
+{
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
+	int ret;
+
+	if (!ctx->queueLen)
+		return;
+
+	submit.requests = &req;
+	submit.nr_requests = 1;
+
+	/*
+	 * Above the maximum length it's more efficient to restore the whole
+	 * context than just the changed registers
+	 */
+	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN) {
+		req.type = G3D_REQUEST_STATE_INIT;
+		req.data = &ctx->hw;
+		req.length = sizeof(ctx->hw);
+
+		ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+		if (ret < 0)
+			LOGE("G3D_REQUEST_STATE_INIT failed (%d)", errno);
+	} else {
+		req.type = G3D_REQUEST_STATE_BUFFER;
+		req.data = &ctx->queueStart[1];
+		req.length = ctx->queueLen * sizeof(*ctx->queueStart);
+
+		ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+		if (ret < 0)
+			LOGE("G3D_REQUEST_STATE_BUFFER failed (%d)", errno);
+	}
+
+	ctx->queueLen = 0;
+	ctx->queue = ctx->queueStart;
+	ctx->queue->reg = G3D_NUM_REGISTERS;
+}
+
+/*
+ * Memory management (GEM)
+ */
+
+int fimgCreateGEM(fimgContext *ctx, unsigned long size, unsigned int *handle)
+{
+	struct drm_exynos_gem_create req;
+	int ret;
+
+	req.size = size;
+	req.flags = EXYNOS_BO_UNMAPPED | EXYNOS_BO_CACHABLE;
+	req.handle = 0;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_GEM_CREATE, &req);
+	if (ret < 0) {
+		LOGE("failed to create GEM (%d)", ret);
+		return ret;
+	}
+
+	*handle = req.handle;
+	return 0;
+}
+
+void fimgDestroyGEMHandle(fimgContext *ctx, unsigned int handle)
+{
+	struct drm_gem_close req;
+	int ret;
+
+	req.handle = handle;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_GEM_CLOSE, &req);
+	if (ret < 0)
+		LOGE("failed to destroy GEM (%d)", ret);
+}
+
+void *fimgMapGEM(fimgContext *ctx, unsigned int handle, unsigned long size)
+{
+	struct drm_exynos_gem_mmap req;
+	int ret;
+
+	req.handle = handle;
+	req.size = size;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_GEM_MMAP, &req);
+	if (ret < 0) {
+		LOGE("failed to map GEM (%d)", ret);
+		return NULL;
+	}
+
+	return (void *)(unsigned long)req.mapped;
+}
+
+int fimgExportGEM(fimgContext *ctx, unsigned int handle)
+{
+	int ret;
+	int fd;
+
+	ret = drmPrimeHandleToFD(ctx->fd, handle, 0, &fd);
+	if (ret < 0) {
+		LOGE("failed to export GEM (%d)", ret);
+		return ret;
+	}
+
+	return fd;
+}
+
+int fimgImportGEM(fimgContext *ctx, int fd, unsigned int *handle)
+{
+	int ret;
+
+	ret = drmPrimeFDToHandle(ctx->fd, fd, handle);
+	if (ret < 0) {
+		LOGE("failed to import GEM (%d)", ret);
+		return ret;
 	}
 
 	return 0;

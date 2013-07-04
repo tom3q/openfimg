@@ -23,6 +23,7 @@
 # include <config.h>
 #endif
 
+#include <sys/ioctl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -30,24 +31,9 @@
 #include <malloc.h>
 #include "fimg_private.h"
 
-#define FGHI_FIFO_SIZE		32
-
-#define FGHI_DWSPACE		0x8000
-#define FGHI_FIFO_ENTRY		0xc000
-#define FGHI_CONTROL		0x8008
-#define FGHI_IDXOFFSET		0x800c
-#define FGHI_VBADDR		0x8010
-#define FGHI_VB_ENTRY		0xe000
-
-#define FGHI_ATTRIB(i)		(0x8040 + 4*(i))
-#define FGHI_ATTRIB_VBCTRL(i)	(0x8080 + 4*(i))
-#define FGHI_ATTRIB_VBBASE(i)	(0x80c0 + 4*(i))
-
-typedef enum {
-	FGHI_CONTROLIdxTYPE_UINT = 0,
-	FGHI_CONTROLIdxTYPE_USHORT,
-	FGHI_CONTROLIdxTYPE_UBYTE = 3
-} fimgHostIndexType;
+#define FGHI_ATTRIB(i)		(FGHI_ATTRIB0 + (i))
+#define FGHI_ATTRIB_VBCTRL(i)	(FGHI_ATTRIB_VBCTRL0 + (i))
+#define FGHI_ATTRIB_VBBASE(i)	(FGHI_ATTRIB_VBBASE0 + (i))
 
 /*
  * Utils
@@ -60,11 +46,6 @@ typedef enum {
  */
 void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
 {
-#ifdef FIMG_INTERPOLATION_WORKAROUND
-	ctx->host.control.numoutattrib = FIMG_ATTRIB_NUM;
-#else
-	ctx->host.control.numoutattrib = count;
-#endif
 	ctx->numAttribs = count;
 }
 
@@ -76,8 +57,8 @@ void fimgSetAttribCount(fimgContext *ctx, unsigned char count)
 void fimgSetAttribute(fimgContext *ctx, unsigned int idx,
 					unsigned int type, unsigned int numComp)
 {
-	ctx->host.attrib[idx].dt = type;
-	ctx->host.attrib[idx].numcomp = FGHI_NUMCOMP(numComp);
+	ctx->hw.host.attrib[idx].dt = type;
+	ctx->hw.host.attrib[idx].numcomp = FGHI_NUMCOMP(numComp);
 }
 
 /**
@@ -88,9 +69,11 @@ void fimgSetAttribute(fimgContext *ctx, unsigned int idx,
 static inline void setVtxBufAttrib(fimgContext *ctx, unsigned char idx,
 		unsigned short base, unsigned char stride, unsigned short range)
 {
-	ctx->host.vbbase[idx] = base;
-	ctx->host.vbctrl[idx].stride = stride;
-	ctx->host.vbctrl[idx].range = range;
+	ctx->hw.host.vbbase[idx] = base;
+	ctx->hw.host.vbctrl[idx].stride = stride;
+	ctx->hw.host.vbctrl[idx].range = range;
+	fimgQueue(ctx, ctx->hw.host.vbctrl[idx].val, FGHI_ATTRIB_VBCTRL(idx));
+	fimgQueue(ctx, ctx->hw.host.vbbase[idx], FGHI_ATTRIB_VBBASE(idx));
 }
 
 /*
@@ -186,31 +169,6 @@ static unsigned int calculateBatchSize(fimgArray *arrays, int count)
 	}
 
 	return vertexWordsToVertexCount[size];
-}
-
-/**
- * Copies vertex data from local memory to hardware vertex buffer.
- * @param ctx Hardware context.
- */
-static void fillVertexBuffer(fimgContext *ctx)
-{
-	volatile uint32_t *reg =
-			(volatile uint32_t *)(ctx->base + FGHI_VB_ENTRY);
-	uint32_t *data = (uint32_t *)ctx->vertexData;
-	unsigned count = (ctx->vertexDataSize + 31) / 32;
-
-	fimgWrite(ctx, 0, FGHI_VBADDR);
-
-	asm volatile (
-		"1:\n\t"
-		"ldmia %1!, {r0-r7}\n\t"
-		"stmia %0!, {r0-r7}\n\t"
-		"subs %2, %2, $1\n\t"
-		"bne 1b\n\t"
-		:
-		: "r"(reg), "r"(data), "r"(count)
-		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"
-	);
 }
 
 #define BUF_ADDR_32(buf, offs)	\
@@ -1581,11 +1539,23 @@ static const struct primitiveHandler primitiveHandler[FGPE_PRIMITIVE_MAX] = {
  * @param first Index of first vertex in vertex buffer.
  * @param count Vertex count.
  */
-static inline void drawAutoinc(fimgContext *ctx,
-				uint32_t first, uint32_t count)
+static void submitDraw(fimgContext *ctx, uint32_t count)
 {
-	fimgWrite(ctx, count, FGHI_FIFO_ENTRY);
-	fimgWrite(ctx, first, FGHI_FIFO_ENTRY);
+	struct drm_exynos_g3d_submit submit;
+	struct drm_exynos_g3d_request req;
+	int ret;
+
+	submit.requests = &req;
+	submit.nr_requests = 1;
+
+	req.type = G3D_REQUEST_DRAW_BUFFER;
+	req.data = ctx->vertexData;
+	req.length = (ctx->vertexDataSize + 31) & ~31;
+	req.draw.count = count;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("G3D_REQUEST_STATE_INIT failed (%d)", ret);
 }
 
 /**
@@ -1595,31 +1565,17 @@ static inline void drawAutoinc(fimgContext *ctx,
  */
 static void setupAttributes(fimgContext *ctx, fimgArray *arrays)
 {
-	fimgAttribute last;
 	unsigned int i;
 
 	// write attribute configuration
-	for (i = 0; i < ctx->numAttribs - 1; ++i)
-		fimgWrite(ctx, ctx->host.attrib[i].val, FGHI_ATTRIB(i));
+	for (i = 0; i < ctx->numAttribs - 1; ++i) {
+		ctx->hw.host.attrib[i].lastattr = 0;
+		fimgQueue(ctx, ctx->hw.host.attrib[i].val, FGHI_ATTRIB(i));
+	}
 
 	// write the last one
-	last = ctx->host.attrib[i];
-	last.lastattr = 1;
-	fimgWrite(ctx, last.val, FGHI_ATTRIB(i));
-}
-
-/**
- * Configures hardware vertex buffer parameters.
- * @param ctx Hardware context.
- */
-static void setupVertexBuffer(fimgContext *ctx)
-{
-	unsigned int i;
-
-	for (i = 0; i < ctx->numAttribs; i++) {
-		fimgWrite(ctx, ctx->host.vbctrl[i].val, FGHI_ATTRIB_VBCTRL(i));
-		fimgWrite(ctx, ctx->host.vbbase[i], FGHI_ATTRIB_VBBASE(i));
-	}
+	ctx->hw.host.attrib[i].lastattr = 1;
+	fimgQueue(ctx, ctx->hw.host.attrib[i].val, FGHI_ATTRIB(i));
 }
 
 /**
@@ -1651,34 +1607,25 @@ void fimgDrawArrays(fimgContext *ctx, unsigned int mode,
 		}
 	}
 
-	/* Prepare first batch without waiting for hardware */
 	copied = primitiveHandler[mode].direct(ctx, arrays, &first, &count);
 	if (!copied)
 		return;
 
-	/* Get hardware */
-	fimgGetHardware(ctx);
-	fimgFlush(ctx);
-	fimgFlushContext(ctx);
+#ifdef FIMG_FIXED_PIPELINE
+	fimgCompatFlush(ctx);
+#endif
 	fimgSetVertexContext(ctx, mode);
-
 	setupAttributes(ctx, arrays);
 #ifdef FIMG_DUMP_STATE_BEFORE_DRAW
 	fimgDumpState(ctx, mode, count, __func__);
 #endif
 
 	do {
-		fimgSelectiveFlush(ctx, FGHI_PIPELINE_FIFO
-				| FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF);
-		fillVertexBuffer(ctx);
-		setupVertexBuffer(ctx);
-		drawAutoinc(ctx, 0, copied);
+		fimgQueueFlush(ctx);
+		submitDraw(ctx, copied);
 		copied = primitiveHandler[mode].direct(ctx,
 							arrays, &first, &count);
 	} while (copied);
-
-	/* Release hardware */
-	fimgPutHardware(ctx);
 }
 
 /**
@@ -1712,35 +1659,26 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 		}
 	}
 
-	/* Prepare first batch without waiting for hardware */
 	copied = primitiveHandler[mode].indexed_8(ctx,
 						arrays, indices, &pos, &count);
 	if (!copied)
 		return;
 
-	/* Get hardware */
-	fimgGetHardware(ctx);
-	fimgFlush(ctx);
-	fimgFlushContext(ctx);
+#ifdef FIMG_FIXED_PIPELINE
+	fimgCompatFlush(ctx);
+#endif
 	fimgSetVertexContext(ctx, mode);
-
 	setupAttributes(ctx, arrays);
 #ifdef FIMG_DUMP_STATE_BEFORE_DRAW
 	fimgDumpState(ctx, mode, count, __func__);
 #endif
 
 	do {
-		fimgSelectiveFlush(ctx, FGHI_PIPELINE_FIFO
-				| FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF);
-		fillVertexBuffer(ctx);
-		setupVertexBuffer(ctx);
-		drawAutoinc(ctx, 0, copied);
+		fimgQueueFlush(ctx);
+		submitDraw(ctx, copied);
 		copied = primitiveHandler[mode].indexed_8(ctx,
 						arrays, indices, &pos, &count);
 	} while (copied);
-
-	/* Release hardware */
-	fimgPutHardware(ctx);
 }
 
 /**
@@ -1774,35 +1712,26 @@ void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 		}
 	}
 
-	/* Prepare first batch without waiting for hardware */
 	copied = primitiveHandler[mode].indexed_16(ctx,
 						arrays, indices, &pos, &count);
 	if (!copied)
 		return;
 
-	/* Get hardware */
-	fimgGetHardware(ctx);
-	fimgFlush(ctx);
-	fimgFlushContext(ctx);
+#ifdef FIMG_FIXED_PIPELINE
+	fimgCompatFlush(ctx);
+#endif
 	fimgSetVertexContext(ctx, mode);
-
 	setupAttributes(ctx, arrays);
 #ifdef FIMG_DUMP_STATE_BEFORE_DRAW
 	fimgDumpState(ctx, mode, count, __func__);
 #endif
 
 	do {
-		fimgSelectiveFlush(ctx, FGHI_PIPELINE_FIFO
-				| FGHI_PIPELINE_HOSTIF | FGHI_PIPELINE_HVF);
-		fillVertexBuffer(ctx);
-		setupVertexBuffer(ctx);
-		drawAutoinc(ctx, 0, copied);
+		fimgQueueFlush(ctx);
+		submitDraw(ctx, copied);
 		copied = primitiveHandler[mode].indexed_16(ctx,
 						arrays, indices, &pos, &count);
 	} while (copied);
-
-	/* Release hardware */
-	fimgPutHardware(ctx);
 }
 
 /*
@@ -1818,26 +1747,13 @@ void fimgCreateHostContext(fimgContext *ctx)
 	int i;
 	fimgAttribute template;
 
-	ctx->host.control.autoinc = 1;
-	ctx->host.control.envb = 1;
-	ctx->host.control.numoutattrib = FIMG_ATTRIB_NUM;
-
 	template.val = 0;
 	template.srcx = 0;
 	template.srcy = 1;
 	template.srcz = 2;
 	template.srcw = 3;
+	template.lastattr = 1;
 
-	for(i = 0; i < FIMG_ATTRIB_NUM; i++)
-		ctx->host.attrib[i].val = template.val;
-}
-
-/**
- * Restores hardware context of host interface block.
- * @param ctx Hardware context.
- */
-void fimgRestoreHostState(fimgContext *ctx)
-{
-	fimgWrite(ctx, 1, FGHI_IDXOFFSET);
-	fimgWrite(ctx, ctx->host.control.val, FGHI_CONTROL);
+	for(i = 0; i < FIMG_ATTRIB_NUM + 1; i++)
+		ctx->hw.host.attrib[i].val = template.val;
 }
