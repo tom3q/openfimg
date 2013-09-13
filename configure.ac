@@ -100,6 +100,14 @@ AC_ARG_ENABLE([debug],
 	[enable_debug=no])
 AC_MSG_RESULT([${enable_debug}])
 
+AC_MSG_CHECKING([whether to enable profiling])
+AC_ARG_ENABLE([profile],
+	[AS_HELP_STRING([--enable-profile],
+		[enable code generation for profiling @<:@default=disabled@:>@])],
+	[enable_profile="$enableval"],
+	[enable_profile=no])
+AC_MSG_RESULT([${enable_profile}])
+
 AC_MSG_CHECKING([whether to enable printing GL errors])
 AC_ARG_ENABLE(glerror,
 	AS_HELP_STRING([--enable-glerror], [enable printing GL errors @<:@default=no@:>@]),
@@ -125,6 +133,11 @@ if test "${enable_debug}" = "yes"; then
 else
 	CFLAGS="${CFLAGS} -O2"
 	AC_DEFINE(NDEBUG, 1, [no debugging])
+fi
+
+if test "${enable_profile}" = "yes"; then
+	CFLAGS="${CFLAGS} -pg"
+	LDFLAGS="${LDFLAGS} -pg"
 fi
 
 #
