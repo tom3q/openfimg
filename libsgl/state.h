@@ -315,6 +315,7 @@ struct FGLPerFragmentState {
 
 	/** Constructor initializing per-fragment state with default values. */
 	FGLPerFragmentState() :
+		depthFunc(GL_LESS),
 		blendSrc(GL_ONE),
 		blendDst(GL_ZERO),
 		logicOp(GL_COPY),
