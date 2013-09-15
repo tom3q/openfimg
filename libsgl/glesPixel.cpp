@@ -619,6 +619,7 @@ static void *fillBurst32masked(void *buf, uint32_t val, uint32_t mask, size_t cn
 	asm volatile (
 		"1:\n\t"
 		"ldmia %0, {r0-r7}\n\t"
+		"pld [%0,#32]\n\t"
 		"and r0, r0, %2\n\t"
 		"and r1, r1, %2\n\t"
 		"and r2, r2, %2\n\t"
