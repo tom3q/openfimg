@@ -1053,6 +1053,90 @@ static void fglClear(FGLContext *ctx, GLbitfield mode)
 		fglDepthClear(ctx, lineByLine, stride, l, t, w, h, mode);
 }
 
+static void fglHardwareClear(FGLContext *ctx, GLbitfield mask)
+{
+	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
+	unsigned int texEnabled = 0, extTexEnabled = 0;
+	float zNear = ctx->viewport.zNear;
+	float zFar = ctx->viewport.zFar;
+	FGLvec4f color;
+
+	memcpy(color, ctx->vertex[FGL_ARRAY_COLOR], sizeof(color));
+
+	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i) {
+		if (ctx->texture[i].enabled) {
+			texEnabled |= (1 << i);
+			ctx->texture[i].enabled = false;
+		}
+
+		if (ctx->textureExternal[i].enabled) {
+			extTexEnabled |= (1 << i);
+			ctx->textureExternal[i].enabled = false;
+		}
+	}
+
+	ctx->viewport.zNear = 0.0f;
+	ctx->viewport.zFar = 1.0f;
+
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_RED] = ctx->clear.red;
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_GREEN] = ctx->clear.green;
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_BLUE] = ctx->clear.blue;
+	ctx->vertex[FGL_ARRAY_COLOR][FGL_COMP_ALPHA] = ctx->clear.alpha;
+
+	if (mask & GL_DEPTH_BUFFER_BIT) {
+		fimgSetDepthParams(ctx->fimg, FGPF_TEST_MODE_ALWAYS);
+		fimgSetDepthEnable(ctx->fimg, 1);
+	} else {
+		fimgSetDepthEnable(ctx->fimg, 0);
+	}
+
+	if (mask & GL_STENCIL_BUFFER_BIT) {
+		fimgSetFrontStencilFunc(ctx->fimg,
+					FGPF_STENCIL_MODE_ALWAYS,
+					ctx->clear.stencil, 0xff);
+		fimgSetBackStencilFunc(ctx->fimg,
+					FGPF_STENCIL_MODE_ALWAYS,
+					ctx->clear.stencil, 0xff);
+		fimgSetFrontStencilOp(ctx->fimg, FGPF_TEST_ACTION_REPLACE,
+					FGPF_TEST_ACTION_REPLACE,
+					FGPF_TEST_ACTION_REPLACE);
+		fimgSetBackStencilOp(ctx->fimg, FGPF_TEST_ACTION_REPLACE,
+					FGPF_TEST_ACTION_REPLACE,
+					FGPF_TEST_ACTION_REPLACE);
+		fimgSetStencilEnable(ctx->fimg, 1);
+	} else {
+		fimgSetStencilEnable(ctx->fimg, 0);
+	}
+
+	glDrawTexfOES(0, 0, ctx->clear.depth, fb->getWidth(), fb->getHeight());
+
+	if (mask & GL_STENCIL_BUFFER_BIT) {
+		glStencilFunc(ctx->perFragment.stencil.func,
+				ctx->perFragment.stencil.ref,
+				ctx->perFragment.stencil.mask);
+		glStencilOp(ctx->perFragment.stencil.fail,
+				ctx->perFragment.stencil.passDepthFail,
+				ctx->perFragment.stencil.passDepthPass);
+	}
+	fimgSetStencilEnable(ctx->fimg, ctx->enable.stencilTest);
+
+	if (mask & GL_DEPTH_BUFFER_BIT)
+		glDepthFunc(ctx->perFragment.depthFunc);
+	fimgSetDepthEnable(ctx->fimg, ctx->enable.depthTest);
+
+	memcpy(ctx->vertex[FGL_ARRAY_COLOR], color, sizeof(color));
+
+	ctx->viewport.zNear = zNear;
+	ctx->viewport.zFar = zFar;
+
+	for (int i = 0; i < FGL_MAX_TEXTURE_UNITS; ++i) {
+		if (texEnabled & (1 << i))
+			ctx->texture[i].enabled = true;
+		if (extTexEnabled & (1 << i))
+			ctx->textureExternal[i].enabled = true;
+	}
+}
+
 #define FGL_CLEAR_MASK \
 	(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT)
 
@@ -1068,6 +1152,11 @@ GL_API void GL_APIENTRY glClear (GLbitfield mask)
 
 	if ((mask & FGL_CLEAR_MASK) == 0)
 		return;
+
+	if (0) {
+		fglHardwareClear(ctx, mask);
+		return;
+	}
 
 	/* Make sure the hardware isn't rendering */
 	glFinish();
