@@ -123,6 +123,8 @@ void fimgDrawElementsUByteIdx(fimgContext *ctx, unsigned int mode,
 		fimgArray *arrays, unsigned int count, const uint8_t *indices);
 void fimgDrawElementsUShortIdx(fimgContext *ctx, unsigned int mode,
 		fimgArray *arrays, unsigned int count, const uint16_t *indices);
+void fimgDrawElementsUIntIdx(fimgContext *ctx, unsigned int mode,
+		fimgArray *arrays, unsigned int count, const uint32_t *indices);
 void fimgSetAttribute(fimgContext *ctx,
 		      unsigned int idx,
 		      unsigned int type,

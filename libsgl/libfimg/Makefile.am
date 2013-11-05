@@ -12,6 +12,10 @@ libfimg_la_SOURCES = \
 	fragment.c \
 	global.c \
 	host.c \
+	host_contig.c \
+	host_index8.c \
+	host_index16.c \
+	host_index32.c \
 	primitive.c \
 	raster.c \
 	system.c \
