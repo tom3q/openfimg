@@ -105,8 +105,7 @@ static inline FGLContext *getContext(void)
 	Error handling
 */
 
-extern pthread_mutex_t glErrorKeyMutex;
-extern pthread_key_t glErrorKey;
+extern void _setError(GLenum error);
 
 #ifdef GLES_ERR_DEBUG
 /**
@@ -116,31 +115,8 @@ extern pthread_key_t glErrorKey;
 #define setError(error) ( \
 	LOGD("GLES error %s in %s", #error, __func__), \
 	_setError(error))
-static inline void _setError(GLenum error)
 #else
-/**
- * Sets last GLES error code.
- * @param error Error code.
- */
-static inline void setError(GLenum error)
+#define setError(error)	_setError(error)
 #endif
-{
-	GLenum errorCode;
-
-	if(unlikely(glErrorKey == (pthread_key_t)-1)) {
-		pthread_mutex_lock(&glErrorKeyMutex);
-		if(glErrorKey == (pthread_key_t)-1)
-			pthread_key_create(&glErrorKey, NULL);
-		pthread_mutex_unlock(&glErrorKeyMutex);
-		errorCode = GL_NO_ERROR;
-	} else {
-		errorCode = (GLenum)pthread_getspecific(glErrorKey);
-	}
-
-	pthread_setspecific(glErrorKey, (void *)error);
-
-	if(errorCode == GL_NO_ERROR)
-		errorCode = error;
-}
 
 #endif

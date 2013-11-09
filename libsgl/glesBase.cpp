@@ -55,6 +55,30 @@ GL_API GLenum GL_APIENTRY glGetError (void)
 	return error;
 }
 
+/**
+ * Sets last GLES error code.
+ * @param error Error code.
+ */
+void _setError(GLenum error)
+{
+	GLenum errorCode;
+
+	if(unlikely(glErrorKey == (pthread_key_t)-1)) {
+		pthread_mutex_lock(&glErrorKeyMutex);
+		if(glErrorKey == (pthread_key_t)-1)
+			pthread_key_create(&glErrorKey, NULL);
+		pthread_mutex_unlock(&glErrorKeyMutex);
+		errorCode = GL_NO_ERROR;
+	} else {
+		errorCode = (GLenum)pthread_getspecific(glErrorKey);
+	}
+
+	pthread_setspecific(glErrorKey, (void *)error);
+
+	if(errorCode == GL_NO_ERROR)
+		errorCode = error;
+}
+
 /*
 	Vertex state
 */
@@ -332,7 +356,7 @@ GL_API GLboolean GL_APIENTRY glIsBuffer (GLuint buffer)
  * @param width Attribute width (without padding).
  * @param pointer Pointer to attribute array.
  */
-static inline void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
+static void fglSetupAttribute(FGLContext *ctx, GLint idx, GLint size,
 					GLint type, GLint stride, GLint width,
 					const GLvoid *pointer)
 {
@@ -734,7 +758,7 @@ static inline void fglSetupMatrices(FGLContext *ctx)
  * libfimg texture cache invalidation.
  * @param ctx Rendering context.
  */
-static inline void fglSetupTextures(FGLContext *ctx)
+static void fglSetupTextures(FGLContext *ctx)
 {
 	int i = FGL_MAX_TEXTURE_UNITS - 1;
 
@@ -780,7 +804,7 @@ static void fglSetColorMask(FGLContext *ctx);
  * @param ctx Rendering context.
  * @return Zero on success, negative if current framebuffer is invalid.
  */
-static inline int fglSetupFramebuffer(FGLContext *ctx)
+static int fglSetupFramebuffer(FGLContext *ctx)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 	FGLFramebufferAttachable *fba;
@@ -1446,7 +1470,7 @@ GL_API void GL_APIENTRY glPolygonOffsetx (GLfixed factor, GLfixed units)
  * @param width Width of allowed area.
  * @param height Height of allowed area.
  */
-static inline void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
+static void fglSetScissor(FGLContext *ctx, GLint x, GLint y,
 						GLsizei width, GLsizei height)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
@@ -1483,7 +1507,7 @@ GL_API void GL_APIENTRY glScissor (GLint x, GLint y, GLsizei width, GLsizei heig
  * @param func Alpha test function.
  * @param ref Reference value in hardware format.
  */
-static inline void fglAlphaFunc (GLenum func, GLubyte ref)
+static void fglAlphaFunc (GLenum func, GLubyte ref)
 {
 	fimgTestMode fglFunc;
 
@@ -1582,7 +1606,7 @@ GL_API void GL_APIENTRY glStencilFunc (GLenum func, GLint ref, GLuint mask)
  * @param action GLES test action.
  * @return libfimg test action or -1 on invalid GLES test action.
  */
-static inline GLint fglActionFromEnum(GLenum action)
+static GLint fglActionFromEnum(GLenum action)
 {
 	GLint fglAction;
 
@@ -1879,7 +1903,7 @@ static const int *componentPositions[] = {
  * Configures color component masking in libfimg.
  * @param ctx Rendering context.
  */
-static inline void fglSetColorMask(FGLContext *ctx)
+static void fglSetColorMask(FGLContext *ctx)
 {
 	FGLAbstractFramebuffer *fb = ctx->framebuffer.get();
 	const FGLPixelFormat *pix = FGLPixelFormat::get(fb->getColorFormat());
@@ -1942,7 +1966,7 @@ GL_API void GL_APIENTRY glStencilMask (GLuint mask)
  * @param cap Capability to enable/disable.
  * @param state Indicates whether to enable or disable the capability.
  */
-static inline void fglSet(GLenum cap, bool state)
+static void fglSet(GLenum cap, bool state)
 {
 	FGLContext *ctx = getContext();
 
