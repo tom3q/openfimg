@@ -212,6 +212,24 @@ void fimgQueueFlush(fimgContext *ctx)
 	ctx->queue->reg = G3D_NUM_REGISTERS;
 }
 
+void fimgQueue(fimgContext *ctx, unsigned int data, enum g3d_register addr)
+{
+	if (ctx->queue->reg == addr) {
+		ctx->queue->val = data;
+		return;
+	}
+
+	/* Above the maximum length it's more effective to restore the whole
+	 * context than just the changed registers */
+	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN)
+		return;
+
+	++ctx->queue;
+	++ctx->queueLen;
+	ctx->queue->reg = addr;
+	ctx->queue->val = data;
+}
+
 /*
  * Memory management (GEM)
  */
