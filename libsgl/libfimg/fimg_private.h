@@ -494,22 +494,9 @@ static inline uint32_t getRawFloat(float val)
 }
 
 static inline void fimgQueueF(fimgContext *ctx,
-					float data, enum g3d_register addr)
+			      float data, enum g3d_register addr)
 {
-	if (ctx->queue->reg == addr) {
-		ctx->queue->val = getRawFloat(data);
-		return;
-	}
-
-	/* Above the maximum length it's more effective to restore the whole
-	 * context than just the changed registers */
-	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN)
-		return;
-
-	++ctx->queue;
-	++ctx->queueLen;
-	ctx->queue->reg = addr;
-	ctx->queue->val = getRawFloat(data);
+	fimgQueue(ctx, getRawFloat(data), addr);
 }
 
 extern void fimgQueueFlush(fimgContext *ctx);
