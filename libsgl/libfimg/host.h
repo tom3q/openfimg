@@ -79,11 +79,19 @@ typedef struct {
 	unsigned repeatLast:1;
 } fimgPrimitiveData;
 
+typedef struct {
+	fimgArray array;
+	uint8_t attribs[FIMG_ATTRIB_NUM + 1];
+	uint8_t offsets[FIMG_ATTRIB_NUM + 1];
+	uint8_t numAttribs;
+} fimgTransfer;
+
 void setVtxBufAttrib(fimgContext *ctx, unsigned char idx,
 		     unsigned short base, unsigned char stride,
 		     unsigned short range);
-unsigned int calculateBatchSize(fimgArray *arrays, int numArrays);
-int prepareDraw(fimgContext *ctx, unsigned int mode);
+unsigned int calculateBatchSize(const fimgTransfer *transfers);
+int prepareDraw(fimgContext *ctx, const fimgArray *arrays,
+		unsigned int mode, fimgTransfer *transfers);
 void setupHardware(fimgContext *ctx, unsigned int mode,
 			  fimgArray *arrays, unsigned int count);
 void submitDraw(fimgContext *ctx, uint32_t count);
@@ -95,26 +103,9 @@ extern const fimgPrimitiveData primitiveData[];
  * @param array Attribute descriptor.
  * @return Boolean value, which is true when attribute is a constant.
  */
-static inline int attributeIsConstant(fimgArray *array)
+static inline int attributeIsConstant(const fimgArray *array)
 {
 	return !array->stride;
-}
-
-/**
- * Configures given hardware attribute as a constant and copies constant
- * data into reserved area of vertex buffer.
- * @param ctx Hardware context.
- * @param attrib Hardware attribute index.
- * @param array Attribute descriptor.
- * @param count Count of vertices the constant value applies to.
- */
-static inline void setupConstant(fimgContext *ctx, int attrib,
-				 fimgArray *array, unsigned int count)
-{
-	setVtxBufAttrib(ctx, attrib, CONST_ADDR(attrib), 0, count);
-
-	memcpy(BUF_ADDR_8(ctx->vertexData, CONST_ADDR(attrib)),
-		array->pointer, array->width);
 }
 
 #endif /* _HOST_H_ */

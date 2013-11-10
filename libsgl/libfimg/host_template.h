@@ -36,7 +36,7 @@
  * @param cnt Vertex count.
  * @return Size (in bytes) of packed data.
  */
-static uint32_t packAttribute(uint8_t *buf, fimgArray *a,
+static uint32_t packAttribute(uint8_t *buf, const fimgArray *a,
 			      INDEX_TYPE idx, int cnt)
 {
 	const uint8_t *data;
@@ -63,7 +63,8 @@ static uint32_t packAttribute(uint8_t *buf, fimgArray *a,
 		case 8:		memcpy(buf, data, 8);	break;
 		case 12:	memcpy(buf, data, 12);	break;
 		case 16:	memcpy(buf, data, 16);	break;
-		default:	assert(0);
+		default:
+			memcpy(buf, data, a->width);
 		}
 
 		buf += width;
@@ -85,17 +86,20 @@ static uint32_t packAttribute(uint8_t *buf, fimgArray *a,
  * @param primData Primitive type information.
  * @return Amount of vertices available to send to hardware.
  */
-static uint32_t copyVertices(fimgContext *ctx, fimgArray *arrays,
-			     INDEX_TYPE indices, uint32_t *pos, uint32_t *count,
+static uint32_t copyVertices(fimgContext *ctx, const fimgArray *arrays,
+			     fimgTransfer *transfers, INDEX_TYPE indices,
+			     uint32_t *pos, uint32_t *count,
 			     const fimgPrimitiveData *primData)
 {
-	fimgArray *a = arrays;
+	uint16_t offsets[FIMG_ATTRIB_NUM + 1];
+	const fimgArray *a;
+	fimgTransfer *t;
 	uint32_t batchSize;
+	uint32_t offset;
+	uint8_t *buf;
 	uint32_t i;
-	uint32_t offset = DATA_OFFSET;
-	uint8_t *buf = ctx->vertexData;
 
-	batchSize = calculateBatchSize(arrays, ctx->numAttribs);
+	batchSize = calculateBatchSize(transfers);
 	batchSize -= primData->extra;
 
 	if (batchSize > *count)
@@ -111,59 +115,65 @@ static uint32_t copyVertices(fimgContext *ctx, fimgArray *arrays,
 			batchSize -= batchSize % 3;
 	}
 
-	for (i = 0; i < ctx->numAttribs; ++i, ++a) {
-		if (attributeIsConstant(a)) {
-			setupConstant(ctx, i, a, batchSize + primData->extra);
-			continue;
+	offset = DATA_OFFSET;
+	for (i = 0, t = transfers; t->array.width; ++t, ++i) {
+		unsigned int width = ROUND_UP(t->array.width, 4);
+		uint32_t j;
+
+		for (j = 0; j < t->numAttribs; ++j) {
+			a = &arrays[t->attribs[j]];
+			setVtxBufAttrib(ctx, t->attribs[j],
+					offset + t->offsets[j], width,
+					batchSize + primData->extra);
 		}
 
-		setVtxBufAttrib(ctx, i, offset, ROUND_UP(a->width, 4),
-				batchSize + primData->extra);
+		offsets[i] = offset;
+		offset += width * (batchSize + primData->extra);
+	}
+	ctx->vertexDataSize = offset;
+
+	for (i = 0, t = transfers; t->array.width; ++t, ++i) {
+		buf = BUF_ADDR_8(ctx->vertexData, offsets[i]);
+		a = &t->array;
 #ifdef SEQUENTIAL
 		if (ROUND_UP(a->width, 4) == a->stride) {
 			if (primData->repeatFirst) {
-				memcpy(buf + offset, a->pointer, a->width);
-				offset += a->width;
-				memcpy(buf + offset, a->pointer, a->width);
-				offset += a->width;
-				memcpy(buf + offset, a->pointer, a->width);
-				offset += a->width;
+				memcpy(buf, a->pointer, a->width);
+				buf += a->width;
+				memcpy(buf, a->pointer, a->width);
+				buf += a->width;
+				memcpy(buf, a->pointer, a->width);
+				buf += a->width;
 			}
 
-			memcpy(buf + offset, BUF_ADDR_8(a->pointer,
+			memcpy(buf, BUF_ADDR_8(a->pointer,
 				(*pos + primData->shift) * a->stride),
 				(batchSize - primData->shift) * a->width);
-			offset += (batchSize - primData->shift) * a->width;
+			buf += (batchSize - primData->shift) * a->width;
 
 			if (primData->repeatLast) {
-				memcpy(buf + offset, BUF_ADDR_8(a->pointer,
+				memcpy(buf, BUF_ADDR_8(a->pointer,
 					(*pos + batchSize - 1) * a->stride),
 					a->width);
-				offset += a->width;
+				buf += a->width;
 			}
 
 			continue;
 		}
 #endif
 		if (primData->repeatFirst) {
-			offset += packAttribute(BUF_ADDR_8(buf, offset), a,
-						indices, 1);
-			offset += packAttribute(BUF_ADDR_8(buf, offset), a,
-						indices, 1);
-			offset += packAttribute(BUF_ADDR_8(buf, offset), a,
-						indices, 1);
+			buf += packAttribute(buf, a, indices, 1);
+			buf += packAttribute(buf, a, indices, 1);
+			buf += packAttribute(buf, a, indices, 1);
 		}
 
-		offset += packAttribute(BUF_ADDR_8(buf, offset), a,
-					indices + *pos + primData->shift,
+		buf += packAttribute(buf, a, indices + *pos + primData->shift,
 					batchSize - primData->shift);
 
 		if (primData->repeatLast)
-			offset += packAttribute(BUF_ADDR_8(buf, offset), a,
+			buf += packAttribute(buf, a,
 					indices + *pos + batchSize - 1, 1);
 	}
-
-	ctx->vertexDataSize = offset;
 
 	*pos += batchSize - primData->overlap;
 	*count -= batchSize - primData->overlap;
@@ -183,11 +193,12 @@ static void fimgDraw(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 {
 	unsigned int copied;
 	unsigned int pos = 0;
+	fimgTransfer transfers[FIMG_ATTRIB_NUM + 1];
 
-	if (prepareDraw(ctx, mode))
+	if (prepareDraw(ctx, arrays, mode, transfers))
 		return;
 
-	copied = copyVertices(ctx, arrays, indices, &pos,
+	copied = copyVertices(ctx, arrays, transfers, indices, &pos,
 					&count, &primitiveData[mode]);
 	if (!copied)
 		return;
@@ -196,7 +207,7 @@ static void fimgDraw(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 
 	do {
 		submitDraw(ctx, copied);
-		copied = copyVertices(ctx, arrays, indices, &pos,
+		copied = copyVertices(ctx, arrays, transfers, indices, &pos,
 						&count, &primitiveData[mode]);
 	} while (copied);
 }

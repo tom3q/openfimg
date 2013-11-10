@@ -19,6 +19,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _GNU_SOURCE
+
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -165,6 +167,15 @@ static void setupAttributes(fimgContext *ctx, fimgArray *arrays)
 	fimgQueue(ctx, ctx->hw.host.attrib[i].val, FGHI_ATTRIB(i));
 }
 
+static int arrayCompare(const void *a, const void *b, void *data)
+{
+	const fimgArray *attribs = data;
+	const fimgArray *arrayA = &attribs[*(const uint8_t *)a];
+	const fimgArray *arrayB = &attribs[*(const uint8_t *)b];
+
+	return (intptr_t)arrayA->pointer - (intptr_t)arrayB->pointer;
+}
+
 /**
  * Checks basic drawing conditions and allocates vertex data buffer
  * if not present. Must be called before starting geometry data processing.
@@ -172,8 +183,13 @@ static void setupAttributes(fimgContext *ctx, fimgArray *arrays)
  * @param mode Primitive type.
  * @return Zero on success, negative on error.
  */
-int prepareDraw(fimgContext *ctx, unsigned int mode)
+int prepareDraw(fimgContext *ctx, const fimgArray *attribs,
+		unsigned int mode, fimgTransfer *transfers)
 {
+	uint8_t arrays[FIMG_ATTRIB_NUM + 1];
+	unsigned int numArrays;
+	unsigned int i;
+
 	if (mode >= FGPE_PRIMITIVE_MAX || !primitiveData[mode].min) {
 		LOGE("%s: Unsupported mode %d", __func__, mode);
 		return -EINVAL;
@@ -186,6 +202,85 @@ int prepareDraw(fimgContext *ctx, unsigned int mode)
 			exit(ENOMEM);
 		}
 	}
+
+	/* Filter out constants */
+	numArrays = 0;
+	for (i = 0; i < ctx->numAttribs; ++i) {
+		const fimgArray *a = &attribs[i];
+
+		if (attributeIsConstant(a)) {
+			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, 0xffff);
+
+			memcpy(BUF_ADDR_8(ctx->vertexData, CONST_ADDR(i)),
+				a->pointer, a->width);
+
+			continue;
+		}
+
+		arrays[numArrays++] = i;
+	}
+
+	/* Check if there are any variable arrays */
+	if (!numArrays) {
+		/* Mark last transfer entry as sentinel */
+		transfers->array.width = 0;
+		return 0;
+	}
+
+	/* Try to detect interleaved arrays */
+	qsort_r(arrays, numArrays, sizeof(*arrays), arrayCompare,
+		(void *)attribs);
+
+	for (i = 0; i < numArrays;) {
+		uint8_t attrib = arrays[i];
+		fimgArray *array = &transfers->array;
+		unsigned int j = i + 1;
+
+		transfers->array = attribs[attrib];
+		transfers->attribs[0] = attrib;
+		transfers->offsets[0] = 0;
+		transfers->numAttribs = 1;
+
+		/* Filter out crazy strides */
+		if (array->stride > 4 * MAX_WORDS_PER_VERTEX)
+			goto skipInterleaved;
+
+		for (; j < numArrays; ++j) {
+			uint8_t attrib2 = arrays[j];
+			const fimgArray *array2 = &attribs[attrib2];
+			uint8_t offset;
+
+			/* Interleaved arrays must be contiguous */
+			if ((intptr_t)array2->pointer >
+			    ROUND_UP((intptr_t)array->pointer
+			    + array->width, 4))
+				break;
+
+			/* All attributes must have the same stride */
+			if (array2->stride != array->stride)
+				break;
+
+			offset = array2->pointer - array->pointer;
+
+			/* Attributes must be word aligned */
+			if (offset % 4)
+				break;
+
+			if (offset + array2->width > array->width)
+				array->width = offset + array2->width;
+
+			transfers->offsets[transfers->numAttribs] = offset;
+			transfers->attribs[transfers->numAttribs++] = attrib2;
+		}
+
+skipInterleaved:
+		assert(array->width <= array->stride);
+		transfers++;
+		i = j;
+	}
+
+	/* Mark last transfer entry as sentinel */
+	transfers->array.width = 0;
 
 	return 0;
 }
@@ -278,19 +373,14 @@ static const int vertexWordsToVertexCount[] = {
  * @param primData Primitive type information.
  * @return Count of vertices that will fit into vertex buffer.
  */
-unsigned int calculateBatchSize(fimgArray *arrays, int numArrays)
+unsigned int calculateBatchSize(const fimgTransfer *transfers)
 {
-	fimgArray *a = arrays;
 	unsigned int size = 0;
-	int i;
 
-	for (i = 0; i < numArrays; ++i, ++a) {
-		/* Do not count constants */
-		if (!a->stride)
-			continue;
-
+	while (transfers->array.width) {
 		/* Round up to full words */
-		size += (a->width + 3) / 4;
+		size += (transfers->array.width + 3) / 4;
+		++transfers;
 	}
 
 	return vertexWordsToVertexCount[size];

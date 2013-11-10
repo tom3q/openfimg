@@ -457,6 +457,7 @@ struct _fimgContext {
 	/* Vertex data */
 	uint8_t *vertexData;
 	size_t vertexDataSize;
+	uint32_t attribOffset[FIMG_ATTRIB_NUM];
 };
 
 /* Hardware context */
