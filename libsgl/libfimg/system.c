@@ -92,6 +92,15 @@ fimgContext *fimgCreateContext(void)
 	ctx->queueStart = queue;
 	ctx->queue = queue;
 
+	ctx->requestDataBuffer = malloc(FIMG_REQUEST_DATA_BUF_SIZE);
+	if (!ctx->requestDataBuffer) {
+		free(queue);
+		free(ctx);
+		return NULL;
+	}
+	ctx->requestData = ctx->requestDataBuffer;
+	ctx->freeRequestData = FIMG_REQUEST_DATA_BUF_SIZE;
+
 	if(fimgDeviceOpen(ctx)) {
 		free(queue);
 		free(ctx);
@@ -118,6 +127,7 @@ void fimgDestroyContext(fimgContext *ctx)
 	fimgDeviceClose(ctx);
 	free(ctx->queueStart);
 	free(ctx->vertexData);
+	free(ctx->requestDataBuffer);
 #ifdef FIMG_FIXED_PIPELINE
 	free(ctx->compat.vshaderBuf);
 	free(ctx->compat.pshaderBuf);
@@ -137,21 +147,15 @@ void fimgDestroyContext(fimgContext *ctx)
  */
 int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
+	struct drm_exynos_g3d_request *req;
 	int ret;
 
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	req = fimgGetRequest(ctx, 0);
 
-	req.type = G3D_REQUEST_FENCE;
-	req.fence.flags = G3D_FENCE_FLUSH;
+	req->type = G3D_REQUEST_FENCE;
+	req->fence.flags = G3D_FENCE_FLUSH;
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0) {
-		LOGE("G3D_REQUEST_FENCE failed (%d)", ret);
-		return ret;
-	}
+	fimgFlush(ctx);
 
 	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_WAIT);
 	if (ret < 0) {
@@ -175,36 +179,31 @@ void fimgFinish(fimgContext *ctx)
 /* Register queue */
 void fimgQueueFlush(fimgContext *ctx)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
-	int ret;
+	struct drm_exynos_g3d_request *req;
 
 	if (!ctx->queueLen)
 		return;
-
-	submit.requests = &req;
-	submit.nr_requests = 1;
 
 	/*
 	 * Above the maximum length it's more efficient to restore the whole
 	 * context than just the changed registers
 	 */
 	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN) {
-		req.type = G3D_REQUEST_STATE_INIT;
-		req.data = &ctx->hw;
-		req.length = sizeof(ctx->hw);
+		req = fimgGetRequest(ctx, sizeof(ctx->hw));
 
-		ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-		if (ret < 0)
-			LOGE("G3D_REQUEST_STATE_INIT failed (%d)", errno);
+		memcpy(req->data, &ctx->hw, sizeof(ctx->hw));
+
+		req->type = G3D_REQUEST_STATE_INIT;
+		req->length = sizeof(ctx->hw);
 	} else {
-		req.type = G3D_REQUEST_STATE_BUFFER;
-		req.data = &ctx->queueStart[1];
-		req.length = ctx->queueLen * sizeof(*ctx->queueStart);
+		req = fimgGetRequest(ctx,
+				ctx->queueLen * sizeof(*ctx->queueStart));
 
-		ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-		if (ret < 0)
-			LOGE("G3D_REQUEST_STATE_BUFFER failed (%d)", errno);
+		memcpy(req->data, &ctx->queueStart[1],
+			ctx->queueLen * sizeof(*ctx->queueStart));
+
+		req->type = G3D_REQUEST_STATE_BUFFER;
+		req->length = ctx->queueLen * sizeof(*ctx->queueStart);
 	}
 
 	ctx->queueLen = 0;
@@ -228,6 +227,49 @@ void fimgQueue(fimgContext *ctx, unsigned int data, enum g3d_register addr)
 	++ctx->queueLen;
 	ctx->queue->reg = addr;
 	ctx->queue->val = data;
+}
+
+/*
+ * Request ring
+ */
+
+void fimgFlush(fimgContext *ctx)
+{
+	struct drm_exynos_g3d_submit submit;
+	int ret;
+
+	if (!ctx->numRequests)
+		return;
+
+	submit.requests = ctx->requests;
+	submit.nr_requests = ctx->numRequests;
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
+	if (ret < 0)
+		LOGE("DRM_IOCTL_EXYNOS_G3D_SUBMIT failed (%d)", ret);
+
+	ctx->numRequests = 0;
+	ctx->requestData = ctx->requestDataBuffer;
+	ctx->freeRequestData = FIMG_REQUEST_DATA_BUF_SIZE;
+}
+
+struct drm_exynos_g3d_request* fimgGetRequest(fimgContext *ctx,
+							uint32_t dataSize)
+{
+	struct drm_exynos_g3d_request *req;
+
+	if (ctx->numRequests == FIMG_MAX_REQUESTS
+	    || ctx->freeRequestData < dataSize)
+		fimgFlush(ctx);
+
+	req = &ctx->requests[ctx->numRequests++];
+
+	req->data = ctx->requestData;
+	dataSize = (dataSize + 7) & ~7;
+	ctx->requestData += dataSize;
+	ctx->freeRequestData -= dataSize;
+
+	return req;
 }
 
 /*

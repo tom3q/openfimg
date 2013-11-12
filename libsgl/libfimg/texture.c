@@ -23,7 +23,6 @@
 # include <config.h>
 #endif
 
-#include <sys/ioctl.h>
 #include <stdlib.h>
 #include <string.h>
 #include "fimg_private.h"
@@ -118,23 +117,17 @@ unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level)
  */
 void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
-	int ret;
+	struct drm_exynos_g3d_request *req;
 
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	req = fimgGetRequest(ctx, sizeof(texture->hw));
 
-	req.type = G3D_REQUEST_TEXTURE_SETUP;
-	req.data = &texture->hw;
-	req.length = sizeof(texture->hw);
-	req.texture.flags = texture->flags;
-	req.texture.unit = unit;
-	req.texture.handle = texture->gem;
+	memcpy(req->data, &texture->hw, sizeof(texture->hw));
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_TEXTURE_SETUP failed (%d)", ret);
+	req->type = G3D_REQUEST_TEXTURE_SETUP;
+	req->length = sizeof(texture->hw);
+	req->texture.flags = texture->flags;
+	req->texture.unit = unit;
+	req->texture.handle = texture->gem;
 
 	texture->flags &= ~G3D_TEXTURE_DIRTY;
 }

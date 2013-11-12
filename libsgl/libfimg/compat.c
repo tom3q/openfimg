@@ -25,7 +25,6 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <sys/ioctl.h>
 #include "fimg_private.h"
 #include "shaders/vert.h"
 #include "shaders/frag.h"
@@ -556,23 +555,17 @@ static uint32_t loadShaderBlock(const struct shaderBlock *blk, void *vaddr)
 static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
 								uint32_t slot)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
-	int ret;
+	struct drm_exynos_g3d_request *req;
 
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t));
 
-	req.type = G3D_REQUEST_SHADER_DATA;
-	req.data = (void *)pfData;
-	req.length = 4 * sizeof(uint32_t);
-	req.shader_data.unit = G3D_SHADER_PIXEL;
-	req.shader_data.type = G3D_SHADER_DATA_FLOAT;
-	req.shader_data.offset = 4 * slot;
+	memcpy(req->data, pfData, 4 * sizeof(uint32_t));
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_SHADER_DATA failed (%d)", ret);
+	req->type = G3D_REQUEST_SHADER_DATA;
+	req->length = 4 * sizeof(uint32_t);
+	req->shader_data.unit = G3D_SHADER_PIXEL;
+	req->shader_data.type = G3D_SHADER_DATA_FLOAT;
+	req->shader_data.offset = 4 * slot;
 }
 
 /**
@@ -583,23 +576,17 @@ static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
  */
 static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
-	int ret;
+	struct drm_exynos_g3d_request *req;
 
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	req = fimgGetRequest(ctx, 16 * sizeof(uint32_t));
 
-	req.type = G3D_REQUEST_SHADER_DATA;
-	req.data = (void *)pfData;
-	req.length = 16 * sizeof(uint32_t);
-	req.shader_data.unit = G3D_SHADER_VERTEX;
-	req.shader_data.type = G3D_SHADER_DATA_FLOAT;
-	req.shader_data.offset = 4 * slot;
+	memcpy(req->data, pfData, 16 * sizeof(uint32_t));
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_SHADER_DATA failed (%d)", ret);
+	req->type = G3D_REQUEST_SHADER_DATA;
+	req->length = 16 * sizeof(uint32_t);
+	req->shader_data.unit = G3D_SHADER_VERTEX;
+	req->shader_data.type = G3D_SHADER_DATA_FLOAT;
+	req->shader_data.offset = 4 * slot;
 }
 
 /*
@@ -915,41 +902,36 @@ static void buildVertexShader(fimgContext *ctx, uint32_t slot)
  */
 static void loadVertexShader(fimgContext *ctx)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
+	struct drm_exynos_g3d_request *req;
 	uint32_t slot = ctx->compat.curVsNum;
 	struct fimgVertexShaderProgram *vs = &ctx->compat.vertexShaders[slot];
-	int ret;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * vs->instrCount);
 
-	req.type = G3D_REQUEST_SHADER_PROGRAM;
-	req.data = shaderSlotAddr(ctx->compat.vshaderBuf, slot);
-	req.length = 4 * sizeof(uint32_t) * vs->instrCount;
-	req.shader_program.unit = G3D_SHADER_VERTEX;
-	req.shader_program.num_attrib = ctx->numAttribs;
+	memcpy(req->data, shaderSlotAddr(ctx->compat.vshaderBuf, slot),
+		4 * sizeof(uint32_t) * vs->instrCount);
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_SHADER_PROGRAM failed (%d)", ret);
+	req->type = G3D_REQUEST_SHADER_PROGRAM;
+	req->length = 4 * sizeof(uint32_t) * vs->instrCount;
+	req->shader_program.unit = G3D_SHADER_VERTEX;
+	req->shader_program.num_attrib = ctx->numAttribs;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
-	req.type = G3D_REQUEST_SHADER_DATA_INIT;
-	req.data = (void *)vertexConstFloat.data;
-	req.length = 4 * sizeof(uint32_t) * vertexConstFloat.len;
-	req.shader_data_init.unit = G3D_SHADER_VERTEX;
-	req.shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
-						4 * vertexConstFloat.len;
-	req.shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
-	req.shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
+	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * vertexConstFloat.len);
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_SHADER_DATA_INIT failed (%d)", ret);
+	memcpy(req->data, vertexConstFloat.data,
+		4 * sizeof(uint32_t) * vertexConstFloat.len);
+
+	req->type = G3D_REQUEST_SHADER_DATA_INIT;
+	req->length = 4 * sizeof(uint32_t) * vertexConstFloat.len;
+	req->shader_data_init.unit = G3D_SHADER_VERTEX;
+	req->shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
+						4 * vertexConstFloat.len;
+	req->shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
+	req->shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loaded vertex shader");
 #endif
@@ -1047,41 +1029,38 @@ static void buildPixelShader(fimgContext *ctx, uint32_t slot)
  */
 static void loadPixelShader(fimgContext *ctx)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
+	struct drm_exynos_g3d_request *req;
 	uint32_t slot = ctx->compat.curPsNum;
 	struct fimgPixelShaderProgram *ps = &ctx->compat.pixelShaders[slot];
-	int ret;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * ps->instrCount);
 
-	req.type = G3D_REQUEST_SHADER_PROGRAM;
-	req.data = shaderSlotAddr(ctx->compat.pshaderBuf, slot);
-	req.length = 4 * sizeof(uint32_t) * ps->instrCount;
-	req.shader_program.unit = G3D_SHADER_PIXEL;
-	req.shader_program.num_attrib = FIMG_ATTRIB_NUM - 1;
+	memcpy(req->data, shaderSlotAddr(ctx->compat.pshaderBuf, slot),
+		4 * sizeof(uint32_t) * ps->instrCount);
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_SHADER_PROGRAM failed (%d)", ret);
+	req->type = G3D_REQUEST_SHADER_PROGRAM;
+	req->length = 4 * sizeof(uint32_t) * ps->instrCount;
+	req->shader_program.unit = G3D_SHADER_PIXEL;
+	req->shader_program.num_attrib = FIMG_ATTRIB_NUM - 1;
+
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
-	req.type = G3D_REQUEST_SHADER_DATA_INIT;
-	req.data = (void *)pixelConstFloat.data;
-	req.length = 4 * sizeof(uint32_t) * pixelConstFloat.len;
-	req.shader_data_init.unit = G3D_SHADER_PIXEL;
-	req.shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
-						4 * pixelConstFloat.len;
-	req.shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
-	req.shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
+	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * pixelConstFloat.len);
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_SHADER_DATA_INIT failed (%d)", ret);
+	memcpy(req->data, pixelConstFloat.data,
+		4 * sizeof(uint32_t) * pixelConstFloat.len);
+
+	req->type = G3D_REQUEST_SHADER_DATA_INIT;
+	req->length = 4 * sizeof(uint32_t) * pixelConstFloat.len;
+	req->shader_data_init.unit = G3D_SHADER_PIXEL;
+	req->shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
+						4 * pixelConstFloat.len;
+	req->shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
+	req->shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
+
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loaded pixel shader");
 #endif

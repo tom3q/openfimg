@@ -426,6 +426,9 @@ void fimgCompatFlush(fimgContext *ctx);
 
 #endif
 
+#define FIMG_MAX_REQUESTS		64
+#define FIMG_REQUEST_DATA_BUF_SIZE	4096
+
 struct _fimgContext {
 	int fd;
 
@@ -452,6 +455,12 @@ struct _fimgContext {
 	struct g3d_state_entry *queueStart;
 	struct g3d_state_entry *queue;
 	unsigned int queueLen;
+	/* Request ring */
+	void *requestDataBuffer;
+	void *requestData;
+	uint32_t freeRequestData;
+	struct drm_exynos_g3d_request requests[FIMG_MAX_REQUESTS];
+	unsigned int numRequests;
 	/* Lock state */
 	unsigned int locked;
 	/* Vertex data */
@@ -487,5 +496,9 @@ static inline void fimgQueueF(fimgContext *ctx,
 extern void fimgQueueFlush(fimgContext *ctx);
 
 extern void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *func);
+
+extern void fimgFlush(fimgContext *ctx);
+extern struct drm_exynos_g3d_request* fimgGetRequest(fimgContext *ctx,
+							uint32_t dataSize);
 
 #endif /* _FIMG_PRIVATE_H_ */

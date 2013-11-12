@@ -23,7 +23,6 @@
 # include <config.h>
 #endif
 
-#include <sys/ioctl.h>
 #include "fimg_private.h"
 
 /**
@@ -438,10 +437,8 @@ void fimgCreateFragmentContext(fimgContext *ctx)
  */
 void fimgSetFramebuffer(fimgContext *ctx, fimgFramebuffer *fb)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
-	struct drm_exynos_g3d_framebuffer g3d_fb;
-	int ret;
+	struct drm_exynos_g3d_request *req;
+	struct drm_exynos_g3d_framebuffer *g3d_fb;
 
 	ctx->hw.prot.fbctl.opaque = 0;
 	ctx->hw.prot.fbctl.alphathreshold = 0;
@@ -456,22 +453,18 @@ void fimgSetFramebuffer(fimgContext *ctx, fimgFramebuffer *fb)
 	ctx->flipY = fb->flipY;
 	fimgQueue(ctx, ctx->hw.prot.fbctl.val, FGPF_FBCTL);
 
-	g3d_fb.fbctl = ctx->hw.prot.fbctl.val;
-	g3d_fb.coffset = fb->coffset;
-	g3d_fb.doffset = fb->zoffset;
-	g3d_fb.width = fb->width;
+	req = fimgGetRequest(ctx, sizeof(*g3d_fb));
 
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	g3d_fb = req->data;
 
-	req.type = G3D_REQUEST_FRAMEBUFFER_SETUP;
-	req.framebuffer.flags = fb->flags;
-	req.framebuffer.chandle = fb->chandle;
-	req.framebuffer.zhandle = fb->zhandle;
-	req.length = sizeof(g3d_fb);
-	req.data = &g3d_fb;
+	g3d_fb->fbctl = ctx->hw.prot.fbctl.val;
+	g3d_fb->coffset = fb->coffset;
+	g3d_fb->doffset = fb->zoffset;
+	g3d_fb->width = fb->width;
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_FRAMEBUFFER_SETUP failed (%d)", ret);
+	req->type = G3D_REQUEST_FRAMEBUFFER_SETUP;
+	req->framebuffer.flags = fb->flags;
+	req->framebuffer.chandle = fb->chandle;
+	req->framebuffer.zhandle = fb->zhandle;
+	req->length = sizeof(*g3d_fb);
 }

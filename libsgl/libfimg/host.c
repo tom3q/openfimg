@@ -25,7 +25,6 @@
 # include <config.h>
 #endif
 
-#include <sys/ioctl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -128,23 +127,18 @@ void setVtxBufAttrib(fimgContext *ctx, unsigned char idx,
  */
 void submitDraw(fimgContext *ctx, uint32_t count)
 {
-	struct drm_exynos_g3d_submit submit;
-	struct drm_exynos_g3d_request req;
-	int ret;
+	struct drm_exynos_g3d_request *req;
 
 	fimgQueueFlush(ctx);
 
-	submit.requests = &req;
-	submit.nr_requests = 1;
+	req = fimgGetRequest(ctx, 0);
 
-	req.type = G3D_REQUEST_DRAW_BUFFER;
-	req.data = ctx->vertexData;
-	req.length = (ctx->vertexDataSize + 31) & ~31;
-	req.draw.count = count;
+	req->type = G3D_REQUEST_DRAW_BUFFER;
+	req->data = ctx->vertexData;
+	req->length = (ctx->vertexDataSize + 31) & ~31;
+	req->draw.count = count;
 
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
-	if (ret < 0)
-		LOGE("G3D_REQUEST_STATE_INIT failed (%d)", ret);
+	fimgFlush(ctx);
 }
 
 /**
