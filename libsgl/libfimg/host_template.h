@@ -29,6 +29,25 @@
 #endif
 
 /**
+ * Copies small number of bytes from source buffer to destination buffer.
+ * @param dst Destination buffer.
+ * @param src Source buffer.
+ * @param len Number of buffers to copy.
+ */
+static void small_memcpy(uint8_t *dst, const uint8_t *src, uint32_t len)
+{
+	while (len >= 4) {
+		memcpy(dst, src, 4);
+		dst += 4;
+		src += 4;
+		len -= 4;
+	}
+
+	while (len--)
+		*(dst++) = *(src++);
+}
+
+/**
  * Packs attribute data into words (uint16_t indexed variant).
  * @param buf Destination buffer.
  * @param a Attribute array descriptor.
@@ -51,22 +70,11 @@ static uint32_t packAttribute(uint8_t *buf, const fimgArray *a,
 	size = width * cnt;
 
 	while (cnt--) {
+		uint32_t len = a->width;
 #ifndef SEQUENTIAL
 		data = CBUF_ADDR_8(a->pointer, *(idx++) * a->stride);
 #endif
-		switch(a->width) {
-		case 1:		memcpy(buf, data, 1);	break;
-		case 2:		memcpy(buf, data, 2);	break;
-		case 3:		memcpy(buf, data, 3);	break;
-		case 4:		memcpy(buf, data, 4);	break;
-		case 6:		memcpy(buf, data, 6);	break;
-		case 8:		memcpy(buf, data, 8);	break;
-		case 12:	memcpy(buf, data, 12);	break;
-		case 16:	memcpy(buf, data, 16);	break;
-		default:
-			memcpy(buf, data, a->width);
-		}
-
+		small_memcpy(buf, data, len);
 		buf += width;
 #ifdef SEQUENTIAL
 		data += a->stride;
