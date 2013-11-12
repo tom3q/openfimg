@@ -147,23 +147,23 @@ static uint32_t copyVertices(fimgContext *ctx, const fimgArray *arrays,
 		if (ROUND_UP(a->width, 4) == a->stride) {
 			if (primData->repeatFirst) {
 				memcpy(buf, a->pointer, a->width);
-				buf += a->width;
+				buf += a->stride;
 				memcpy(buf, a->pointer, a->width);
-				buf += a->width;
+				buf += a->stride;
 				memcpy(buf, a->pointer, a->width);
-				buf += a->width;
+				buf += a->stride;
 			}
 
 			memcpy(buf, BUF_ADDR_8(a->pointer,
 				(*pos + primData->shift) * a->stride),
-				(batchSize - primData->shift) * a->width);
-			buf += (batchSize - primData->shift) * a->width;
+				(batchSize - primData->shift) * a->stride);
+			buf += (batchSize - primData->shift) * a->stride;
 
 			if (primData->repeatLast) {
 				memcpy(buf, BUF_ADDR_8(a->pointer,
 					(*pos + batchSize - 1) * a->stride),
 					a->width);
-				buf += a->width;
+				buf += a->stride;
 			}
 
 			continue;
