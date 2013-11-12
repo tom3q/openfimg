@@ -54,6 +54,7 @@ AM_SILENT_RULES([yes])
 #
 # Init automake
 #
+AM_PROG_AS
 AM_INIT_AUTOMAKE([foreign -Wall -Werror dist-bzip2])
 
 # Configuration options

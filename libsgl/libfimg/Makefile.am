@@ -16,6 +16,7 @@ libfimg_la_SOURCES = \
 	host_index8.c \
 	host_index16.c \
 	host_index32.c \
+	memcpy.S \
 	primitive.c \
 	raster.c \
 	system.c \
