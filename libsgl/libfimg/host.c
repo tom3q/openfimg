@@ -138,7 +138,14 @@ void submitDraw(fimgContext *ctx, uint32_t count)
 	req->length = (ctx->vertexDataSize + 31) & ~31;
 	req->draw.count = count;
 
-	fimgFlush(ctx);
+	++ctx->numVertexBuffers;
+	ctx->vertexData += VERTEX_BUFFER_SIZE;
+
+	if (ctx->numVertexBuffers == FIMG_NUM_VERTEX_BUFFERS) {
+		fimgFlush(ctx);
+		ctx->numVertexBuffers = 0;
+		ctx->vertexData = ctx->vertexBuffers;
+	}
 }
 
 /**
@@ -189,12 +196,14 @@ int prepareDraw(fimgContext *ctx, const fimgArray *attribs,
 		return -EINVAL;
 	}
 
-	if (!ctx->vertexData) {
-		ctx->vertexData = memalign(32, VERTEX_BUFFER_SIZE);
-		if (!ctx->vertexData) {
+	if (!ctx->vertexBuffers) {
+		ctx->vertexBuffers = malloc(FIMG_NUM_VERTEX_BUFFERS *
+							VERTEX_BUFFER_SIZE);
+		if (!ctx->vertexBuffers) {
 			LOGE("Failed to allocate vertex data buffer. Terminating.");
 			exit(ENOMEM);
 		}
+		ctx->vertexData = ctx->vertexBuffers;
 	}
 
 	/* Filter out constants */
@@ -205,7 +214,7 @@ int prepareDraw(fimgContext *ctx, const fimgArray *attribs,
 		if (attributeIsConstant(a)) {
 			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, 0xffff);
 
-			memcpy(BUF_ADDR_8(ctx->vertexData, CONST_ADDR(i)),
+			memcpy(BUF_ADDR_8(ctx->vertexBuffers, CONST_ADDR(i)),
 				a->pointer, a->width);
 
 			continue;

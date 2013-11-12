@@ -123,6 +123,9 @@ static uint32_t copyVertices(fimgContext *ctx, const fimgArray *arrays,
 			batchSize -= batchSize % 3;
 	}
 
+	if (ctx->vertexData != ctx->vertexBuffers)
+		memcpy(ctx->vertexData, ctx->vertexBuffers, DATA_OFFSET);
+
 	offset = DATA_OFFSET;
 	for (i = 0, t = transfers; t->array.width; ++t, ++i) {
 		unsigned int width = ROUND_UP(t->array.width, 4);
@@ -218,6 +221,10 @@ static void fimgDraw(fimgContext *ctx, unsigned int mode, fimgArray *arrays,
 		copied = copyVertices(ctx, arrays, transfers, indices, &pos,
 						&count, &primitiveData[mode]);
 	} while (copied);
+
+	fimgFlush(ctx);
+	ctx->vertexData = ctx->vertexBuffers;
+	ctx->numVertexBuffers = 0;
 }
 
 #endif /* _HOST_TEMPLATE_H_ */

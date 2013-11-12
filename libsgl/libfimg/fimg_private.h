@@ -427,6 +427,7 @@ void fimgCompatFlush(fimgContext *ctx);
 #endif
 
 #define FIMG_MAX_REQUESTS		64
+#define FIMG_NUM_VERTEX_BUFFERS		8
 #define FIMG_REQUEST_DATA_BUF_SIZE	4096
 
 struct _fimgContext {
@@ -464,7 +465,9 @@ struct _fimgContext {
 	/* Lock state */
 	unsigned int locked;
 	/* Vertex data */
+	uint8_t *vertexBuffers;
 	uint8_t *vertexData;
+	uint8_t numVertexBuffers;
 	size_t vertexDataSize;
 	uint32_t attribOffset[FIMG_ATTRIB_NUM];
 };

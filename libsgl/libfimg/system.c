@@ -126,7 +126,7 @@ void fimgDestroyContext(fimgContext *ctx)
 {
 	fimgDeviceClose(ctx);
 	free(ctx->queueStart);
-	free(ctx->vertexData);
+	free(ctx->vertexBuffers);
 	free(ctx->requestDataBuffer);
 #ifdef FIMG_FIXED_PIPELINE
 	free(ctx->compat.vshaderBuf);
