@@ -127,22 +127,23 @@ void setVtxBufAttrib(fimgContext *ctx, unsigned char idx,
  */
 void submitDraw(fimgContext *ctx, uint32_t count)
 {
-	struct drm_exynos_g3d_request *req;
+	struct g3d_req_draw_buffer *req;
 
 	fimgQueueFlush(ctx);
 
-	req = fimgGetRequest(ctx, 0);
+	req = fimgGetRequest(ctx, G3D_REQUEST_DRAW, sizeof(*req));
 
-	req->type = G3D_REQUEST_DRAW_BUFFER;
-	req->data = ctx->vertexData;
+	req->vertices = count;
+	req->handle = ctx->drawBufferHandle;
+	req->offset = ctx->vertexData - ctx->vertexBuffers;
 	req->length = (ctx->vertexDataSize + 31) & ~31;
-	req->draw.count = count;
 
 	++ctx->numVertexBuffers;
 	ctx->vertexData += VERTEX_BUFFER_SIZE;
 
 	if (ctx->numVertexBuffers == FIMG_NUM_VERTEX_BUFFERS) {
 		fimgFlush(ctx);
+		fimgWaitForFlush(ctx);
 		ctx->numVertexBuffers = 0;
 		ctx->vertexData = ctx->vertexBuffers;
 	}
@@ -197,12 +198,23 @@ int prepareDraw(fimgContext *ctx, const fimgArray *attribs,
 	}
 
 	if (!ctx->vertexBuffers) {
-		ctx->vertexBuffers = malloc(FIMG_NUM_VERTEX_BUFFERS *
-							VERTEX_BUFFER_SIZE);
-		if (!ctx->vertexBuffers) {
-			LOGE("Failed to allocate vertex data buffer. Terminating.");
+		int ret;
+
+		ret = fimgCreateGEM(ctx, DRAW_BUFFER_SIZE,
+					FIMG_GEM_DRAW_BUFFER,
+					&ctx->drawBufferHandle);
+		if (ret < 0) {
+			LOGE("Failed to allocate draw buffer");
 			exit(ENOMEM);
 		}
+
+		ctx->vertexBuffers = fimgMapGEM(ctx, ctx->drawBufferHandle,
+						DRAW_BUFFER_SIZE);
+		if (!ctx->vertexBuffers) {
+			LOGE("Failed to map draw buffer");
+			exit(EFAULT);
+		}
+
 		ctx->vertexData = ctx->vertexBuffers;
 	}
 
@@ -214,7 +226,7 @@ int prepareDraw(fimgContext *ctx, const fimgArray *attribs,
 		if (attributeIsConstant(a)) {
 			setVtxBufAttrib(ctx, i, CONST_ADDR(i), 0, 0xffff);
 
-			memcpy(BUF_ADDR_8(ctx->vertexBuffers, CONST_ADDR(i)),
+			memcpy(BUF_ADDR_8(ctx->vertexData, CONST_ADDR(i)),
 				a->pointer, a->width);
 
 			continue;
@@ -411,4 +423,11 @@ void fimgCreateHostContext(fimgContext *ctx)
 
 	for(i = 0; i < FIMG_ATTRIB_NUM + 1; i++)
 		ctx->hw.host.attrib[i].val = template.val;
+}
+
+void fimgDestroyHostContext(fimgContext *ctx)
+{
+	if (ctx->vertexBuffers)
+		fimgUnmapAndDestroyGEMHandle(ctx, ctx->drawBufferHandle,
+				ctx->vertexBuffers, DRAW_BUFFER_SIZE);
 }

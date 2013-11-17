@@ -76,7 +76,7 @@ void fimgInitTexture(fimgTexture *texture, unsigned int flags,
 	texture->flags = flags;
 	ctl->textureFmt = format;
 	ctl->alphaFmt = !!(flags & FGTU_TEX_RGBA);
-	texture->gem = addr;
+	texture->hw.handle = addr;
 }
 
 /**
@@ -117,19 +117,14 @@ unsigned int fimgGetTexMipmapOffset(fimgTexture *texture, unsigned level)
  */
 void fimgSetupTexture(fimgContext *ctx, fimgTexture *texture, unsigned unit)
 {
-	struct drm_exynos_g3d_request *req;
+	struct g3d_req_texture_setup *req;
 
-	req = fimgGetRequest(ctx, sizeof(texture->hw));
+	req = fimgGetRequest(ctx, G3D_REQUEST_TEXTURE, sizeof(*req));
 
-	memcpy(req->data, &texture->hw, sizeof(texture->hw));
+	memcpy(req, &texture->hw, sizeof(*req));
+	req->flags |= (unit << 24);
 
-	req->type = G3D_REQUEST_TEXTURE_SETUP;
-	req->length = sizeof(texture->hw);
-	req->texture.flags = texture->flags;
-	req->texture.unit = unit;
-	req->texture.handle = texture->gem;
-
-	texture->flags &= ~G3D_TEXTURE_DIRTY;
+	texture->hw.flags &= ~G3D_TEXTURE_DIRTY;
 }
 
 /**

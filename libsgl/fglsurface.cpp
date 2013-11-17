@@ -108,7 +108,7 @@ bool FGLLocalSurface::allocate(FGLContext *ctx)
 {
 	int ret;
 
-	ret = fimgCreateGEM(ctx->fimg, size, &handle);
+	ret = fimgCreateGEM(ctx->fimg, size, FIMG_GEM_SURFACE, &handle);
 	if (ret < 0)
 		return false;
 

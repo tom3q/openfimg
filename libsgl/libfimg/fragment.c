@@ -437,8 +437,8 @@ void fimgCreateFragmentContext(fimgContext *ctx)
  */
 void fimgSetFramebuffer(fimgContext *ctx, fimgFramebuffer *fb)
 {
-	struct drm_exynos_g3d_request *req;
-	struct drm_exynos_g3d_framebuffer *g3d_fb;
+	struct g3d_req_colorbuffer_setup *creq;
+	struct g3d_req_depthbuffer_setup *dreq;
 
 	ctx->hw.prot.fbctl.opaque = 0;
 	ctx->hw.prot.fbctl.alphathreshold = 0;
@@ -453,18 +453,17 @@ void fimgSetFramebuffer(fimgContext *ctx, fimgFramebuffer *fb)
 	ctx->flipY = fb->flipY;
 	fimgQueue(ctx, ctx->hw.prot.fbctl.val, FGPF_FBCTL);
 
-	req = fimgGetRequest(ctx, sizeof(*g3d_fb));
+	creq = fimgGetRequest(ctx, G3D_REQUEST_COLORBUFFER, sizeof(*creq));
 
-	g3d_fb = req->data;
+	creq->fbctl = ctx->hw.prot.fbctl.val;
+	creq->offset = fb->coffset;
+	creq->width = fb->width;
+	creq->handle = fb->chandle;
+	creq->flags = fb->flags;
 
-	g3d_fb->fbctl = ctx->hw.prot.fbctl.val;
-	g3d_fb->coffset = fb->coffset;
-	g3d_fb->doffset = fb->zoffset;
-	g3d_fb->width = fb->width;
+	dreq = fimgGetRequest(ctx, G3D_REQUEST_DEPTHBUFFER, sizeof(*dreq));
 
-	req->type = G3D_REQUEST_FRAMEBUFFER_SETUP;
-	req->framebuffer.flags = fb->flags;
-	req->framebuffer.chandle = fb->chandle;
-	req->framebuffer.zhandle = fb->zhandle;
-	req->length = sizeof(*g3d_fb);
+	dreq->offset = fb->zoffset;
+	dreq->handle = fb->zhandle;
+	dreq->flags = fb->flags;
 }

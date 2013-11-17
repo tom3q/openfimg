@@ -240,9 +240,8 @@ typedef union {
 } fimgVtxTexControl;
 
 struct _fimgTexture {
-	struct drm_exynos_g3d_texture hw;
-	unsigned gem;
-	unsigned flags;
+	struct g3d_req_texture_setup hw;
+	unsigned int flags;
 };
 
 /*
@@ -258,6 +257,7 @@ typedef struct __attribute__ ((__packed__)) {
 } fimgHostContext;
 
 void fimgCreateHostContext(fimgContext *ctx);
+void fimgDestroyHostContext(fimgContext *ctx);
 
 typedef struct __attribute__ ((__packed__)) {
 	fimgVertexContext vctx;
@@ -388,7 +388,8 @@ typedef struct fimgVertexShaderProgram {
 #define PS_CACHE_SIZE	8
 
 typedef struct {
-	uint32_t		*vshaderBuf;
+	uint32_t		vshaderBufHandle[VS_CACHE_SIZE];
+	uint32_t		*vshaderBuf[VS_CACHE_SIZE];
 	int			vshaderLoaded;
 	uint32_t		curVsNum;
 	uint32_t		vsEvictCounter;
@@ -401,7 +402,8 @@ typedef struct {
 	uint8_t			vsStatsCounter;
 #endif
 
-	uint32_t		*pshaderBuf;
+	uint32_t		pshaderBufHandle[PS_CACHE_SIZE];
+	uint32_t		*pshaderBuf[PS_CACHE_SIZE];
 	int			pshaderLoaded;
 	uint32_t		curPsNum;
 	uint32_t		psEvictCounter;
@@ -423,12 +425,15 @@ typedef struct {
 
 void fimgCreateCompatContext(fimgContext *ctx);
 void fimgCompatFlush(fimgContext *ctx);
+void fimgDestroyCompatContext(fimgContext *ctx);
 
 #endif
 
-#define FIMG_MAX_REQUESTS		64
-#define FIMG_NUM_VERTEX_BUFFERS		8
-#define FIMG_REQUEST_DATA_BUF_SIZE	4096
+#define FIMG_NUM_VERTEX_BUFFERS		32
+#define FIMG_RING_BUFFER_SIZE		65536
+#define VERTEX_BUFFER_SIZE	(4096)
+#define DRAW_BUFFER_SIZE	(FIMG_NUM_VERTEX_BUFFERS \
+					* VERTEX_BUFFER_SIZE)
 
 struct _fimgContext {
 	int fd;
@@ -452,19 +457,20 @@ struct _fimgContext {
 	unsigned int fbHeight;
 	unsigned int fbFlags;
 	int flipY;
+	uint32_t lastFence;
 	/* Register queue */
 	struct g3d_state_entry *queueStart;
 	struct g3d_state_entry *queue;
 	unsigned int queueLen;
 	/* Request ring */
-	void *requestDataBuffer;
-	void *requestData;
-	uint32_t freeRequestData;
-	struct drm_exynos_g3d_request requests[FIMG_MAX_REQUESTS];
-	unsigned int numRequests;
+	unsigned int ringBufferHandle;
+	void *ringBufferStart;
+	void *ringBufferPtr;
+	uint32_t ringBufferFree;
 	/* Lock state */
 	unsigned int locked;
 	/* Vertex data */
+	uint32_t drawBufferHandle;
 	uint8_t *vertexBuffers;
 	uint8_t *vertexData;
 	uint8_t numVertexBuffers;
@@ -473,8 +479,6 @@ struct _fimgContext {
 };
 
 /* Hardware context */
-
-#define FIMG_MAX_QUEUE_LEN	64
 
 extern void fimgQueue(fimgContext *ctx, unsigned int data,
 		      enum g3d_register addr);
@@ -501,7 +505,11 @@ extern void fimgQueueFlush(fimgContext *ctx);
 extern void fimgDumpState(fimgContext *ctx, unsigned mode, unsigned count, const char *func);
 
 extern void fimgFlush(fimgContext *ctx);
-extern struct drm_exynos_g3d_request* fimgGetRequest(fimgContext *ctx,
-							uint32_t dataSize);
+extern void *fimgGetRequest(fimgContext *ctx, uint8_t type, uint32_t length);
+
+void *fimgCreateAndMapGEM(fimgContext *ctx, unsigned long size,
+			  unsigned int usage, unsigned int *handle);
+void fimgUnmapAndDestroyGEMHandle(fimgContext *ctx, unsigned int handle,
+				  void *addr, unsigned long size);
 
 #endif /* _FIMG_PRIVATE_H_ */

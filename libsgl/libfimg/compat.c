@@ -29,10 +29,11 @@
 #include "shaders/vert.h"
 #include "shaders/frag.h"
 
+#define MAX_INSTR		(256)
+#define SHADER_BUF_SIZE		(MAX_INSTR * 4 * sizeof(uint32_t))
+
 #define FGFP_TEXENV(unit)	(4 + 2*(unit))
 #define FGFP_COMBSCALE(unit)	(5 + 2*(unit))
-
-#define MAX_INSTR		(64)
 
 struct shaderBlock {
 	const uint32_t *data;
@@ -524,6 +525,22 @@ static fimgOpcodeInfo opcodeMap[64] = {
  * Utility functions
  */
 
+static inline uint32_t RSP_UNIT_NATTRIB(uint8_t unit, uint8_t nattrib)
+{
+	return (unit << 8) | nattrib;
+}
+
+static inline uint32_t RSP_DCOUNT(uint16_t type1, uint16_t type2)
+{
+	return (type2 << 16) | type1;
+}
+
+static inline uint32_t RSD_UNIT_TYPE_OFFS(uint8_t unit, uint8_t type,
+					  uint16_t offs)
+{
+	return (unit << 24) | (type << 16) | offs;
+}
+
 /**
  * Loads block of shader code into shader program memory.
  * @param blk Shader block descriptor.
@@ -555,17 +572,15 @@ static uint32_t loadShaderBlock(const struct shaderBlock *blk, void *vaddr)
 static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
 								uint32_t slot)
 {
-	struct drm_exynos_g3d_request *req;
+	struct g3d_req_shader_data *req;
 
-	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t));
+	req = fimgGetRequest(ctx, G3D_REQUEST_SHADER_DATA,
+				sizeof(*req) + 4 * sizeof(uint32_t));
+
+	req->unit_type_offs = RSD_UNIT_TYPE_OFFS(G3D_SHADER_PIXEL,
+					G3D_SHADER_DATA_FLOAT, 4 * slot);
 
 	memcpy(req->data, pfData, 4 * sizeof(uint32_t));
-
-	req->type = G3D_REQUEST_SHADER_DATA;
-	req->length = 4 * sizeof(uint32_t);
-	req->shader_data.unit = G3D_SHADER_PIXEL;
-	req->shader_data.type = G3D_SHADER_DATA_FLOAT;
-	req->shader_data.offset = 4 * slot;
 }
 
 /**
@@ -576,17 +591,15 @@ static void loadPSConstFloat(fimgContext *ctx, const float *pfData,
  */
 static void loadVSMatrix(fimgContext *ctx, const float *pfData, uint32_t slot)
 {
-	struct drm_exynos_g3d_request *req;
+	struct g3d_req_shader_data *req;
 
-	req = fimgGetRequest(ctx, 16 * sizeof(uint32_t));
+	req = fimgGetRequest(ctx, G3D_REQUEST_SHADER_DATA,
+				sizeof(*req) + 16 * sizeof(uint32_t));
+
+	req->unit_type_offs = RSD_UNIT_TYPE_OFFS(G3D_SHADER_VERTEX,
+					G3D_SHADER_DATA_FLOAT, 4 * slot);
 
 	memcpy(req->data, pfData, 16 * sizeof(uint32_t));
-
-	req->type = G3D_REQUEST_SHADER_DATA;
-	req->length = 16 * sizeof(uint32_t);
-	req->shader_data.unit = G3D_SHADER_VERTEX;
-	req->shader_data.type = G3D_SHADER_DATA_FLOAT;
-	req->shader_data.offset = 4 * slot;
 }
 
 /*
@@ -847,18 +860,6 @@ static uint32_t optimizeShader(uint32_t *start, uint32_t *end)
  */
 
 /**
- * Calculates pointer to selected slot of selected shader cache buffer.
- * @param buf Shader cache buffer.
- * @param slot Index of program slot.
- * @return Pointer to selected slot.
- */
-static inline uint32_t *shaderSlotAddr(uint32_t *buf, uint32_t slot)
-{
-	return buf
-		+ slot*MAX_INSTR*sizeof(fimgShaderInstruction)/sizeof(uint32_t);
-}
-
-/**
  * Builds vertex shader program according to current pipeline configuration
  * and stores it in selected slot of vertex shader cache.
  * @param ctx Hardware context.
@@ -866,18 +867,31 @@ static inline uint32_t *shaderSlotAddr(uint32_t *buf, uint32_t slot)
  */
 static void buildVertexShader(fimgContext *ctx, uint32_t slot)
 {
+	fimgCompatContext *compat = &ctx->compat;
 	uint32_t unit;
 	uint32_t *addr;
 	uint32_t *start;
 
-	if (!ctx->compat.vshaderBuf) {
-		ctx->compat.vshaderBuf = malloc(VS_CACHE_SIZE * MAX_INSTR * sizeof(fimgShaderInstruction));
-		if (!ctx->compat.vshaderBuf) {
-			LOGE("Failed to allocate memory for shader buffer, terminating.");
+	if (compat->vshaderBuf[slot]) {
+		fimgUnmapAndDestroyGEMHandle(ctx,
+					compat->vshaderBufHandle[slot],
+					compat->vshaderBuf[slot],
+					SHADER_BUF_SIZE);
+		compat->vshaderBuf[slot] = NULL;
+	}
+	if (!compat->vshaderBuf[slot]) {
+		compat->vshaderBuf[slot] = fimgCreateAndMapGEM(ctx,
+					SHADER_BUF_SIZE,
+					FIMG_GEM_SHADER_BUFFER,
+					&compat->vshaderBufHandle[slot]);
+		if (!compat->vshaderBuf[slot]) {
+			// TODO: Flush context and try again
+			LOGE("Failed to allocate vertex shader buffer");
 			exit(1);
 		}
 	}
-	start = addr = shaderSlotAddr(ctx->compat.vshaderBuf, slot);
+
+	start = addr = compat->vshaderBuf[slot];
 
 	addr += loadShaderBlock(&vertexHeader, addr);
 
@@ -902,36 +916,35 @@ static void buildVertexShader(fimgContext *ctx, uint32_t slot)
  */
 static void loadVertexShader(fimgContext *ctx)
 {
-	struct drm_exynos_g3d_request *req;
+	struct g3d_req_shader_program *preq;
+	struct g3d_req_shader_data *dreq;
 	uint32_t slot = ctx->compat.curVsNum;
 	struct fimgVertexShaderProgram *vs = &ctx->compat.vertexShaders[slot];
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * vs->instrCount);
+	preq = fimgGetRequest(ctx, G3D_REQUEST_SHADER_PROGRAM, sizeof(*preq));
 
-	memcpy(req->data, shaderSlotAddr(ctx->compat.vshaderBuf, slot),
-		4 * sizeof(uint32_t) * vs->instrCount);
+	preq->unit_nattrib = RSP_UNIT_NATTRIB(G3D_SHADER_VERTEX,
+						ctx->numAttribs);
+	preq->dcount[0] = RSP_DCOUNT(4 * vertexConstFloat.len, 0);
+	preq->dcount[1] = RSP_DCOUNT(0, 0);
+	preq->handle = ctx->compat.vshaderBufHandle[slot];
+	preq->offset = 0;
+	preq->length = 4 * sizeof(uint32_t) * vs->instrCount;
 
-	req->type = G3D_REQUEST_SHADER_PROGRAM;
-	req->length = 4 * sizeof(uint32_t) * vs->instrCount;
-	req->shader_program.unit = G3D_SHADER_VERTEX;
-	req->shader_program.num_attrib = ctx->numAttribs;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
-	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * vertexConstFloat.len);
+	dreq = fimgGetRequest(ctx, G3D_REQUEST_SHADER_DATA, sizeof(*dreq)
+				+ 4 * sizeof(uint32_t) * vertexConstFloat.len);
 
-	memcpy(req->data, vertexConstFloat.data,
+	dreq->unit_type_offs = RSD_UNIT_TYPE_OFFS(G3D_SHADER_VERTEX,
+						G3D_SHADER_DATA_FLOAT, 0);
+
+	memcpy(dreq->data, vertexConstFloat.data,
 		4 * sizeof(uint32_t) * vertexConstFloat.len);
 
-	req->type = G3D_REQUEST_SHADER_DATA_INIT;
-	req->length = 4 * sizeof(uint32_t) * vertexConstFloat.len;
-	req->shader_data_init.unit = G3D_SHADER_VERTEX;
-	req->shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
-						4 * vertexConstFloat.len;
-	req->shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
-	req->shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loaded vertex shader");
 #endif
@@ -945,6 +958,7 @@ static void loadVertexShader(fimgContext *ctx)
  */
 static void buildPixelShader(fimgContext *ctx, uint32_t slot)
 {
+	fimgCompatContext *compat = &ctx->compat;
 	uint32_t unit, arg;
 	uint32_t *addr;
 	uint32_t *start;
@@ -952,14 +966,26 @@ static void buildPixelShader(fimgContext *ctx, uint32_t slot)
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading pixel shader");
 #endif
-	if (!ctx->compat.pshaderBuf) {
-		ctx->compat.pshaderBuf = malloc(PS_CACHE_SIZE * MAX_INSTR * sizeof(fimgShaderInstruction));
-		if (!ctx->compat.pshaderBuf) {
-			LOGE("Failed to allocate memory for shader buffer, terminating.");
+	if (compat->pshaderBuf[slot]) {
+		fimgUnmapAndDestroyGEMHandle(ctx,
+					compat->pshaderBufHandle[slot],
+					compat->pshaderBuf[slot],
+					SHADER_BUF_SIZE);
+		compat->pshaderBuf[slot] = NULL;
+	}
+	if (!compat->pshaderBuf[slot]) {
+		compat->pshaderBuf[slot] = fimgCreateAndMapGEM(ctx,
+					SHADER_BUF_SIZE,
+					FIMG_GEM_SHADER_BUFFER,
+					&compat->pshaderBufHandle[slot]);
+		if (!compat->pshaderBuf[slot]) {
+			// TODO: Flush context and try again
+			LOGE("Failed to allocate pixel shader buffer");
 			exit(1);
 		}
 	}
-	start = addr = shaderSlotAddr(ctx->compat.pshaderBuf, slot);
+
+	start = addr = compat->pshaderBuf[slot];
 
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Generating basic shader code");
@@ -1029,37 +1055,34 @@ static void buildPixelShader(fimgContext *ctx, uint32_t slot)
  */
 static void loadPixelShader(fimgContext *ctx)
 {
-	struct drm_exynos_g3d_request *req;
+	struct g3d_req_shader_program *preq;
+	struct g3d_req_shader_data *dreq;
 	uint32_t slot = ctx->compat.curPsNum;
 	struct fimgPixelShaderProgram *ps = &ctx->compat.pixelShaders[slot];
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading optimized shader");
 #endif
-	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * ps->instrCount);
+	preq = fimgGetRequest(ctx, G3D_REQUEST_SHADER_PROGRAM, sizeof(*preq));
 
-	memcpy(req->data, shaderSlotAddr(ctx->compat.pshaderBuf, slot),
-		4 * sizeof(uint32_t) * ps->instrCount);
-
-	req->type = G3D_REQUEST_SHADER_PROGRAM;
-	req->length = 4 * sizeof(uint32_t) * ps->instrCount;
-	req->shader_program.unit = G3D_SHADER_PIXEL;
-	req->shader_program.num_attrib = FIMG_ATTRIB_NUM - 1;
+	preq->unit_nattrib = RSP_UNIT_NATTRIB(G3D_SHADER_PIXEL,
+						FIMG_ATTRIB_NUM - 1);
+	preq->dcount[0] = RSP_DCOUNT(4 * pixelConstFloat.len, 0);
+	preq->dcount[1] = RSP_DCOUNT(0, 0);
+	preq->handle = ctx->compat.pshaderBufHandle[slot];
+	preq->offset = 0;
+	preq->length = 4 * sizeof(uint32_t) * ps->instrCount;
 
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loading const float");
 #endif
-	req = fimgGetRequest(ctx, 4 * sizeof(uint32_t) * pixelConstFloat.len);
+	dreq = fimgGetRequest(ctx, G3D_REQUEST_SHADER_DATA, sizeof(*dreq)
+				+ 4 * sizeof(uint32_t) * pixelConstFloat.len);
 
-	memcpy(req->data, pixelConstFloat.data,
+	dreq->unit_type_offs = RSD_UNIT_TYPE_OFFS(G3D_SHADER_PIXEL,
+						G3D_SHADER_DATA_FLOAT, 0);
+
+	memcpy(dreq->data, pixelConstFloat.data,
 		4 * sizeof(uint32_t) * pixelConstFloat.len);
-
-	req->type = G3D_REQUEST_SHADER_DATA_INIT;
-	req->length = 4 * sizeof(uint32_t) * pixelConstFloat.len;
-	req->shader_data_init.unit = G3D_SHADER_PIXEL;
-	req->shader_data_init.data_count[G3D_SHADER_DATA_FLOAT] =
-						4 * pixelConstFloat.len;
-	req->shader_data_init.data_count[G3D_SHADER_DATA_INT] = 0;
-	req->shader_data_init.data_count[G3D_SHADER_DATA_BOOL] = 0;
 
 #ifdef FIMG_DYNSHADER_DEBUG
 	LOGD("Loaded pixel shader");
@@ -1373,7 +1396,7 @@ void fimgCompatSetupTexture(fimgContext *ctx, fimgTexture *tex,
 		FGFP_BITFIELD_SET(ctx->compat.psState.tex[unit],
 				TEX_SWAP, !!(tex->flags & FGTU_TEX_BGR));
 		if (dirty)
-			tex->flags |= G3D_TEXTURE_DIRTY;
+			tex->hw.flags |= G3D_TEXTURE_DIRTY;
 	}
 }
 
@@ -1503,4 +1526,26 @@ void fimgRestoreCompatState(fimgContext *ctx)
 
 	ctx->compat.vshaderLoaded = 0;
 	ctx->compat.pshaderLoaded = 0;
+}
+
+void fimgDestroyCompatContext(fimgContext *ctx)
+{
+	fimgCompatContext *c = &ctx->compat;
+	unsigned int i;
+
+	for (i = 0; i < VS_CACHE_SIZE; ++i) {
+		if (!c->vshaderBuf[i])
+			continue;
+
+		fimgUnmapAndDestroyGEMHandle(ctx, c->vshaderBufHandle[i],
+					c->vshaderBuf[i], SHADER_BUF_SIZE);
+	}
+
+	for (i = 0; i < PS_CACHE_SIZE; ++i) {
+		if (!c->pshaderBuf[i])
+			continue;
+
+		fimgUnmapAndDestroyGEMHandle(ctx, c->pshaderBufHandle[i],
+					c->pshaderBuf[i], SHADER_BUF_SIZE);
+	}
 }

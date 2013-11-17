@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <xf86drm.h>
@@ -79,33 +80,43 @@ fimgContext *fimgCreateContext(void)
 {
 	fimgContext *ctx;
 	struct g3d_state_entry *queue;
+	int ret;
 
-	if ((ctx = calloc(1, sizeof(*ctx))) == NULL)
-		return NULL;
-
-	queue = calloc(FIMG_MAX_QUEUE_LEN + 1, sizeof(*queue));
-	if (!queue) {
-		free(ctx);
+	if ((ctx = calloc(1, sizeof(*ctx))) == NULL) {
+		LOGE("failed to allocate context data");
 		return NULL;
 	}
-	ctx->queueLen = FIMG_MAX_QUEUE_LEN;
+
+	queue = calloc(G3D_NUM_REGISTERS + 1, sizeof(*queue));
+	if (!queue) {
+		LOGE("failed to allocate register queue");
+		goto err_free_ctx;
+	}
+	ctx->queueLen = G3D_NUM_REGISTERS;
 	ctx->queueStart = queue;
 	ctx->queue = queue;
 
-	ctx->requestDataBuffer = malloc(FIMG_REQUEST_DATA_BUF_SIZE);
-	if (!ctx->requestDataBuffer) {
-		free(queue);
-		free(ctx);
-		return NULL;
-	}
-	ctx->requestData = ctx->requestDataBuffer;
-	ctx->freeRequestData = FIMG_REQUEST_DATA_BUF_SIZE;
-
 	if(fimgDeviceOpen(ctx)) {
-		free(queue);
-		free(ctx);
-		return NULL;
+		LOGE("failed to open device");
+		goto err_free_queue;
 	}
+
+	ret = fimgCreateGEM(ctx, FIMG_RING_BUFFER_SIZE,
+			FIMG_GEM_RING_BUFFER, &ctx->ringBufferHandle);
+	if (ret < 0) {
+		LOGE("failed to allocate ring buffer");
+		goto err_close;
+	}
+
+	ctx->ringBufferStart = fimgMapGEM(ctx, ctx->ringBufferHandle,
+						FIMG_RING_BUFFER_SIZE);
+	if (!ctx->ringBufferStart) {
+		LOGE("failed to map ring buffer");
+		goto err_free_ring;
+	}
+
+	ctx->ringBufferPtr = ctx->ringBufferStart;
+	ctx->ringBufferFree = FIMG_RING_BUFFER_SIZE;
 
 	fimgCreateHostContext(ctx);
 	fimgCreatePrimitiveContext(ctx);
@@ -116,6 +127,17 @@ fimgContext *fimgCreateContext(void)
 #endif
 
 	return ctx;
+
+err_free_ring:
+	fimgDestroyGEMHandle(ctx, ctx->ringBufferHandle);
+err_close:
+	fimgDeviceClose(ctx);
+err_free_queue:
+	free(queue);
+err_free_ctx:
+	free(ctx);
+
+	return NULL;
 }
 
 /**
@@ -124,20 +146,45 @@ fimgContext *fimgCreateContext(void)
  */
 void fimgDestroyContext(fimgContext *ctx)
 {
+	munmap(ctx->ringBufferStart, FIMG_RING_BUFFER_SIZE);
+	fimgDestroyGEMHandle(ctx, ctx->ringBufferHandle);
+	fimgDestroyHostContext(ctx);
+#ifdef FIMG_FIXED_PIPELINE
+	fimgDestroyCompatContext(ctx);
+#endif
 	fimgDeviceClose(ctx);
 	free(ctx->queueStart);
-	free(ctx->vertexBuffers);
-	free(ctx->requestDataBuffer);
-#ifdef FIMG_FIXED_PIPELINE
-	free(ctx->compat.vshaderBuf);
-	free(ctx->compat.pshaderBuf);
-#endif
 	free(ctx);
 }
 
 /**
 	Power management
 */
+static inline void get_abs_timeout(struct drm_exynos_timespec *tv, uint32_t ms)
+{
+	struct timespec t;
+	uint32_t s = ms / 1000;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	tv->tv_sec = t.tv_sec + s;
+	tv->tv_nsec = t.tv_nsec + ((ms - (s * 1000)) * 1000000);
+}
+
+int fimgWaitForFence(fimgContext *ctx, uint32_t cookie)
+{
+	struct drm_exynos_g3d_wait wait;
+	int ret;
+
+	wait.fence = cookie;
+	get_abs_timeout(&wait.timeout, 5000);
+
+	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_WAIT, &wait);
+	if (ret < 0) {
+		LOGE("DRM_IOCTL_EXYNOS_G3D_WAIT failed (%d)", errno);
+		return ret;
+	}
+
+	return 0;
+}
 
 /**
  * Waits for hardware to flush graphics pipeline.
@@ -145,21 +192,13 @@ void fimgDestroyContext(fimgContext *ctx)
  * @param target Bit mask of pipeline parts to be flushed.
  * @return 0 on success, negative on error.
  */
-int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
+int fimgWaitForFlush(fimgContext *ctx)
 {
-	struct drm_exynos_g3d_request *req;
 	int ret;
 
-	req = fimgGetRequest(ctx, 0);
-
-	req->type = G3D_REQUEST_FENCE;
-	req->fence.flags = G3D_FENCE_FLUSH;
-
-	fimgFlush(ctx);
-
-	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_WAIT);
+	ret = fimgWaitForFence(ctx, ctx->lastFence);
 	if (ret < 0) {
-		LOGE("DRM_IOCTL_EXYNOS_G3D_WAIT failed (%d)", ret);
+		LOGE("Fence wait failed");
 		return ret;
 	}
 
@@ -173,37 +212,38 @@ int fimgWaitForFlush(fimgContext *ctx, uint32_t target)
  */
 void fimgFinish(fimgContext *ctx)
 {
-	fimgWaitForFlush(ctx, FGHI_PIPELINE_ALL);
+	fimgFlush(ctx);
+	fimgWaitForFlush(ctx);
 }
 
 /* Register queue */
 void fimgQueueFlush(fimgContext *ctx)
 {
-	struct drm_exynos_g3d_request *req;
+	uint32_t *req;
 
 	if (!ctx->queueLen)
 		return;
 
-	/*
-	 * Above the maximum length it's more efficient to restore the whole
-	 * context than just the changed registers
-	 */
-	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN) {
-		req = fimgGetRequest(ctx, sizeof(ctx->hw));
-
-		memcpy(req->data, &ctx->hw, sizeof(ctx->hw));
-
-		req->type = G3D_REQUEST_STATE_INIT;
-		req->length = sizeof(ctx->hw);
-	} else {
-		req = fimgGetRequest(ctx,
+	req = fimgGetRequest(ctx, G3D_REQUEST_REGISTER_WRITE,
 				ctx->queueLen * sizeof(*ctx->queueStart));
 
-		memcpy(req->data, &ctx->queueStart[1],
-			ctx->queueLen * sizeof(*ctx->queueStart));
+	/*
+	 * The queue does not accept new elements if it already has
+	 * the same size as the total number of G3D registers.
+	 * In this case, the whole context needs to be restored, what
+	 * is more efficient anyway.
+	 */
+	if (ctx->queueLen == G3D_NUM_REGISTERS) {
+		const uint32_t *regs = (const uint32_t *)&ctx->hw;
+		unsigned int i;
 
-		req->type = G3D_REQUEST_STATE_BUFFER;
-		req->length = ctx->queueLen * sizeof(*ctx->queueStart);
+		for (i = 0; i < G3D_NUM_REGISTERS; ++i) {
+			*(req++) = i;
+			*(req++) = *(regs++);
+		}
+	} else {
+		memcpy(req, &ctx->queueStart[1],
+			ctx->queueLen * sizeof(*ctx->queueStart));
 	}
 
 	ctx->queueLen = 0;
@@ -220,7 +260,7 @@ void fimgQueue(fimgContext *ctx, unsigned int data, enum g3d_register addr)
 
 	/* Above the maximum length it's more effective to restore the whole
 	 * context than just the changed registers */
-	if (ctx->queueLen == FIMG_MAX_QUEUE_LEN)
+	if (ctx->queueLen == G3D_NUM_REGISTERS)
 		return;
 
 	++ctx->queue;
@@ -238,51 +278,65 @@ void fimgFlush(fimgContext *ctx)
 	struct drm_exynos_g3d_submit submit;
 	int ret;
 
-	if (!ctx->numRequests)
+	if (ctx->ringBufferPtr == ctx->ringBufferStart)
 		return;
 
-	submit.requests = ctx->requests;
-	submit.nr_requests = ctx->numRequests;
+	submit.handle = ctx->ringBufferHandle;
+	submit.offset = 0;
+	submit.length = ctx->ringBufferPtr - ctx->ringBufferStart;
 
 	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_G3D_SUBMIT, &submit);
 	if (ret < 0)
 		LOGE("DRM_IOCTL_EXYNOS_G3D_SUBMIT failed (%d)", ret);
 
-	ctx->numRequests = 0;
-	ctx->requestData = ctx->requestDataBuffer;
-	ctx->freeRequestData = FIMG_REQUEST_DATA_BUF_SIZE;
+	ctx->ringBufferPtr = ctx->ringBufferStart;
+	ctx->ringBufferFree = FIMG_RING_BUFFER_SIZE;
+	ctx->lastFence = submit.fence;
 }
 
-struct drm_exynos_g3d_request* fimgGetRequest(fimgContext *ctx,
-							uint32_t dataSize)
+void *fimgGetRequest(fimgContext *ctx, uint8_t type, uint32_t length)
 {
-	struct drm_exynos_g3d_request *req;
+	uint32_t *ptr;
+	uint32_t pkt_length;
 
-	if (ctx->numRequests == FIMG_MAX_REQUESTS
-	    || ctx->freeRequestData < dataSize)
+	length = (length + 3) & ~3;
+	pkt_length = length + sizeof(*ptr);
+
+	if (ctx->ringBufferFree < pkt_length)
 		fimgFlush(ctx);
 
-	req = &ctx->requests[ctx->numRequests++];
+	ptr = ctx->ringBufferPtr;
+	ptr[0] = (type << 24) | (length & 0xffffff);
+	ctx->ringBufferPtr += pkt_length;
+	ctx->ringBufferFree -= pkt_length;
 
-	req->data = ctx->requestData;
-	dataSize = (dataSize + 7) & ~7;
-	ctx->requestData += dataSize;
-	ctx->freeRequestData -= dataSize;
-
-	return req;
+	return &ptr[1];
 }
 
 /*
  * Memory management (GEM)
  */
 
-int fimgCreateGEM(fimgContext *ctx, unsigned long size, unsigned int *handle)
+static const unsigned int fimgGemFlags[] = {
+	[FIMG_GEM_SURFACE] = EXYNOS_BO_CACHABLE | EXYNOS_BO_UNMAPPED,
+	[FIMG_GEM_RING_BUFFER] = EXYNOS_BO_CACHABLE | EXYNOS_BO_NONCONTIG,
+	[FIMG_GEM_DRAW_BUFFER] = EXYNOS_BO_CACHABLE | EXYNOS_BO_NONCONTIG,
+	[FIMG_GEM_SHADER_BUFFER] = EXYNOS_BO_CACHABLE | EXYNOS_BO_NONCONTIG,
+};
+
+int fimgCreateGEM(fimgContext *ctx, unsigned long size, unsigned int usage,
+		  unsigned int *handle)
 {
 	struct drm_exynos_gem_create req;
 	int ret;
 
+	if (usage >= NELEM(fimgGemFlags)) {
+		LOGE("invalid GEM usage (%d)", usage);
+		return -EINVAL;
+	}
+
 	req.size = size;
-	req.flags = EXYNOS_BO_UNMAPPED | EXYNOS_BO_CACHABLE;
+	req.flags = fimgGemFlags[usage];
 	req.handle = 0;
 
 	ret = ioctl(ctx->fd, DRM_IOCTL_EXYNOS_GEM_CREATE, &req);
@@ -349,4 +403,29 @@ int fimgImportGEM(fimgContext *ctx, int fd, unsigned int *handle)
 	}
 
 	return 0;
+}
+
+void *fimgCreateAndMapGEM(fimgContext *ctx, unsigned long size,
+			  unsigned int usage, unsigned int *handle)
+{
+	void *addr;
+	int ret;
+
+	ret = fimgCreateGEM(ctx, size, usage, handle);
+	if (ret < 0)
+		return NULL;
+
+	addr = fimgMapGEM(ctx, *handle, size);
+	if (!addr)
+		fimgDestroyGEMHandle(ctx, *handle);
+
+	return addr;
+}
+
+void fimgUnmapAndDestroyGEMHandle(fimgContext *ctx, unsigned int handle,
+				  void *addr, unsigned long size)
+{
+	if (addr)
+		munmap(addr, size);
+	fimgDestroyGEMHandle(ctx, handle);
 }

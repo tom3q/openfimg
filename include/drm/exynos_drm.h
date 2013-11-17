@@ -151,7 +151,6 @@ struct drm_exynos_g2d_exec {
 	__u64					async;
 };
 
-
 enum g3d_register {
 	/*
 	 * Protected registers
@@ -239,22 +238,15 @@ enum g3d_register {
 };
 
 enum g3d_request_id {
-	G3D_REQUEST_STATE_INIT,
-	G3D_REQUEST_STATE_BUFFER,
-	G3D_REQUEST_DRAW_BUFFER,
-	G3D_REQUEST_FENCE,
+	G3D_REQUEST_REGISTER_WRITE,
 	G3D_REQUEST_SHADER_PROGRAM,
-	G3D_REQUEST_SHADER_DATA_INIT,
 	G3D_REQUEST_SHADER_DATA,
-	G3D_REQUEST_TEXTURE_SETUP,
-	G3D_REQUEST_FRAMEBUFFER_SETUP,
+	G3D_REQUEST_TEXTURE,
+	G3D_REQUEST_COLORBUFFER,
+	G3D_REQUEST_DEPTHBUFFER,
+	G3D_REQUEST_DRAW,
 
 	G3D_NUM_REQUESTS
-};
-
-struct g3d_state_entry {
-	enum g3d_register reg;
-	__u32 val;
 };
 
 enum g3d_shader_type {
@@ -272,9 +264,16 @@ enum g3d_shader_data_type {
 	G3D_NUM_SHADER_DATA_TYPES
 };
 
-#define G3D_NUM_MIPMAPS		11
+struct g3d_state_entry {
+	__u32 reg;
+	__u32 val;
+};
 
-struct drm_exynos_g3d_texture {
+#define G3D_NUM_MIPMAPS		11
+#define G3D_TEXTURE_DIRTY	(1 << 0)
+#define G3D_TEXTURE_DETACH	(1 << 1)
+
+struct g3d_req_texture_setup {
 	__u32 control;
 	__u32 width;
 	__u32 height;
@@ -282,61 +281,71 @@ struct drm_exynos_g3d_texture {
 	__u32 offset[G3D_NUM_MIPMAPS];
 	__u32 min_level;
 	__u32 max_level;
-	__u32 base_addr;
-	__u32 padding[2];
+	__u32 base_offset;
+	__u32 handle;
+	__u32 flags;
 };
 
-struct drm_exynos_g3d_framebuffer {
-	__u32 fbctl;
-	__u32 coffset;
-	__u32 doffset;
-	__u32 width;
-};
-
-struct drm_exynos_g3d_request {
-	enum g3d_request_id type;
-	void *data;
-	size_t length;
-	union {
-		struct {
-			unsigned int count;
-		} draw;
-		struct {
-			unsigned int flags;
-#define G3D_FENCE_FLUSH		(1 << 0)
-		} fence;
-		struct {
-			enum g3d_shader_type unit;
-			__u32 num_attrib;
-		} shader_program;
-		struct {
-			enum g3d_shader_type unit;
-			enum g3d_shader_data_type type;
-			off_t offset;
-		} shader_data;
-		struct {
-			enum g3d_shader_type unit;
-			__u16 data_count[G3D_NUM_SHADER_DATA_TYPES];
-		} shader_data_init;
-		struct {
-			unsigned int flags;
-#define G3D_TEXTURE_DIRTY	(1 << 0)
-			unsigned int unit;
-			__u32 handle;
-		} texture;
-		struct {
 #define G3D_CBUFFER_DIRTY	(1 << 0)
-#define G3D_ZBUFFER_DIRTY	(1 << 1)
-			unsigned int flags;
-			__u32 chandle;
-			__u32 zhandle;
-		} framebuffer;
-	};
+#define G3D_CBUFFER_DETACH	(1 << 1)
+
+struct g3d_req_colorbuffer_setup {
+	__u32 fbctl;
+	__u32 offset;
+	__u32 width;
+	__u32 handle;
+	__u32 flags;
+};
+
+#define G3D_DBUFFER_DIRTY	(1 << 0)
+#define G3D_DBUFFER_DETACH	(1 << 1)
+
+struct g3d_req_depthbuffer_setup {
+	__u32 offset;
+	__u32 handle;
+	__u32 flags;
+};
+
+struct g3d_req_draw_buffer {
+	__u32 vertices;
+	__u32 handle;
+	__u32 offset;
+	__u32 length;
+};
+
+struct g3d_req_shader_program {
+	__u32 unit_nattrib;
+	__u32 dcount[2];
+	__u32 handle;
+	__u32 offset;
+	__u32 length;
+};
+
+struct g3d_req_shader_data {
+	__u32 unit_type_offs;
+	__u32 data[];
 };
 
 struct drm_exynos_g3d_submit {
-	struct drm_exynos_g3d_request *requests;
-	unsigned int nr_requests;
+	__u32 handle;
+	__u32 offset;
+	__u32 length;
+	__u32 fence;
+};
+
+/* timeouts are specified in clock-monotonic absolute times (to simplify
+ * restarting interrupted ioctls).  The following struct is logically the
+ * same as 'struct timespec' but 32/64b ABI safe.
+ */
+struct drm_exynos_timespec {
+	int64_t tv_sec;          /* seconds */
+	int64_t tv_nsec;         /* nanoseconds */
+};
+
+struct drm_exynos_g3d_wait {
+	__u32 fence;
+	__u32 pad;
+	struct drm_exynos_timespec timeout;
 };
 
 enum drm_exynos_ops_id {
@@ -559,8 +568,8 @@ struct drm_exynos_ipp_cmd_ctrl {
 
 #define DRM_IOCTL_EXYNOS_G3D_SUBMIT		DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_EXYNOS_G3D_SUBMIT, struct drm_exynos_g3d_submit)
-#define DRM_IOCTL_EXYNOS_G3D_WAIT		DRM_IO(DRM_COMMAND_BASE + \
-		DRM_EXYNOS_G3D_WAIT)
+#define DRM_IOCTL_EXYNOS_G3D_WAIT		DRM_IOW(DRM_COMMAND_BASE + \
+		DRM_EXYNOS_G3D_WAIT, struct drm_exynos_g3d_wait)
 
 /* EXYNOS specific events */
 #define DRM_EXYNOS_G2D_EVENT		0x80000000
@@ -584,15 +593,6 @@ struct drm_exynos_ipp_event {
 	__u32			prop_id;
 	__u32			reserved;
 	__u32			buf_id[EXYNOS_DRM_OPS_MAX];
-};
-
-struct drm_exynos_g3d_event {
-	struct drm_event	base;
-	__u64			user_data;
-	__u32			tv_sec;
-	__u32			tv_usec;
-	__u32			cmdlist_no;
-	__u32			reserved;
 };
 
 #endif /* _EXYNOS_DRM_H_ */

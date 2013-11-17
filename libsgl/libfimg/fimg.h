@@ -564,12 +564,20 @@ void fimgSetFramebuffer(fimgContext *ctx, fimgFramebuffer *fb);
  * OS support
  */
 
+enum {
+	FIMG_GEM_SURFACE,
+	FIMG_GEM_RING_BUFFER,
+	FIMG_GEM_DRAW_BUFFER,
+	FIMG_GEM_SHADER_BUFFER,
+};
+
 fimgContext *fimgCreateContext(void);
 void fimgDestroyContext(fimgContext *ctx);
 int fimgDeviceOpen(fimgContext *ctx);
 void fimgDeviceClose(fimgContext *ctx);
-int fimgWaitForFlush(fimgContext *ctx, uint32_t target);
-int fimgCreateGEM(fimgContext *ctx, unsigned long size, unsigned int *handle);
+int fimgWaitForFlush(fimgContext *ctx);
+int fimgCreateGEM(fimgContext *ctx, unsigned long size, unsigned int usage,
+		  unsigned int *handle);
 void fimgDestroyGEMHandle(fimgContext *ctx, unsigned int handle);
 void *fimgMapGEM(fimgContext *ctx, unsigned int handle, unsigned long size);
 int fimgExportGEM(fimgContext *ctx, unsigned int handle);
