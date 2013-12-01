@@ -17,7 +17,7 @@ case "${host_cpu}" in
 		;;
 esac
 
-CFLAGS="${CFLAGS} -W -Wall -Wsign-compare -Wfloat-equal -Wformat-security -Wno-unused-parameter"
+CFLAGS="${CFLAGS} -W -Wall -Wsign-compare -Wformat-security -Wno-unused-parameter"
 
 PKG_CHECK_MODULES([DEPS], [libdrm])
 
