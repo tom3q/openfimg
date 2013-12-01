@@ -141,6 +141,8 @@ if test "${enable_profile}" = "yes"; then
 	LDFLAGS="${LDFLAGS} -pg"
 fi
 
+CXXFLAGS="${CFLAGS}"
+
 #
 # Go!
 #
@@ -154,5 +156,6 @@ AC_MSG_NOTICE([Install prefix:  $prefix])
 AC_MSG_NOTICE([sysconfdir:      $sysconfdir])
 AC_MSG_NOTICE([Compiler:        $CXX])
 AC_MSG_NOTICE([CFLAGS:          $CFLAGS])
+AC_MSG_NOTICE([CXXFLAGS:        $CXXFLAGS])
 AC_MSG_NOTICE([Additional libs: $LIBS])
 AC_MSG_NOTICE([------------------------------------------------------])
